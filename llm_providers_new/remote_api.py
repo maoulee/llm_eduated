@@ -3,16 +3,20 @@
 """
 Remote LLM provider implementations.
 
-This provider supports two API protocols:
+Supported online API protocols:
 
 1. openai_chat
    - OpenAI-compatible `/v1/chat/completions`.
-   - Used for GLM 5.1 and other online OpenAI-compatible models.
+   - Use this for GLM 5.1 and other online OpenAI-compatible models.
 
-2. openai_completions_batch
-   - OpenAI-compatible `/v1/completions` with `prompt` as a list.
-   - Used for vLLM online batch inference, so multiple prompts are sent in one
-     HTTP request instead of launching one request per prompt.
+2. vllm_chat_batch
+   - vLLM `/v1/chat/completions/batch`.
+   - Payload uses `messages` as a list of conversations.
+   - Response contains one choice per conversation, with `choice.index` mapping
+     back to the input conversation index.
+
+3. openai_completions_batch
+   - Legacy fallback for `/v1/completions` with `prompt` as a list.
 """
 
 import asyncio
@@ -21,6 +25,7 @@ import json
 import logging
 from typing import Any, Dict, List, Optional
 
+import httpx
 from openai import AsyncOpenAI
 
 from .base import BaseLLMProvider
@@ -30,18 +35,31 @@ logger = logging.getLogger(__name__)
 
 
 class RemoteAPIProvider(BaseLLMProvider):
-    """OpenAI-compatible remote provider with optional vLLM online batching."""
+    """OpenAI-compatible remote provider with configurable thinking control."""
 
     def __init__(self, model_name: str, api_base_url: str, api_key: str = "EMPTY", **kwargs):
-        self.client = AsyncOpenAI(
-            api_key=api_key or "EMPTY",
-            base_url=api_base_url,
-            timeout=float(kwargs.get("request_timeout", 120.0)),
-            max_retries=int(kwargs.get("max_retries", 2)),
-        )
         self.model_name = model_name
         self.provider_type = "api"
+        self.api_base_url = api_base_url.rstrip("/")
+        self.api_key = api_key or "EMPTY"
+        self.request_timeout = float(kwargs.get("request_timeout", 120.0))
+        self.max_retries = int(kwargs.get("max_retries", 2))
+
+        self.client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base_url,
+            timeout=self.request_timeout,
+            max_retries=self.max_retries,
+        )
+
         self.api_protocol = kwargs.get("api_protocol", "openai_chat")
+
+        # Thinking control methods:
+        # - none: do not modify request/prompt.
+        # - prompt: append /no_think when thinking is disabled.
+        # - param: send provider-specific extra_body {"thinking": {"type": ...}}.
+        # - chat_template_kwargs: send vLLM-style
+        #   {"chat_template_kwargs": {"enable_thinking": bool}}.
         self.thinking_control_method = kwargs.get("thinking_control_method", "prompt")
         self.prompt_template_style = kwargs.get("prompt_template_style", "qwen")
         self.supports_response_format = bool(kwargs.get("supports_response_format", True))
@@ -56,14 +74,20 @@ class RemoteAPIProvider(BaseLLMProvider):
         logger.info(
             "RemoteAPIProvider initialized: model=%s base_url=%s protocol=%s batch_size=%s thinking=%s",
             self.model_name,
-            api_base_url,
+            self.api_base_url,
             self.api_protocol,
             self.batch_size,
             self.thinking_control_method,
         )
 
+    def _base_server_url(self) -> str:
+        """Return server root URL. Handles configs ending in /v1."""
+        if self.api_base_url.endswith("/v1"):
+            return self.api_base_url[:-3].rstrip("/")
+        return self.api_base_url
+
     def _prepare_messages(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> List[Dict[str, Any]]:
-        """Copy and lightly modify messages according to thinking/json mode."""
+        """Copy and lightly modify messages according to prompt/json control."""
         processed = copy.deepcopy(messages)
         if not processed:
             return processed
@@ -77,17 +101,15 @@ class RemoteAPIProvider(BaseLLMProvider):
         return processed
 
     def _extra_body_for_thinking(self, enable_thinking: bool) -> Dict[str, Any]:
-        """Provider-specific thinking parameter support.
-
-        GLM 5.1 OpenAI-compatible mode should use thinking_control_method='none'
-        so no proprietary ZAI/BigModel body is sent.
-        """
+        """Provider-specific thinking parameter support."""
         if self.thinking_control_method == "param":
             return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
+        if self.thinking_control_method == "chat_template_kwargs":
+            return {"chat_template_kwargs": {"enable_thinking": bool(enable_thinking)}}
         return {}
 
     def _messages_to_prompt(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> str:
-        """Convert chat messages into a text prompt for batched vLLM completions."""
+        """Convert chat messages into a text prompt for legacy batched completions."""
         processed = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
 
         if self.prompt_template_style == "qwen":
@@ -99,7 +121,6 @@ class RemoteAPIProvider(BaseLLMProvider):
             chunks.append("<|im_start|>assistant\n")
             return "\n".join(chunks)
 
-        # Conservative fallback that still preserves roles.
         parts = []
         for msg in processed:
             parts.append(f"{msg.get('role', 'user').upper()}: {msg.get('content', '')}")
@@ -138,6 +159,58 @@ class RemoteAPIProvider(BaseLLMProvider):
             logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
             return f"Error: API call failed. Details: {e}"
 
+    async def _vllm_chat_batch_call(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[str]:
+        processed_batch = [
+            self._prepare_messages(msgs, enable_thinking=enable_thinking, json_mode=json_mode)
+            for msgs in messages_batch
+        ]
+        payload: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": processed_batch,
+            **self.sampling_params,
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+        if stop_sequences:
+            payload["stop"] = stop_sequences
+        if json_mode and self.supports_response_format:
+            payload["response_format"] = {"type": "json_object"}
+
+        # vLLM Qwen-family thinking control can be passed through chat_template_kwargs.
+        # This is useful when the server applies chat templates itself.
+        extra_body = self._extra_body_for_thinking(enable_thinking)
+        payload.update(extra_body)
+
+        url = f"{self._base_server_url()}/v1/chat/completions/batch"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key and self.api_key != "EMPTY":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        try:
+            async with httpx.AsyncClient(timeout=self.request_timeout) as client:
+                response = await client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+        except Exception as e:
+            logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
+            return [f"Error: vLLM chat batch call failed. Details: {e}" for _ in processed_batch]
+
+        ordered = [""] * len(processed_batch)
+        for choice in data.get("choices", []):
+            idx = choice.get("index")
+            if idx is None or idx >= len(ordered):
+                continue
+            message = choice.get("message") or {}
+            ordered[idx] = message.get("content") or ""
+        return ordered
+
     async def _completion_batch_call(
         self,
         messages_batch: List[List[Dict[str, Any]]],
@@ -170,7 +243,7 @@ class RemoteAPIProvider(BaseLLMProvider):
                 ordered[idx] = choice.text or ""
             return ordered
         except Exception as e:
-            logger.error("vLLM online batch completion call failed: %s", e, exc_info=True)
+            logger.error("online completion batch call failed: %s", e, exc_info=True)
             return [f"Error: batch API call failed. Details: {e}" for _ in prompts]
 
     async def _generate_raw_batch(
@@ -184,8 +257,23 @@ class RemoteAPIProvider(BaseLLMProvider):
         if not messages_batch:
             return []
 
-        if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
+        if self.api_protocol in {"vllm_chat_batch", "openai_chat_batch"}:
             outputs: List[str] = []
+            for start in range(0, len(messages_batch), self.batch_size):
+                chunk = messages_batch[start:start + self.batch_size]
+                outputs.extend(
+                    await self._vllm_chat_batch_call(
+                        chunk,
+                        stop_sequences=stop_sequences,
+                        max_tokens=max_tokens,
+                        enable_thinking=enable_thinking,
+                        json_mode=json_mode,
+                    )
+                )
+            return outputs
+
+        if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
+            outputs = []
             for start in range(0, len(messages_batch), self.batch_size):
                 chunk = messages_batch[start:start + self.batch_size]
                 outputs.extend(
@@ -199,8 +287,6 @@ class RemoteAPIProvider(BaseLLMProvider):
                 )
             return outputs
 
-        # Standard OpenAI-compatible chat endpoint has no multi-message batch API,
-        # so use bounded concurrency.
         semaphore = asyncio.Semaphore(self.batch_size)
 
         async def guarded_call(msgs: List[Dict[str, Any]]) -> str:
