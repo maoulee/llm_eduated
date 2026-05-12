@@ -41,7 +41,8 @@ class ProviderSettings(BaseModel):
 
     # API protocol:
     # - openai_chat: OpenAI-compatible /v1/chat/completions. Use this for GLM 5.1.
-    # - openai_completions_batch: OpenAI-compatible /v1/completions with prompt=[...]. Use this for vLLM online batch.
+    # - vllm_chat_batch: vLLM /v1/chat/completions/batch with messages as a list of conversations.
+    # - openai_completions_batch: legacy /v1/completions with prompt=[...].
     api_protocol: str = "openai_chat"
     batch_size: int = 8
     request_timeout: float = 120.0
@@ -51,6 +52,12 @@ class ProviderSettings(BaseModel):
 
     tensor_parallel_size: int = 2
     gpu_memory_utilization: float = 0.7
+
+    # Thinking control method:
+    # - none: do not control thinking.
+    # - prompt: append /no_think when thinking is disabled.
+    # - param: send provider-specific thinking parameter.
+    # - chat_template_kwargs: send vLLM chat_template_kwargs.enable_thinking.
     thinking_control_method: str = "prompt"
     quantization: Optional[str] = None
     max_model_len: int = 10000
@@ -70,7 +77,7 @@ class GlobalSettings(BaseSettings):
         "local": ProviderSettings(
             provider_type="local",
             model_path=os.getenv("LOCAL_MODEL_PATH", "/zhaoshu/llm/qwen3-32b/"),
-            thinking_control_method="prompt",
+            thinking_control_method=os.getenv("LOCAL_THINKING_CONTROL_METHOD", "prompt"),
             tensor_parallel_size=int(os.getenv("LOCAL_TENSOR_PARALLEL_SIZE", "2")),
         ),
         "api_vllm": ProviderSettings(
@@ -78,11 +85,11 @@ class GlobalSettings(BaseSettings):
             model_path=os.getenv("VLLM_MODEL", "/zhaoshu/llm/qwen3-32b/"),
             api_url=os.getenv("VLLM_API_BASE", f"http://127.0.0.1:{ServerSettings().vllm_api_port}/v1"),
             api_key=os.getenv("VLLM_API_KEY", "EMPTY"),
-            api_protocol="openai_completions_batch",
+            api_protocol=os.getenv("VLLM_API_PROTOCOL", "vllm_chat_batch"),
             batch_size=int(os.getenv("VLLM_BATCH_SIZE", "16")),
             prompt_template_style=os.getenv("VLLM_PROMPT_TEMPLATE_STYLE", "qwen"),
-            thinking_control_method="prompt",
-            supports_response_format=False,
+            thinking_control_method=os.getenv("VLLM_THINKING_CONTROL_METHOD", "chat_template_kwargs"),
+            supports_response_format=os.getenv("VLLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("VLLM_DEFAULT_MAX_TOKENS", "4096")),
         ),
         "glm5.1": ProviderSettings(
@@ -92,8 +99,8 @@ class GlobalSettings(BaseSettings):
             api_key=os.getenv("GLM_API_KEY"),
             api_protocol="openai_chat",
             batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
-            thinking_control_method="none",
-            supports_response_format=True,
+            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "none"),
+            supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "4096")),
         ),
         "gptoss": ProviderSettings(
@@ -101,21 +108,21 @@ class GlobalSettings(BaseSettings):
             model_path=os.getenv("GPTOSS_MODEL", "gpt-oss:20b"),
             api_url=os.getenv("GPTOSS_API_BASE", "http://localhost:8000/v1"),
             api_key=os.getenv("GPTOSS_API_KEY", "ollama"),
-            api_protocol="openai_chat",
-            thinking_control_method="prompt",
+            api_protocol=os.getenv("GPTOSS_API_PROTOCOL", "openai_chat"),
+            thinking_control_method=os.getenv("GPTOSS_THINKING_CONTROL_METHOD", "prompt"),
         ),
         "qwen3": ProviderSettings(
             provider_type="api",
             model_path=os.getenv("QWEN3_MODEL", "/data/amax/home/E22101006/.cache/modelscope/hub/models/Qwen/Qwen3-8B/"),
             api_url=os.getenv("QWEN3_API_BASE", "http://localhost:8000/v1"),
             api_key=os.getenv("QWEN3_API_KEY", "EMPTY"),
-            api_protocol="openai_chat",
-            thinking_control_method="prompt",
+            api_protocol=os.getenv("QWEN3_API_PROTOCOL", "openai_chat"),
+            thinking_control_method=os.getenv("QWEN3_THINKING_CONTROL_METHOD", "prompt"),
         ),
         "qwen3local_api": ProviderSettings(
             provider_type="local",
             model_path=os.getenv("QWEN3_LOCAL_MODEL_PATH", "/data/amax/home/E22101006/.cache/modelscope/hub/models/Qwen/Qwen3-8B/"),
-            thinking_control_method="prompt",
+            thinking_control_method=os.getenv("QWEN3_LOCAL_THINKING_CONTROL_METHOD", "prompt"),
             tensor_parallel_size=1,
             serve_as_api=True,
         ),
