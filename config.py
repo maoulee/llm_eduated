@@ -73,7 +73,7 @@ class GlobalSettings(BaseSettings):
             provider_type="api",
             model_path="glm-4.6",
             api_url="https://open.bigmodel.cn/api/paas/v4/",
-            api_key="aa6c598ff745960ef447bf4f55ad1f2a.ZYtqw25sXCBOkw5h",
+            api_key="",
             thinking_control_method='param',
         ),
         "gptoss": ProviderSettings(
