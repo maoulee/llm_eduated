@@ -1,0 +1,39 @@
+# Secrets
+.env
+
+# Data files (large JSONL results)
+*.jsonl
+batch_input.jsonl
+batch_solver_results_*.jsonl
+
+# Data directories
+data/
+artifacts/
+structured_knowledge_base/
+kcard_data/
+kcard_debug_output/
+report/
+
+# Logs
+log/
+
+# FAISS indexes
+*.faiss
+*.bin
+
+# OMC / IDE
+.omc/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
