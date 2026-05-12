@@ -47,13 +47,18 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Intelligent Solver API",
     description="An API that solves complex questions using a multi-agent workflow.",
-    version="3.0.0",
+    version="3.1.0",
     lifespan=lifespan
 )
 
 class SolveRequest(BaseModel):
     prompt: str = Field(..., description="The user's question to be solved.")
-    workflow_mode: str = Field("full", enum=["full", "direct"], description="The workflow to use.")
+    workflow_mode: str = Field(
+        "full",
+        enum=["full", "direct", "hybrid"],
+        description="The workflow to use. Use 'hybrid' for reasoning + code verification + trace-based annotation."
+    )
+    max_tokens: int = Field(8192, ge=512, le=32768, description="Maximum tokens for model generation.")
 
 class SolveResponse(BaseModel):
     response: str
@@ -69,7 +74,11 @@ async def solve_endpoint(request: SolveRequest, http_request: Request):
         
     logger.info(f"Received solve request for prompt: {request.prompt[:70]}...")
     try:
-        result = await engine.run(request.prompt, request.workflow_mode)
+        result = await engine.run(
+            prompt=request.prompt,
+            workflow_mode=request.workflow_mode,
+            max_tokens=request.max_tokens,
+        )
         logger.info("Request processed successfully.")
         return result
     except Exception as e:
