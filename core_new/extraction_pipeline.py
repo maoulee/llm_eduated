@@ -57,7 +57,7 @@ class ExtractionPipeline:
         max_tokens: int = 8192,
         enable_thinking: bool = False,
         review_mode: str = "fast",
-        review_max_tokens: int = 16384,
+        review_max_tokens: int = 10000,
         review_provider=None,
     ):
         self.llm = llm_provider

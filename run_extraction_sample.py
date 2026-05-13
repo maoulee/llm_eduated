@@ -56,12 +56,21 @@ QUESTIONS = [
 
 
 async def main():
-    provider_name = "glm5.1"
+    import argparse
+    parser = argparse.ArgumentParser(description="Run extraction sample")
+    parser.add_argument("--provider", default=os.environ.get("EXTRACTION_PROVIDER", "glm5.1"))
+    args = parser.parse_args()
+
+    provider_name = args.provider
     print(f"Initializing provider: {provider_name}")
     config = get_provider_config(provider_name)
+    # Override model path to match vLLM served model
+    served_model = os.environ.get("VLLM_SERVED_MODEL")
+    if served_model and provider_name == "api_vllm":
+        config["model_path"] = served_model
     provider = get_llm_provider(config)
     review_mode = os.environ.get("REVIEW_MODE", "fast")
-    pipeline = ExtractionPipeline(provider, max_tokens=4096, enable_thinking=False, review_mode=review_mode)
+    pipeline = ExtractionPipeline(provider, max_tokens=6144, enable_thinking=True, review_mode=review_mode, review_max_tokens=10000)
     print(f"Review mode: {review_mode}")
 
     results = []

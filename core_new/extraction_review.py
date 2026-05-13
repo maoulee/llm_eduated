@@ -227,7 +227,7 @@ class RuleChecker:
 class DomainCritic:
     """Adversarial LLM reviewer for domain-level semantic issues."""
 
-    def __init__(self, llm_provider, max_tokens: int = 16384, enable_thinking: bool = True):
+    def __init__(self, llm_provider, max_tokens: int = 10000, enable_thinking: bool = True):
         self.llm = llm_provider
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking

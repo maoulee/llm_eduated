@@ -9,7 +9,6 @@ import logging
 from typing import Dict, Any
 
 from .base import BaseLLMProvider
-from .local_batch import LocalVLLMProvider
 from .remote_api import RemoteAPIProvider
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -24,6 +23,8 @@ def get_llm_provider(config: Dict[str, Any]) -> BaseLLMProvider:
     logger.info("Initializing LLM provider type: %s", provider_type)
 
     if provider_type == "local":
+        from .local_batch import LocalVLLMProvider
+
         model_path = config.get("model_path")
         if not model_path:
             raise ValueError("Local provider config must include 'model_path'.")

@@ -95,7 +95,7 @@ async def deep_review_question(
 
     # Deep DomainCritic (optional)
     if run_deep_critic:
-        critic = DomainCritic(provider, max_tokens=16384, enable_thinking=True)
+        critic = DomainCritic(provider, max_tokens=10000, enable_thinking=True)
         domain_result = await critic.review(updated, rule_result)
     else:
         domain_result = {
