@@ -326,29 +326,29 @@ PASS5_DOMAIN_CRITIC = """你是独立的408题库审稿人。以下候选条目�
 请输出JSON：
 
 ```json
-{{{{
-  "answer_consistency_check": {{{{
+{{
+  "answer_consistency_check": {{
     "raw_answer": "正确答案",
     "option_content": "对应选项内容",
     "derived_value": "推理模式推导出的结果",
     "is_consistent": true或false,
     "notes": "具体说明"
-  }}}},
-  "domain_review": {{{{
+  }},
+  "domain_review": {{
     "major_issues": [
-      {{{{
+      {{
         "issue_type": "answer_inconsistency | unsupported_trigger | overgeneralized_knowledge | weak_distractor_alignment | pattern_overfit | terminology_error | hallucination | other",
         "evidence_path": "具体字段路径",
         "evidence_text": "原文摘录",
         "reason": "为什么是问题",
         "severity": "high | medium | low",
         "suggested_action": "candidate | reject | needs_human_check"
-      }}}}
+      }}
     ],
     "minor_issues": [],
     "uncertain_items": []
-  }}}},
+  }},
   "review_summary": "总结",
   "recommended_status": "candidate | rejected | needs_human_check"
-}}}}
+}}
 ```"""

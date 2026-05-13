@@ -59,6 +59,24 @@ def _collect_known_names(ku: Dict, pattern: Dict) -> List[str]:
     return [n for n in names if n]
 
 
+def _collect_known_by_type(ku: Dict, pattern: Dict) -> Dict[str, set]:
+    """Build name sets indexed by entity type for cross-type validation."""
+    result: Dict[str, set] = {
+        "knowledge": set(),
+        "mechanism": set(),
+        "reasoning_pattern": set(),
+    }
+    for k in ku.get("knowledge_units", []):
+        if k.get("name"):
+            result["knowledge"].add(k["name"])
+    for m in ku.get("mechanisms", []):
+        if m.get("name"):
+            result["mechanism"].add(m["name"])
+    if pattern.get("pattern_name"):
+        result["reasoning_pattern"].add(pattern["pattern_name"])
+    return result
+
+
 class RuleChecker:
     """Code-based validation of extraction results. No LLM involved."""
 
@@ -94,6 +112,7 @@ class RuleChecker:
         pattern_link_check = RuleChecker._check_pattern_knowledge(rp, ku)
 
         all_orphan = link_check.get("orphan_targets", []) + pattern_link_check.get("orphan_targets", [])
+        all_type_mismatch = link_check.get("type_mismatches", [])
 
         return {
             "schema_valid": schema_valid,
@@ -102,6 +121,7 @@ class RuleChecker:
                 "trigger_targets": link_check,
                 "pattern_knowledge": pattern_link_check,
                 "orphan_targets": all_orphan,
+                "type_mismatches": all_type_mismatch,
             },
             "issues": issues,
             "warnings": warnings,
@@ -129,18 +149,62 @@ class RuleChecker:
 
     @staticmethod
     def _check_trigger_targets(tr: Dict, ku: Dict, pattern: Dict) -> Dict[str, Any]:
-        known = _collect_known_names(ku, pattern)
+        known_by_type = _collect_known_by_type(ku, pattern)
         orphan: List[Dict[str, str]] = []
+        type_mismatch: List[Dict[str, str]] = []
         for rule in tr.get("trigger_rules", []):
             for target in rule.get("activates", {}).get("targets", []):
                 name = target.get("target_name", "")
-                if name and not _fuzzy_exists(name, known):
+                t_type = target.get("target_type", "")
+                if not name:
+                    continue
+                # Check target_type is valid
+                if t_type and t_type not in VALID_TARGET_TYPES:
                     orphan.append({
                         "trigger": rule.get("name", ""),
-                        "target_type": target.get("target_type", ""),
+                        "target_type": t_type,
                         "target_name": name,
+                        "reason": f"invalid target_type '{t_type}'",
                     })
-        return {"orphan_targets": orphan, "known_names_count": len(known)}
+                    continue
+                # Check name exists in the correct type set
+                if t_type and t_type in known_by_type:
+                    if _fuzzy_exists(name, list(known_by_type[t_type])):
+                        continue
+                    # Name not in correct type set — check if it exists in wrong type
+                    found_in_wrong = False
+                    for other_type, other_names in known_by_type.items():
+                        if other_type != t_type and _fuzzy_exists(name, list(other_names)):
+                            found_in_wrong = True
+                            type_mismatch.append({
+                                "trigger": rule.get("name", ""),
+                                "target_type": t_type,
+                                "target_name": name,
+                                "actual_type": other_type,
+                            })
+                            break
+                    if not found_in_wrong:
+                        orphan.append({
+                            "trigger": rule.get("name", ""),
+                            "target_type": t_type,
+                            "target_name": name,
+                            "reason": "not found in any entity set",
+                        })
+                elif not t_type:
+                    # No type specified, do generic fuzzy match
+                    all_known = _collect_known_names(ku, pattern)
+                    if not _fuzzy_exists(name, all_known):
+                        orphan.append({
+                            "trigger": rule.get("name", ""),
+                            "target_type": "(unspecified)",
+                            "target_name": name,
+                            "reason": "not found",
+                        })
+        return {
+            "orphan_targets": orphan,
+            "type_mismatches": type_mismatch,
+            "known_names_count": sum(len(v) for v in known_by_type.values()),
+        }
 
     @staticmethod
     def _check_pattern_knowledge(pattern: Dict, ku: Dict) -> Dict[str, Any]:
@@ -289,6 +353,17 @@ class ReadinessAggregator:
         if orphan:
             status = "needs_human_check"
             reasons.append(f"{len(orphan)} orphan reference(s) in triggers/pattern")
+            requires_human = True
+
+        # Rule: type mismatches → needs_human_check
+        type_mismatches = rule_validation.get("link_validation", {}).get("type_mismatches", [])
+        if type_mismatches:
+            status = "needs_human_check"
+            for tm in type_mismatches:
+                reasons.append(
+                    f"Type mismatch: '{tm.get('target_name')}' typed as {tm.get('target_type')} "
+                    f"but exists as {tm.get('actual_type')}"
+                )
             requires_human = True
 
         # Rule: domain major issues → needs_human_check
