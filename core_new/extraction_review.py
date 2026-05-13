@@ -424,6 +424,17 @@ class OrphanReferenceResolver:
         answer = question.get("answer", "")
         ku = json.dumps(extraction_result.get("knowledge_units", {}), ensure_ascii=False)
 
+        # Build trigger targets list for retarget detection
+        trigger_targets = []
+        for rule in extraction_result.get("trigger_rules", {}).get("trigger_rules", []):
+            for target in rule.get("activates", {}).get("targets", []):
+                trigger_targets.append({
+                    "trigger_name": rule.get("name", ""),
+                    "target_name": target.get("target_name", ""),
+                    "target_type": target.get("target_type", ""),
+                })
+        trigger_targets_str = json.dumps(trigger_targets, ensure_ascii=False, indent=2)
+
         orphan_str = json.dumps(orphans, ensure_ascii=False, indent=2)
 
         prompt = ORPHAN_RESOLVER.format(
@@ -431,6 +442,7 @@ class OrphanReferenceResolver:
             answer=answer,
             knowledge_units=ku,
             orphan_refs=orphan_str,
+            trigger_targets=trigger_targets_str,
         )
 
         logger.info("Running OrphanReferenceResolver for %d orphans", len(orphans))
@@ -494,6 +506,100 @@ class OrphanReferenceResolver:
                 })
 
         return result
+
+
+# ---------------------------------------------------------------------------
+# LinkRepairer
+# ---------------------------------------------------------------------------
+
+class LinkRepairer:
+    """Rewrites P3 trigger targets and P4 pattern required_knowledge to use
+    canonical names from OrphanReferenceResolver resolutions and retargets."""
+
+    def __init__(self):
+        self._repairs: List[Dict[str, str]] = []
+
+    def repair(
+        self,
+        extraction_result: Dict[str, Any],
+        resolution: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        import copy
+        result = copy.deepcopy(extraction_result)
+
+        # Build rename map: orphan_name → canonical_name
+        rename_map: Dict[str, str] = {}
+        for r in resolution.get("resolutions", []):
+            orphan_name = r.get("orphan_name", "")
+            canonical = r.get("canonical_name", "")
+            map_target = r.get("map_target", "")
+            verdict = r.get("verdict", "")
+
+            if verdict == "map_to_existing" and map_target:
+                rename_map[orphan_name] = map_target
+            elif canonical and verdict in ("new_knowledge", "new_mechanism"):
+                rename_map[orphan_name] = canonical
+
+        # Rewrite P4 pattern required_knowledge
+        for step in result.get("reasoning_pattern", {}).get("steps", []):
+            new_req = []
+            for req in step.get("required_knowledge", []):
+                if req in rename_map:
+                    new_req.append(rename_map[req])
+                    self._repairs.append({
+                        "path": f"reasoning_pattern.steps[{step.get('order', '?')}].required_knowledge",
+                        "old": req,
+                        "new": rename_map[req],
+                    })
+                else:
+                    new_req.append(req)
+            step["required_knowledge"] = new_req
+
+        # Build retarget map from resolver output
+        retarget_map: Dict[str, Dict[str, str]] = {}
+        for rt in resolution.get("retargets", []):
+            trigger_name = rt.get("trigger_name", "")
+            retarget_map[trigger_name] = {
+                "new_target_name": rt.get("new_target_name", ""),
+                "new_target_type": rt.get("new_target_type", "mechanism"),
+                "old_target_name": rt.get("old_target_name", ""),
+            }
+
+        # Rewrite P3 trigger targets
+        for rule in result.get("trigger_rules", {}).get("trigger_rules", []):
+            rule_name = rule.get("name", "")
+
+            # Apply rename_map to existing targets
+            for target in rule.get("activates", {}).get("targets", []):
+                old_name = target.get("target_name", "")
+                if old_name in rename_map:
+                    target["target_name"] = rename_map[old_name]
+                    self._repairs.append({
+                        "path": f"trigger_rules.{rule_name}.target",
+                        "old": old_name,
+                        "new": rename_map[old_name],
+                    })
+
+            # Apply retargets (change target entirely)
+            if rule_name in retarget_map:
+                rt = retarget_map[rule_name]
+                for target in rule.get("activates", {}).get("targets", []):
+                    if target.get("target_name") == rt["old_target_name"]:
+                        target["target_name"] = rt["new_target_name"]
+                        target["target_type"] = rt["new_target_type"]
+                        self._repairs.append({
+                            "path": f"trigger_rules.{rule_name}.retarget",
+                            "old": rt["old_target_name"],
+                            "new": rt["new_target_name"],
+                        })
+
+        return result
+
+    def summary(self) -> Dict[str, Any]:
+        return {
+            "total_repairs": len(self._repairs),
+            "repairs": self._repairs,
+        }
 
 
 # ---------------------------------------------------------------------------

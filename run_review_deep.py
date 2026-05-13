@@ -65,15 +65,18 @@ async def deep_review_question(
     provider,
     result: Dict[str, Any],
     resolve_orphans: bool = True,
+    run_deep_critic: bool = True,
 ) -> Dict[str, Any]:
-    """Run deep DomainCritic + OrphanResolver on a single result."""
+    """Run deep DomainCritic + OrphanResolver + LinkRepairer on a single result."""
     import copy
+    from core_new.extraction_review import LinkRepairer
+
     updated = copy.deepcopy(result)
 
     # Re-run RuleChecker (in case data was modified)
     rule_result = RuleChecker.validate(updated)
 
-    # Resolve orphans first
+    # Resolve orphans + repair links
     if resolve_orphans and rule_result.get("link_validation", {}).get("orphan_targets"):
         resolver = OrphanReferenceResolver(provider)
         resolution = await resolver.resolve(updated, rule_result)
@@ -82,13 +85,20 @@ async def deep_review_question(
             updated = OrphanReferenceResolver.apply_resolutions(updated, resolution)
             updated["orphan_resolution"] = resolution
 
-            # Re-validate after resolution
-            rule_result = RuleChecker.validate(updated)
-            updated["review"]["rule_validation"] = rule_result
+            # Repair links: rewrite P3/P4 references to match new/canonical names
+            repairer = LinkRepairer()
+            updated = repairer.repair(updated, resolution)
+            updated["link_repairs"] = repairer.summary()
 
-    # Deep DomainCritic
-    critic = DomainCritic(provider, max_tokens=16384, enable_thinking=True)
-    domain_result = await critic.review(updated, rule_result)
+            # Re-validate after resolution + repair
+            rule_result = RuleChecker.validate(updated)
+
+    # Deep DomainCritic (optional)
+    if run_deep_critic:
+        critic = DomainCritic(provider, max_tokens=16384, enable_thinking=True)
+        domain_result = await critic.review(updated, rule_result)
+    else:
+        domain_result = result.get("review", {}).get("domain_review", {})
 
     # Aggregate
     readiness = ReadinessAggregator.aggregate(rule_result, domain_result)
@@ -152,7 +162,8 @@ async def main():
         try:
             updated = await deep_review_question(
                 provider, target,
-                resolve_orphans=not args.resolve_only or True,
+                resolve_orphans=True,
+                run_deep_critic=not args.resolve_only,
             )
             elapsed = time.time() - start
 

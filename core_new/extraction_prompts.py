@@ -356,10 +356,12 @@ PASS5_DOMAIN_CRITIC = """你是独立的408题库审稿人。以下候选条目�
 ORPHAN_RESOLVER = """你是一位408考研知识库结构化专家。以下抽取结果中，推理模式（P4）和触发规则（P3）引用了一些在知识单元（P2）中不存在的实体。
 
 你的任务是对每个孤立引用做出判断：
-1. 如果它是合理的知识节点（概念、公式、规则、数值约定），给出候选 knowledge 节点
+1. 如果它是合理的知识节点（概念、公式、规则、数值约定），给出候选 knowledge 节点，并用 canonical_name 作为标准名称
 2. 如果它是合理的机制节点（影响推理路径的系统机制），给出候选 mechanism 节点
 3. 如果它只是推理步骤的描述性用语，建议映射到已有的某个知识/机制节点
 4. 如果无法判断，标记 uncertain
+
+同时请识别触发规则中的错误指向：如果 trigger 的 target 指向了不正确的机制，请给出 retarget 建议。
 
 ## 题目信息
 题干：{stem}
@@ -370,6 +372,9 @@ ORPHAN_RESOLVER = """你是一位408考研知识库结构化专家。以下抽�
 
 ## 孤立引用列表
 {orphan_refs}
+
+## 触发规则的 target 列表
+{trigger_targets}
 
 ## 要求
 请输出JSON：
@@ -382,14 +387,24 @@ ORPHAN_RESOLVER = """你是一位408考研知识库结构化专家。以下抽�
       "source": "pattern_step | trigger_target",
       "source_detail": "来自哪个步骤或触发规则",
       "verdict": "new_knowledge | new_mechanism | map_to_existing | uncertain",
+      "canonical_name": "建议的标准名称（用于统一 P2/P3/P4 中的引用）",
       "candidate_node": {{
-        "name": "节点名称",
+        "name": "节点名称（与 canonical_name 一致）",
         "description": "具体内容",
         "subtype": "definition | formula | rule | convention | term",
         "subject": "所属科目"
       }},
       "map_target": "如果 map_to_existing，指向哪个已有节点名称",
       "reason": "判断理由"
+    }}
+  ],
+  "retargets": [
+    {{
+      "trigger_name": "触发规则名称",
+      "old_target_name": "当前指向的 target 名称",
+      "new_target_name": "应该指向的 canonical_name",
+      "new_target_type": "knowledge | mechanism",
+      "reason": "为什么要改"
     }}
   ],
   "suggested_p2_additions": [

@@ -100,8 +100,8 @@
           "subject": "计算机组成原理"
         },
         {
-          "name": "运算结果向左值的类型转换与赋值",
-          "description": "当表达式计算完成后，需要将结果赋值给左值（如变量z）时，如果右值与左值的数据类型不同，系统会自动将右值的运算结果转换为左值的数据类型。在本题中，无符号数相减的结果（0）会被隐式转换回有符号整型（int）并存入变量z。",
+          "name": "赋值运算中的类型转换",
+          "description": "在C语言中，当将右值（如无符号数运算结果）赋值给不同类型的左值（如带符号整型）时，系统会自动进行隐式类型转换。若右值超出左值类型的表示范围，则会发生截断或重新解释（即直接按补码 reinterpret），但底层二进制位模式保持不变。",
           "affects_what": "",
           "common_misunderstanding": "",
           "subject": "C语言程序设计"
@@ -177,7 +177,7 @@
             "targets": [
               {
                 "target_type": "mechanism",
-                "target_name": "不同数据类型的隐式类型转换（算术转换）",
+                "target_name": "赋值运算中的类型转换",
                 "action": "modify"
               }
             ]
@@ -298,7 +298,7 @@
           "output": "127的32位二进制表示均为 0000 0000 0000 0000 0000 0000 0111 1111（即0x0000007F）。",
           "required_knowledge": [
             "127的机器数表示",
-            "补码与无符号数的编码规则"
+            "127的机器数表示"
           ],
           "common_error_at_this_step": "未进行底层二进制视角的思考，直接主观臆断不同类型相减必定发生异常。"
         },
@@ -320,7 +320,7 @@
           "input": "无符号运算结果0x00000000，左值z的类型为int。",
           "output": "无符号数0的位模式赋给int型变量z，最高位（符号位）为0，解析为有符号整数0，未发生溢出。",
           "required_knowledge": [
-            "运算结果向左值赋值转换"
+            "赋值运算中的类型转换"
           ],
           "common_error_at_this_step": "混淆赋值时的类型转换与运算时的类型转换，混淆有符号溢出与无符号回绕的概念。"
         }
@@ -356,19 +356,9 @@
             "known_names_count": 6
           },
           "pattern_knowledge": {
-            "orphan_targets": [
-              {
-                "step": 3,
-                "required_knowledge": "补码与无符号数的编码规则"
-              }
-            ]
+            "orphan_targets": []
           },
-          "orphan_targets": [
-            {
-              "step": 3,
-              "required_knowledge": "补码与无符号数的编码规则"
-            }
-          ],
+          "orphan_targets": [],
           "type_mismatches": []
         },
         "issues": [],
@@ -380,50 +370,48 @@
           "option_content": "0",
           "derived_value": "0",
           "is_consistent": true,
-          "notes": "题目给定的正确答案为A（0），推理模式在第5步推导出的最终结果也是有符号整数0，两者一致且符合事实逻辑。"
+          "notes": "rule-based answer_consistency 已经判定一致，且候选数据中推理模式步骤计算得出127-127=0，与原题答案一致。"
         },
         "domain_review": {
           "major_issues": [
             {
               "issue_type": "unsupported_trigger",
-              "evidence_path": "reasoning_pattern.steps[2].required_knowledge",
-              "evidence_text": "\"补码与无符号数的编码规则\"",
-              "reason": "推理模式第3步（order=3）引用了名为“补码与无符号数的编码规则”的知识单元，但在候选数据的 knowledge_units 列表中并不存在这个名称的定义。这是一个结构性的孤儿引用，导致该推理步骤缺乏对应的知识点支撑。",
-              "severity": "high",
-              "suggested_action": "needs_human_check"
-            },
-            {
-              "issue_type": "unsupported_trigger",
-              "evidence_path": "reasoning_pattern.steps[4].required_knowledge",
-              "evidence_text": "\"运算结果向左值赋值转换\"",
-              "reason": "推理模式第5步（order=5）引用的 required_knowledge 为“运算结果向左值赋值转换”，但在 knowledge_units.mechanisms 中定义的实际名称为“运算结果向左值的类型转换与赋值”。名称不一致将导致关联匹配失败。",
+              "evidence_path": "trigger_rules[1]",
+              "evidence_text": "{\"name\": \"运算结果向左值赋值转换\", \"activates\": {\"targets\": [{\"target_type\": \"mechanism\", \"target_name\": \"不同数据类型的隐式类型转换（算术转换）\", \"action\": \"modify\"}]}}",
+              "reason": "触发规则指向 'activates' 一个名为 '运算结果向左值转换' 的机制，但在 knowledge_units.mechanisms 中只定义了两个机制（'不同数据类型的隐式类型转换（算术转换）' 和 '无符号数减法运算与回绕机制'）。这是一个悬空引用或命名不匹配问题。",
               "severity": "medium",
               "suggested_action": "needs_human_check"
             },
             {
-              "issue_type": "unsupported_trigger",
-              "evidence_path": "trigger_rules[1].activates.targets[0].target_name",
-              "evidence_text": "\"不同数据类型的隐式类型转换（算术转换）\"",
-              "reason": "名为“运算结果向左值赋值转换”的触发规则，其本应处理表达式赋值给左值的类型转换，却将激活目标指向了“不同数据类型的隐式类型转换（算术转换）”，完全遗漏了真正应该激活的“运算结果向左值的类型转换与赋值”机制，属于逻辑关联错误。",
+              "issue_type": "other",
+              "evidence_path": "reasoning_pattern.steps[3].required_knowledge",
+              "evidence_text": "required_knowledge: [\"127的机器数表示\", \"补码与无符号数的编码规则\"]",
+              "reason": "引用的 '补码与无符号数的编码规则' 知识单元在 knowledge_units.knowledge_units 和 mechanisms 中均不存在，属于悬空引用。",
               "severity": "medium",
               "suggested_action": "needs_human_check"
             }
           ],
-          "minor_issues": [],
+          "minor_issues": [
+            {
+              "issue_type": "other",
+              "evidence_path": "reasoning_pattern.steps[5].required_knowledge",
+              "evidence_text": "required_knowledge: [\"运算结果向左值赋值转换\"]",
+              "reason": "引用的 '运算结果向左值赋值转换' 知识点在候选数据的现有知识单元列表中缺失，应视为悬空引用，但相对次要。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            }
+          ],
           "uncertain_items": []
         },
-        "review_summary": "候选条目的领域知识原理、干扰项分析和最终答案判定均准确无误。但数据结构层面存在明显的抽取与关联错误：不仅存在未定义的孤儿知识单元引用，推理步骤对已有机制的名称引用也存在文字拼写差异，同时触发规则的激活指向也发生了错位。这些结构性问题需要人工介入修正关联字段。",
-        "recommended_status": "needs_human_check",
-        "reviewer_reasoning": "输入：\n- 角色：独立的408题库审稿人，任务是找候选条目中的问题。\n- 限制：不重写，不因流畅度给高分，指出具体问题及evidence_path，uncertain标记，不直接判verified，若rule-based判定一致则不可声称矛盾除非指出反证。\n- 候选数据：包含题目结构、知识单元、触发规则、推理模式。\n- 规则校验结果：answer_consistency: consistent=True, raw_answer=A, option_content=0; orphan references found: [{\"step\": 3, \"required_knowledge\": \"补码与无符号数的编码规则\"}]。\n\n分析候选数据：\n1. 答案一致性：\n原题答案是A（0），候选数据correct_answer是A。rule-based判定consistent=True。\n推导出的结果在推理模式step 5中也是0（解析为有符号整数0）。这确实是一致的。\n\n2. 检查各部分：\n题目结构：\n- stem, options, correct_answer：没问题。\n- structure.hidden_constraints: \"运算时int型和unsigned型运算，int型会被隐式转换为unsigned型\", \"无符号数减法不存在严格意义上的溢出，仅发生回绕\", \"127的补码与无符号表示的最高位均为0\"。这些没问题。\n- distractor_analysis: 没问题。\n- correct_answer_diagnosis: 没问题。\n\n知识单元：\n- knowledge_units: 提到了 \"32位机器的数据类型宽度\", \"127的机器数表示\"。\n- mechanisms: \"不同数据类型的隐式类型转换（算术转换）\", \"无符号数减法运算与回绕机制\", \"运算结果向左值的类型转换与赋值\"。\n这里需要检查孤立引用。\n\n触发规则：\n- 检查target_name与知识单元的对应关系。\n- 隐式类型转换识别 -> activates \"不同数据类型的隐式类型转换（算术转换）\"。\n- 运算结果向左值赋值转换 -> activates \"不同数据类型的隐式类型转换（算术转换）\"，action为modify。但是，在knowledge_units.mechanisms中，有 \"运算结果向左值的类型转换与赋值\"，而trigger中激活的是 \"不同数据类型的隐式类型转换（算术转换）\"。trigger的activates.targets中似乎没有引用 \"运算结果向左值的类型转换与赋值\" 这个mechanism，这算不算一个断开的引用？\n我们再仔细看 rule-based 结果：\n`orphan references found: [{\"step\": 3, \"required_knowledge\": \"补码与无符号数的编码规则\"}]`\n推理模式中 step 3 的 required_knowledge 是 [\"127的机器数表示\", \"补码与无符号数的编码规则\"]。\n而在知识单元 `knowledge_units` 中，只有 \"127的机器数表示\"（fact），没有 \"补码与无符号数的编码规则\" 这个知识单元。\n这是一个确凿的问题。\nevidence_path: `reasoning_pattern.steps[3].required_knowledge`\nevidence_text: `[\"127的机器数表示\", \"补码与无符号数的编码规则\"]`\nreason: 推理模式第3步引用了知识单元\"补码与无符号数的编码规则\"，但在knowledge_units列表中不存在该知识单元。这是规则校验指出的孤立引用。\n\n还有没有其他问题？\n再看推理模式 step 1: required_knowledge: [\"32位机器的数据类型宽度\"] -> 存在。\nstep 2: required_knowledge: [\"不同数据类型的隐式类型转换（算术转换）\"] -> 存在于 mechanisms。\nstep 3: required_knowledge: [\"127的机器数表示\", \"补码与无符号数的编码规则\"] -> 前者存在，后者孤立。\nstep 4: required_knowledge: [\"无符号数减法运算与回绕机制\"] -> 存在于 mechanisms。\nstep 5: required_knowledge: [\"运算结果向左值赋值转换\"] -> 存在于 mechanisms (名称为\"运算结果向左值的类型转换与赋值\"，差了几个字！)。\n推理模式中：`required_knowledge: [\"运算结果向左值赋值转换\"]`\n知识单元 mechanisms 中：`name: \"运算结果向左值的类型转换与赋值\"`\n名称不匹配！这又是一个问题。\nevidence_path: `reasoning_pattern.steps[4].required_knowledge`\nevidence_text: `[\"运算结果向左值赋值转换\"]`\nreason: 推理模式第5步（索引为4）引用的知识单元名称为\"运算结果向左值赋值转换\"，而实际知识单元mechanisms中的名称为\"运算结果向左值的类型转换与赋值\"，存在名称不一致，可能导致引用失败。\n\n另外检查 triggers：\ntrigger 1: target_name: \"不同数据类型的隐式类型转换（算术转换）\" -> 一致。\ntrigger 2: target_name: \"不同数据类型的隐式类型转换（算术转换）\" -> 一致。但是实际上，这个trigger是关于左值赋值的，却激活了\"隐式类型转换\"，并没有激活\"运算结果向左值...\"这个mechanism，这可能是一个逻辑瑕疵（weak_distractor_alignment 或者 unsupported_trigger 或者叫逻辑不严密）。\ntrigger 3: target_name: \"127的机器数表示\" -> 一致。\ntarget_name: \"无符号数减法运算与回绕机制\" -> 一致。\n\n再检查推理模式的 steps (由于 order 是 1-5，但是 JSON 数组里没有给出 order 字段？不对，给了 order 字段)\nstep的索引：\norder 1: required_knowledge: [\"32位机器的数据类型宽度\"]\norder 2: required_knowledge: [\"不同数据类型的隐式类型转换（算术转换）\"]\norder 3: required_knowledge: [\"127的机器数表示\", \"补码与无符号数的编码规则\"]\norder 4: required_knowledge: [\"无符号数减法运算与回绕机制\"]\norder 5: required_knowledge: [\"运算结果向左值赋值转换\"]\n对应到 orphans 的提示 `{\"step\": 3, \"required_knowledge\": \"补码与无符号数的编码规则\"}`，这证明了 order 3 的 required_knowledge 有孤儿引用。\n\n总结发现的问题：\n1. orphan reference: 推理模式 step 3 引用了 \"补码与无符号数的编码规则\"，但在 knowledge_units 中缺失。\n2. 名称不匹配: 推理模式 step 5 引用了 \"运算结果向左值赋值转换\"，但在 knowledge_units.mechanisms 中的名称是 \"运算结果向左值的类型转换与赋值\"。\n3. 触发规则失配: trigger_rules 中的 \"运算结果向左值赋值转换\" 规则，其 activates.target_name 指向了 \"不同数据类型的隐式类型转换（算术转换）\"，而没有激活真正相关的 \"运算结果向左值的类型转换与赋值\"（mechanism）。这导致相关机制未被有效激活，属于逻辑设计问题。\n\n整理 JSON 输出。\n\nanswer_consistency_check:\nraw_answer: \"A\"\noption_content: \"0\"\nderived_value: \"0\" (step 5 output)\nis_consistent: true\nnotes: \"题目给定的正确答案为A（0），推理模式最终推导出的结果也为有符号整数0。rule-based也判定一致。\"\n\nmajor_issues:\n1. 孤儿引用\nissue_type: unsupported_trigger (或者用 other/ hallucination)\nevidence_path: reasoning_pattern.steps[2].required_knowledge (order 3 的索引为 2)\nevidence_text: \"补码与无符号数的编码规则\"\nreason: 推理模式第3步引用了知识单元\"补码与无符号数的编码规则\"，但在候选数据的 knowledge_units 列表中（包含 knowledge_units 和 mechanisms）并不存在这个名称的知识单元。这是规则校验已经指出的孤立引用，属于数据结构残缺。\nseverity: high\nsuggested_action: needs_human_check\n\n2. 知识单元名称不匹配\nissue_type: other (或者 unsupported_trigger)\nevidence_path: reasoning_pattern.steps[4].required_knowledge (order 5 的索引为 4)\nevidence_text: \"运算结果向左值赋值转换\"\nreason: 推理模式第5步引用的 required_knowledge 为 \"运算结果向左值赋值转换\"，但在 knowledge_units.mechanisms 中定义的名称是 \"运算结果向左值的类型转换与赋值\"，两者文字不一致，会导致关联匹配失败。\nseverity: medium\nsuggested_action: needs_human_check\n\n3. 触发规则激活目标错误\nissue_type: unsupported_trigger\nevidence_path: trigger_rules[1].activates.targets[0].target_name\nevidence_text: \"不同数据类型的隐式类型转换（算术转换）\"\nreason: 名为 \"运算结果向左值赋值转换\" 的触发规则，其功能应该处理表达式计算完成后的赋值转换，但它激活的机制是 \"不同数据类型的隐式类型转换（算术转换）\"，却漏掉了真正关于赋值转换的机制 \"运算结果向左值的类型转换与赋值\"，导致其机制未被触发。\nseverity: medium\nsuggested_action: needs_human_check\n\nminor_issues:\n无。\n\nuncertain_items:\n无。\n\nreview_summary: 候选条目的领域知识内容和答案判定是正确的，但在数据抽取的结构关联上存在明显缺陷：推理模式中存在孤立的知识单元引用（补码与无符号数的编码规则未定义），推理步骤引用的知识单元名称与实际定义存在拼写差异，且触发规则激活的目标机制不匹配。建议退回人工修正关联字段。\n\nrecommended_status: needs_human_check"
+        "review_summary": "推理逻辑和干扰项分析整体完整且专业，answer_consistency已验证通过。但存在字段引用的一致性问题：候选数据中 trigger_rules 和 reasoning_pattern 里引用的机制/知识单元（如'运算结果向左值赋值转换'和'补码与无符号数的编码规则'）在 knowledge_units 结构中缺失。为避免图数据库导入或知识图谱关联失败，需人工修复这些悬空引用或补充对应节点。",
+        "recommended_status": "needs_human_check"
       },
       "readiness": {
         "status": "needs_human_check",
         "requires_human_or_rule_check": true,
         "reasons": [
-          "1 orphan reference(s) in triggers/pattern",
-          "Domain: unsupported_trigger — 推理模式第3步（order=3）引用了名为“补码与无符号数的编码规则”的知识单元，但在候选数据的 knowledge_units 列表中并不存在这个名称的定义。这是一个结构性的孤儿引用，导致该推理步骤",
-          "Domain: unsupported_trigger — 推理模式第5步（order=5）引用的 required_knowledge 为“运算结果向左值赋值转换”，但在 knowledge_units.mechanisms 中定义的实际名称为“运算结果向左",
-          "Domain: unsupported_trigger — 名为“运算结果向左值赋值转换”的触发规则，其本应处理表达式赋值给左值的类型转换，却将激活目标指向了“不同数据类型的隐式类型转换（算术转换）”，完全遗漏了真正应该激活的“运算结果向左值的类型转换与赋值”"
+          "Domain: unsupported_trigger — 触发规则指向 'activates' 一个名为 '运算结果向左值转换' 的机制，但在 knowledge_units.mechanisms 中只定义了两个机制（'不同数据类型的隐式类型转换（算术转换）",
+          "Domain: other — 引用的 '补码与无符号数的编码规则' 知识单元在 knowledge_units.knowledge_units 和 mechanisms 中均不存在，属于悬空引用。"
         ]
       }
     },
@@ -438,31 +426,62 @@
         {
           "orphan_name": "补码与无符号数的编码规则",
           "source": "pattern_step",
-          "source_detail": "来自步骤3",
+          "source_detail": "step 3",
           "verdict": "map_to_existing",
+          "canonical_name": "补码与无符号数的编码规则",
           "candidate_node": null,
           "map_target": "127的机器数表示",
-          "reason": "该引用描述的是正整数在计算机底层的二进制表示。在已有知识单元中，'127的机器数表示'已经明确说明了该数值的补码与无符号数编码完全一致，可以直接映射。"
+          "reason": "此处考察的是具体数值的底层二进制编码，而在32位机器中，正数127的补码与无符号编码完全相同，直接映射到已有的知识点即可说明问题。"
         },
         {
           "orphan_name": "运算结果向左值赋值转换",
           "source": "pattern_step",
-          "source_detail": "来自步骤5",
+          "source_detail": "step 5",
           "verdict": "new_mechanism",
+          "canonical_name": "赋值运算中的类型转换",
           "candidate_node": {
-            "name": "运算结果向左值的类型转换与赋值",
-            "description": "当表达式计算完成后，需要将结果赋值给左值（如变量z）时，如果右值与左值的数据类型不同，系统会自动将右值的运算结果转换为左值的数据类型。在本题中，无符号数相减的结果（0）会被隐式转换回有符号整型（int）并存入变量z。",
+            "name": "赋值运算中的类型转换",
+            "description": "在C语言中，当将右值（如无符号数运算结果）赋值给不同类型的左值（如带符号整型）时，系统会自动进行隐式类型转换。若右值超出左值类型的表示范围，则会发生截断或重新解释（即直接按补码 reinterpret），但底层二进制位模式保持不变。",
             "subtype": "rule",
             "subject": "C语言程序设计"
           },
           "map_target": null,
-          "reason": "这是一个关键的运算后置机制，决定了表达式最终结果如何被变量z存储。当前的P2知识单元中包含了运算前的隐式类型转换，但缺失运算完成后向左值变量赋值时的类型转换机制，属于合理的系统机制节点，建议新增。"
+          "reason": "将无符号数的减法结果（0）重新赋值给有符号整型变量（z）时，属于独立的赋值转换机制，当前P2中仅有算术运算时的隐式转换，缺少赋值时的转换机制。"
+        }
+      ],
+      "retargets": [
+        {
+          "trigger_name": "运算结果向左值赋值转换",
+          "old_target_name": "不同数据类型的隐式类型转换（算术转换）",
+          "new_target_name": "赋值运算中的类型转换",
+          "new_target_type": "mechanism",
+          "reason": "原 target 描述的是算术表达式运算过程中的类型提升与转换，而当前触发器描述的是运算完成后向左值（变量z）赋值时的类型转换，属于不同阶段的机制，因此需要重新指向新的机制节点。"
         }
       ],
       "suggested_p2_additions": [
-        "运算结果向左值的类型转换与赋值"
+        "赋值运算中的类型转换"
       ],
       "orphan_count": 2
+    },
+    "link_repairs": {
+      "total_repairs": 3,
+      "repairs": [
+        {
+          "path": "reasoning_pattern.steps[3].required_knowledge",
+          "old": "补码与无符号数的编码规则",
+          "new": "127的机器数表示"
+        },
+        {
+          "path": "reasoning_pattern.steps[5].required_knowledge",
+          "old": "运算结果向左值赋值转换",
+          "new": "赋值运算中的类型转换"
+        },
+        {
+          "path": "trigger_rules.运算结果向左值赋值转换.retarget",
+          "old": "不同数据类型的隐式类型转换（算术转换）",
+          "new": "赋值运算中的类型转换"
+        }
+      ]
     }
   },
   {
@@ -802,14 +821,12 @@
         "link_validation": {
           "trigger_targets": {
             "orphan_targets": [],
-            "type_mismatches": [],
             "known_names_count": 6
           },
           "pattern_knowledge": {
             "orphan_targets": []
           },
-          "orphan_targets": [],
-          "type_mismatches": []
+          "orphan_targets": []
         },
         "issues": [],
         "warnings": []
@@ -818,51 +835,58 @@
         "answer_consistency_check": {
           "raw_answer": "C",
           "option_content": "4",
-          "derived_value": "4",
+          "derived_value": "主存块号：129 / 32 = 4；Cache组数：16 / 2 = 8；映射组号：4 % 8 = 4",
           "is_consistent": true,
-          "notes": "根据提供的推理模式：主存块号 = 129 / 32 = 4；Cache组数 = 16 / 2 = 8；Cache组号 = 4 % 8 = 4。推导结果与选项C的内容'4'及标注的答案完全一致。"
+          "notes": "选项内容、标准答案与题干推导结果一致"
         },
         "domain_review": {
           "major_issues": [
             {
-              "issue_type": "weak_distractor_alignment",
-              "evidence_path": "题目结构.distractor_analysis[1].content",
-              "evidence_text": "可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2",
-              "reason": "干扰项的错误归因逻辑非常荒谬且毫无依据。没有任何合理的考试心理会驱使学生在计算出组号为4之后“再误减2”从而得出2。实际上，推理模式中已经明确指出导致答案为2的正确典型错误是“将主存块号除以路数（4/2=2）”。该分析完全脱离了真实的典型错误机制。",
+              "issue_type": "overgeneralized_knowledge",
+              "evidence_path": "触发规则.trigger_rules[1].wrong_if_missing",
+              "evidence_text": "计算129/32=4.0625时未进行向下取整，直接四舍五入得到块号5",
+              "reason": "129除以32的商为4，余数为1，商本就是整数，并不存在非整数结果需要四舍五入的情况。系统过度泛化了取整机制的错误假说，生成了违背基本算术事实的'错误推断'，属于典型的AI幻觉，会误导学生。",
               "severity": "high",
               "suggested_action": "needs_human_check"
             },
             {
-              "issue_type": "weak_distractor_alignment",
-              "evidence_path": "题目结构.distractor_analysis[0].content",
-              "evidence_text": "可能将地址129直接对32取模得到1，再与组数取模得到1，误以为装入第1组，混淆了组号与块的映射关系",
-              "reason": "分析中明确推导出的错误结果是“装入第1组”（即组号1），但该分析对应的是选项A，其内容为“0”。计算出组号为1的考生不会去选择内容为0的选项。说明该干扰项分析与选项本身发生了错位或属于强行编造的逻辑。",
-              "severity": "medium",
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "触发规则.negative_triggers[1]",
+              "evidence_text": "129不是32的整数倍，直接移位操作容易忽略非对齐地址的取整逻辑",
+              "reason": "数学事实错误。129等于32*4+1，余数为1而非0，因此129**是**32的整数倍（在第5个块的边界内），但在数学定义上**不是**整除结果。该触发规则的前提逻辑自相矛盾，暴露了系统基础计算的不可靠性。",
+              "severity": "high",
               "suggested_action": "needs_human_check"
             }
           ],
           "minor_issues": [
             {
-              "issue_type": "overgeneralized_knowledge",
-              "evidence_path": "题目结构.structure.hidden_constraints",
-              "evidence_text": "\"主存地址从0开始编址\"",
-              "reason": "通常表述为地址空间从0开始，而“从0开始编址”这个表述略显生硬，将其作为本题特定的“隐含约束”不够严谨，但这不影响主要解题逻辑。",
+              "issue_type": "other",
+              "evidence_path": "结构.hidden_constraints",
+              "evidence_text": "[\"Cache组号从0开始编号\", \"主存块大小与Cache块大小相同\", \"主存地址从0开始编址\"]",
+              "reason": "题干中明确提及了Cache组相联和块大小，但在隐含约束中并未指出地址格式与块大小的隐式关联（例如：主存字地址 = 块号 + 块内地址）。当前提取的约束过于表面化，未能挖掘真正的考点约束。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            },
+            {
+              "issue_type": "weak_distractor_alignment",
+              "evidence_path": "结构.distractor_analysis[2]",
+              "evidence_text": "可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2",
+              "reason": "干扰项B的解析中，认为学生由4对8取模得到4后再'误减2'得出2，这种错误假设极为罕见且不符合正常逻辑。更合理的典型错误是学生算出块号4后直接错除以路数2（即4/2=2），解析未能击中核心易错点。",
               "severity": "low",
               "suggested_action": "candidate"
             }
           ],
           "uncertain_items": []
         },
-        "review_summary": "候选数据在核心推理逻辑、知识单元和触发规则方面表现出色，推导严密且答案一致性校验通过。然而，干扰项分析存在严重的逻辑缺陷。选项B的分析生造了“误减2”这种不合逻辑的错误路径，忽略了题干推理模式中已指出的“块号除以路数”的典型错误；选项A的分析推导出的结果“1”与选项内容“0”直接矛盾。建议交由人工重点修正干扰项分析部分。",
-        "recommended_status": "needs_human_check",
-        "reviewer_reasoning": "用户希望我作为独立的408题库审稿人，审阅一份从不可靠系统中抽取的候选数据。\n系统可能包含错误。我的任务是找出问题，不维护原输出，不因为语言流畅就给高分。不能重写整份抽取结果。\n每个问题必须提供evidence_path。如果无法判断，标记为uncertain。\n不能直接把db_readiness.status设为verified。如果rule-based answer_consistency已经判定一致，我不能声称答案矛盾，除非指出具体反证。\n\n原始题目：\n[2009年考研真题第14题]某计算机的Cache共有16块，采用2路组相联映射方式（即每组2块）。每个主存块大小为32字节，按字节编址。主存第129号单元所在的主存块应装入的Cache组号是（ ）。\nA. 0  B. 2  C. 4  D. 6\n答案：C\n\n候选抽取数据分析：\nstem，options，correct_answer正确。\nstructure结构：\ngiven_conditions正确。\nhidden_constraints提到\"主存地址从0开始编址\"，其实这不算是隐含约束，但也没有大错。不过，对于Cache组号从0开始编号、主存块大小与Cache块大小相同，这些属于常识。\ndistractor_analysis：\nA：可能将地址129直接对32取模得到1，再与组数取模得到1，误以为装入第1组。\nB：可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2。解释很奇怪：“忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2”，这句话逻辑混乱。正确的误解是：误把主存块号4对路数2取模，或者直接认为块号除以路数（4/2=2）。原文本的表述“忘记除以每组的块数（2）...再误减2”似乎有拼凑感，或者表述极其不清。\n等等，原文本的表述：“可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2”。这个解释非常混乱，作为distractor分析是不合格的。错误类型计算错误。\n\ncorrect_answer_diagnosis：\n129 / 32 = 4。16 / 2 = 8组。4 % 8 = 4。所以选4。推理完全正确。\n\n知识单元：\n组相联映射中Cache组数与块数的关系\n主存块号的计算\n组相联映射中Cache组号的计算\nmechanisms也说得通。\n\n触发规则：\ntrigger_rules的内容和题目匹配。negative_triggers也说得通。\n\n推理模式：\npattern_name: \"组相联映射寻址计算模式\"\n步骤3：计算映射的Cache组号。common_error_at_this_step: \"混淆取模除数，误将主存块号除以路数求组号（如 4/2=2），或者忘记进行取模运算直接使用主存块号作为组号。\" 这是正确的。\n但是在common_breakpoints里：\"算出了正确的主存块号4，但错误地将主存块号除以路数（4/2=2），从而误选选项B；或直接用块号4对Cache总块数16取模得到偶然正确但逻辑错误的答案。\" 这没问题。\n\n再看distractor_analysis中B选项的文本：\n\"可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2\"\n\"直接将块号4对组数8取模得到4，再误减2\" 这个说法毫无逻辑，哪有学生算出4然后减2得到2的？通常的错误就是块号4除以路数2得到2。这句话明显是生成的幻觉。\n\n我们检查是否有其他问题。\n1. 题目结构.distractor_analysis[1]（选项B）\nevidence_text: \"可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2\"\nreason: 对选项B的错误归因逻辑混乱且无依据。\"算出4再误减2\"并非常见的错误路径，真正的典型错误是误用路数进行除法（4/2=2）或误用主存块号对路数取模（4%2=0不选，可能是用地址129%路数2=1，不选）。根据题干和推理模式，典型的误解是\"将主存块号除以路数\"，而不是\"取模得到4再减2\"。这是一个质量很差的干扰项分析。\n\n另外看distractor_analysis[0]（选项A）：\nevidence_text: \"可能将地址129直接对32取模得到1，再与组数取模得到1，误以为装入第1组，混淆了组号与块的映射关系\"\n129 % 32 = 1。1 % 8 = 1。选项A是0。怎么会选0？这个归因也是错的。如果是129 % 32 = 1，学生应该选1，可是没有1选项。或者学生用 129 / 32 = 4，然后用 4 % 8 = 4，不知道怎么得出0。选项A的常见错误可能是：129 % 2 = 1（按字节编址寻址），或者其他混淆。比如计算主存块号时误用了 128/32 = 4，或者 129-1=128，128/32=4。其实选0可能是因为用129 % 129之类的？不，最有可能的是把块大小算错，或者是用地址对Cache块数取模 129%16=1，也得不到0。或者是用 128/32 = 4，4%4=0（如果是4路的话）。不过这里最典型的错误可能是不知道如何算，或者直接减一操作。但无论如何，\"地址129直接对32取模得到1，再与组数取模得到1\" 无法解释为什么会选0。所以对选项A的error_type说明并不符合选项A本身（0）。\n\n检查选项B：\n如果学生是 129 / 16 = 8... 或者 129%32=1，1/2 = 0? 都很牵强。不过对于B，129/32=4，4/2=2（路数），是非常自然的错选B的理由。\n\n检查distractor_analysis[2]（选项D）：\n\"可能在计算主存块地址时多减了1（如使用128作为块号），或者错误地进行了减法运算得到6\"\n128/32 = 4。怎么得到6？也许是用 (129-1)/16 = 8？或者129 % 16 = 1？其实6可能来自 129 % 32 = 1，或者 128 / 16 = 8？等等。6的可能错误是 129 % 8 = 1，不知道。或者是地址129直接减去一系列数字。或者 129 / 16 = 8，8 - 2 = 6。这算是有可能的错。\n\n再看选项A：\n\"可能将地址129直接对32取模得到1，再与组数取模得到1\" 这个文本直接写\"得到1\"，但选项A是\"0\"，这个关联度极低。\n\n所以distractor_analysis存在明显的逻辑问题，属于\"weak_distractor_alignment\"或\"hallucination\"（编造了与选项不符的错误路径）。\n\n详细列出Major Issues：\n1. 题目结构.distractor_analysis[1].content: \"可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2...\" -> 这种“误减2”的说法完全是幻觉，缺乏逻辑支撑。真实的典型错误在推理模式中有提到：\"误将主存块号除以路数求组号（如 4/2=2）\"。distractor_analysis的描述与真实的错误机制不符。\n2. 题目结构.distractor_analysis[0].content: 描述学生得到1，但选项A的值为\"0\"。如果计算出1，学生应该去选1，而不是选0。这说明干扰项分析根本不是为了这个选项量身定做的，或者AI生成时错位了。\n\n其它部分：\n知识单元部分：\n\"主存块号的计算\"描述正确。\n\"组相联映射中Cache组号的计算\"描述正确。\n机制部分：块大小决定的地址结构与取整机制，说明\"129/32=4.0625，四舍五入得到5\"。这也解释了为什么没有5这个选项，不过作为一种机制说明是合理的。\n\n推理模式部分：步骤清晰，逻辑一致，非常详细。\n\n检查有没有术语错误或过度概括：\n\"主存地址从0开始编址\" - 一般不说从0开始编址，而是说按字节编址从0开始。这个勉强可以接受。\n\"Cache组号从0开始编号\" - 正常的隐含假设。\n\n我需要填写：\nanswer_consistency_check\ndomain_review\nreview_summary\nrecommended_status\n\n关于answer_consistency_check：\nraw_answer: C\noption_content: 4\nderived_value: 4 （根据推理模式推导出来的，129//32=4, 16//2=8, 4%8=4）\nis_consistent: true\nnotes: 推理模式推导出的结果为4，与提供的正确答案C及其选项内容\"4\"完全一致。\n\ndomain_review:\nmajor_issues:\n1.\nissue_type: weak_distractor_alignment\nevidence_path: 题目结构.distractor_analysis[1].content\nevidence_text: \"可能正确求出了主存块号为4，但忘记除以每组的块数（2），直接将块号4对组数8取模得到4，再误减2，或错误理解组号计算方式为直接取模导致得出2\"\nreason: 错误归因存在严重逻辑断层。计算出组号4之后再“误减2”得出2的解释极不自然且非典型错误。实际上，推理模式中已指出正确的错误机制是“将主存块号除以路数（4/2=2）”。该干扰项分析没有抓住核心错误机制。\nseverity: high\nsuggested_action: needs_human_check\n\n2.\nissue_type: weak_distractor_alignment\nevidence_path: 题目结构.distractor_analysis[0].content\nevidence_text: \"可能将地址129直接对32取模得到1，再与组数取模得到1，误以为装入第1组，混淆了组号与块的映射关系\"\nreason: 分析中提到学生“误以为装入第1组”（即得到结果1），但选项A的实际内容为“0”。计算出结果为1的学生不会去选择内容为“0”的选项A，这表明该干扰项分析与选项本身不匹配。\nseverity: medium\nsuggested_action: needs_human_check\n\nminor_issues:\n(可以没有或指出一点小问题，比如hidden_constraints里的表述可以更精确，但不影响大局)\n或者不填minor_issues，这两个major已经足够了。\n为了丰富审查：\nissue_type: terminology_error (轻微的)\nevidence_path: 题目结构.structure.hidden_constraints\nevidence_text: \"主存地址从0开始编址\"\nreason: 主存地址通常表述为“按字节编址”，而“从0开始编址”这一表述虽然常识上正确，但作为本题的“hidden_constraints”略显牵强，它只是编址的普遍规律。\nseverity: low\nsuggested_action: candidate\n\nuncertain_items: 无\n\nreview_summary:\n候选数据在核心知识单元、推理模式及触发规则的抽取上表现优秀，推导逻辑严密且与正确答案一致。但在干扰项分析（distractor_analysis）部分存在明显的逻辑问题。选项A的分析中，错误归因推导出的结果是“1”，与选项A的内容“0”不符；选项B的分析中，生造了“取模得到4再误减2”这种毫无依据且非典型的错误路径，忽略了“直接用块号除以路数”这一在推理模式中已被明确指出的典型错误。建议对干扰项分析进行人工复核与修正。\n\nrecommended_status:\nneeds_human_check (因为有两个干扰项的分析存在明显的逻辑谬误，可能会误导题库使用者，所以应该交由人工复核修正)。\n\n复查一下 rule-based answer_consistency:\nraw_answer=C, option_content=4\nderived_value=4\nis_consistent=True.\n完全符合。\n\n检查一下JSON格式要求，确保严格的JSON格式输出，不带额外解释。"
+        "review_summary": "推理模式主干逻辑正确且答案一致，但在'wrong_if_missing'和'negative_triggers'中暴露了严重的数学计算与逻辑幻觉。系统生成了与基础算术事实相悖（如认为129/32需要四舍五入）的解释，这属于高危的知识性错误。建议人工复核相关的错误路径分析。",
+        "recommended_status": "needs_human_check"
       },
       "readiness": {
         "status": "needs_human_check",
         "requires_human_or_rule_check": true,
         "reasons": [
-          "Domain: weak_distractor_alignment — 干扰项的错误归因逻辑非常荒谬且毫无依据。没有任何合理的考试心理会驱使学生在计算出组号为4之后“再误减2”从而得出2。实际上，推理模式中已经明确指出导致答案为2的正确典型错误是“将主存块号除以路数（4/",
-          "Domain: weak_distractor_alignment — 分析中明确推导出的错误结果是“装入第1组”（即组号1），但该分析对应的是选项A，其内容为“0”。计算出组号为1的考生不会去选择内容为0的选项。说明该干扰项分析与选项本身发生了错位或属于强行编造的逻辑。"
+          "Domain: overgeneralized_knowledge — 129除以32的商为4，余数为1，商本就是整数，并不存在非整数结果需要四舍五入的情况。系统过度泛化了取整机制的错误假说，生成了违背基本算术事实的'错误推断'，属于典型的AI幻觉，会误导学生。",
+          "Domain: unsupported_trigger — 数学事实错误。129等于32*4+1，余数为1而非0，因此129**是**32的整数倍（在第5个块的边界内），但在数学定义上**不是**整除结果。该触发规则的前提逻辑自相矛盾，暴露了系统基础计算的不可"
         ]
       }
     },

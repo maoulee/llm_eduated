@@ -135,6 +135,55 @@ def summarize(results: List[Dict[str, Any]]) -> None:
     print(f"  C. semantic_review_needed:{semantic_review}")
     print(f"  D. format_unsupported:    {format_unsupported}")
 
+    # --- Resolver stats ---
+    has_resolver = sum(1 for r in results if r.get("orphan_resolution"))
+    if has_resolver:
+        total_orphans_input = 0
+        total_new_knowledge = 0
+        total_new_mechanism = 0
+        total_map_to_existing = 0
+        total_uncertain = 0
+        remaining_orphans = 0
+
+        for r in results:
+            res = r.get("orphan_resolution", {})
+            if not res:
+                continue
+            total_orphans_input += res.get("orphan_count", 0)
+            for s in res.get("resolutions", []):
+                v = s.get("verdict", "")
+                if v == "new_knowledge":
+                    total_new_knowledge += 1
+                elif v == "new_mechanism":
+                    total_new_mechanism += 1
+                elif v == "map_to_existing":
+                    total_map_to_existing += 1
+                elif v == "uncertain":
+                    total_uncertain += 1
+
+            # Count remaining orphans after repair
+            rv = r.get("review", {}).get("rule_validation", {})
+            remaining_orphans += len(rv.get("link_validation", {}).get("orphan_targets", []))
+
+        resolved = total_orphans_input - remaining_orphans
+        rate = (resolved / total_orphans_input * 100) if total_orphans_input > 0 else 0
+
+        print(f"\n--- Resolver Stats ({has_resolver} resolved) ---")
+        print(f"  Input orphans:       {total_orphans_input}")
+        print(f"  new_knowledge:       {total_new_knowledge}")
+        print(f"  new_mechanism:       {total_new_mechanism}")
+        print(f"  map_to_existing:     {total_map_to_existing}")
+        print(f"  uncertain:           {total_uncertain}")
+        print(f"  Remaining orphans:   {remaining_orphans}")
+        print(f"  Resolve rate:        {rate:.0f}% ({resolved}/{total_orphans_input})")
+
+        # Link repair stats
+        has_repair = sum(1 for r in results if r.get("link_repairs"))
+        if has_repair:
+            total_repairs = sum(len(r.get("link_repairs", {}).get("repairs", [])) for r in results)
+            print(f"\n--- Link Repair Stats ({has_repair} repaired) ---")
+            print(f"  Total link repairs:  {total_repairs}")
+
 
 if __name__ == "__main__":
     path = sys.argv[1] if len(sys.argv) > 1 else "docs/extraction_sample_results.json"
