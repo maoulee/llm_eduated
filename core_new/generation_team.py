@@ -134,8 +134,8 @@ class ProfileInterpreter:
         prompt = self._build_prompt(error_history, mastery_info, training_goal)
         messages = [[{"role": "user", "content": prompt}]]
 
-        results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=True
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -143,9 +143,8 @@ class ProfileInterpreter:
             logger.error("ProfileInterpreter returned None")
             return {}
 
-        # Parse XML content from the result
-        content = result.get("content", "")
-        parsed = _parse_xml(content) if content else result
+        content = result.get("answer", "")
+        parsed = _parse_xml(content) if content else {}
         return parsed if parsed else result
 
 
@@ -166,8 +165,8 @@ class BlueprintPlanner:
         prompt = self._build_prompt(profile, knowledge_base)
         messages = [[{"role": "user", "content": prompt}]]
 
-        results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=True
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -175,9 +174,8 @@ class BlueprintPlanner:
             logger.error("BlueprintPlanner returned None")
             return {}
 
-        # Parse XML content from the result
-        content = result.get("content", "")
-        parsed = _parse_xml(content) if content else result
+        content = result.get("answer", "")
+        parsed = _parse_xml(content) if content else {}
         return parsed if parsed else result
 
 
@@ -208,8 +206,8 @@ class QuestionWriter:
 
         messages = [[{"role": "user", "content": prompt}]]
 
-        results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=True
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -217,9 +215,8 @@ class QuestionWriter:
             logger.error("QuestionWriter returned None")
             return {}
 
-        # Parse XML content from the result
-        content = result.get("content", "")
-        parsed = _parse_xml(content) if content else result
+        content = result.get("answer", "")
+        parsed = _parse_xml(content) if content else {}
         return parsed if parsed else result
 
 
@@ -240,8 +237,8 @@ class SolverVerifier:
         prompt = self._build_prompt(question_json)
         messages = [[{"role": "user", "content": prompt}]]
 
-        results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=True
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -249,9 +246,8 @@ class SolverVerifier:
             logger.error("SolverVerifier returned None")
             return {}
 
-        # Parse XML content from the result
-        content = result.get("content", "")
-        parsed = _parse_xml(content) if content else result
+        content = result.get("answer", "")
+        parsed = _parse_xml(content) if content else {}
         return parsed if parsed else result
 
 
@@ -272,8 +268,8 @@ class UserSimulator:
         prompt = self._build_prompt(profile, question_json)
         messages = [[{"role": "user", "content": prompt}]]
 
-        results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=True
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -281,9 +277,8 @@ class UserSimulator:
             logger.error("UserSimulator returned None")
             return {}
 
-        # Parse XML content from the result
-        content = result.get("content", "")
-        parsed = _parse_xml(content) if content else result
+        content = result.get("answer", "")
+        parsed = _parse_xml(content) if content else {}
         return parsed if parsed else result
 
 
