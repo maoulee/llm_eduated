@@ -241,6 +241,7 @@ PASS4_REASONING_PATTERN = """你是一位408考研解题方法分析专家。请
 2. 每一步都要标注依赖的知识
 3. common_breakpoints 是最重要的字段——它直接服务于用户诊断"""
 
+# Legacy P5 — kept for backward compatibility. Prefer PASS5_DOMAIN_CRITIC + RuleChecker.
 PASS5_LINK_AND_VALIDATE = """你是一位数据质量审核专家。请检查以下从题目中抽取的结构化数据的一致性。
 
 ## 原始题目
@@ -294,4 +295,60 @@ PASS5_LINK_AND_VALIDATE = """你是一位数据质量审核专家。请检查以
     "notes": "说明还需要什么检查才能入库"
   }}
 }}
+```"""
+
+PASS5_DOMAIN_CRITIC = """你是独立的408题库审稿人。以下候选条目来自一个不可靠的自动抽取系统，可能包含错误。
+
+你不能假设它是正确的，也不能根据语言流畅度给高分。你的任务是找问题，不是维护原输出。
+
+重要限制：
+- 不要重写整份抽取结果
+- 不要因为文本流畅就判定正确
+- 每个问题必须给 evidence_path（具体字段路径）
+- 如果无法判断，标记 uncertain，不要编造
+- model_validation.overall_quality_score 不是证据
+- db_readiness.status 只能由聚合器决定，你不能直接判 verified
+- 如果 rule-based answer_consistency 已经判定答案一致，你不能声称答案矛盾，除非你指出具体反证
+
+## 原始题目
+题干：{stem}
+答案：{answer}
+
+## 候选抽取数据
+题目结构：{structure}
+知识单元：{knowledge_units}
+触发规则：{trigger_rules}
+推理模式：{reasoning_pattern}
+
+## 规则校验结果
+{rule_context}
+
+请输出JSON：
+
+```json
+{{{{
+  "answer_consistency_check": {{{{
+    "raw_answer": "正确答案",
+    "option_content": "对应选项内容",
+    "derived_value": "推理模式推导出的结果",
+    "is_consistent": true或false,
+    "notes": "具体说明"
+  }}}},
+  "domain_review": {{{{
+    "major_issues": [
+      {{{{
+        "issue_type": "answer_inconsistency | unsupported_trigger | overgeneralized_knowledge | weak_distractor_alignment | pattern_overfit | terminology_error | hallucination | other",
+        "evidence_path": "具体字段路径",
+        "evidence_text": "原文摘录",
+        "reason": "为什么是问题",
+        "severity": "high | medium | low",
+        "suggested_action": "candidate | reject | needs_human_check"
+      }}}}
+    ],
+    "minor_issues": [],
+    "uncertain_items": []
+  }}}},
+  "review_summary": "总结",
+  "recommended_status": "candidate | rejected | needs_human_check"
+}}}}
 ```"""

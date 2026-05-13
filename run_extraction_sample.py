@@ -60,7 +60,9 @@ async def main():
     print(f"Initializing provider: {provider_name}")
     config = get_provider_config(provider_name)
     provider = get_llm_provider(config)
-    pipeline = ExtractionPipeline(provider, max_tokens=4096, enable_thinking=False)
+    review_mode = os.environ.get("REVIEW_MODE", "fast")
+    pipeline = ExtractionPipeline(provider, max_tokens=4096, enable_thinking=False, review_mode=review_mode)
+    print(f"Review mode: {review_mode}")
 
     results = []
     total_start = time.time()
@@ -84,10 +86,15 @@ async def main():
             n_triggers = len(tr.get("trigger_rules", []))
             rp = result.get("reasoning_pattern", {})
             n_steps = len(rp.get("steps", []))
-            val = result.get("validation", {})
-            score = val.get("model_validation", {}).get("overall_quality_score", "N/A")
-            db_status = val.get("db_readiness", {}).get("status", "N/A")
-            print(f"  knowledge={n_knowledge}, mechanisms={n_mechanisms}, triggers={n_triggers}, steps={n_steps}, score={score}, db_status={db_status}")
+            review = result.get("review", {})
+            readiness = review.get("readiness", {})
+            db_status = readiness.get("status", "N/A")
+            rule_valid = review.get("rule_validation", {}).get("schema_valid", "N/A")
+            ac_consistent = review.get("rule_validation", {}).get("answer_consistency", {}).get("consistent", "N/A")
+            domain_major = len(review.get("domain_review", {}).get("domain_review", {}).get("major_issues", []))
+            domain_minor = len(review.get("domain_review", {}).get("domain_review", {}).get("minor_issues", []))
+            print(f"  knowledge={n_knowledge}, mechanisms={n_mechanisms}, triggers={n_triggers}, steps={n_steps}")
+            print(f"  review: schema={rule_valid}, answer_consistent={ac_consistent}, domain_issues={domain_major}M/{domain_minor}m, status={db_status}")
 
         results.append(result)
 
