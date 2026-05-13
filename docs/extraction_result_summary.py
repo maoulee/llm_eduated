@@ -1,5 +1,7 @@
 """
 Extraction result statistics — run on any batch of extraction results.
+Supports both old schema (domain_review/readiness) and new schema
+(initial_domain_review/final_readiness/fix_result/domain_recheck).
 
 Usage:
     python docs/extraction_result_summary.py [path_to_results.json]
@@ -11,6 +13,18 @@ import json
 import sys
 from collections import Counter
 from typing import Any, Dict, List
+
+
+def _get_readiness(review: Dict[str, Any]) -> Dict[str, Any]:
+    """Get readiness from new or old schema."""
+    return review.get("final_readiness") or review.get("readiness", {})
+
+
+def _get_domain_review(review: Dict[str, Any]) -> Dict[str, Any]:
+    """Get domain review from new or old schema, preferring recheck."""
+    return (review.get("domain_recheck")
+            or review.get("initial_domain_review")
+            or review.get("domain_review", {}))
 
 
 def summarize(results: List[Dict[str, Any]]) -> None:
@@ -83,11 +97,11 @@ def summarize(results: List[Dict[str, Any]]) -> None:
         orphan_counts.append(len(rv.get("link_validation", {}).get("orphan_targets", [])))
         mismatch_counts.append(len(rv.get("link_validation", {}).get("type_mismatches", [])))
 
-        dr = review.get("domain_review", {}).get("domain_review", {})
+        dr = _get_domain_review(review).get("domain_review", {})
         domain_major_counts.append(len(dr.get("major_issues", [])))
         domain_minor_counts.append(len(dr.get("minor_issues", [])))
 
-        readiness = review.get("readiness", {}).get("status", "unknown")
+        readiness = _get_readiness(review).get("status", "unknown")
         readiness_dist[readiness] += 1
 
     print(f"  Schema valid:     {schema_valid}/{valid}")
@@ -100,6 +114,30 @@ def summarize(results: List[Dict[str, Any]]) -> None:
     print(f"\n--- Readiness Distribution ---")
     for status, count in readiness_dist.most_common():
         print(f"  {status}: {count}/{valid} ({count/valid*100:.0f}%)")
+
+    # --- Fix stats ---
+    fix_attempted = 0
+    fix_applied = 0
+    fix_rejected = 0
+    fix_skipped = 0
+
+    for r in results:
+        if "error" in r:
+            continue
+        review = r.get("review", {})
+        fix = review.get("fix_result")
+        if fix:
+            fix_attempted += 1
+            fix_applied += fix.get("fix_count", 0)
+            fix_rejected += len(fix.get("patches_rejected", []))
+            fix_skipped += len(fix.get("patches_skipped", []))
+
+    if fix_attempted > 0:
+        print(f"\n--- Auto-Fix Stats ---")
+        print(f"  Fix attempted:    {fix_attempted}")
+        print(f"  Patches applied:  {fix_applied}")
+        print(f"  Patches rejected: {fix_rejected}")
+        print(f"  Patches skipped:  {fix_skipped}")
 
     # --- Classification ---
     clean = 0
@@ -114,7 +152,7 @@ def summarize(results: List[Dict[str, Any]]) -> None:
         if not review:
             continue
         rv = review.get("rule_validation", {})
-        dr = review.get("domain_review", {}).get("domain_review", {})
+        dr = _get_domain_review(review).get("domain_review", {})
         orphans = len(rv.get("link_validation", {}).get("orphan_targets", []))
         mismatches = len(rv.get("link_validation", {}).get("type_mismatches", []))
         major = len(dr.get("major_issues", []))
@@ -130,7 +168,7 @@ def summarize(results: List[Dict[str, Any]]) -> None:
             clean += 1
 
     print(f"\n--- Classification ---")
-    print(f"  A. clean_candidate:      {clean}")
+    print(f"  A. clean_candidate:       {clean}")
     print(f"  B. link_repair_needed:    {link_repair}")
     print(f"  C. semantic_review_needed:{semantic_review}")
     print(f"  D. format_unsupported:    {format_unsupported}")
@@ -161,7 +199,6 @@ def summarize(results: List[Dict[str, Any]]) -> None:
                 elif v == "uncertain":
                     total_uncertain += 1
 
-            # Count remaining orphans after repair
             rv = r.get("review", {}).get("rule_validation", {})
             remaining_orphans += len(rv.get("link_validation", {}).get("orphan_targets", []))
 
@@ -177,7 +214,6 @@ def summarize(results: List[Dict[str, Any]]) -> None:
         print(f"  Remaining orphans:   {remaining_orphans}")
         print(f"  Resolve rate:        {rate:.0f}% ({resolved}/{total_orphans_input})")
 
-        # Link repair stats
         has_repair = sum(1 for r in results if r.get("link_repairs"))
         if has_repair:
             total_repairs = sum(len(r.get("link_repairs", {}).get("repairs", [])) for r in results)

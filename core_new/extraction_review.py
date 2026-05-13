@@ -729,6 +729,10 @@ def _normalize_path(path: str) -> str:
             path = en + path[len(cn):]
             break
 
+    # Strip "question." prefix: GLM sometimes uses "question.xxx" for question_structure
+    if path.startswith("question.") and not path.startswith("question_structure."):
+        path = "question_structure." + path[len("question."):]
+
     # Strip misleading "structure." prefix when it refers to question_structure
     # DomainCritic sometimes outputs "structure.distractor_analysis" meaning "question_structure.distractor_analysis"
     _qs_subfields = {
