@@ -302,16 +302,20 @@ async def main():
         "fix_attempted": 0, "fix_applied": 0, "fix_rejected": 0,
         "recheck_passed": 0, "recheck_failed": 0, "auto_fix_partial": 0,
         "needs_human_judgment": 0, "needs_link_fix": 0,
-        "candidate": 0, "rejected": 0,
+        "needs_content_fix": 0, "candidate": 0, "rejected": 0,
+        "skipped_low_risk": 0,
     }
     for r in updated_results:
         if "error" in r:
             continue
         rev = r.get("review", {})
-        fr = rev.get("final_readiness", {})
-        fix = rev.get("fix_result")
-        status = fr.get("status", "unknown")
+        fr = rev.get("final_readiness") or rev.get("readiness", {})
+        status = fr.get("status")
+        if status is None:
+            stats["skipped_low_risk"] += 1
+            continue
         stats[status] = stats.get(status, 0) + 1
+        fix = rev.get("fix_result")
         if fix:
             stats["fix_attempted"] += 1
             stats["fix_applied"] += fix.get("fix_count", 0)
