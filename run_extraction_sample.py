@@ -85,8 +85,9 @@ async def main():
             rp = result.get("reasoning_pattern", {})
             n_steps = len(rp.get("steps", []))
             val = result.get("validation", {})
-            score = val.get("overall_quality_score", "N/A")
-            print(f"  knowledge={n_knowledge}, mechanisms={n_mechanisms}, triggers={n_triggers}, steps={n_steps}, score={score}")
+            score = val.get("model_validation", {}).get("overall_quality_score", "N/A")
+            db_status = val.get("db_readiness", {}).get("status", "N/A")
+            print(f"  knowledge={n_knowledge}, mechanisms={n_mechanisms}, triggers={n_triggers}, steps={n_steps}, score={score}, db_status={db_status}")
 
         results.append(result)
 
@@ -94,7 +95,7 @@ async def main():
     print(f"\n{'='*60}")
     print(f"Total: {len(results)} questions in {total_elapsed:.1f}s ({total_elapsed/len(results):.1f}s/question avg)")
 
-    output_path = os.path.join(os.path.dirname(__file__), "data", "extraction_sample_results.json")
+    output_path = os.path.join(os.path.dirname(__file__), "docs", "extraction_sample_results.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
     print(f"Results saved to: {output_path}")

@@ -58,7 +58,11 @@ PASS1_QUESTION_STRUCTURE = """你是一位408考研题目结构化分析专家�
       "error_type": "该选项对应的错误类型",
       "targeted_misconception": "该选项诱发的误解"
     }}
-  ]
+  ],
+  "correct_answer_diagnosis": {{
+    "answer_status": "correct_answer_correct_reason | correct_answer_wrong_reason",
+    "diagnostic_note": "如果选对但推理有误，说明可能的错误推理路径；如果推理正确则标注为correct_answer_correct_reason"
+  }}
 }}
 ```"""
 
@@ -148,8 +152,13 @@ PASS3_TRIGGER_RULES = """你是一位408考研题目信号分析专家。请分�
         ]
       }},
       "activates": {{
-        "mechanism_names": ["被激活的机制名称"],
-        "action": "activate | modify | block"
+        "targets": [
+          {{
+            "target_type": "knowledge | mechanism | reasoning_pattern",
+            "target_name": "被激活的知识/机制/模式名称",
+            "action": "activate | modify | block | warn"
+          }}
+        ]
       }},
       "wrong_if_missing": [
         "如果漏掉这个触发会犯什么错误"
@@ -245,7 +254,7 @@ PASS5_LINK_AND_VALIDATE = """你是一位数据质量审核专家。请检查以
 推理模式：{reasoning_pattern}
 
 ## 要求
-请检查以下一致性要求，并输出审核结果：
+请检查以下一致性要求，并输出审核结果。注意：overall_quality_score是模型自评，仅表示model_validation_passed，不能作为正式入库标准。正式入库需要db_readiness.status为verified。
 
 ```json
 {{
@@ -275,7 +284,14 @@ PASS5_LINK_AND_VALIDATE = """你是一位数据质量审核专家。请检查以
       "fix": "建议修改"
     }}
   ],
-  "overall_quality_score": 0.0到1.0,
-  "is_ready_for_db": true或false
+  "model_validation": {{
+    "overall_quality_score": 0.0到1.0,
+    "is_ready_for_review": true或false
+  }},
+  "db_readiness": {{
+    "status": "candidate | verified | rejected",
+    "requires_human_or_rule_check": true或false,
+    "notes": "说明还需要什么检查才能入库"
+  }}
 }}
 ```"""
