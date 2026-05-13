@@ -37,7 +37,9 @@ VALID_READINESS_STATUSES = {
     "candidate",
     "needs_content_fix",
     "needs_link_fix",
-    "needs_domain_recheck",
+    "auto_fixed_recheck_passed",
+    "auto_fixed_recheck_failed",
+    "auto_fix_partial",
     "needs_human_judgment",
     "rejected",
 }
@@ -414,12 +416,24 @@ class ReadinessAggregator:
             status = "needs_human_judgment"
             requires_human = True
 
-        # If fix was applied, override to needs_domain_recheck
+        # If fix was applied, determine auto_fixed_* status from recheck results
         if fix_result and fix_result.get("fix_count", 0) > 0:
-            status = "needs_domain_recheck"
             reasons.append(f"Fix applied: {fix_result['fix_count']} patch(es)")
-            # After fix, remaining human-only issues may still require human review
-            if human_only_count > 0:
+
+            # Evaluate recheck domain issues (these are from the re-review of patched data)
+            recheck_fixable = fixable_count  # re-classified from recheck domain_review
+            recheck_human = human_only_count
+            recheck_major = 0
+            if domain_review:
+                recheck_major = len(domain_review.get("domain_review", {}).get("major_issues", []))
+
+            if recheck_major == 0 and recheck_human == 0:
+                status = "auto_fixed_recheck_passed"
+            elif recheck_major == 0 and recheck_human > 0:
+                status = "auto_fix_partial"
+                requires_human = True
+            else:
+                status = "auto_fixed_recheck_failed"
                 requires_human = True
 
         # Rule issues from RuleChecker

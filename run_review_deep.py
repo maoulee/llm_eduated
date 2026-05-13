@@ -59,23 +59,23 @@ def classify_risk(result: Dict[str, Any]) -> str:
     if not review:
         return "no_review"
 
-    # Prefer final_readiness, fall back to readiness
-    readiness = review.get("final_readiness") or review.get("readiness", {})
+    # Use final_readiness if available, else initial_readiness, else readiness
+    readiness = review.get("final_readiness") or review.get("initial_readiness") or review.get("readiness", {})
     status = readiness.get("status", "")
 
-    if status in ("rejected", "needs_human_judgment"):
+    if status in ("rejected", "needs_human_judgment", "auto_fixed_recheck_failed"):
         return "high"
-    if status in ("needs_content_fix", "needs_link_fix", "needs_domain_recheck"):
+    if status in ("needs_content_fix", "needs_link_fix", "auto_fix_partial"):
         return "medium"
-    # Fallback: also check old-style statuses and raw fields
-    if status == "needs_human_check":
-        return "high"
+    if status in ("auto_fixed_recheck_passed", "candidate"):
+        return "low"
 
+    # Fallback: check raw fields
     rv = review.get("rule_validation", {})
     ac = rv.get("answer_consistency", {})
     orphans = len(rv.get("link_validation", {}).get("orphan_targets", []))
     mismatches = len(rv.get("link_validation", {}).get("type_mismatches", []))
-    dr = review.get("domain_review", {}).get("domain_review", {})
+    dr = review.get("initial_domain_review", review.get("domain_review", {})).get("domain_review", {})
     major = len(dr.get("major_issues", []))
 
     if not ac.get("checked") or not ac.get("consistent", True):
@@ -150,15 +150,20 @@ async def deep_review_question(
 
     if run_fix and readiness.get("status") == "needs_content_fix" and run_deep_critic:
         fixer = DomainIssueFixer(provider, max_tokens=8192)
-        fix_result = await fixer.fix(updated, domain_result)
+        fix_raw = await fixer.fix(updated, domain_result)
 
-        if fix_result.get("fix_count", 0) > 0:
-            updated = fix_result["fixed_result"]
-            # Break circular ref: clear fixed_result from fix_result before storing
-            fix_summary = {k: v for k, v in fix_result.items() if k != "fixed_result"}
-            fix_summary["fix_count"] = fix_result["fix_count"]
-            fix_result = fix_summary
+        # Apply patched result and strip to prevent circular reference
+        if fix_raw.get("fix_count", 0) > 0:
+            updated = fix_raw["fixed_result"]
+        # Build serializable summary (no fixed_result reference)
+        fix_result = {
+            "fix_count": fix_raw.get("fix_count", 0),
+            "patches_applied": fix_raw.get("patches_applied", []),
+            "patches_rejected": fix_raw.get("patches_rejected", []),
+            "patches_skipped": fix_raw.get("patches_skipped", []),
+        }
 
+        if fix_result["fix_count"] > 0:
             # Re-validate after patches
             rule_result = RuleChecker.validate(updated)
 
@@ -171,17 +176,26 @@ async def deep_review_question(
                 rule_result, recheck_domain_result, fix_result=fix_result,
             )
 
-    updated["review"] = {
+    # Build versioned review structure:
+    # - initial_domain_review: pre-fix critic results (always present)
+    # - fix_result: patches applied/rejected/skipped (only if fix ran)
+    # - domain_recheck: post-fix critic results (only if fix ran + recheck)
+    # - rule_validation: latest rule check (after all mutations)
+    # - initial_readiness: status before fix
+    # - final_readiness: final status (based on recheck if fix ran)
+    review = {
+        "initial_domain_review": domain_result,
         "rule_validation": rule_result,
-        "domain_review": domain_result,
-        "readiness": readiness,
+        "initial_readiness": readiness,
         "final_readiness": final_readiness,
     }
 
     if fix_result:
-        updated["fix_result"] = fix_result
+        review["fix_result"] = fix_result
     if recheck_domain_result:
-        updated["review"]["domain_recheck"] = recheck_domain_result
+        review["domain_recheck"] = recheck_domain_result
+
+    updated["review"] = review
 
     return updated
 
@@ -250,12 +264,12 @@ async def main():
                     break
 
             final_readiness = updated.get("review", {}).get("final_readiness", {})
-            readiness = updated.get("review", {}).get("readiness", {})
+            initial_readiness = updated.get("review", {}).get("initial_readiness", {})
             orphan_res = updated.get("orphan_resolution", {})
-            fix_res = updated.get("fix_result", {})
+            fix_res = updated.get("review", {}).get("fix_result", {})
 
             print(f"  Time: {elapsed:.1f}s")
-            initial_status = readiness.get("status", "?")
+            initial_status = initial_readiness.get("status", "?")
             final_status = final_readiness.get("status", initial_status)
             if initial_status != final_status:
                 print(f"  Readiness: {initial_status} → {final_status}")
@@ -282,6 +296,37 @@ async def main():
     with open(args.output, "w", encoding="utf-8") as f:
         json.dump(updated_results, f, ensure_ascii=False, indent=2)
     print(f"Saved to: {args.output}")
+
+    # Summary statistics
+    stats = {
+        "fix_attempted": 0, "fix_applied": 0, "fix_rejected": 0,
+        "recheck_passed": 0, "recheck_failed": 0, "auto_fix_partial": 0,
+        "needs_human_judgment": 0, "needs_link_fix": 0,
+        "candidate": 0, "rejected": 0,
+    }
+    for r in updated_results:
+        if "error" in r:
+            continue
+        rev = r.get("review", {})
+        fr = rev.get("final_readiness", {})
+        fix = rev.get("fix_result")
+        status = fr.get("status", "unknown")
+        stats[status] = stats.get(status, 0) + 1
+        if fix:
+            stats["fix_attempted"] += 1
+            stats["fix_applied"] += fix.get("fix_count", 0)
+            stats["fix_rejected"] += len(fix.get("patches_rejected", []))
+        if status == "auto_fixed_recheck_passed":
+            stats["recheck_passed"] += 1
+        elif status == "auto_fixed_recheck_failed":
+            stats["recheck_failed"] += 1
+        elif status == "auto_fix_partial":
+            stats["auto_fix_partial"] += 1
+
+    print("\n=== Summary ===")
+    for k, v in stats.items():
+        if v > 0:
+            print(f"  {k}: {v}")
 
 
 if __name__ == "__main__":
