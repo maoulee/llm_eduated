@@ -1,0 +1,2639 @@
+[
+  {
+    "question_id": "2009-12",
+    "question_structure": {
+      "question_id": "2009-12",
+      "question_type": "单选题",
+      "subject": "计算机组成原理",
+      "year": "2009",
+      "stem": "[2009年考研真题第12题]一个C语言程序在一台32位机器上运行。程序中定义了三个变量x、y和z，其中x和z为int型，y为unsigned型。若x=127，y=127，z=x-y，则z的值为（ ）。",
+      "options": {
+        "A": "0",
+        "B": "-254",
+        "C": "127",
+        "D": "溢出"
+      },
+      "correct_answer": "A",
+      "structure": {
+        "given_conditions": [
+          "32位机器",
+          "x为int型，初始值127",
+          "y为unsigned型，初始值127",
+          "z为int型",
+          "执行赋值操作 z = x - y"
+        ],
+        "asked_target": "计算并确定变量z的最终值",
+        "hidden_constraints": [
+          "C语言中的整型提升规则：当int和unsigned int进行运算时，int会被隐式转换为unsigned int",
+          "32位机器上int和unsigned int均为32位宽度",
+          "127在二进制补码表示中为正数，符号位为0"
+        ],
+        "unit_constraints": [
+          "数值以十进制表示"
+        ],
+        "key_terms": [
+          "int型",
+          "unsigned型",
+          "32位机器",
+          "隐式类型转换",
+          "整型提升"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "A",
+          "content": "0",
+          "error_type": "correct",
+          "targeted_misconception": "无，这是正确答案。x(127)转为unsigned后仍为127，127-127=0，结果0转回int仍为0。"
+        },
+        {
+          "option": "B",
+          "content": "-254",
+          "error_type": "calculation_error",
+          "targeted_misconception": "误以为发生了有符号减法且结果溢出，或者错误地认为unsigned 127被解释为很大的负数（如将127当作-129等错误逻辑），或者是混淆了8位补码运算（127-127在8位有符号中是0，但如果误算成-128-126等）。更常见的误解是认为unsigned参与运算后结果直接按有符号解释导致负数，但这里数值很小，不会溢出成负数。此选项通常针对对补码和溢出机制理解混乱的考生。"
+        },
+        {
+          "option": "C",
+          "content": "127",
+          "error_type": "logic_error",
+          "targeted_misconception": "可能误以为x-y没有执行，或者误以为y被忽略，或者错误地认为unsigned类型在减法中保持原值不变而只取x的值。"
+        },
+        {
+          "option": "D",
+          "content": "溢出",
+          "error_type": "concept_error",
+          "targeted_misconception": "误以为int和unsigned混合运算必然导致溢出，或者对32位整数的范围（约±21亿）没有概念，认为127这样的数值会溢出。"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "根据C语言标准，当int和unsigned int进行算术运算时，int操作数会被转换为unsigned int。因此，表达式 x - y 实际上是 unsigned int 类型的运算：127u - 127u = 0u。结果 0u 被赋值给 int 变量 z，0 在 int 范围内，因此 z 的值为 0。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "C语言整型提升规则",
+          "description": "在C语言中，当有符号整型（如int）和无符号整型（如unsigned int）进行运算时，有符号整型会被隐式转换为无符号整型，以确保运算在相同的类型宽度下进行。",
+          "subtype": "rule",
+          "subject": "计算机组成原理/程序设计语言"
+        },
+        {
+          "name": "32位机器整型宽度",
+          "description": "在32位机器上，int和unsigned int类型通常占用32位（4字节）的存储空间。",
+          "subtype": "convention",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "无符号整型溢出回绕特性",
+          "description": "无符号整型运算结果如果超出其表示范围（0到2^N-1），结果会自动对2^N取模，即发生回绕（wrap-around），而不是产生溢出错误。",
+          "subtype": "rule",
+          "subject": "计算机组成原理"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "隐式类型转换导致的运算域改变",
+          "description": "表达式 x - y 中，由于 y 是 unsigned 型，x (int) 会被提升为 unsigned int。这意味着减法运算是在无符号数域中进行的，而不是有符号数域。",
+          "affects_what": "决定了减法运算的解释方式：是从数学上的有符号减法，还是从模运算角度进行的无符号减法。",
+          "common_misunderstanding": "误以为 int - unsigned 会保持 int 的符号特性，或者误以为编译器会报错，实际上结果是合法的无符号大数。",
+          "subject": "程序设计语言"
+        },
+        {
+          "name": "无符号结果向有符号变量的赋值截断/解释",
+          "description": "计算得到的无符号结果（4294967043）被赋值给 int 型变量 z。在内存中，这32位二进制位被直接存储。当以 int 类型读取时，这些位被解释为补码形式的负数。",
+          "affects_what": "最终输出值的符号和大小。无符号的大数在二进制补码表示下对应一个特定的负数。",
+          "common_misunderstanding": "认为赋值时会发生数据丢失或报错，或者错误地计算负数的补码转换过程。",
+          "subject": "计算机组成原理"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "混合类型运算的隐式转换规则",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "x为int型"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "y为unsigned型"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "执行赋值操作 z = x - y"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "表达式中包含有符号整型(int)和无符号整型(unsigned int)",
+              "执行算术运算(如加减乘除)"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "隐式类型转换导致的运算域改变",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "C语言整型提升规则",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "误认为运算在有符号域进行，得出 127 - 127 = 0 的中间结果（虽然本题最终结果碰巧也是0，但逻辑错误），或者在x为负数时得出错误的正数结果。",
+            "误认为编译器会报错或进行强制转换，导致无法解题。"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "int型变量",
+              "unsigned型变量",
+              "混合运算表达式"
+            ],
+            "must_expose_failure_mode": "忽略C标准中关于有符号与无符号混合运算的转换规则",
+            "expected_wrong_reason_if_missed": "学生通常习惯数学直觉，认为127-127=0，忽略了底层二进制表示和类型转换规则，虽然本题答案A正确，但推理路径错误会导致在其他数值下（如x=-1）选错。"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "medium"
+        },
+        {
+          "name": "无符号运算结果的模特性与补码解释",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "32位机器"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "z为int型"
+            },
+            {
+              "signal_type": "asked_target",
+              "value": "计算并确定变量z的最终值"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "运算结果被赋值给有符号变量",
+              "运算过程中涉及无符号类型",
+              "需要确定最终存储值的十进制解释"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "无符号结果向有符号变量的赋值截断/解释",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "无符号整型溢出回绕特性",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "误以为无符号大数赋值给int会溢出报错或截断高位导致数据丢失（实际上在C中是位模式直接复制）。",
+            "错误地计算补码，例如将无符号结果直接当作正数处理，或者错误地转换符号位。"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "无符号运算结果",
+              "有符号目标变量",
+              "具体位宽(如32位)"
+            ],
+            "must_expose_failure_mode": "不理解二进制位模式在不同类型间的解释差异",
+            "expected_wrong_reason_if_missed": "学生可能知道类型转换，但不知道转换后的二进制位如何被目标类型解释，特别是在结果超出有符号范围时。"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "medium"
+        },
+        {
+          "name": "数值范围的边界检查与溢出判断",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "x=127"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "y=127"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "给定具体的初始数值",
+              "数值较小，未触及类型表示边界"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "reasoning_pattern",
+                "target_name": "直接数值计算",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "过度复杂化，认为必须写出完整的32位二进制补码过程，而忽略了简单情况下的数值等价性。"
+          ],
+          "diagnostic_role": "blocks_wrong_pattern",
+          "generation_constraints": {
+            "must_include_signals": [
+              "小数值常量"
+            ],
+            "must_expose_failure_mode": "混淆数学结果与计算机底层表示",
+            "expected_wrong_reason_if_missed": "学生可能纠结于“unsigned”带来的复杂性，而实际上在正数范围内，int和unsigned的位表示相同，减法结果相同。此信号用于测试学生是否能识别出“简单情况”与“复杂情况”的界限。"
+          },
+          "diagnostic_value": 0.6,
+          "difficulty": "easy"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "x=127, y=127 (均为正数且相等)",
+          "blocks_pattern": "认为结果一定是0，无需考虑类型转换",
+          "reason": "虽然数学上127-127=0，且在此特定数值下，int提升为unsigned后结果仍为0，赋值回int仍为0。但此解法忽略了类型转换机制。如果题目改为x=-1, y=1，数学上-2，但计算机中int提升为unsigned后变为大数，结果完全不同。因此，这个信号容易诱导学生使用“数学直觉”而非“计算机组成原理”路径，属于高风险的错误推理路径。"
+        },
+        {
+          "signal": "32位机器",
+          "blocks_pattern": "假设int为16位或64位",
+          "reason": "如果不注意32位这一条件，可能会错误地应用16位机器的溢出规则（例如在16位机上，unsigned short的范围不同），导致计算出的无符号大数不同，进而影响最终int的解释。"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "C语言混合类型运算与底层位模式解释推理模式",
+      "subject": "计算机组成原理 / 程序设计语言",
+      "applicable_conditions": [
+        "题目涉及C语言中有符号整型（int）与无符号整型（unsigned int）的混合算术运算",
+        "需要确定运算结果在特定位宽（如32位）机器上的最终存储值或解释值",
+        "考察重点在于隐式类型转换规则及二进制补码表示法"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "识别操作数类型与触发隐式转换",
+          "description": "分析表达式中各操作数的数据类型。若存在有符号整型和无符号整型混合运算，根据C语言标准（整型提升规则），确定有符号整型将被隐式转换为无符号整型，从而改变运算的语义域（从有符号算术变为无符号模算术）。",
+          "input": "表达式中的变量类型定义（如x为int, y为unsigned）及运算符号",
+          "output": "确定实际参与运算的数据类型（均为unsigned int）及运算规则（无符号减法）",
+          "required_knowledge": [
+            "C语言整型提升规则",
+            "隐式类型转换导致的运算域改变"
+          ],
+          "common_error_at_this_step": "忽略类型转换，直接使用数学直觉进行有符号减法（例如认为127-127=0，虽然结果碰巧正确，但逻辑错误；若x为负数则必错）"
+        },
+        {
+          "order": 2,
+          "name": "执行无符号域内的算术运算",
+          "description": "将操作数视为无符号整数，在指定位宽（如32位）的模运算域（0 到 2^N-1）内执行算术运算。计算结果若超出范围，则自动对 2^N 取模（回绕）。",
+          "input": "转换后的无符号操作数值，机器位宽（N）",
+          "output": "无符号运算结果的十进制值或二进制位模式",
+          "required_knowledge": [
+            "无符号整型溢出回绕特性",
+            "32位机器整型宽度"
+          ],
+          "common_error_at_this_step": "错误地应用有符号数的溢出判断，或者在手动计算二进制时位数不足（如用8位代替32位计算）"
+        },
+        {
+          "order": 3,
+          "name": "位模式赋值与目标类型解释",
+          "description": "将上一步得到的无符号运算结果的二进制位模式，直接赋值给目标变量。根据目标变量的类型（如int），按照补码规则重新解释这些二进制位，得出最终的十进制值。",
+          "input": "无符号运算结果的二进制位模式，目标变量类型（如int）",
+          "output": "目标变量最终存储的十进制值",
+          "required_knowledge": [
+            "无符号结果向有符号变量的赋值截断/解释",
+            "二进制补码表示法"
+          ],
+          "common_error_at_this_step": "认为赋值时会发生数据截断或报错，或者错误地将无符号大数直接当作正数处理，未进行补码转换"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 1,
+          "reason": "学生往往依赖数学直觉，忽视C语言中“有符号与无符号混合运算时，有符号转无符号”这一关键规则。特别是当操作数为正数且结果看似正常时，容易跳过此步检查。",
+          "error_manifestation": "在x为正数且x>=y时，可能得出正确答案但推理错误；在x为负数或x<y时，会得出完全错误的正数结果（如将负数结果解释为巨大的无符号数，而未意识到后续转换）。"
+        },
+        {
+          "step": 3,
+          "reason": "学生可能理解类型转换，但不理解“位模式不变，解释方式改变”的底层机制。特别是当无符号结果很大（最高位为1）时，不知道如何将其转换为有符号负数。",
+          "error_manifestation": "无法计算出正确的负数值，或者错误地认为结果溢出报错，或者简单地取绝对值。"
+        }
+      ],
+      "can_verify_with_code": true,
+      "verification_approach": "编写一段C语言代码，定义int x, z; unsigned int y; 赋初值 x=127, y=127; 执行 z = x - y; 使用 printf 打印 z 的值以及 x, y 的二进制表示，验证隐式转换和最终解释结果。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "A",
+          "option_content": "0"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [
+              {
+                "trigger": "数值范围的边界检查与溢出判断",
+                "target_type": "reasoning_pattern",
+                "target_name": "直接数值计算",
+                "reason": "not found in any entity set"
+              }
+            ],
+            "type_mismatches": [],
+            "known_names_count": 6
+          },
+          "pattern_knowledge": {
+            "orphan_targets": [
+              {
+                "step": 3,
+                "required_knowledge": "二进制补码表示法"
+              }
+            ]
+          },
+          "orphan_targets": [
+            {
+              "trigger": "数值范围的边界检查与溢出判断",
+              "target_type": "reasoning_pattern",
+              "target_name": "直接数值计算",
+              "reason": "not found in any entity set"
+            },
+            {
+              "step": 3,
+              "required_knowledge": "二进制补码表示法"
+            }
+          ],
+          "type_mismatches": []
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "answer_consistency_check": {
+          "raw_answer": "A",
+          "option_content": "0",
+          "derived_value": "0",
+          "is_consistent": true,
+          "notes": "题目中x=127, y=127。根据C语言规则，int提升为unsigned，127u - 127u = 0u。0u赋值给int z，结果为0。答案A正确。"
+        },
+        "domain_review": {
+          "major_issues": [
+            {
+              "issue_type": "hallucination",
+              "evidence_path": "knowledge_units.mechanisms[1].description",
+              "evidence_text": "计算得到的无符号结果（4294967043）被赋值给 int 型变量 z。",
+              "reason": "严重的事实错误。在本题中，x=127, y=127，运算结果为0。机制描述中提到的数值4294967043（即-5的无符号表示）与本题数值完全不符，属于幻觉或模板错误。这会导致对机制的理解产生严重误导。",
+              "severity": "high",
+              "suggested_action": "needs_human_check"
+            },
+            {
+              "issue_type": "hallucination",
+              "evidence_path": "knowledge_units.mechanisms[1].common_misunderstanding",
+              "evidence_text": "认为赋值时会发生数据丢失或报错，或者错误地计算负数的补码转换过程。",
+              "reason": "结合上一条，这里提到的“错误地计算负数的补码”暗示结果是一个负数的大无符号值，但这与本题结果0不符。该机制描述似乎混淆了x < y的情况（如x=0, y=1）与本题x=y的情况。",
+              "severity": "high",
+              "suggested_action": "needs_human_check"
+            },
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "trigger_rules[2].activates.targets[0].target_name",
+              "evidence_text": "直接数值计算",
+              "reason": "规则校验指出该推理模式（reasoning_pattern）在实体集中未找到定义，属于孤儿引用。",
+              "severity": "medium",
+              "suggested_action": "candidate"
+            },
+            {
+              "issue_type": "terminology_error",
+              "evidence_path": "question_type",
+              "evidence_text": "计算机组成原理",
+              "reason": "虽然涉及底层位运算，但核心考点是C语言的类型转换规则（Type Promotion/Conversion），通常归类于“程序设计语言”或“编译原理”范畴，或者在408中属于“计算机组成原理”与“操作系统/软件”的交叉，但更精确的分类应包含“程序设计语言”。不过考虑到408大纲中C语言基础有时被归入组成原理的指令系统或数据表示背景，此问题严重程度较低，主要问题在于机制描述的数值错误。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            }
+          ],
+          "minor_issues": [
+            {
+              "issue_type": "weak_distractor_alignment",
+              "evidence_path": "distractor_analysis[1].targeted_misconception",
+              "evidence_text": "误以为发生了有符号减法且结果溢出...或者是混淆了8位补码运算...更常见的误解是认为unsigned参与运算后结果直接按有符号解释导致负数",
+              "reason": "对于x=127, y=127，即使误解为有符号减法，结果也是0。选项B (-254) 是一个典型的当 x < y 且发生无符号溢出后解释为有符号数时的错误答案（例如 x=0, y=128 -> 0-128 = 4294967168u -> -128? 不对，-254通常是 2-256 或者类似的小数减法溢出）。对于本题数值，很难直接推导出-254这个特定错误，除非学生记错了补码转换或者题目数值不同。该干扰项分析略显牵强，但并非完全不可能（如误算位模式）。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            }
+          ],
+          "uncertain_items": []
+        },
+        "review_summary": "答案A正确，逻辑一致。但是，知识单元中的机制描述（mechanisms）存在严重的数值幻觉，描述了与本题无关的数值（4294967043），这会导致学习者困惑。此外，存在孤儿引用（直接数值计算）。需要人工修正机制描述中的数值错误，使其与题目数值（127, 127, 0）匹配，或明确说明该机制是通用机制而非仅针对本题数值。",
+        "recommended_status": "needs_human_check"
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "2 orphan reference(s) in triggers/pattern",
+          "Domain: hallucination — 严重的事实错误。在本题中，x=127, y=127，运算结果为0。机制描述中提到的数值4294967043（即-5的无符号表示）与本题数值完全不符，属于幻觉或模板错误。这会导致对机制的理解产生严重误导",
+          "Domain: hallucination — 结合上一条，这里提到的“错误地计算负数的补码”暗示结果是一个负数的大无符号值，但这与本题结果0不符。该机制描述似乎混淆了x < y的情况（如x=0, y=1）与本题x=y的情况。",
+          "Domain: unsupported_trigger — 规则校验指出该推理模式（reasoning_pattern）在实体集中未找到定义，属于孤儿引用。",
+          "Domain: terminology_error — 虽然涉及底层位运算，但核心考点是C语言的类型转换规则（Type Promotion/Conversion），通常归类于“程序设计语言”或“编译原理”范畴，或者在408中属于“计算机组成原理”与“操作系"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "2009-12",
+      "type": "单选题",
+      "prompt": "[2009年考研真题第12题]一个C语言程序在一台32位机器上运行。程序中定义了三个变量x、y和z，其中x和z为int型，y为unsigned型。若x=127，y=127，z=x-y，则z的值为（ ）。\nA. 0  B. -254  C. 127  D. 溢出",
+      "answer": "A"
+    }
+  },
+  {
+    "question_id": "2009-14",
+    "question_structure": {
+      "question_id": "2009-14",
+      "question_type": "单选题",
+      "subject": "计算机组成原理",
+      "year": "2009",
+      "stem": "[2009年考研真题第14题]某计算机的Cache共有16块，采用2路组相联映射方式（即每组2块）。每个主存块大小为32字节，按字节编址。主存第129号单元所在的主存块应装入的Cache组号是（ ）。",
+      "options": {
+        "A": "0",
+        "B": "2",
+        "C": "4",
+        "D": "6"
+      },
+      "correct_answer": "C",
+      "structure": {
+        "given_conditions": [
+          "Cache总块数：16块",
+          "映射方式：2路组相联映射（每组2块）",
+          "主存块大小：32字节",
+          "编址方式：按字节编址",
+          "目标地址：主存第129号单元"
+        ],
+        "asked_target": "主存第129号单元所在的主存块应装入的Cache组号",
+        "hidden_constraints": [
+          "Cache组数 = Cache总块数 / 路数",
+          "主存块号 = 主存地址 / 块大小（向下取整）",
+          "Cache组号 = 主存块号 % Cache组数",
+          "地址从0开始计数"
+        ],
+        "unit_constraints": [
+          "地址单位：字节",
+          "块大小单位：字节"
+        ],
+        "key_terms": [
+          "Cache",
+          "2路组相联映射",
+          "主存块大小",
+          "按字节编址",
+          "Cache组号"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "A",
+          "content": "0",
+          "error_type": "计算错误",
+          "targeted_misconception": "可能误将主存地址直接对Cache总块数取模，或者计算主存块号时出错（如129/32=4余1，误以为块号是0或其他错误值），导致组号计算错误。例如若误算块号为0，则0%8=0。"
+        },
+        {
+          "option": "B",
+          "content": "2",
+          "error_type": "概念混淆",
+          "targeted_misconception": "可能混淆了组相联映射中的“路数”与“组号”的关系，或者在计算模运算时出现偏差。例如，若误认为组号等于块号除以路数（4/2=2），这是错误的逻辑。"
+        },
+        {
+          "option": "D",
+          "content": "6",
+          "error_type": "计算错误",
+          "targeted_misconception": "可能在计算主存块号或取模运算时出现算术错误。例如，若误算主存块号为6（129/32≈4，若误算为6），则6%8=6。"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "正确推理路径：1. 计算Cache组数：16块 / 2路 = 8组。2. 计算主存块号：129 / 32 = 4（余1，向下取整），即第4号主存块。3. 计算Cache组号：4 % 8 = 4。因此选C。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "按字节编址",
+          "description": "内存地址的最小单位是字节，地址值直接对应字节位置。",
+          "subtype": "convention",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "主存块号计算公式",
+          "description": "主存块号 = 主存地址 / 块大小（向下取整）。用于确定特定地址位于哪个物理块中。",
+          "subtype": "formula",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "Cache组数计算公式",
+          "description": "Cache组数 = Cache总块数 / 路数（每组块数）。用于确定Cache被划分为多少个组。",
+          "subtype": "formula",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "组相联映射的组号映射规则",
+          "description": "Cache组号 = 主存块号 % Cache组数。主存块通过取模运算映射到特定的Cache组。",
+          "subtype": "rule",
+          "subject": "计算机组成原理"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "2路组相联映射机制",
+          "description": "将Cache分为若干组，每组包含2个块。主存块只能映射到特定的组内，但在组内可以放入任意一个空闲块。这决定了映射的目标是“组”而非具体的“块”，从而引入了取模运算。",
+          "affects_what": "决定了使用取模运算（%）来计算目标Cache组号，而不是直接除法或全相联的任意映射。",
+          "common_misunderstanding": "误以为2路组相联意味着主存块号直接除以2得到组号，或者混淆了组号与块内偏移量的计算。",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "地址到块号的截断机制",
+          "description": "由于按字节编址且块大小为32字节，低5位地址（log2(32)=5）用于块内偏移，高位地址用于表示块号。计算时需对地址进行整除（或右移）操作以去除偏移量。",
+          "affects_what": "影响主存块号的计算结果。如果未正确去除低5位（即未除以32），会导致块号计算错误，进而导致组号计算错误。",
+          "common_misunderstanding": "直接使用原始地址129进行取模运算，而忘记先将其转换为块号。",
+          "subject": "计算机组成原理"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "组相联映射组号计算触发",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "Cache共有16块"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "2路组相联映射"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "已知Cache总块数",
+              "已知映射路数（每组块数）"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "Cache组数计算机制",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "Cache组数计算公式",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "无法确定Cache被划分为多少个组，导致后续取模运算的除数错误",
+            "可能误将Cache总块数直接作为除数，或者误认为全相联映射"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "Cache总块数",
+              "映射路数"
+            ],
+            "must_expose_failure_mode": "考生混淆Cache块数与Cache组数",
+            "expected_wrong_reason_if_missed": "未计算组数，直接用主存块数对Cache总块数取模"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "medium"
+        },
+        {
+          "name": "地址到块号的转换触发",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "主存块大小为32字节"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "按字节编址"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "主存第129号单元"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "已知主存地址",
+              "已知块大小",
+              "已知编址方式"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "地址到块号的截断机制",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "主存块号计算公式",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "直接使用地址129进行取模运算，忽略块内偏移量",
+            "计算出的主存块号错误，导致最终组号错误"
+          ],
+          "diagnostic_role": "blocks_wrong_pattern",
+          "generation_constraints": {
+            "must_include_signals": [
+              "主存地址",
+              "块大小"
+            ],
+            "must_expose_failure_mode": "考生忘记将地址转换为块号，直接用地址取模",
+            "expected_wrong_reason_if_missed": "混淆了“地址”与“块号”的概念，未执行地址/块大小的整除操作"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "medium"
+        },
+        {
+          "name": "组相联映射取模规则触发",
+          "source_signals": [
+            {
+              "signal_type": "asked_target",
+              "value": "应装入的Cache组号"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "2路组相联映射"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "目标是求Cache组号",
+              "映射方式为组相联"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "组相联映射的组号映射规则",
+                "action": "activate"
+              },
+              {
+                "target_type": "reasoning_pattern",
+                "target_name": "取模运算推理路径",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "误用直接映射规则（如直接除法）",
+            "误用全相联映射规则（任意映射，无固定组号）",
+            "计算逻辑错误，无法得出唯一确定的组号"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "映射方式",
+              "目标：Cache组号"
+            ],
+            "must_expose_failure_mode": "考生使用错误的映射公式（如除法代替取模）",
+            "expected_wrong_reason_if_missed": "对组相联映射的数学本质（取模）理解不清，混淆了不同映射方式的算法"
+          },
+          "diagnostic_value": 0.7,
+          "difficulty": "easy"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "2路组相联映射",
+          "blocks_pattern": "直接映射法（Direct Mapping）",
+          "reason": "直接映射通常指1路组相联，虽然公式类似（取模），但概念不同。此信号明确排除了1路的情况，同时也排除了全相联映射（无组概念）。"
+        },
+        {
+          "signal": "按字节编址",
+          "blocks_pattern": "按字编址假设",
+          "reason": "如果按字编址（假设字长为4字节），地址129的含义会改变，块大小的计算基准也会改变。此信号强制要求以字节为单位进行地址和块大小的对齐计算。"
+        },
+        {
+          "signal": "主存块大小32字节",
+          "blocks_pattern": "忽略块内偏移",
+          "reason": "此信号明确了地址的低5位（log2(32)）是块内偏移，必须被移除才能得到有效块号。忽略此信号会导致直接用地址取模，这是最常见的错误。"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "组相联映射Cache组号计算",
+      "subject": "计算机组成原理",
+      "applicable_conditions": [
+        "已知Cache总块数或Cache行/组数",
+        "已知映射方式（如k路组相联）",
+        "已知主存块大小（Block Size）",
+        "已知目标主存地址",
+        "已知编址方式（通常按字节编址）"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "计算Cache组数",
+          "description": "根据Cache总块数和映射路数，计算Cache被划分成的组数。公式：Cache组数 = Cache总块数 / 路数。",
+          "input": "Cache总块数, 映射路数",
+          "output": "Cache组数 (N)",
+          "required_knowledge": [
+            "Cache组数计算公式",
+            "2路组相联映射机制"
+          ],
+          "common_error_at_this_step": "混淆Cache总块数与Cache组数，直接用总块数作为后续取模的除数；或者错误地认为路数就是组数。"
+        },
+        {
+          "order": 2,
+          "name": "计算主存块号",
+          "description": "将目标主存地址转换为对应的主存块号。公式：主存块号 = floor(主存地址 / 主存块大小)。这一步本质上是去除地址中的块内偏移量。",
+          "input": "目标主存地址, 主存块大小",
+          "output": "主存块号 (B)",
+          "required_knowledge": [
+            "主存块号计算公式",
+            "地址到块号的截断机制",
+            "按字节编址"
+          ],
+          "common_error_at_this_step": "忘记除以块大小，直接使用原始地址进行后续计算；或者在按字编址题目中未正确转换地址单位。"
+        },
+        {
+          "order": 3,
+          "name": "计算Cache组号",
+          "description": "根据组相联映射规则，将主存块号映射到具体的Cache组。公式：Cache组号 = 主存块号 % Cache组数。",
+          "input": "主存块号, Cache组数",
+          "output": "Cache组号",
+          "required_knowledge": [
+            "组相联映射的组号映射规则",
+            "取模运算推理路径"
+          ],
+          "common_error_at_this_step": "使用除法代替取模运算；或者误用直接映射公式（虽然直接映射也是取模，但除数通常是Cache总行数，此处需明确是组数）；计算取模结果错误。"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 2,
+          "reason": "考生容易忽略“块内偏移”的存在，误以为地址直接对应块号，或者混淆了地址与块号的概念。",
+          "error_manifestation": "直接使用地址129对Cache组数取模，导致结果错误（例如 129 % 8 = 1，而非正确答案 4）。"
+        },
+        {
+          "step": 1,
+          "reason": "考生可能不清楚Cache组数与Cache总块数、路数之间的关系，导致除数选取错误。",
+          "error_manifestation": "使用Cache总块数（16）作为取模的除数，而不是计算出的组数（8）。例如 4 % 16 = 4（巧合正确或错误），但在其他数据下会导致严重错误。"
+        }
+      ],
+      "can_verify_with_code": true,
+      "verification_approach": "编写Python脚本：定义变量 cache_blocks=16, associativity=2, block_size=32, address=129。计算 groups = cache_blocks // associativity，计算 block_id = address // block_size，计算 set_index = block_id % groups。输出 set_index 并与选项对比。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "C",
+          "option_content": "4"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [
+              {
+                "trigger": "组相联映射取模规则触发",
+                "target_type": "reasoning_pattern",
+                "target_name": "取模运算推理路径",
+                "reason": "not found in any entity set"
+              }
+            ],
+            "type_mismatches": [
+              {
+                "trigger": "组相联映射组号计算触发",
+                "target_type": "mechanism",
+                "target_name": "Cache组数计算机制",
+                "actual_type": "knowledge"
+              }
+            ],
+            "known_names_count": 7
+          },
+          "pattern_knowledge": {
+            "orphan_targets": [
+              {
+                "step": 3,
+                "required_knowledge": "取模运算推理路径"
+              }
+            ]
+          },
+          "orphan_targets": [
+            {
+              "trigger": "组相联映射取模规则触发",
+              "target_type": "reasoning_pattern",
+              "target_name": "取模运算推理路径",
+              "reason": "not found in any entity set"
+            },
+            {
+              "step": 3,
+              "required_knowledge": "取模运算推理路径"
+            }
+          ],
+          "type_mismatches": [
+            {
+              "trigger": "组相联映射组号计算触发",
+              "target_type": "mechanism",
+              "target_name": "Cache组数计算机制",
+              "actual_type": "knowledge"
+            }
+          ]
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "answer_consistency_check": {
+          "raw_answer": "C",
+          "option_content": "4",
+          "derived_value": "4",
+          "is_consistent": true,
+          "notes": "计算过程：Cache组数 = 16/2 = 8；主存块号 = floor(129/32) = 4；Cache组号 = 4 % 8 = 4。选项C对应内容4，一致。"
+        },
+        "domain_review": {
+          "major_issues": [
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "trigger_rules[2].activates.targets[1].target_name",
+              "evidence_text": "取模运算推理路径",
+              "reason": "在trigger_rules中激活了名为'取模运算推理路径'的reasoning_pattern，但在提供的知识单元或推理模式实体集中未找到该名称的定义，属于孤儿引用（Orphan Reference）。",
+              "severity": "medium",
+              "suggested_action": "candidate"
+            },
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "reasoning_pattern.steps[3].required_knowledge",
+              "evidence_text": "取模运算推理路径",
+              "reason": "推理模式步骤3依赖'取模运算推理路径'作为所需知识，但该知识单元未在knowledge_units中定义，导致知识图谱链接断裂。",
+              "severity": "medium",
+              "suggested_action": "candidate"
+            }
+          ],
+          "minor_issues": [],
+          "uncertain_items": []
+        },
+        "review_summary": "题目答案计算正确，逻辑清晰。主要问题在于数据完整性：引用了未定义的推理模式名称'取模运算推理路径'，导致触发规则和推理步骤中的知识依赖断裂。除此之外，题目结构、干扰项分析和机制描述均符合计算机组成原理领域标准。",
+        "recommended_status": "candidate"
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "2 orphan reference(s) in triggers/pattern",
+          "Type mismatch: 'Cache组数计算机制' typed as mechanism but exists as knowledge",
+          "Domain: unsupported_trigger — 在trigger_rules中激活了名为'取模运算推理路径'的reasoning_pattern，但在提供的知识单元或推理模式实体集中未找到该名称的定义，属于孤儿引用（Orphan Reference",
+          "Domain: unsupported_trigger — 推理模式步骤3依赖'取模运算推理路径'作为所需知识，但该知识单元未在knowledge_units中定义，导致知识图谱链接断裂。"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "2009-14",
+      "type": "单选题",
+      "prompt": "[2009年考研真题第14题]某计算机的Cache共有16块，采用2路组相联映射方式（即每组2块）。每个主存块大小为32字节，按字节编址。主存第129号单元所在的主存块应装入的Cache组号是（ ）。\nA. 0  B. 2  C. 4  D. 6",
+      "answer": "C"
+    }
+  },
+  {
+    "question_id": "2010-33",
+    "question_structure": {
+      "question_id": "2010-33",
+      "question_type": "单选题",
+      "subject": "计算机网络",
+      "year": "2010",
+      "stem": "[2010年考研真题第33题]下列选项中，不属于网络体系结构中所描述的内容是（ ）。",
+      "options": {
+        "A": "每一层的功能",
+        "B": "层与层之间的接口",
+        "C": "协议的实现细节",
+        "D": "每一层使用的协议"
+      },
+      "correct_answer": "C",
+      "structure": {
+        "given_conditions": [
+          "考察对象为网络体系结构",
+          "需要识别不属于体系结构描述内容的选项"
+        ],
+        "asked_target": "找出网络体系结构中不包含的内容",
+        "hidden_constraints": [
+          "网络体系结构是抽象的层次结构模型，关注逻辑功能而非物理实现",
+          "协议是规则的集合，属于体系结构的一部分，但协议的具体代码实现属于工程实现范畴"
+        ],
+        "unit_constraints": [],
+        "key_terms": [
+          "网络体系结构",
+          "不属于",
+          "功能",
+          "接口",
+          "协议",
+          "实现细节"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "A",
+          "content": "每一层的功能",
+          "error_type": "混淆概念",
+          "targeted_misconception": "误以为体系结构只规定接口而不规定功能，实际上定义每层功能是体系结构的核心任务之一"
+        },
+        {
+          "option": "B",
+          "content": "层与层之间的接口",
+          "error_type": "混淆概念",
+          "targeted_misconception": "误以为接口属于实现细节，实际上服务访问点（SAP）和接口定义是体系结构的关键组成部分"
+        },
+        {
+          "option": "D",
+          "content": "每一层使用的协议",
+          "error_type": "混淆概念",
+          "targeted_misconception": "误以为协议的具体实现细节等同于协议本身，实际上体系结构规定了各层应遵循的协议规范，但不规定如何实现这些协议"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "网络体系结构（如OSI参考模型或TCP/IP模型）主要定义分层结构、各层功能、层间接口以及各层使用的协议规范。它不涉及协议的具体代码实现或硬件实现细节，这些属于实现层面（Implementation）的内容。因此，C选项‘协议的实现细节’不属于网络体系结构的描述内容。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "网络体系结构的定义与组成",
+          "description": "网络体系结构是指计算机网络的各层及其协议的集合。它具体包括：1. 网络中各层及其功能；2. 各层之间的接口；3. 各层所采用的协议。它不涉及协议的具体实现细节。",
+          "subtype": "definition",
+          "subject": "计算机网络"
+        },
+        {
+          "name": "协议实现细节的归属",
+          "description": "协议的具体实现（如代码、硬件逻辑）属于具体的工程实现范畴，不属于抽象的网络体系结构描述内容。",
+          "subtype": "rule",
+          "subject": "计算机网络"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "抽象层次与具体实现的区分机制",
+          "description": "网络体系结构是一个抽象的模型，旨在标准化通信规则而非规定具体实现。在判断某项内容是否属于体系结构时，需依据其是否属于‘逻辑规则’（如功能、接口、协议定义）而非‘物理/代码实现’（如具体算法代码、硬件电路）。",
+          "affects_what": "影响对‘网络体系结构包含内容’的判断，帮助排除‘协议实现细节’这一干扰项",
+          "common_misunderstanding": "误认为协议本身包含其具体实现代码，或者认为体系结构规定了具体的软件实现方式",
+          "subject": "计算机网络"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "否定性排除触发",
+          "source_signals": [
+            {
+              "signal_type": "qualifier",
+              "value": "不属于"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "题干包含否定词（如'不属于'、'错误的是'）",
+              "考察对象为定义性或构成性概念（如网络体系结构）"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "reasoning_pattern",
+                "target_name": "反向验证法",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "用户可能习惯性寻找'属于'的选项，导致选错答案或逻辑混乱",
+            "无法正确识别题目要求是找出例外项，而非核心项"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "不属于",
+              "错误的是"
+            ],
+            "must_expose_failure_mode": "用户忽略否定词，直接选择最符合定义的选项",
+            "expected_wrong_reason_if_missed": "审题不清，将否定题当作肯定题处理"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "easy"
+        },
+        {
+          "name": "抽象与实现边界触发",
+          "source_signals": [
+            {
+              "signal_type": "keyword",
+              "value": "网络体系结构"
+            },
+            {
+              "signal_type": "keyword",
+              "value": "实现细节"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "考察对象涉及体系结构、协议栈或分层模型",
+              "选项中包含具体的代码、硬件、算法实现或物理细节"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "抽象层次与具体实现的区分机制",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "网络体系结构的定义与组成",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "误认为协议的具体实现代码属于体系结构的一部分",
+            "混淆'协议规范'（逻辑规则）与'协议实现'（工程代码）的界限",
+            "选择C（实现细节）作为体系结构的一部分，从而排除错误答案"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "体系结构",
+              "实现细节",
+              "代码",
+              "具体算法"
+            ],
+            "must_expose_failure_mode": "用户无法区分逻辑定义与物理/代码实现",
+            "expected_wrong_reason_if_missed": "概念混淆，认为体系结构规定了具体的软件实现方式"
+          },
+          "diagnostic_value": 0.95,
+          "difficulty": "medium"
+        },
+        {
+          "name": "体系结构组成要素识别",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "考察对象为网络体系结构"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "题目询问体系结构的内容",
+              "选项涉及层功能、接口、协议定义"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "网络体系结构的定义与组成",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "无法确认A、B、D属于体系结构的标准组成部分",
+            "对体系结构的定义记忆模糊，导致无法排除正确选项"
+          ],
+          "diagnostic_role": "missed_condition",
+          "generation_constraints": {
+            "must_include_signals": [
+              "层的功能",
+              "接口",
+              "协议"
+            ],
+            "must_expose_failure_mode": "用户不知道体系结构包含哪些基本要素",
+            "expected_wrong_reason_if_missed": "基础知识缺失，无法识别标准定义"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "easy"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "协议的具体实现",
+          "blocks_pattern": "全包含谬误（认为协议包含其所有方面）",
+          "reason": "体系结构只规定协议的行为规范（语法、语义、时序），不规定具体的代码实现或硬件电路。该信号明确划定了边界，阻断了将'实现'归入'结构'的错误路径。"
+        },
+        {
+          "signal": "不属于",
+          "blocks_pattern": "正向匹配惯性",
+          "reason": "该否定词强制用户进行排除法思考，阻断了直接寻找'最相关'选项的直觉路径，防止用户因惯性思维选择描述最详细的选项（如C）。"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "定义边界排除法",
+      "subject": "计算机网络",
+      "applicable_conditions": [
+        "题目询问某个概念（如网络体系结构、协议、服务）的定义、组成或包含内容",
+        "题干包含否定词（如'不属于'、'错误的是'、'例外'），要求找出非核心或非定义内的选项",
+        "选项中混合了抽象逻辑定义（功能、接口、规范）与具体工程实现（代码、硬件、算法细节）"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "审题与否定词识别",
+          "description": "识别题干中的核心考察对象（如网络体系结构）以及逻辑要求（如'不属于'）。确认这是一道否定性选择题，目标是寻找'例外项'而非'正确项'。",
+          "input": "题干文本",
+          "output": "确定的考察对象和逻辑方向（正向/反向）",
+          "required_knowledge": [
+            "基本逻辑判断能力"
+          ],
+          "common_error_at_this_step": "忽略'不属于'等否定词，习惯性寻找最符合定义的选项，导致最终选择错误。"
+        },
+        {
+          "order": 2,
+          "name": "核心概念定义检索",
+          "description": "回忆或检索考察对象的标准定义。明确该概念在学术或工程标准中明确包含的要素（如网络体系结构包含：层功能、层间接口、层间协议）。",
+          "input": "考察对象名称",
+          "output": "该概念的标准组成要素列表",
+          "required_knowledge": [
+            "网络体系结构的定义与组成"
+          ],
+          "common_error_at_this_step": "对定义记忆模糊，无法准确列出标准组成部分，导致无法有效排除干扰项。"
+        },
+        {
+          "order": 3,
+          "name": "抽象与实现边界划分",
+          "description": "应用'抽象层次与具体实现的区分机制'。将选项内容分类为'逻辑/规范层面'（属于体系结构）或'物理/代码实现层面'（不属于体系结构）。明确体系结构规定'做什么'（What），而不规定'怎么做'（How/Implementation）。",
+          "input": "选项列表，核心概念定义",
+          "output": "每个选项的属性标签（逻辑定义 vs 具体实现）",
+          "required_knowledge": [
+            "抽象层次与具体实现的区分机制",
+            "协议实现细节的归属"
+          ],
+          "common_error_at_this_step": "混淆'协议规范'与'协议实现'，误认为具体的代码实现或硬件逻辑也是体系结构的一部分。"
+        },
+        {
+          "order": 4,
+          "name": "反向验证与排除",
+          "description": "根据步骤1确定的'反向'逻辑，逐一验证选项。如果选项属于标准定义或逻辑层面，则排除；如果选项属于具体实现层面或不在定义范围内，则保留。最终确定唯一不属于体系结构描述的选项。",
+          "input": "选项属性标签，逻辑方向（反向）",
+          "output": "最终答案选项",
+          "required_knowledge": [
+            "逻辑推理能力"
+          ],
+          "common_error_at_this_step": "在排除过程中逻辑混乱，或者因为某个选项描述非常详细（如实现细节）而误以为它更重要从而选中它。"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 1,
+          "reason": "审题惯性导致忽略否定词",
+          "error_manifestation": "用户直接选择了描述最准确、最核心的选项（如A、B、D），而题目要求选'不属于'的，导致选错。"
+        },
+        {
+          "step": 3,
+          "reason": "概念边界模糊，混淆规范与实现",
+          "error_manifestation": "用户认为'协议的实现细节'也是网络体系结构的一部分，因为协议是体系结构的核心，从而无法排除C选项，或者误选其他选项。"
+        }
+      ],
+      "can_verify_with_code": false,
+      "verification_approach": "此类题目属于概念辨析题，无法通过代码运行验证，需依赖知识库中的定义准确性进行逻辑比对。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "C",
+          "option_content": "协议的实现细节"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [
+              {
+                "trigger": "否定性排除触发",
+                "target_type": "reasoning_pattern",
+                "target_name": "反向验证法",
+                "reason": "not found in any entity set"
+              }
+            ],
+            "type_mismatches": [],
+            "known_names_count": 4
+          },
+          "pattern_knowledge": {
+            "orphan_targets": [
+              {
+                "step": 1,
+                "required_knowledge": "基本逻辑判断能力"
+              },
+              {
+                "step": 4,
+                "required_knowledge": "逻辑推理能力"
+              }
+            ]
+          },
+          "orphan_targets": [
+            {
+              "trigger": "否定性排除触发",
+              "target_type": "reasoning_pattern",
+              "target_name": "反向验证法",
+              "reason": "not found in any entity set"
+            },
+            {
+              "step": 1,
+              "required_knowledge": "基本逻辑判断能力"
+            },
+            {
+              "step": 4,
+              "required_knowledge": "逻辑推理能力"
+            }
+          ],
+          "type_mismatches": []
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "answer_consistency_check": {
+          "raw_answer": "C",
+          "option_content": "协议的实现细节",
+          "derived_value": "C",
+          "is_consistent": true,
+          "notes": "规则校验结果已确认答案一致，且领域知识判断正确：网络体系结构定义包含层功能、接口和协议规范，不包含实现细节。"
+        },
+        "domain_review": {
+          "major_issues": [
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "trigger_rules[0].activates.targets[0].target_name",
+              "evidence_text": "反向验证法",
+              "reason": "触发规则'否定性排除触发'激活了名为'反向验证法'的推理模式，但在提供的'推理模式'实体集中，实际定义的推理模式名称为'定义边界排除法'。存在引用不匹配（Orphan Reference）。",
+              "severity": "medium",
+              "suggested_action": "needs_human_check"
+            },
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "reasoning_pattern.steps[1].required_knowledge",
+              "evidence_text": "基本逻辑判断能力",
+              "reason": "推理模式步骤1中要求的知识'基本逻辑判断能力'未在'知识单元'列表中定义。虽然这是通用能力，但在结构化题库中，通常期望引用具体的知识单元或标记为通用技能，此处作为具体required_knowledge出现且无对应实体，属于孤儿引用。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            },
+            {
+              "issue_type": "unsupported_trigger",
+              "evidence_path": "reasoning_pattern.steps[4].required_knowledge",
+              "evidence_text": "逻辑推理能力",
+              "reason": "推理模式步骤4中要求的知识'逻辑推理能力'未在'知识单元'列表中定义，属于孤儿引用。",
+              "severity": "low",
+              "suggested_action": "candidate"
+            }
+          ],
+          "minor_issues": [],
+          "uncertain_items": []
+        },
+        "review_summary": "题目内容、答案及核心解析在领域知识上是准确且一致的。主要问题在于数据结构的完整性：触发规则引用的推理模式名称（'反向验证法'）与实际定义的推理模式名称（'定义边界排除法'）不匹配，且推理步骤中引用的部分基础知识（如'基本逻辑判断能力'）在知识单元库中缺失。这些问题属于数据抽取或组装时的引用错误，不影响题目本身的正确性，但影响系统的结构化可用性。",
+        "recommended_status": "needs_human_check"
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "3 orphan reference(s) in triggers/pattern",
+          "Domain: unsupported_trigger — 触发规则'否定性排除触发'激活了名为'反向验证法'的推理模式，但在提供的'推理模式'实体集中，实际定义的推理模式名称为'定义边界排除法'。存在引用不匹配（Orphan Reference）。",
+          "Domain: unsupported_trigger — 推理模式步骤1中要求的知识'基本逻辑判断能力'未在'知识单元'列表中定义。虽然这是通用能力，但在结构化题库中，通常期望引用具体的知识单元或标记为通用技能，此处作为具体required_knowledg",
+          "Domain: unsupported_trigger — 推理模式步骤4中要求的知识'逻辑推理能力'未在'知识单元'列表中定义，属于孤儿引用。"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "2010-33",
+      "type": "单选题",
+      "prompt": "[2010年考研真题第33题]下列选项中，不属于网络体系结构中所描述的内容是（ ）。\nA. 每一层的功能  B. 层与层之间的接口  C. 协议的实现细节  D. 每一层使用的协议",
+      "answer": "C"
+    }
+  },
+  {
+    "question_id": "2012-02",
+    "question_structure": {
+      "question_id": "2012-CS-02",
+      "question_type": "单选题",
+      "subject": "数据结构",
+      "year": "2012",
+      "stem": "[2012年考研真题第2题]已知一棵完全二叉树有700个结点，则该二叉树中有100个叶子结点。该说法是否正确？若不正确，请给出正确答案。",
+      "options": {
+        "A": "正确",
+        "B": "错误，叶子结点数为350",
+        "C": "错误，叶子结点数为349",
+        "D": "错误，叶子结点数为351"
+      },
+      "correct_answer": "B",
+      "structure": {
+        "given_conditions": [
+          "二叉树为完全二叉树",
+          "结点总数 n = 700"
+        ],
+        "asked_target": "判断“叶子结点数为100”这一说法是否正确，并求出实际叶子结点数",
+        "hidden_constraints": [
+          "完全二叉树的性质：度为0的结点（叶子）n0与度为2的结点n2满足 n0 = n2 + 1",
+          "完全二叉树中度为1的结点n1只能为0或1",
+          "总结点数 n = n0 + n1 + n2"
+        ],
+        "unit_constraints": [],
+        "key_terms": [
+          "完全二叉树",
+          "结点",
+          "叶子结点"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "A",
+          "content": "正确",
+          "error_type": "概念混淆",
+          "targeted_misconception": "误以为叶子结点数与总结点数存在简单的线性比例关系，或者完全不知道如何计算叶子结点，盲目猜测。"
+        },
+        {
+          "option": "C",
+          "content": "错误，叶子结点数为349",
+          "error_type": "计算错误",
+          "targeted_misconception": "在应用公式 n0 = floor((n+1)/2) 时，错误地认为 n 为偶数时需要减1再除以2，或者对向下取整理解有误。"
+        },
+        {
+          "option": "D",
+          "content": "错误，叶子结点数为351",
+          "error_type": "公式误用",
+          "targeted_misconception": "错误地使用了向上取整公式 ceil((n+1)/2) 或者误以为 n0 = (n+1)/2 且 n 为偶数时结果加0.5后向上取整。"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "根据完全二叉树性质，n = n0 + n1 + n2，且 n0 = n2 + 1。因此 n = 2n0 + n1 - 1。当 n=700（偶数）时，n1 必须为 0（因为若 n1=1，则 2n0 = 700，n0=350，此时 n=2*350+1-1=700，等等，这里推导需严谨：n=700，若n1=0，2n0=700 => n0=350；若n1=1，2n0=699，无整数解。故n1=0, n0=350）。或者直接使用公式 n0 = floor((n+1)/2) = floor(701/2) = 350。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "完全二叉树定义",
+          "description": "深度为k的有n个结点的二叉树，当且仅当其每一个结点都与深度为k的满二叉树中编号从1至n的结点一一对应时，称之为完全二叉树。",
+          "subtype": "definition",
+          "subject": "数据结构"
+        },
+        {
+          "name": "二叉树结点度数关系",
+          "description": "在任意二叉树中，度为0的结点（叶子结点）数 n0 与度为2的结点 n2 满足关系：n0 = n2 + 1。",
+          "subtype": "formula",
+          "subject": "数据结构"
+        },
+        {
+          "name": "完全二叉树中度为1的结点性质",
+          "description": "在完全二叉树中，度为1的结点 n1 的数量只能是 0 或 1。",
+          "subtype": "rule",
+          "subject": "数据结构"
+        },
+        {
+          "name": "完全二叉树叶子结点计算公式",
+          "description": "对于有 n 个结点的完全二叉树，叶子结点 n0 的数量为 ceil(n/2) 或 floor((n+1)/2)。",
+          "subtype": "formula",
+          "subject": "数据结构"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "奇偶性对 n1 的约束机制",
+          "description": "完全二叉树的总结点数 n 的奇偶性决定了度为1的结点 n1 的值。若 n 为偶数，则 n1=1；若 n 为奇数，则 n1=0。这一机制是推导具体叶子结点数的关键步骤，因为它确定了方程组中的变量值。",
+          "affects_what": "确定 n1 的值，进而通过 n = n0 + n1 + n2 和 n0 = n2 + 1 求解 n0",
+          "common_misunderstanding": "误以为完全二叉树中 n1 始终为 0，或者忽略 n1 的存在直接套用 n0 = n/2 的近似公式导致精度错误。",
+          "subject": "数据结构"
+        },
+        {
+          "name": "结构紧凑性对叶子分布的影响",
+          "description": "完全二叉树除了最后一层外，其他层都是满的，且最后一层结点靠左排列。这种结构特性导致叶子结点主要集中在最后一层，使得叶子结点数量大致占总结点的一半。",
+          "affects_what": "快速估算叶子结点数量范围，验证计算结果的合理性",
+          "common_misunderstanding": "混淆完全二叉树与满二叉树或一般二叉树的叶子结点分布规律，错误地认为叶子结点数量可以任意分布。",
+          "subject": "数据结构"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "完全二叉树奇偶性约束机制",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "完全二叉树"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "结点总数 n = 700"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "题目指定为完全二叉树",
+              "给出了具体的结点总数 n"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "奇偶性对 n1 的约束机制",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "完全二叉树叶子结点计算公式",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "忽略 n 的奇偶性对 n1 的影响，错误地认为 n1 始终为 0 或随意取值，导致无法建立正确的方程组 n = n0 + n1 + n2。",
+            "直接使用 n0 = n/2 进行估算而未考虑取整规则，导致结果偏差（例如误判为 350 但理由错误，或者在 n 为奇数时出错）。"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "完全二叉树",
+              "具体结点数值"
+            ],
+            "must_expose_failure_mode": "学生是否知道 n 为偶数时 n1=1，n 为奇数时 n1=0",
+            "expected_wrong_reason_if_missed": "混淆完全二叉树与满二叉树的性质，或者忘记度为1的结点存在的可能性，直接套用 n0 = n2 + 1 但无法解出 n0 因为缺少 n1 的信息。"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "medium"
+        },
+        {
+          "name": "叶子结点数量判定与计算",
+          "source_signals": [
+            {
+              "signal_type": "asked_target",
+              "value": "判断“叶子结点数为100”是否正确"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "n = 700"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "题目要求判断一个具体的叶子结点数值",
+              "已知总结点数"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "reasoning_pattern",
+                "target_name": "数值代入验证模式",
+                "action": "activate"
+              },
+              {
+                "target_type": "knowledge",
+                "target_name": "完全二叉树叶子结点计算公式",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "没有实际计算叶子结点数量，仅凭直觉或错误记忆（如认为叶子结点很少）直接判断对错。",
+            "计算错误，例如误用满二叉树公式或算术错误，导致得出错误的叶子结点数量（如题目中的100）。"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "具体的错误陈述（如100个叶子）",
+              "总结点数"
+            ],
+            "must_expose_failure_mode": "学生是否能正确应用公式 n0 = ceil(n/2) 或 floor((n+1)/2)",
+            "expected_wrong_reason_if_missed": "对完全二叉树叶子结点占比（约一半）缺乏数量级概念，或者公式记忆模糊，导致无法反驳题干中的错误数值。"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "easy"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "完全二叉树",
+          "blocks_pattern": "一般二叉树度数关系直接求解法",
+          "reason": "在一般二叉树中，仅知道 n 和 n0=n2+1 无法唯一确定 n0，因为 n1 可以是任意值。完全二叉树的约束锁定了 n1 的值，使得问题有唯一解。如果忽略“完全”二字，会误以为条件不足或随意假设 n1。"
+        },
+        {
+          "signal": "n = 700 (偶数)",
+          "blocks_pattern": "满二叉树假设",
+          "reason": "满二叉树的结点总数必须是 2^k - 1（奇数）。700 不是 2^k - 1 的形式，因此不可能是满二叉树。如果忽略奇偶性或数值特性，可能会错误地尝试将其视为满二叉树处理，导致逻辑矛盾。"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "完全二叉树叶子结点计算与验证模式",
+      "subject": "数据结构",
+      "applicable_conditions": [
+        "题目明确指定为完全二叉树",
+        "已知二叉树的总结点数 n",
+        "需要求解叶子结点数量 n0 或验证给定的叶子结点数量是否正确"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "判定总结点数奇偶性",
+          "description": "检查给定的总结点数 n 是奇数还是偶数。",
+          "input": "总结点数 n",
+          "output": "n 的奇偶性（奇数/偶数）",
+          "required_knowledge": [
+            "整数奇偶性定义"
+          ],
+          "common_error_at_this_step": "计算错误或看错数字，导致奇偶性判断失误。"
+        },
+        {
+          "order": 2,
+          "name": "确定度为1的结点数 n1",
+          "description": "根据完全二叉树的性质，由 n 的奇偶性确定度为1的结点数量 n1。若 n 为奇数，n1=0；若 n 为偶数，n1=1。",
+          "input": "n 的奇偶性",
+          "output": "n1 的值 (0 或 1)",
+          "required_knowledge": [
+            "完全二叉树中度为1的结点性质",
+            "奇偶性对 n1 的约束机制"
+          ],
+          "common_error_at_this_step": "混淆奇偶性与 n1 的对应关系（如误以为偶数时 n1=0），或忽略 n1 的存在直接假设 n1=0。"
+        },
+        {
+          "order": 3,
+          "name": "建立并求解叶子结点数 n0",
+          "description": "利用二叉树基本性质 n0 = n2 + 1 和总结点公式 n = n0 + n1 + n2，联立求解 n0。或者直接应用公式 n0 = ceil(n/2) 或 n0 = floor((n+1)/2)。",
+          "input": "n, n1",
+          "output": "叶子结点数 n0",
+          "required_knowledge": [
+            "二叉树结点度数关系",
+            "完全二叉树叶子结点计算公式"
+          ],
+          "common_error_at_this_step": "公式记忆错误（如误用 n0 = n/2 而不考虑取整），或代数运算错误。"
+        },
+        {
+          "order": 4,
+          "name": "对比验证结论",
+          "description": "将计算出的 n0 与题目中给出的数值（如100）进行对比，判断说法是否正确，并输出正确结果。",
+          "input": "计算出的 n0, 题目声称的 n0_claim",
+          "output": "判断结果（正确/错误）及正确数值",
+          "required_knowledge": [
+            "数值比较"
+          ],
+          "common_error_at_this_step": "未进行实际计算，仅凭直觉（如认为100太小）判断，或者计算正确但未能指出题目说法的错误。"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 2,
+          "reason": "学生往往只记得 n0 = n2 + 1 这一通用性质，而忽略了完全二叉树特有的 n1 约束。如果不先确定 n1，就无法从 n = n0 + n1 + n2 中解出唯一的 n0。",
+          "error_manifestation": "列出方程组后无法求解，或者错误地假设 n1=0 导致计算结果偏差（例如当 n=700 时，若误设 n1=0，会算出 n0=350.5，进而可能错误取整或困惑）。"
+        },
+        {
+          "step": 3,
+          "reason": "对完全二叉树叶子结点公式的记忆模糊，容易与满二叉树或其他结构混淆，或者在取整方向上出错（ceil vs floor）。",
+          "error_manifestation": "计算出错误的叶子结点数量，例如对于 n=700，可能错误地认为 n0 = 349 或 351，或者直接使用 n/2 = 350 但理由错误（虽然结果碰巧对，但逻辑不严谨，在 n 为奇数时会出错）。"
+        }
+      ],
+      "can_verify_with_code": true,
+      "verification_approach": "编写一个简单的 Python 函数，输入 n，根据 n % 2 判断 n1，然后计算 n0 = (n - n1) // 2 + 1 或使用 math.ceil(n / 2)，输出结果并与手动计算结果对比。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "B",
+          "option_content": "错误，叶子结点数为350"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [
+              {
+                "trigger": "叶子结点数量判定与计算",
+                "target_type": "reasoning_pattern",
+                "target_name": "数值代入验证模式",
+                "reason": "not found in any entity set"
+              }
+            ],
+            "type_mismatches": [],
+            "known_names_count": 7
+          },
+          "pattern_knowledge": {
+            "orphan_targets": [
+              {
+                "step": 1,
+                "required_knowledge": "整数奇偶性定义"
+              },
+              {
+                "step": 4,
+                "required_knowledge": "数值比较"
+              }
+            ]
+          },
+          "orphan_targets": [
+            {
+              "trigger": "叶子结点数量判定与计算",
+              "target_type": "reasoning_pattern",
+              "target_name": "数值代入验证模式",
+              "reason": "not found in any entity set"
+            },
+            {
+              "step": 1,
+              "required_knowledge": "整数奇偶性定义"
+            },
+            {
+              "step": 4,
+              "required_knowledge": "数值比较"
+            }
+          ],
+          "type_mismatches": []
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "domain_review": {
+          "major_issues": [],
+          "minor_issues": [],
+          "uncertain_items": []
+        },
+        "review_summary": "JSON parse failed",
+        "recommended_status": "needs_human_check",
+        "reviewer_reasoning": ""
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "3 orphan reference(s) in triggers/pattern"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "2012-02",
+      "type": "单选题",
+      "prompt": "[2012年考研真题第2题]已知一棵完全二叉树有700个结点，则该二叉树中有100个叶子结点。该说法是否正确？若不正确，请给出正确答案。",
+      "answer": "不完全正确。700个结点的完全二叉树，叶子结点数为350个。由完全二叉树性质：n0 = (n+1)/2 向下取整 = 350。"
+    }
+  },
+  {
+    "question_id": "crc-link",
+    "question_structure": {
+      "question_id": "408-CRC-001",
+      "question_type": "综合题",
+      "subject": "计算机网络",
+      "year": null,
+      "stem": "小亮在开发物联网设备时，想要为设备的网络通讯定制专用的数据链路层。其中，为确保数据传输的正确性，拟使用循环冗余校验码（CRC）进行差错检测。设待发送的数据比特串为101001，生成多项式G(x)=x³+1。请计算CRC校验码。",
+      "options": {
+        "A": "001",
+        "B": "010",
+        "C": "100",
+        "D": "111"
+      },
+      "correct_answer": "A",
+      "structure": {
+        "given_conditions": [
+          "待发送数据比特串：101001",
+          "生成多项式 G(x) = x³ + 1"
+        ],
+        "asked_target": "计算CRC校验码（即余数）",
+        "hidden_constraints": [
+          "生成多项式对应的除数二进制表示为 1001（对应 x³+0x²+0x+1）",
+          "数据位后需补零的位数等于生成多项式的阶数（3位）",
+          "除法运算为模2除法（异或运算，无借位）",
+          "余数的位数必须与生成多项式的阶数相同（3位），不足高位补0"
+        ],
+        "unit_constraints": [
+          "结果为3位二进制比特串"
+        ],
+        "key_terms": [
+          "循环冗余校验码",
+          "CRC",
+          "生成多项式",
+          "模2除法"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "B",
+          "content": "010",
+          "error_type": "计算错误",
+          "targeted_misconception": "在进行模2除法时，某一步骤的异或运算出错，或者对余数位数处理不当。"
+        },
+        {
+          "option": "C",
+          "content": "100",
+          "error_type": "计算错误",
+          "targeted_misconception": "可能将生成多项式误认为 x³+x 或其他形式，导致除数错误，从而得出错误余数。"
+        },
+        {
+          "option": "D",
+          "content": "111",
+          "error_type": "概念混淆",
+          "targeted_misconception": "可能直接对数据进行某种简单的奇偶校验或其他非CRC算法的误用，或者完全随机猜测。"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "正确解题路径：1. 确定除数：G(x)=x³+1 对应二进制 1001。2. 确定被除数：数据 101001 后补3个0，得到 101001000。3. 执行模2除法：101001000 / 1001。过程如下：\n  101001000\n  1001\n  ----\n   0110\n   0000 (首位为0，商0，下移)\n   ----\n    1100\n    1001\n    ----\n     1010\n     1001\n     ----\n      0110\n      0000 (首位为0，商0)\n      ----\n       1100\n       1001\n       ----\n        101\n        000 (余数位数不足，补0至3位)\n        ----\n         1010\n         1001\n         ----\n          011 -> 这里重新仔细计算：\n          101001000\n          1001\n          ----\n           1100\n           1001\n           ----\n            1010\n            1001\n            ----\n             0110\n             0000\n             ----\n              1100\n              1001\n              ----\n               101\n               000 (余数)\n               等等，让我们重新手算一遍：\n               被除数: 101001000\n               除数:   1001\n               \n               Step 1: 1010 XOR 1001 = 0011 -> 余 11, 下一位 0 -> 110\n               Step 2: 110 < 1001 (位数不够), 商0, 下一位 1 -> 1101\n               Step 3: 1101 XOR 1001 = 0100 -> 余 100, 下一位 0 -> 1000\n               Step 4: 1000 XOR 1001 = 0001 -> 余 1, 下一位 0 -> 10\n               Step 5: 10 < 1001, 商0, 下一位 0 -> 100\n               Step 6: 100 < 1001, 商0, 下一位 0 -> 1000\n               Step 7: 1000 XOR 1001 = 0001 -> 余 1\n               \n               哎呀，上面的手算似乎有点乱，让我们用标准竖式：\n               \n                 1011001  (商，不重要)\n               _________\n               1001 ) 101001000\n                      1001\n                      ----\n                       01100\n                       00000  (因为首位是0，实际上看做 1100)\n                       ----\n                        11001\n                        10010 (错位了，应该是 1100 对齐)\n                        \n               重新来：\n               101001000\n               1001\n               ----\n                1100  (1010 ^ 1001 = 0011, 补下一位0 -> 110)\n                0000  (110 < 1001, 商0, 补下一位1 -> 1101)\n                ----\n                 1101\n                 1001\n                 ----\n                  1000 (1101 ^ 1001 = 0100, 补下一位0 -> 1000)\n                  1001\n                  ----\n                   0010 (1000 ^ 1001 = 0001, 补下一位0 -> 10)\n                   0000 (10 < 1001, 商0, 补下一位0 -> 100)\n                   ----\n                    1000 (100 < 1001, 商0, 补下一位0 -> 1000)\n                    1001\n                    ----\n                     001 (1000 ^ 1001 = 0001)\n               \n               余数是 001。答案正确。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "生成多项式与除数的二进制映射",
+          "description": "生成多项式 G(x) 的系数对应二进制除数的位，x^n 对应第 n 位为 1，缺失项为 0。例如 G(x)=x³+1 对应二进制 1001。",
+          "subtype": "rule",
+          "subject": "计算机网络"
+        },
+        {
+          "name": "CRC校验码位数确定规则",
+          "description": "CRC校验码（余数）的位数等于生成多项式的最高次幂（阶数）。本题中 G(x)=x³+1，阶数为3，故校验码为3位。",
+          "subtype": "rule",
+          "subject": "计算机网络"
+        },
+        {
+          "name": "模2除法定义",
+          "description": "模2除法即异或运算，加减法均按位异或处理，不产生进位和借位。",
+          "subtype": "definition",
+          "subject": "计算机网络"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "数据补零机制",
+          "description": "在进行CRC计算前，必须在原始数据比特串后补上与生成多项式阶数相同数量的0，作为被除数。这是为了预留校验码的位置。",
+          "affects_what": "决定被除数的具体数值（101001 -> 101001000），直接影响除法运算的起始状态和最终余数。",
+          "common_misunderstanding": "忘记补零，直接对原始数据进行除法运算，导致结果错误。",
+          "subject": "计算机网络"
+        },
+        {
+          "name": "余数位数补齐机制",
+          "description": "模2除法得到的余数位数必须与生成多项式的阶数一致。如果计算出的余数位数不足，需要在高位补0。",
+          "affects_what": "决定最终输出的CRC校验码格式。例如余数为1时，需表示为001。",
+          "common_misunderstanding": "直接输出计算出的余数值（如1），而忽略了高位补0的要求，导致校验码长度错误。",
+          "subject": "计算机网络"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "生成多项式阶数识别与除数映射",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "G(x) = x³ + 1"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "识别到多项式表达式",
+              "确定最高次幂为3"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "生成多项式与除数的二进制映射",
+                "action": "activate"
+              },
+              {
+                "target_type": "mechanism",
+                "target_name": "数据补零机制",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "无法确定除数的二进制形式（误认为101或111等）",
+            "无法确定需要补零的位数（误补2位或4位）",
+            "导致整个除法运算基准错误"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "明确的生成多项式表达式"
+            ],
+            "must_expose_failure_mode": "除数二进制转换错误",
+            "expected_wrong_reason_if_missed": "未能正确将多项式系数映射为二进制位，特别是忽略中间缺失项（如x^2, x^1）对应的0"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "medium"
+        },
+        {
+          "name": "被除数构造（数据补零）",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "待发送数据比特串：101001"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "G(x) = x³ + 1"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "获取原始数据比特串",
+              "从生成多项式确定阶数k=3"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "数据补零机制",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "直接对原始数据101001进行除法，导致余数计算错误",
+            "补零数量错误，导致对齐位置错误"
+          ],
+          "diagnostic_role": "missed_condition",
+          "generation_constraints": {
+            "must_include_signals": [
+              "原始数据比特串",
+              "生成多项式"
+            ],
+            "must_expose_failure_mode": "忘记在数据后补零",
+            "expected_wrong_reason_if_missed": "混淆CRC计算过程，误以为直接对原始数据求余即可，未预留校验位空间"
+          },
+          "diagnostic_value": 0.85,
+          "difficulty": "medium"
+        },
+        {
+          "name": "模2除法运算执行",
+          "source_signals": [
+            {
+              "signal_type": "key_terms",
+              "value": "循环冗余校验码",
+              "action": "implied_operation"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "G(x) = x³ + 1"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "识别为CRC计算问题",
+              "已构造好被除数和除数"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "模2除法定义",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "使用普通二进制除法（带借位/进位），导致中间步骤和最终余数错误",
+            "在异或运算中出错（如1+1=0而非2）"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "CRC相关术语"
+            ],
+            "must_expose_failure_mode": "使用算术除法代替模2除法",
+            "expected_wrong_reason_if_missed": "未区分模2运算与普通算术运算的区别，错误地执行了借位或进位操作"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "medium"
+        },
+        {
+          "name": "余数格式规范化（高位补零）",
+          "source_signals": [
+            {
+              "signal_type": "asked_target",
+              "value": "计算CRC校验码"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "G(x) = x³ + 1"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "得到除法余数",
+              "余数位数小于生成多项式阶数"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "余数位数补齐机制",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "输出余数'1'而不是'001'，导致校验码长度不匹配",
+            "无法与接收端预期的固定长度校验码进行比对"
+          ],
+          "diagnostic_role": "blocks_wrong_pattern",
+          "generation_constraints": {
+            "must_include_signals": [
+              "生成多项式阶数",
+              "可能导致短余数的数据"
+            ],
+            "must_expose_failure_mode": "余数位数不足时未补零",
+            "expected_wrong_reason_if_missed": "认为余数就是最终结果，忽略了校验码必须具有固定长度（等于生成多项式阶数）的约束"
+          },
+          "diagnostic_value": 0.75,
+          "difficulty": "easy"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "G(x) = x³ + 1",
+          "blocks_pattern": "使用算术除法（带借位）",
+          "reason": "CRC协议明确定义使用模2运算（异或），算术除法会引入借位逻辑，完全违背CRC的代数结构（GF(2)域）"
+        },
+        {
+          "signal": "待发送数据比特串：101001",
+          "blocks_pattern": "直接对原始数据求余",
+          "reason": "CRC校验码是附加在数据之后的，计算时必须将数据左移（补零）以模拟传输过程，直接求余得到的是数据本身的余数，而非校验码"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "CRC校验码计算",
+      "subject": "计算机网络",
+      "applicable_conditions": [
+        "题目涉及循环冗余校验（CRC）差错检测",
+        "给定待发送数据比特串",
+        "给定生成多项式 G(x)",
+        "要求计算CRC校验码（即余数）"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "确定生成多项式阶数与除数二进制表示",
+          "description": "分析生成多项式 G(x)，确定其最高次幂 k（阶数），并将多项式系数转换为二进制除数。系数为1的位保留，缺失项补0。",
+          "input": "生成多项式 G(x)",
+          "output": "阶数 k，除数二进制串 D",
+          "required_knowledge": [
+            "生成多项式与除数的二进制映射"
+          ],
+          "common_error_at_this_step": "忽略多项式中缺失的中间项（如 x^2, x^1），导致除数二进制表示错误（例如将 x^3+1 误写为 11 而非 1001）。"
+        },
+        {
+          "order": 2,
+          "name": "构造被除数（数据补零）",
+          "description": "在原始数据比特串末尾追加 k 个 '0'，构造出用于模2除法的被除数。",
+          "input": "原始数据比特串，阶数 k",
+          "output": "被除数二进制串 M",
+          "required_knowledge": [
+            "数据补零机制"
+          ],
+          "common_error_at_this_step": "忘记补零，或者补零的数量不等于生成多项式的阶数 k。"
+        },
+        {
+          "order": 3,
+          "name": "执行模2除法运算",
+          "description": "使用模2除法（异或运算，无借位、无进位）计算 被除数 M 除以 除数 D 的余数。逐位进行异或操作，直到处理完所有位。",
+          "input": "被除数 M，除数 D",
+          "output": "原始余数 R_raw",
+          "required_knowledge": [
+            "模2除法定义"
+          ],
+          "common_error_at_this_step": "使用普通算术除法（涉及借位和进位），或者在异或运算过程中计算错误（如 1+1=0 误算为 1 或 2）。"
+        },
+        {
+          "order": 4,
+          "name": "格式化余数（高位补零）",
+          "description": "检查原始余数 R_raw 的位数。如果位数小于 k，则在高位补 '0' 直到长度为 k 位。如果位数等于 k，则保持不变。",
+          "input": "原始余数 R_raw，阶数 k",
+          "output": "CRC校验码 R_final",
+          "required_knowledge": [
+            "余数位数补齐机制"
+          ],
+          "common_error_at_this_step": "直接输出计算出的短余数（如 '1'），而忽略了必须输出 k 位二进制串（如 '001'）的要求。"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 1,
+          "reason": "未能正确理解多项式系数到二进制位的映射规则，特别是对于稀疏多项式（中间项系数为0）。",
+          "error_manifestation": "除数二进制串错误，导致后续所有除法运算基准错误。"
+        },
+        {
+          "step": 2,
+          "reason": "混淆了数据长度和校验位长度的关系，忘记在数据后预留校验位空间。",
+          "error_manifestation": "被除数构造错误，导致除法起始状态错误，最终余数完全错误。"
+        },
+        {
+          "step": 3,
+          "reason": "混淆了模2运算（GF(2)域）与普通整数算术运算的区别。",
+          "error_manifestation": "在除法过程中出现借位或进位，导致中间商和余数计算错误。"
+        },
+        {
+          "step": 4,
+          "reason": "忽略了CRC校验码作为固定长度字段的协议要求。",
+          "error_manifestation": "输出的校验码长度不符合生成多项式阶数，导致无法与接收端预期格式匹配。"
+        }
+      ],
+      "can_verify_with_code": true,
+      "verification_approach": "编写Python函数，输入数据比特串和生成多项式字符串。步骤：1. 解析多项式得到二进制除数和阶数k；2. 数据左移k位（补零）；3. 使用位运算模拟模2除法（异或）；4. 提取余数并格式化为k位二进制字符串。对比手动计算结果。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "A",
+          "option_content": "001"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [],
+            "type_mismatches": [],
+            "known_names_count": 6
+          },
+          "pattern_knowledge": {
+            "orphan_targets": []
+          },
+          "orphan_targets": [],
+          "type_mismatches": []
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "answer_consistency_check": {
+          "raw_answer": "A",
+          "option_content": "001",
+          "derived_value": "001",
+          "is_consistent": true,
+          "notes": "手动验证：G(x)=x^3+1 -> 除数1001。数据101001补3个0 -> 101001000。模2除法：101001000 / 1001。1010^1001=0011; 1100^1001=0101; 1010^1001=0011; 1100^1001=0101; 1010^1001=0011; 1100^1001=0101... 等等，重新计算：\n101001000\n1001\n----\n 1100\n 1001\n ----\n  1010\n  1001\n  ----\n   0110\n   0000 (商0)\n   ----\n    1100\n    1001\n    ----\n     101\n     000 (商0，余数位数不足)\n     ----\n      1010\n      1001\n      ----\n       011 -> 余数011? \n\n让我再仔细算一遍：\n被除数: 1 0 1 0 0 1 0 0 0\n除数:   1 0 0 1\n\n1. 1010 ^ 1001 = 0011. 下一位0 -> 110\n2. 110 < 1001 (位数不够), 商0. 下一位1 -> 1101\n3. 1101 ^ 1001 = 0100. 下一位0 -> 1000\n4. 1000 ^ 1001 = 0001. 下一位0 -> 10\n5. 10 < 1001, 商0. 下一位0 -> 100\n6. 100 < 1001, 商0. 下一位0 -> 1000\n7. 1000 ^ 1001 = 0001. 下一位无 -> 余数 1\n\n余数是 1。补齐3位 -> 001。\n计算正确。"
+        },
+        "domain_review": {
+          "major_issues": [
+            {
+              "issue_type": "hallucination",
+              "evidence_path": "题目结构.correct_answer_diagnosis.diagnostic_note",
+              "evidence_text": "哎呀，上面的手算似乎有点乱，让我们用标准竖式：... 等等，让我们重新手算一遍：... 哎呀，上面的手算似乎有点乱...",
+              "reason": "解析字段中包含了大量的自我纠正、困惑语气词（如'哎呀'、'等等'）和中间试错过程，这属于自动抽取或生成过程中的幻觉/噪声，不应出现在最终的标准化题库数据中。虽然最终结论正确，但数据质量极差，包含无效信息。",
+              "severity": "medium",
+              "suggested_action": "needs_human_check"
+            }
+          ],
+          "minor_issues": [],
+          "uncertain_items": []
+        },
+        "review_summary": "题目内容、答案、知识单元和推理模式在逻辑上是正确且一致的。CRC计算结果001是正确的。主要问题在于`correct_answer_diagnosis.diagnostic_note`字段包含了大量非标准化的、类似草稿的自我对话和计算过程，虽然最终结论正确，但作为结构化数据是不合格的，需要清洗或人工重写该解释部分。",
+        "recommended_status": "needs_human_check"
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "Domain: hallucination — 解析字段中包含了大量的自我纠正、困惑语气词（如'哎呀'、'等等'）和中间试错过程，这属于自动抽取或生成过程中的幻觉/噪声，不应出现在最终的标准化题库数据中。虽然最终结论正确，但数据质量极差，包含无效信"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "crc-link",
+      "type": "综合题",
+      "prompt": "小亮在开发物联网设备时，想要为设备的网络通讯定制专用的数据链路层。其中，为确保数据传输的正确性，拟使用循环冗余校验码（CRC）进行差错检测。设待发送的数据比特串为101001，生成多项式G(x)=x³+1。请计算CRC校验码。",
+      "answer": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。"
+    }
+  },
+  {
+    "question_id": "complement-8bit",
+    "question_structure": {
+      "question_id": "408-COMP-001",
+      "question_type": "计算题",
+      "subject": "计算机组成原理",
+      "year": "",
+      "stem": "某8位计算机系统中，所有整数均采用补码表示，每个数由1位符号位和7位数值位组成（即为8位补码整数）。已知X=-75，Y=+83，用补码求X+Y的结果，并判断是否溢出。",
+      "options": {
+        "A": "结果+8，未溢出",
+        "B": "结果-248，溢出",
+        "C": "结果+8，溢出",
+        "D": "结果-248，未溢出"
+      },
+      "correct_answer": "A",
+      "structure": {
+        "given_conditions": [
+          "8位计算机系统",
+          "整数采用补码表示",
+          "X = -75",
+          "Y = +83"
+        ],
+        "asked_target": "计算X+Y的补码结果，并判断是否发生溢出",
+        "hidden_constraints": [
+          "8位补码的表示范围是[-128, 127]",
+          "加法运算中最高位产生的进位需丢弃",
+          "异号数相加不会发生溢出"
+        ],
+        "unit_constraints": [
+          "结果需转换为十进制数值",
+          "溢出状态需明确判断"
+        ],
+        "key_terms": [
+          "补码",
+          "溢出",
+          "8位整数",
+          "符号位"
+        ]
+      },
+      "distractor_analysis": [
+        {
+          "option": "B",
+          "content": "结果-248，溢出",
+          "error_type": "计算错误与溢出误判",
+          "targeted_misconception": "错误地将补码加法结果直接解释为负数，或忽略了进位丢弃规则，且错误地认为结果超出范围即溢出（实际上异号数相加不可能溢出）"
+        },
+        {
+          "option": "C",
+          "content": "结果+8，溢出",
+          "error_type": "溢出判断错误",
+          "targeted_misconception": "正确计算了数值，但错误地应用了溢出判断规则，可能误以为只要涉及大数运算就会溢出，或者错误地检查了双符号位进位"
+        },
+        {
+          "option": "D",
+          "content": "结果-248，未溢出",
+          "error_type": "计算错误",
+          "targeted_misconception": "完全错误的二进制加法或补码转换，导致数值错误，但侥幸判断未溢出（因为-248本身不在8位补码范围内，逻辑上自相矛盾）"
+        }
+      ],
+      "correct_answer_diagnosis": {
+        "answer_status": "correct_answer_correct_reason",
+        "diagnostic_note": "X=-75的补码为10110101，Y=+83的补码为01010011。两者相加：10110101 + 01010011 = 100001000。丢弃最高位进位，得到00001000，即十进制+8。由于X和Y异号，相加结果必然在表示范围内，因此不会溢出。"
+      }
+    },
+    "knowledge_units": {
+      "knowledge_units": [
+        {
+          "name": "8位补码表示法",
+          "description": "在8位系统中，整数由1位符号位和7位数值位组成，正数补码与原码相同，负数补码为原码取反加1。",
+          "subtype": "convention",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "8位补码数值范围",
+          "description": "8位补码能表示的整数范围是[-128, 127]。",
+          "subtype": "fact",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "补码加法运算规则",
+          "description": "两个补码数相加时，符号位参与运算，最高位产生的进位直接丢弃。",
+          "subtype": "rule",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "溢出判断规则（异号数）",
+          "description": "两个符号相反的数相加，结果一定在表示范围内，不会发生溢出。",
+          "subtype": "rule",
+          "subject": "计算机组成原理"
+        }
+      ],
+      "mechanisms": [
+        {
+          "name": "模运算与进位丢弃机制",
+          "description": "补码加法基于模2^n运算，最高位的进位代表模值，在有限位宽系统中该进位被硬件自动丢弃，从而保证结果的正确性。",
+          "affects_what": "影响最终二进制结果的获取及十进制转换",
+          "common_misunderstanding": "误以为最高位进位表示溢出或需要保留进位",
+          "subject": "计算机组成原理"
+        },
+        {
+          "name": "符号位参与运算机制",
+          "description": "在补码系统中，符号位被视为数值的一部分参与加法运算，无需单独处理符号，简化了硬件设计。",
+          "affects_what": "影响加法器的逻辑设计及计算过程",
+          "common_misunderstanding": "误以为需要先判断符号再决定做加法还是减法",
+          "subject": "计算机组成原理"
+        }
+      ]
+    },
+    "trigger_rules": {
+      "trigger_rules": [
+        {
+          "name": "异号数相加溢出豁免规则",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "X = -75"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "Y = +83"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "操作数X的符号为负",
+              "操作数Y的符号为正"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "溢出判断规则（异号数）",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "未识别异号特征，错误地执行双符号位判断或单符号位进位判断，导致误判为溢出",
+            "即使计算正确，在溢出判断步骤浪费步骤或产生逻辑矛盾"
+          ],
+          "diagnostic_role": "blocks_wrong_pattern",
+          "generation_constraints": {
+            "must_include_signals": [
+              "一个正数和一个负数"
+            ],
+            "must_expose_failure_mode": "误判异号相加溢出",
+            "expected_wrong_reason_if_missed": "学生机械套用同号溢出规则，未先检查符号位"
+          },
+          "diagnostic_value": 0.9,
+          "difficulty": "easy"
+        },
+        {
+          "name": "8位补码表示范围约束",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "8位计算机系统"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "整数采用补码表示"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "位宽明确为8位",
+              "编码格式为补码"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "8位补码数值范围",
+                "action": "activate"
+              },
+              {
+                "target_type": "mechanism",
+                "target_name": "模运算与进位丢弃机制",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "使用16位或32位进行计算，导致二进制结果位数错误",
+            "误认为结果超出[-128, 127]范围即为溢出，而忽略了异号相加的特性"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "具体的位宽（如8位）",
+              "补码表示"
+            ],
+            "must_expose_failure_mode": "位宽混淆导致结果错误",
+            "expected_wrong_reason_if_missed": "未注意位宽限制，直接进行数学加法后转换，未考虑截断或溢出边界"
+          },
+          "diagnostic_value": 0.8,
+          "difficulty": "medium"
+        },
+        {
+          "name": "负数补码转换机制",
+          "source_signals": [
+            {
+              "signal_type": "given_condition",
+              "value": "X = -75"
+            },
+            {
+              "signal_type": "key_terms",
+              "value": "补码"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "存在负数操作数",
+              "要求使用补码进行运算"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "knowledge",
+                "target_name": "8位补码表示法",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "将负数原码直接参与加法，导致结果错误",
+            "取反时漏掉符号位或加1步骤错误"
+          ],
+          "diagnostic_role": "wrong_route",
+          "generation_constraints": {
+            "must_include_signals": [
+              "负数数值",
+              "补码运算要求"
+            ],
+            "must_expose_failure_mode": "负数编码错误",
+            "expected_wrong_reason_if_missed": "混淆原码与补码，或补码转换步骤（取反加1）执行错误"
+          },
+          "diagnostic_value": 0.85,
+          "difficulty": "medium"
+        },
+        {
+          "name": "进位丢弃与模运算机制",
+          "source_signals": [
+            {
+              "signal_type": "asked_target",
+              "value": "用补码求X+Y的结果"
+            },
+            {
+              "signal_type": "given_condition",
+              "value": "8位计算机系统"
+            }
+          ],
+          "activation_condition": {
+            "logic": "AND",
+            "conditions": [
+              "执行二进制加法运算",
+              "系统位宽固定（8位）"
+            ]
+          },
+          "activates": {
+            "targets": [
+              {
+                "target_type": "mechanism",
+                "target_name": "模运算与进位丢弃机制",
+                "action": "activate"
+              }
+            ]
+          },
+          "wrong_if_missing": [
+            "保留最高位进位，导致结果多出一位或数值错误",
+            "误将最高位进位视为溢出标志"
+          ],
+          "diagnostic_role": "mechanism_selection",
+          "generation_constraints": {
+            "must_include_signals": [
+              "固定位宽",
+              "补码加法"
+            ],
+            "must_expose_failure_mode": "保留进位导致结果错误",
+            "expected_wrong_reason_if_missed": "不理解补码加法的模运算本质，认为进位需要保留或代表错误"
+          },
+          "diagnostic_value": 0.7,
+          "difficulty": "medium"
+        }
+      ],
+      "negative_triggers": [
+        {
+          "signal": "X = -75, Y = +83",
+          "blocks_pattern": "双符号位溢出判断法（变形补码）",
+          "reason": "虽然双符号位法通用，但异号数相加必然不溢出，使用复杂的双符号位判断属于过度推理，且题目隐含单符号位标准补码语境。更关键的是，如果学生试图用双符号位去验证溢出，可能会因为对异号数特性不敏感而浪费步骤，但主要阻断的是‘认为异号相加可能溢出’的错误认知路径。"
+        },
+        {
+          "signal": "8位计算机系统",
+          "blocks_pattern": "自然数直接相加后判断范围",
+          "reason": "如果忽略补码机制，直接计算 -75 + 83 = 8，然后判断 8 是否在 [-128, 127] 内。虽然结果正确，但这绕过了“用补码求结果”的核心考察点（二进制运算过程）。此信号强制要求必须展示二进制转换和加法过程，而非仅做十进制算术。"
+        }
+      ]
+    },
+    "reasoning_pattern": {
+      "pattern_name": "固定位宽补码加法与溢出判定模式",
+      "subject": "计算机组成原理",
+      "applicable_conditions": [
+        "题目指定了固定的数据位宽（如8位、16位等）",
+        "整数采用补码表示",
+        "要求执行两个整数的加法运算",
+        "要求判断运算结果是否发生溢出"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "name": "操作数符号特征分析与溢出预判",
+          "description": "检查两个操作数的符号位。如果符号相反（一正一负），根据补码性质直接判定不会发生溢出，可跳过复杂的溢出检测步骤；如果符号相同，则需进行后续的标准溢出判断。",
+          "input": "操作数X和Y的十进制值或符号位",
+          "output": "溢出预判结果（溢出/不溢出/需进一步判断）",
+          "required_knowledge": [
+            "溢出判断规则（异号数）",
+            "补码符号位定义"
+          ],
+          "common_error_at_this_step": "忽略异号相加不溢出的特性，机械地套用双符号位法或进位判断法，导致步骤冗余或逻辑混乱。"
+        },
+        {
+          "order": 2,
+          "name": "十进制转补码二进制表示",
+          "description": "将给定的十进制操作数转换为指定位宽（如8位）的补码二进制形式。正数直接转换，负数需先求原码，再取反加1得到补码。",
+          "input": "十进制操作数X和Y，位宽N",
+          "output": "X和Y的N位补码二进制字符串",
+          "required_knowledge": [
+            "8位补码表示法",
+            "负数补码转换机制"
+          ],
+          "common_error_at_this_step": "负数转换时忘记“加1”步骤，或取反时错误地处理了符号位，导致二进制编码错误。"
+        },
+        {
+          "order": 3,
+          "name": "执行二进制补码加法",
+          "description": "将两个补码二进制数按位相加，包括符号位。遵循二进制加法规则（逢二进一）。",
+          "input": "X和Y的N位补码二进制字符串",
+          "output": "加法产生的二进制结果串（可能包含N+1位，即最高位进位）",
+          "required_knowledge": [
+            "补码加法运算规则",
+            "二进制加法算术"
+          ],
+          "common_error_at_this_step": "二进制加法计算错误，或误以为符号位需要特殊处理而不参与加法。"
+        },
+        {
+          "order": 4,
+          "name": "模运算处理（丢弃进位）",
+          "description": "根据固定位宽系统的模运算特性，丢弃加法产生的最高位进位（第N+1位），保留低N位作为最终的二进制结果。",
+          "input": "加法产生的二进制结果串",
+          "output": "N位的有效二进制结果",
+          "required_knowledge": [
+            "模运算与进位丢弃机制"
+          ],
+          "common_error_at_this_step": "误将最高位进位保留，导致结果位数错误；或误将最高位进位视为溢出标志（在异号相加或正确同号相加时）。"
+        },
+        {
+          "order": 5,
+          "name": "结果转换与最终溢出确认",
+          "description": "将N位二进制结果转换回十进制。如果步骤1已判定不溢出，此步仅做转换；如果步骤1判定需判断，则结合二进制结果的符号位与进位情况（如双符号位不同或单符号位进位与符号位进位不同）确认溢出状态。",
+          "input": "N位有效二进制结果，步骤1的预判结果",
+          "output": "十进制计算结果，溢出状态（True/False）",
+          "required_knowledge": [
+            "8位补码数值范围",
+            "二进制转十进制方法"
+          ],
+          "common_error_at_this_step": "二进制转十进制时符号位处理错误（如将1开头的负数补码直接按无符号数转换），或溢出判断逻辑与计算结果矛盾。"
+        }
+      ],
+      "common_breakpoints": [
+        {
+          "step": 2,
+          "reason": "负数补码转换涉及“取反加1”多步操作，记忆模糊或操作失误率高",
+          "error_manifestation": "得到的二进制码与原码或反码混淆，导致后续加法基础数据错误"
+        },
+        {
+          "step": 4,
+          "reason": "对补码加法的“模运算”本质理解不深，混淆“进位”与“溢出”概念",
+          "error_manifestation": "保留最高位进位导致结果错误，或者错误地认为有进位就是溢出"
+        },
+        {
+          "step": 1,
+          "reason": "未能识别“异号数相加不溢出”这一捷径，导致解题路径低效或误判",
+          "error_manifestation": "虽然最终结果可能正确（如果计算无误），但溢出判断逻辑冗余或错误地执行了复杂的溢出检测"
+        }
+      ],
+      "can_verify_with_code": true,
+      "verification_approach": "使用Python的位运算模拟固定位宽补码加法：定义一个函数，输入两个整数和位宽N，先将负数转换为N位补码整数（利用掩码），执行加法，通过掩码截取低N位，再根据最高位判断符号并转换回有符号整数。同时使用Python内置的任意精度整数计算真实结果，对比两者是否一致以及是否在[-2^(N-1), 2^(N-1)-1]范围内。"
+    },
+    "review": {
+      "rule_validation": {
+        "schema_valid": true,
+        "answer_consistency": {
+          "checked": true,
+          "consistent": true,
+          "raw_answer": "A",
+          "option_content": "结果+8，未溢出"
+        },
+        "link_validation": {
+          "trigger_targets": {
+            "orphan_targets": [],
+            "type_mismatches": [],
+            "known_names_count": 7
+          },
+          "pattern_knowledge": {
+            "orphan_targets": [
+              {
+                "step": 1,
+                "required_knowledge": "补码符号位定义"
+              },
+              {
+                "step": 2,
+                "required_knowledge": "负数补码转换机制"
+              },
+              {
+                "step": 3,
+                "required_knowledge": "二进制加法算术"
+              },
+              {
+                "step": 5,
+                "required_knowledge": "二进制转十进制方法"
+              }
+            ]
+          },
+          "orphan_targets": [
+            {
+              "step": 1,
+              "required_knowledge": "补码符号位定义"
+            },
+            {
+              "step": 2,
+              "required_knowledge": "负数补码转换机制"
+            },
+            {
+              "step": 3,
+              "required_knowledge": "二进制加法算术"
+            },
+            {
+              "step": 5,
+              "required_knowledge": "二进制转十进制方法"
+            }
+          ],
+          "type_mismatches": []
+        },
+        "issues": [],
+        "warnings": []
+      },
+      "domain_review": {
+        "answer_consistency_check": {
+          "raw_answer": "A",
+          "option_content": "结果+8，未溢出",
+          "derived_value": "结果+8，未溢出",
+          "is_consistent": true,
+          "notes": "原始题目答案与选项A内容一致，且通过补码计算验证：-75 (10110101) + 83 (01010011) = 100001000，丢弃进位得 00001000 (+8)。异号相加不溢出。逻辑正确。"
+        },
+        "domain_review": {
+          "major_issues": [
+            {
+              "issue_type": "orphan_reference",
+              "evidence_path": "rule-based answer_consistency.orphan references",
+              "evidence_text": "[{\"step\": 1, \"required_knowledge\": \"补码符号位定义\"}, {\"step\": 2, \"required_knowledge\": \"负数补码转换机制\"}, {\"step\": 3, \"required_knowledge\": \"二进制加法算术\"}, {\"step\": 5, \"required_knowledge\": \"二进制转十进制方法\"}]",
+              "reason": "推理模式中引用的部分 required_knowledge 在 knowledge_units 列表中不存在对应的 name 或 id。例如 '补码符号位定义'、'负数补码转换机制'、'二进制加法算术' 和 '二进制转十进制方法' 均未在 knowledge_units 中定义。这会导致知识图谱链接断裂。虽然 '8位补码表示法' 和 '补码加法运算规则' 存在，但推理步骤依赖了未定义的原子知识点。",
+              "severity": "medium",
+              "suggested_action": "needs_human_check"
+            }
+          ],
+          "minor_issues": [],
+          "uncertain_items": []
+        },
+        "review_summary": "题目内容、答案及解析在数学和计算机原理上是完全正确的。主要问题在于数据结构的完整性：推理模式（reasoning_pattern）中引用的部分知识点（required_knowledge）在知识单元（knowledge_units）中缺失定义，属于孤儿引用。这不影响题目的正确性，但影响知识图谱的构建质量。建议人工补充缺失的知识单元定义或修正推理模式中的引用。",
+        "recommended_status": "needs_human_check"
+      },
+      "readiness": {
+        "status": "needs_human_check",
+        "requires_human_or_rule_check": true,
+        "reasons": [
+          "4 orphan reference(s) in triggers/pattern",
+          "Domain: orphan_reference — 推理模式中引用的部分 required_knowledge 在 knowledge_units 列表中不存在对应的 name 或 id。例如 '补码符号位定义'、'负数补码转换机制'、'二进制加法算术"
+        ]
+      }
+    },
+    "raw_question": {
+      "id": "complement-8bit",
+      "type": "计算题",
+      "prompt": "某8位计算机系统中，所有整数均采用补码表示，每个数由1位符号位和7位数值位组成（即为8位补码整数）。已知X=-75，Y=+83，用补码求X+Y的结果，并判断是否溢出。",
+      "answer": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。"
+    }
+  }
+]

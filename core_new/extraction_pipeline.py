@@ -58,12 +58,14 @@ class ExtractionPipeline:
         enable_thinking: bool = False,
         review_mode: str = "fast",
         review_max_tokens: int = 16384,
+        review_provider=None,
     ):
         self.llm = llm_provider
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
         self.review_mode = review_mode
         self.review_max_tokens = review_max_tokens
+        self.review_llm = review_provider or llm_provider
 
     def _parse_json_output(self, raw: Optional[Dict]) -> Optional[Dict]:
         if raw is None:
@@ -109,7 +111,7 @@ class ExtractionPipeline:
         # P5b: DomainCritic
         enable_thinking = self.review_mode == "deep"
         critic = DomainCritic(
-            self.llm,
+            self.review_llm,
             max_tokens=self.review_max_tokens,
             enable_thinking=enable_thinking,
         )
@@ -138,7 +140,12 @@ class ExtractionPipeline:
             stem=stem, answer=answer, structure=structure,
             knowledge_units=ku, trigger_rules=tr, reasoning_pattern=rp,
         )
-        return await self._run_pass("P5_legacy_link_and_validate", p5_prompt) or {}
+        logger.info("Running P5_legacy with review provider")
+        messages = [[{"role": "user", "content": p5_prompt}]]
+        results = await self.review_llm.generate_json_batch(
+            messages, max_tokens=self.max_tokens, enable_thinking=self.enable_thinking,
+        )
+        return results[0] if results else {}
 
     async def extract(self, question: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -245,21 +252,26 @@ async def extract_batch(
     max_tokens: int = 8192,
     concurrency: int = 2,
     review_mode: str = "fast",
+    review_provider=None,
 ) -> List[Dict[str, Any]]:
     """
     Run the extraction pipeline on a batch of questions with limited concurrency.
 
     Args:
-        provider: LLM provider instance
+        provider: LLM provider instance for extraction (P1-P4)
         questions: list of question dicts
         max_tokens: max tokens per pass
         concurrency: number of concurrent extractions
         review_mode: "none", "fast", "deep", or "legacy"
+        review_provider: optional separate LLM provider for P5 review
 
     Returns:
         list of extraction results
     """
-    pipeline = ExtractionPipeline(provider, max_tokens=max_tokens, review_mode=review_mode)
+    pipeline = ExtractionPipeline(
+        provider, max_tokens=max_tokens, review_mode=review_mode,
+        review_provider=review_provider,
+    )
     semaphore = asyncio.Semaphore(concurrency)
 
     async def process(q):
