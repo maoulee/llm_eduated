@@ -42,8 +42,8 @@ class RemoteAPIProvider(BaseLLMProvider):
         self.provider_type = "api"
         self.api_base_url = api_base_url.rstrip("/")
         self.api_key = api_key or "EMPTY"
-        self.request_timeout = float(kwargs.get("request_timeout", 120.0))
-        self.max_retries = int(kwargs.get("max_retries", 2))
+        self.request_timeout = float(kwargs.get("request_timeout", 300.0))
+        self.max_retries = int(kwargs.get("max_retries", 0))
 
         self.client = AsyncOpenAI(
             api_key=self.api_key,
