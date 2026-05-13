@@ -118,7 +118,7 @@ class ExtractionPipeline:
         domain_result = await critic.review(extraction_result, rule_result)
 
         # P5c: ReadinessAggregator
-        readiness = ReadinessAggregator.aggregate(rule_result, domain_result)
+        readiness = ReadinessAggregator.aggregate(rule_result, domain_result, fix_result=None)
 
         return {
             "rule_validation": rule_result,

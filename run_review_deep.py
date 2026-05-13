@@ -1,9 +1,18 @@
 """
-Deep review + OrphanResolver for extraction results.
+Deep review + OrphanResolver + DomainIssueFixer for extraction results.
 
 Reads existing extraction results (fast mode), identifies high-risk questions,
-runs deep DomainCritic review, resolves orphan references, and outputs
-updated results with readiness upgrade.
+runs deep DomainCritic review, resolves orphan references, fixes fixable
+domain issues via localized patches, and outputs updated results.
+
+Pipeline flow:
+  1. RuleChecker
+  2. OrphanReferenceResolver + LinkRepairer
+  3. RuleChecker (re-validate)
+  4. DomainCritic (deep, with thinking)
+  5. ReadinessAggregator (initial status)
+  6. IF needs_content_fix: DomainIssueFixer → RuleChecker → DomainCritic recheck
+  7. ReadinessAggregator (final status)
 
 Usage:
     # Deep review all questions with orphans or major issues
@@ -14,6 +23,9 @@ Usage:
 
     # Skip deep review, only resolve orphans
     python run_review_deep.py --resolve-only
+
+    # Skip auto-fix (no DomainIssueFixer)
+    python run_review_deep.py --no-fix
 
     # Specify input/output
     python run_review_deep.py --input docs/extraction_sample_results.json --output docs/extraction_deep_results.json
@@ -36,14 +48,28 @@ from core_new.extraction_review import (
     DomainCritic,
     ReadinessAggregator,
     OrphanReferenceResolver,
+    LinkRepairer,
+    DomainIssueFixer,
 )
 
 
 def classify_risk(result: Dict[str, Any]) -> str:
-    """Classify a result's risk level based on rule_validation."""
+    """Classify a result's risk level based on review status."""
     review = result.get("review", {})
     if not review:
         return "no_review"
+
+    # Prefer final_readiness, fall back to readiness
+    readiness = review.get("final_readiness") or review.get("readiness", {})
+    status = readiness.get("status", "")
+
+    if status in ("rejected", "needs_human_judgment"):
+        return "high"
+    if status in ("needs_content_fix", "needs_link_fix", "needs_domain_recheck"):
+        return "medium"
+    # Fallback: also check old-style statuses and raw fields
+    if status == "needs_human_check":
+        return "high"
 
     rv = review.get("rule_validation", {})
     ac = rv.get("answer_consistency", {})
@@ -66,17 +92,27 @@ async def deep_review_question(
     result: Dict[str, Any],
     resolve_orphans: bool = True,
     run_deep_critic: bool = True,
+    run_fix: bool = True,
 ) -> Dict[str, Any]:
-    """Run deep DomainCritic + OrphanResolver + LinkRepairer on a single result."""
+    """Run full deep review pipeline on a single result.
+
+    Steps:
+      1. RuleChecker
+      2. OrphanReferenceResolver + LinkRepairer (if orphans)
+      3. RuleChecker (re-validate)
+      4. DomainCritic (deep)
+      5. ReadinessAggregator (initial)
+      6. IF needs_content_fix AND run_fix: DomainIssueFixer → re-validate → recheck
+      7. ReadinessAggregator (final)
+    """
     import copy
-    from core_new.extraction_review import LinkRepairer
 
     updated = copy.deepcopy(result)
 
-    # Re-run RuleChecker (in case data was modified)
+    # Step 1: Re-run RuleChecker
     rule_result = RuleChecker.validate(updated)
 
-    # Resolve orphans + repair links
+    # Step 2: Resolve orphans + repair links
     if resolve_orphans and rule_result.get("link_validation", {}).get("orphan_targets"):
         resolver = OrphanReferenceResolver(provider)
         resolution = await resolver.resolve(updated, rule_result)
@@ -85,15 +121,14 @@ async def deep_review_question(
             updated = OrphanReferenceResolver.apply_resolutions(updated, resolution)
             updated["orphan_resolution"] = resolution
 
-            # Repair links: rewrite P3/P4 references to match new/canonical names
             repairer = LinkRepairer()
             updated = repairer.repair(updated, resolution)
             updated["link_repairs"] = repairer.summary()
 
-            # Re-validate after resolution + repair
+            # Step 3: Re-validate after resolution + repair
             rule_result = RuleChecker.validate(updated)
 
-    # Deep DomainCritic (optional)
+    # Step 4: Deep DomainCritic (optional)
     if run_deep_critic:
         critic = DomainCritic(provider, max_tokens=10000, enable_thinking=True)
         domain_result = await critic.review(updated, rule_result)
@@ -105,24 +140,59 @@ async def deep_review_question(
             "stale": True,
         }
 
-    # Aggregate
+    # Step 5: Aggregate (initial status)
     readiness = ReadinessAggregator.aggregate(rule_result, domain_result)
+
+    # Step 6: Fix loop (max 1 iteration)
+    fix_result = None
+    recheck_domain_result = None
+    final_readiness = readiness
+
+    if run_fix and readiness.get("status") == "needs_content_fix" and run_deep_critic:
+        fixer = DomainIssueFixer(provider, max_tokens=8192)
+        fix_result = await fixer.fix(updated, domain_result)
+
+        if fix_result.get("fix_count", 0) > 0:
+            updated = fix_result["fixed_result"]
+            # Break circular ref: clear fixed_result from fix_result before storing
+            fix_summary = {k: v for k, v in fix_result.items() if k != "fixed_result"}
+            fix_summary["fix_count"] = fix_result["fix_count"]
+            fix_result = fix_summary
+
+            # Re-validate after patches
+            rule_result = RuleChecker.validate(updated)
+
+            # DomainCritic recheck (max 1 iteration)
+            critic = DomainCritic(provider, max_tokens=10000, enable_thinking=True)
+            recheck_domain_result = await critic.review(updated, rule_result)
+
+            # Final aggregation
+            final_readiness = ReadinessAggregator.aggregate(
+                rule_result, recheck_domain_result, fix_result=fix_result,
+            )
 
     updated["review"] = {
         "rule_validation": rule_result,
         "domain_review": domain_result,
         "readiness": readiness,
+        "final_readiness": final_readiness,
     }
+
+    if fix_result:
+        updated["fix_result"] = fix_result
+    if recheck_domain_result:
+        updated["review"]["domain_recheck"] = recheck_domain_result
 
     return updated
 
 
 async def main():
-    parser = argparse.ArgumentParser(description="Deep review + orphan resolution")
+    parser = argparse.ArgumentParser(description="Deep review + orphan resolution + auto-fix")
     parser.add_argument("--input", default="docs/extraction_sample_results.json")
     parser.add_argument("--output", default="docs/extraction_deep_results.json")
     parser.add_argument("--ids", nargs="*", help="Specific question IDs to review")
     parser.add_argument("--resolve-only", action="store_true", help="Only resolve orphans, skip deep critic")
+    parser.add_argument("--no-fix", action="store_true", help="Skip DomainIssueFixer auto-fix")
     parser.add_argument("--provider", default="glm5.1")
     args = parser.parse_args()
 
@@ -169,6 +239,7 @@ async def main():
                 provider, target,
                 resolve_orphans=True,
                 run_deep_critic=not args.resolve_only,
+                run_fix=not args.no_fix,
             )
             elapsed = time.time() - start
 
@@ -178,13 +249,29 @@ async def main():
                     updated_results[j] = updated
                     break
 
+            final_readiness = updated.get("review", {}).get("final_readiness", {})
             readiness = updated.get("review", {}).get("readiness", {})
             orphan_res = updated.get("orphan_resolution", {})
+            fix_res = updated.get("fix_result", {})
+
             print(f"  Time: {elapsed:.1f}s")
-            print(f"  Readiness: {readiness.get('status', '?')}")
+            initial_status = readiness.get("status", "?")
+            final_status = final_readiness.get("status", initial_status)
+            if initial_status != final_status:
+                print(f"  Readiness: {initial_status} → {final_status}")
+            else:
+                print(f"  Readiness: {final_status}")
+
             if orphan_res.get("resolutions"):
                 for res in orphan_res["resolutions"]:
                     print(f"  Orphan '{res.get('orphan_name')}': {res.get('verdict')}")
+
+            if fix_res.get("patches_applied"):
+                for p in fix_res["patches_applied"]:
+                    print(f"  Patch: {p.get('path', '?')} → fixed")
+            if fix_res.get("patches_rejected"):
+                for p in fix_res["patches_rejected"]:
+                    print(f"  Patch rejected: {p.get('path', '?')} — {p.get('rejection_reason', '?')}")
 
         except Exception as e:
             print(f"  ERROR: {e}")

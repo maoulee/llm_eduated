@@ -21,7 +21,7 @@ import logging
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional
 
-from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER
+from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER, DOMAIN_ISSUE_FIXER
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,7 +33,14 @@ logger = logging.getLogger(__name__)
 
 VALID_QUESTION_TYPES = {"单选题", "多选题", "判断题", "填空题", "综合题", "计算题", "简答题"}
 VALID_TARGET_TYPES = {"knowledge", "mechanism", "reasoning_pattern"}
-VALID_READINESS_STATUSES = {"candidate", "verified", "rejected", "needs_human_check"}
+VALID_READINESS_STATUSES = {
+    "candidate",
+    "needs_content_fix",
+    "needs_link_fix",
+    "needs_domain_recheck",
+    "needs_human_judgment",
+    "rejected",
+}
 FUZZY_MATCH_THRESHOLD = 0.6
 
 
@@ -328,6 +335,7 @@ class ReadinessAggregator:
     def aggregate(
         rule_validation: Dict[str, Any],
         domain_review: Optional[Dict[str, Any]] = None,
+        fix_result: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         status = "candidate"
         reasons: List[str] = []
@@ -341,24 +349,24 @@ class ReadinessAggregator:
                 "reasons": ["Schema validation failed"],
             }
 
-        # Rule: answer inconsistent → needs_human_check
+        # Rule: answer inconsistent → needs_human_judgment
         ac = rule_validation.get("answer_consistency", {})
         if ac.get("checked") and not ac.get("consistent", True):
-            status = "needs_human_check"
+            status = "needs_human_judgment"
             reasons.append(f"Answer inconsistency: {ac.get('reason', '')}")
             requires_human = True
 
-        # Rule: orphan references → needs_human_check
+        # Rule: orphan references → needs_link_fix
         orphan = rule_validation.get("link_validation", {}).get("orphan_targets", [])
         if orphan:
-            status = "needs_human_check"
+            status = "needs_link_fix"
             reasons.append(f"{len(orphan)} orphan reference(s) in triggers/pattern")
             requires_human = True
 
-        # Rule: type mismatches → needs_human_check
+        # Rule: type mismatches → needs_link_fix
         type_mismatches = rule_validation.get("link_validation", {}).get("type_mismatches", [])
         if type_mismatches:
-            status = "needs_human_check"
+            status = "needs_link_fix"
             for tm in type_mismatches:
                 reasons.append(
                     f"Type mismatch: '{tm.get('target_name')}' typed as {tm.get('target_type')} "
@@ -366,22 +374,58 @@ class ReadinessAggregator:
                 )
             requires_human = True
 
-        # Rule: domain major issues → needs_human_check
+        # Domain issues: classify into fixable vs human-only
+        fixable_count = 0
+        human_only_count = 0
         if domain_review:
             dr = domain_review.get("domain_review", {})
+            all_major = list(dr.get("major_issues", [])) + list(dr.get("minor_issues", []))
+            for issue in all_major:
+                cat = _classify_issue_fixability(issue)
+                if cat == "auto_fixable":
+                    fixable_count += 1
+                elif cat == "human_only":
+                    human_only_count += 1
+                # "reject" issues are counted but don't affect status directly
+
             major = dr.get("major_issues", [])
             if major:
-                status = "needs_human_check"
                 for issue in major:
                     reasons.append(f"Domain: {issue.get('issue_type', '?')} — {issue.get('reason', '')[:100]}")
                 requires_human = True
-            elif dr.get("minor_issues"):
+
+            if dr.get("minor_issues"):
                 reasons.append(f"{len(dr['minor_issues'])} minor domain issue(s)")
+
+            uncertain = dr.get("uncertain_items", [])
+            if uncertain:
+                status = "needs_human_judgment"
+                reasons.append(f"{len(uncertain)} uncertain item(s) require human judgment")
+                requires_human = True
+
+        # Domain fixable issues → needs_content_fix (unless already higher priority)
+        if fixable_count > 0 and status == "candidate":
+            status = "needs_content_fix"
+            reasons.append(f"{fixable_count} fixable domain issue(s)")
+
+        # Domain human-only issues: set needs_human_judgment only if no fixable issues
+        # (fixable issues will trigger fix loop first, then recheck may resolve or escalate)
+        if human_only_count > 0 and status == "candidate":
+            status = "needs_human_judgment"
+            requires_human = True
+
+        # If fix was applied, override to needs_domain_recheck
+        if fix_result and fix_result.get("fix_count", 0) > 0:
+            status = "needs_domain_recheck"
+            reasons.append(f"Fix applied: {fix_result['fix_count']} patch(es)")
+            # After fix, remaining human-only issues may still require human review
+            if human_only_count > 0:
+                requires_human = True
 
         # Rule issues from RuleChecker
         issues = rule_validation.get("issues", [])
         if issues:
-            status = "needs_human_check"
+            status = "needs_human_judgment"
             reasons.extend(issues)
             requires_human = True
 
@@ -389,6 +433,8 @@ class ReadinessAggregator:
             "status": status,
             "requires_human_or_rule_check": requires_human,
             "requires_domain_recheck": bool(domain_review and domain_review.get("stale")),
+            "fixable_issue_count": fixable_count,
+            "human_only_issue_count": human_only_count,
             "reasons": reasons if reasons else ["All checks passed; MVP default is candidate"],
         }
 
@@ -604,6 +650,161 @@ class LinkRepairer:
 
 
 # ---------------------------------------------------------------------------
+# DomainIssueFixer: Path helpers and constants
+# ---------------------------------------------------------------------------
+
+FIXABLE_FIELD_PREFIXES = (
+    "question_structure.distractor_analysis",
+    "question_structure.correct_answer_diagnosis",
+    "question_structure.structure.hidden_constraints",
+    "question_structure.structure.unit_constraints",
+    "trigger_rules.trigger_rules",
+    "trigger_rules.negative_triggers",
+    "knowledge_units.knowledge_units",
+    "knowledge_units.mechanisms",
+    "reasoning_pattern.steps",
+    "reasoning_pattern.common_breakpoints",
+)
+
+PROTECTED_FIELD_PREFIXES = (
+    "question_structure.correct_answer",
+    "question_structure.options",
+    "question_structure.stem",
+    "question_structure.question_type",
+    "raw_question",
+)
+
+HUMAN_ONLY_ISSUE_TYPES = frozenset({"answer_inconsistency"})
+
+CHINESE_PREFIX_MAP = {
+    "题目结构": "question_structure",
+    "触发规则": "trigger_rules",
+    "知识单元": "knowledge_units",
+    "推理模式": "reasoning_pattern",
+}
+
+_TOP_LEVEL_KEYS = {"question_structure", "trigger_rules", "knowledge_units", "reasoning_pattern"}
+
+
+def _parse_path(path: str) -> List:
+    """Parse a dot/bracket notation path into segments.
+
+    E.g. "question_structure.distractor_analysis[1].targeted_misconception"
+         → ["question_structure", "distractor_analysis", 1, "targeted_misconception"]
+    """
+    import re
+    segments: List = []
+    for part in re.split(r'\.', path):
+        if not part:
+            continue
+        idx_match = re.match(r'^(\w+)((?:\[\d+\])*)$', part)
+        if idx_match:
+            segments.append(idx_match.group(1))
+            for idx_str in re.findall(r'\[(\d+)\]', idx_match.group(2)):
+                segments.append(int(idx_str))
+        else:
+            segments.append(part)
+    return segments
+
+
+def _normalize_path(path: str) -> str:
+    """Normalize evidence_path: replace Chinese prefixes, add top-level key if missing."""
+    # Replace Chinese prefixes
+    for cn, en in CHINESE_PREFIX_MAP.items():
+        if path.startswith(cn + ".") or path.startswith(cn + "["):
+            path = en + path[len(cn):]
+            break
+
+    # Strip misleading "structure." prefix when it refers to question_structure
+    # DomainCritic sometimes outputs "structure.distractor_analysis" meaning "question_structure.distractor_analysis"
+    _qs_subfields = {
+        "distractor_analysis", "correct_answer_diagnosis", "asked_target",
+        "question_type", "stem", "options", "correct_answer",
+    }
+    if path.startswith("structure."):
+        second = path.split(".")[1].split("[")[0]
+        if second in _qs_subfields:
+            path = path[len("structure."):]
+
+    # Add top-level key prefix if missing
+    first_segment = path.split(".")[0].split("[")[0]
+    if first_segment in _TOP_LEVEL_KEYS:
+        return path  # Already has correct prefix
+
+    # Map bare field names to their top-level container
+    bare_to_toplevel = {
+        "distractor_analysis": "question_structure",
+        "correct_answer_diagnosis": "question_structure",
+        "structure": "question_structure",  # structure.hidden_constraints etc.
+        "asked_target": "question_structure",
+        "trigger_rules": "trigger_rules",
+        "negative_triggers": "trigger_rules",
+        "knowledge_units": "knowledge_units",
+        "mechanisms": "knowledge_units",
+        "steps": "reasoning_pattern",
+        "common_breakpoints": "reasoning_pattern",
+        "question": "question_structure",
+    }
+    if first_segment in bare_to_toplevel:
+        path = bare_to_toplevel[first_segment] + "." + path
+
+    return path
+
+
+def _resolve_path(data: Dict, path: str):
+    """Navigate nested dict/list by path. Returns (value, found)."""
+    segments = _parse_path(path)
+    obj = data
+    for seg in segments:
+        try:
+            if isinstance(seg, int):
+                if not isinstance(obj, list) or seg >= len(obj):
+                    return None, False
+                obj = obj[seg]
+            elif isinstance(obj, dict):
+                if seg not in obj:
+                    return None, False
+                obj = obj[seg]
+            else:
+                return None, False
+        except (KeyError, IndexError, TypeError):
+            return None, False
+    return obj, True
+
+
+def _is_fixable_path(path: str) -> bool:
+    """Check if a normalized path targets a fixable field (not protected)."""
+    normalized = _normalize_path(path)
+    for prefix in PROTECTED_FIELD_PREFIXES:
+        if normalized.startswith(prefix):
+            return False
+    for prefix in FIXABLE_FIELD_PREFIXES:
+        if normalized.startswith(prefix):
+            return True
+    return False
+
+
+def _classify_issue_fixability(issue: Dict) -> str:
+    """Classify a domain issue as 'auto_fixable', 'human_only', or 'reject'."""
+    if issue.get("suggested_action") == "reject":
+        return "reject"
+    if issue.get("issue_type") in HUMAN_ONLY_ISSUE_TYPES:
+        return "human_only"
+
+    path = issue.get("evidence_path", "")
+    if not path:
+        return "human_only"
+    # Multi-path (comma-separated) → too complex
+    if "," in path:
+        return "human_only"
+
+    normalized = _normalize_path(path)
+    if _is_fixable_path(normalized):
+        return "auto_fixable"
+    return "human_only"
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -621,3 +822,227 @@ def _parse_json(raw: str) -> Optional[Dict]:
         return json.loads(clean)
     except (json.JSONDecodeError, IndexError, TypeError):
         return None
+
+
+# ---------------------------------------------------------------------------
+# DomainIssueFixer: LLM-based localized patch fixer
+# ---------------------------------------------------------------------------
+
+class DomainIssueFixer:
+    """Fixes domain issues via localized patches (not full rewrites).
+
+    Takes extraction_result + domain_issues, calls LLM to generate patches,
+    validates each patch (field permission, path existence, old_value match),
+    and applies only validated patches. Max 1 fix iteration.
+    """
+
+    def __init__(self, llm_provider, max_tokens: int = 8192):
+        self.llm = llm_provider
+        self.max_tokens = max_tokens
+
+    async def fix(
+        self,
+        extraction_result: Dict[str, Any],
+        domain_issues: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Identify fixable issues, call LLM for patches, validate, and apply.
+
+        Returns:
+            {patches_applied, patches_rejected, patches_skipped,
+             fixed_result, fix_count}
+        """
+        fixable = self._classify_fixable_issues(domain_issues)
+        if not fixable:
+            return {
+                "patches_applied": [],
+                "patches_rejected": [],
+                "patches_skipped": [],
+                "fixed_result": extraction_result,
+                "fix_count": 0,
+            }
+
+        question = extraction_result.get("raw_question", {})
+        stem = question.get("prompt", "")
+        answer = question.get("answer", "")
+        fixable_data = self._build_fixable_data(extraction_result)
+        issues_json = json.dumps(fixable, ensure_ascii=False, indent=1)
+
+        prompt = DOMAIN_ISSUE_FIXER.format(
+            stem=stem,
+            answer=answer,
+            fixable_data=fixable_data,
+            issues=issues_json,
+        )
+
+        logger.info("Running DomainIssueFixer for %d fixable issues", len(fixable))
+        messages = [[{"role": "user", "content": prompt}]]
+        raw = await self.llm.generate_json_batch(
+            messages, max_tokens=self.max_tokens, enable_thinking=False,
+        )
+        result = raw[0] if raw else None
+
+        if result is None:
+            logger.warning("DomainIssueFixer: LLM returned no result")
+            return {
+                "patches_applied": [],
+                "patches_rejected": [],
+                "patches_skipped": [],
+                "fixed_result": extraction_result,
+                "fix_count": 0,
+            }
+
+        patches = result.get("patches", [])
+        skipped = result.get("skipped", [])
+
+        applied, rejected = [], []
+        for patch in patches:
+            valid, reason = self._validate_patch(extraction_result, patch)
+            if valid:
+                applied.append(patch)
+            else:
+                rejected.append({**patch, "rejection_reason": reason})
+
+        fixed = self.apply_patches(extraction_result, applied) if applied else extraction_result
+
+        logger.info(
+            "DomainIssueFixer: %d applied, %d rejected, %d skipped",
+            len(applied), len(rejected), len(skipped),
+        )
+
+        return {
+            "patches_applied": applied,
+            "patches_rejected": rejected,
+            "patches_skipped": skipped,
+            "fixed_result": fixed,
+            "fix_count": len(applied),
+        }
+
+    def _classify_fixable_issues(self, domain_issues: Dict[str, Any]) -> List[Dict]:
+        """Filter domain issues to those safe for auto-fix."""
+        dr = domain_issues.get("domain_review", {})
+        all_issues = list(dr.get("major_issues", [])) + list(dr.get("minor_issues", []))
+        fixable = []
+        for issue in all_issues:
+            if not isinstance(issue, dict):
+                continue
+            category = _classify_issue_fixability(issue)
+            if category == "auto_fixable":
+                fixable.append(issue)
+        return fixable
+
+    def _build_fixable_data(self, extraction_result: Dict[str, Any]) -> str:
+        """Serialize only fixable top-level fields for the LLM prompt."""
+        fixable = {}
+        qs = extraction_result.get("question_structure", {})
+        if "distractor_analysis" in qs:
+            fixable["question_structure.distractor_analysis"] = qs["distractor_analysis"]
+        if "correct_answer_diagnosis" in qs:
+            fixable["question_structure.correct_answer_diagnosis"] = qs["correct_answer_diagnosis"]
+        struct = qs.get("structure", {})
+        if "hidden_constraints" in struct:
+            fixable["question_structure.structure.hidden_constraints"] = struct["hidden_constraints"]
+        if "unit_constraints" in struct:
+            fixable["question_structure.structure.unit_constraints"] = struct["unit_constraints"]
+
+        tr = extraction_result.get("trigger_rules", {})
+        if "trigger_rules" in tr:
+            fixable["trigger_rules.trigger_rules"] = tr["trigger_rules"]
+        if "negative_triggers" in tr:
+            fixable["trigger_rules.negative_triggers"] = tr["negative_triggers"]
+
+        ku = extraction_result.get("knowledge_units", {})
+        if "knowledge_units" in ku:
+            fixable["knowledge_units.knowledge_units"] = ku["knowledge_units"]
+        if "mechanisms" in ku:
+            fixable["knowledge_units.mechanisms"] = ku["mechanisms"]
+
+        rp = extraction_result.get("reasoning_pattern", {})
+        if "steps" in rp:
+            fixable["reasoning_pattern.steps"] = rp["steps"]
+        if "common_breakpoints" in rp:
+            fixable["reasoning_pattern.common_breakpoints"] = rp["common_breakpoints"]
+
+        return json.dumps(fixable, ensure_ascii=False, indent=1)
+
+    def _validate_patch(
+        self,
+        extraction_result: Dict[str, Any],
+        patch: Dict[str, Any],
+    ) -> tuple:
+        """Validate a single patch. Returns (is_valid, reason)."""
+        path = patch.get("path", "")
+        if not path:
+            return False, "empty path"
+
+        normalized = _normalize_path(path)
+
+        # Check: field is not protected
+        for prefix in PROTECTED_FIELD_PREFIXES:
+            if normalized.startswith(prefix):
+                return False, f"protected field: {prefix}"
+
+        # Check: field is in fixable list
+        if not _is_fixable_path(normalized):
+            return False, f"not in fixable field list"
+
+        # Check: path resolves
+        current, found = _resolve_path(extraction_result, normalized)
+        if not found:
+            return False, f"path not found: {normalized}"
+
+        # Check: old_value fuzzy match
+        old_value = patch.get("old_value", "")
+        if not old_value:
+            return True, "ok (no old_value to verify)"
+
+        if isinstance(current, str):
+            old_str = str(old_value)
+            if len(old_str) > 20:
+                # For long strings, use substring or fuzzy match
+                if old_str in current or current in old_str:
+                    return True, "ok (substring match)"
+                ratio = SequenceMatcher(None, old_str, current).ratio()
+                if ratio >= FUZZY_MATCH_THRESHOLD:
+                    return True, f"ok (fuzzy match {ratio:.2f})"
+                return False, f"old_value mismatch (ratio={ratio:.2f})"
+            else:
+                if old_str.strip() == current.strip():
+                    return True, "ok (exact match)"
+                ratio = SequenceMatcher(None, old_str, current).ratio()
+                if ratio >= FUZZY_MATCH_THRESHOLD:
+                    return True, f"ok (fuzzy match {ratio:.2f})"
+                return False, f"old_value mismatch (ratio={ratio:.2f})"
+
+        return True, "ok (non-string field)"
+
+    @staticmethod
+    def apply_patches(
+        extraction_result: Dict[str, Any],
+        validated_patches: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Apply validated patches to a deep copy of extraction_result."""
+        import copy
+        result = copy.deepcopy(extraction_result)
+
+        for patch in validated_patches:
+            path = _normalize_path(patch["path"])
+            new_value = patch["new_value"]
+            segments = _parse_path(path)
+
+            if not segments:
+                continue
+
+            obj = result
+            for seg in segments[:-1]:
+                if isinstance(seg, int):
+                    obj = obj[seg]
+                else:
+                    obj = obj[seg]
+
+            final = segments[-1]
+            if isinstance(final, int):
+                obj[final] = new_value
+            else:
+                obj[final] = new_value
+
+        return result

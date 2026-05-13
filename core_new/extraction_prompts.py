@@ -412,3 +412,58 @@ ORPHAN_RESOLVER = """你是一位408考研知识库结构化专家。以下抽�
   ]
 }}
 ```"""
+
+DOMAIN_ISSUE_FIXER = """你是408题库抽取数据修复专家。以下候选抽取数据经审核发现了若干可自动修复的问题。
+
+你的任务：针对每个问题，生成精确的补丁（patch）。补丁仅修改有问题的值，不重写整个字段。
+
+## 严格约束
+- 只能修复以下字段路径下的内容：
+  question_structure.distractor_analysis[...],
+  question_structure.correct_answer_diagnosis,
+  question_structure.structure.hidden_constraints,
+  question_structure.structure.unit_constraints,
+  trigger_rules.trigger_rules[...],
+  trigger_rules.negative_triggers,
+  knowledge_units.knowledge_units[...],
+  knowledge_units.mechanisms[...],
+  reasoning_pattern.steps[...],
+  reasoning_pattern.common_breakpoints
+- 绝对禁止修改：correct_answer, options, stem, raw_question, question_type
+- 每个 patch 必须给出 path（字段路径，与审核的 evidence_path 一致）、old_value（当前值）、new_value（修正值）
+- old_value 必须与原数据中对应字段的值匹配（可以截断，但核心内容须一致）
+- new_value 应当简洁准确，杜绝重复冗余
+- 如果对某个问题不确定如何修复，放入 skipped 列表，不要猜测
+
+## 原始题目
+题干：{stem}
+答案：{answer}
+
+## 候选抽取数据（仅可修复部分）
+{fixable_data}
+
+## 待修复问题列表
+{issues}
+
+## 要求
+输出JSON：
+
+```json
+{{
+  "patches": [
+    {{
+      "issue_index": 0,
+      "path": "字段路径（与 evidence_path 一致）",
+      "old_value": "当前值（必须与原数据匹配）",
+      "new_value": "修正后的值",
+      "reason": "修复理由"
+    }}
+  ],
+  "skipped": [
+    {{
+      "issue_index": 0,
+      "reason": "为什么跳过修复"
+    }}
+  ]
+}}
+```"""
