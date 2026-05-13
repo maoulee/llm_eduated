@@ -1,0 +1,152 @@
+[
+  {
+    "question_id": "2009-12",
+    "ground_truth": "A",
+    "reasoning": {
+      "answer": "A",
+      "confidence": "high",
+      "preview": "A"
+    },
+    "code": {
+      "generated": false,
+      "source": null,
+      "exec_success": false,
+      "output": "",
+      "error": "no code generated"
+    },
+    "comparison": {
+      "reasoning_answer": "A",
+      "code_answer": null,
+      "ground_truth": "A",
+      "reasoning_correct": true,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 5.79632830619812
+  },
+  {
+    "question_id": "2009-14",
+    "ground_truth": "C",
+    "reasoning": {
+      "answer": "C",
+      "confidence": "high",
+      "preview": "C"
+    },
+    "code": {
+      "generated": false,
+      "source": null,
+      "exec_success": false,
+      "output": "",
+      "error": "no code generated"
+    },
+    "comparison": {
+      "reasoning_answer": "C",
+      "code_answer": null,
+      "ground_truth": "C",
+      "reasoning_correct": true,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 8.211853742599487
+  },
+  {
+    "question_id": "2010-33",
+    "ground_truth": "C",
+    "reasoning": {
+      "answer": "C",
+      "confidence": "high",
+      "preview": "C"
+    },
+    "code": {
+      "generated": false,
+      "source": null,
+      "exec_success": false,
+      "output": "",
+      "error": "no code generated"
+    },
+    "comparison": {
+      "reasoning_answer": "C",
+      "code_answer": null,
+      "ground_truth": "C",
+      "reasoning_correct": true,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 4.726238250732422
+  },
+  {
+    "question_id": "2012-02",
+    "ground_truth": "不完全正确。700个结点的完全二叉树，叶子结点数为350个。由完全二叉树性质：n0 = (n+1)/2 向下取整 = 350。",
+    "reasoning": {
+      "answer": "B",
+      "confidence": "high",
+      "preview": "B"
+    },
+    "code": {
+      "generated": false,
+      "source": null,
+      "exec_success": false,
+      "output": "",
+      "error": "no code generated"
+    },
+    "comparison": {
+      "reasoning_answer": "B",
+      "code_answer": null,
+      "ground_truth": "350",
+      "reasoning_correct": false,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 12.202226161956787
+  },
+  {
+    "question_id": "crc-link",
+    "ground_truth": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。",
+    "reasoning": {
+      "answer": "CRC校验码为001",
+      "confidence": "high",
+      "preview": "CRC校验码为001"
+    },
+    "code": {
+      "generated": true,
+      "source": "def crc_calculator(data, generator):\n    # 将数据字符串转换为整数列表\n    data_bits = [int(bit) for bit in data]\n    gen_bits = [int(bit) for bit in generator]\n    \n    # 生成多项式的阶数（位数减1）\n    n = len(gen_bits) - 1\n    \n    # 在数据后补n个0\n    augmented_data = data_bits + [0] * n\n    \n    print(f\"原始数据: {data}\")\n    print(f\"生成多项式对应的除数: {generator}\")\n    print(f\"补零后的数据: {''.join(map(str, augmented_data))}\")\n    \n    # 模2除法（异或运算）\n    remainder = augmented_data[:]\n    for i in range(len(data_bits)):\n        if remainder",
+      "exec_success": true,
+      "output": "原始数据: 101001\n生成多项式对应的除数: 1001\n补零后的数据: 101001000\n计算过程：\n  模2除法余数: 100\n最终答案: CRC校验码为100",
+      "error": null
+    },
+    "comparison": {
+      "reasoning_answer": "001",
+      "code_answer": "CRC校验码为100",
+      "ground_truth": "001",
+      "reasoning_correct": true,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 48.29650354385376
+  },
+  {
+    "question_id": "complement-8bit",
+    "ground_truth": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
+    "reasoning": {
+      "answer": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
+      "confidence": "high",
+      "preview": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。"
+    },
+    "code": {
+      "generated": true,
+      "source": "def to_8bit_twos_complement(n):\n    # 将整数转换为8位补码表示\n    if n < 0:\n        # 负数：取绝对值，按位取反，加1\n        n = abs(n)\n        # 8位表示\n        n = n & 0xFF\n        # 取反\n        n = ~n & 0xFF\n        # 加1\n        n = (n + 1) & 0xFF\n    else:\n        # 正数：直接取低8位\n        n = n & 0xFF\n    return n\n\n# 已知X=-75，Y=+83\nX = -75\nY = 83\n\n# 转换为8位补码\nX_comp = to_8bit_twos_complement(X)\nY_comp = to_8bit_twos_complement(Y)\n\nprint(f\"X={X}的8位补码为: {bin(X_comp)[2:].zfill(8)}\")\nprint(f\"Y={Y}的8位补码为: {bin(Y_comp)[2:].zfill(8)}\")",
+      "exec_success": true,
+      "output": "X=-75的8位补码为: 10110101\nY=83的8位补码为: 01010011\nX+Y的补码结果: 00001000\nX+Y的十进制结果: 8\n是否溢出: False\n最终答案: X+Y=8，未溢出",
+      "error": null
+    },
+    "comparison": {
+      "reasoning_answer": "-75",
+      "code_answer": "X+Y=8，未溢出",
+      "ground_truth": "+8",
+      "reasoning_correct": false,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 26.662341117858887
+  }
+]
