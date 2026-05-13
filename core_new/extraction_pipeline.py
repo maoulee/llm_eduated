@@ -7,8 +7,8 @@ Uses GLM-5.1 (or any OpenAI-compatible provider) to extract structured
 entities from raw 408 exam questions through 5 sequential passes:
 
   P1: question_structure  → conditions, target, constraints, distractors
-  P2: knowledge_units     → concepts, facts, mechanisms
-  P3: trigger_rules       → question signals → mechanism activation
+  P2: knowledge_units     → knowledge (merged concept+fact) and mechanisms
+  P3: trigger_rules       → question signals as diagnostic/routing constraints
   P4: reasoning_pattern   → step-by-step reasoning procedure
   P5: link_and_validate   → cross-reference and consistency check
 
