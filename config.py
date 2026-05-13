@@ -99,9 +99,11 @@ class GlobalSettings(BaseSettings):
             api_key=os.getenv("GLM_API_KEY"),
             api_protocol="openai_chat",
             batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
-            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "none"),
+            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "param"),
             supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "4096")),
+            temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
+            top_p=float(os.getenv("GLM_TOP_P", "0.95")),
         ),
         "gptoss": ProviderSettings(
             provider_type="api",

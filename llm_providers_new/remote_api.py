@@ -134,7 +134,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         max_tokens: Optional[int],
         enable_thinking: bool,
         json_mode: bool,
-    ) -> str:
+    ) -> Dict[str, Any]:
         processed_messages = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
         params: Dict[str, Any] = {
             "model": self.model_name,
@@ -154,10 +154,12 @@ class RemoteAPIProvider(BaseLLMProvider):
 
         try:
             response = await self.client.chat.completions.create(**params)
-            return response.choices[0].message.content or ""
+            msg = response.choices[0].message
+            reasoning_content = getattr(msg, "reasoning_content", None) or ""
+            return {"content": msg.content or "", "reasoning_content": reasoning_content}
         except Exception as e:
             logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
-            return f"Error: API call failed. Details: {e}"
+            return {"content": f"Error: API call failed. Details: {e}", "reasoning_content": ""}
 
     async def _vllm_chat_batch_call(
         self,
@@ -200,15 +202,18 @@ class RemoteAPIProvider(BaseLLMProvider):
                 data = response.json()
         except Exception as e:
             logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
-            return [f"Error: vLLM chat batch call failed. Details: {e}" for _ in processed_batch]
+            return [{"content": f"Error: vLLM chat batch call failed. Details: {e}", "reasoning_content": ""} for _ in processed_batch]
 
-        ordered = [""] * len(processed_batch)
+        ordered: List[Dict[str, Any]] = [{"content": "", "reasoning_content": ""} for _ in processed_batch]
         for choice in data.get("choices", []):
             idx = choice.get("index")
             if idx is None or idx >= len(ordered):
                 continue
             message = choice.get("message") or {}
-            ordered[idx] = message.get("content") or ""
+            ordered[idx] = {
+                "content": message.get("content") or "",
+                "reasoning_content": message.get("reasoning_content") or "",
+            }
         return ordered
 
     async def _completion_batch_call(
@@ -235,16 +240,16 @@ class RemoteAPIProvider(BaseLLMProvider):
 
         try:
             response = await self.client.completions.create(**params)
-            ordered = [""] * len(prompts)
+            ordered: List[Dict[str, Any]] = [{"content": "", "reasoning_content": ""} for _ in prompts]
             for choice in response.choices:
                 idx = getattr(choice, "index", None)
                 if idx is None or idx >= len(ordered):
                     continue
-                ordered[idx] = choice.text or ""
+                ordered[idx] = {"content": choice.text or "", "reasoning_content": ""}
             return ordered
         except Exception as e:
             logger.error("online completion batch call failed: %s", e, exc_info=True)
-            return [f"Error: batch API call failed. Details: {e}" for _ in prompts]
+            return [{"content": f"Error: batch API call failed. Details: {e}", "reasoning_content": ""} for _ in prompts]
 
     async def _generate_raw_batch(
         self,
@@ -253,12 +258,12 @@ class RemoteAPIProvider(BaseLLMProvider):
         max_tokens: Optional[int],
         enable_thinking: bool,
         json_mode: bool,
-    ) -> List[str]:
+    ) -> List[Dict[str, Any]]:
         if not messages_batch:
             return []
 
         if self.api_protocol in {"vllm_chat_batch", "openai_chat_batch"}:
-            outputs: List[str] = []
+            outputs: List[Dict[str, Any]] = []
             for start in range(0, len(messages_batch), self.batch_size):
                 chunk = messages_batch[start:start + self.batch_size]
                 outputs.extend(
@@ -273,7 +278,7 @@ class RemoteAPIProvider(BaseLLMProvider):
             return outputs
 
         if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
-            outputs = []
+            outputs: List[Dict[str, Any]] = []
             for start in range(0, len(messages_batch), self.batch_size):
                 chunk = messages_batch[start:start + self.batch_size]
                 outputs.extend(
@@ -289,7 +294,7 @@ class RemoteAPIProvider(BaseLLMProvider):
 
         semaphore = asyncio.Semaphore(self.batch_size)
 
-        async def guarded_call(msgs: List[Dict[str, Any]]) -> str:
+        async def guarded_call(msgs: List[Dict[str, Any]]) -> Dict[str, Any]:
             async with semaphore:
                 return await self._chat_call(
                     msgs,
@@ -299,7 +304,7 @@ class RemoteAPIProvider(BaseLLMProvider):
                     json_mode=json_mode,
                 )
 
-        return await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch])
+        return list(await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch]))
 
     @staticmethod
     def _parse_think_answer(raw_output: str, enable_thinking: bool) -> Dict[str, str]:
@@ -343,7 +348,15 @@ class RemoteAPIProvider(BaseLLMProvider):
             enable_thinking=enable_thinking,
             json_mode=False,
         )
-        return [self._parse_think_answer(output, enable_thinking=enable_thinking) for output in raw_outputs]
+        results = []
+        for output in raw_outputs:
+            reasoning = output.get("reasoning_content", "")
+            content = output.get("content", "")
+            if reasoning:
+                results.append({"think": reasoning, "answer": content})
+            else:
+                results.append(self._parse_think_answer(content, enable_thinking=enable_thinking))
+        return results
 
     async def generate_json_batch(
         self,
@@ -358,4 +371,4 @@ class RemoteAPIProvider(BaseLLMProvider):
             enable_thinking=enable_thinking,
             json_mode=True,
         )
-        return [self._parse_json(output) for output in raw_outputs]
+        return [self._parse_json(output.get("content", "")) for output in raw_outputs]

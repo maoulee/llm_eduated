@@ -57,10 +57,10 @@ async def main():
     console.rule("[bold cyan]Interactive Solver CLI[/bold cyan]")
     
     # 1. 初始化服务
-    console.print("--> Initializing services (local provider by default)...")
+    provider_name = "glm5.1"
+    console.print(f"--> Initializing services (provider: {provider_name})...")
     try:
-        # 交互模式通常用本地模型，因为它响应快且不耗费API额度
-        provider_config = get_provider_config("local")
+        provider_config = get_provider_config(provider_name)
         llm_provider = get_llm_provider(provider_config)
         retriever_client = RetrievalAPIClient(base_url=get_retrieval_api_url())
         workflow_engine = IterativeSolverWorkflow(llm_provider, retriever_client)
