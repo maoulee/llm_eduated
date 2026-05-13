@@ -82,6 +82,12 @@
           "description": "整数127在32位机器中的二进制表示为全0最低7位为1（...0000 0111 1111），其补码形式与无符号数形式完全一致，且最高位（符号位）均为0。",
           "subtype": "fact",
           "subject": "计算机组成原理"
+        },
+        {
+          "name": "赋值时的类型转换规则",
+          "description": "在C语言中，当将一种类型的值赋给另一种类型的变量（左值）时，系统会自动将右侧表达式的结果转换为左侧变量的数据类型。若将无符号数赋值给有符号的int型变量（且未发生实质性的越界截断），其二进制位模式被原样保留并按有符号数（补码）进行重新解析。",
+          "subtype": "rule",
+          "subject": "C语言程序设计"
         }
       ],
       "mechanisms": [
@@ -98,13 +104,6 @@
           "affects_what": "影响最终运算结果的计算与溢出判断",
           "common_misunderstanding": "看到有符号数与无符号数混合运算，或者看到“不同类型相减”，就直接主观判定结果会发生溢出（选D），而忽略了具体数值的运算本质。",
           "subject": "计算机组成原理"
-        },
-        {
-          "name": "赋值运算中的类型转换",
-          "description": "在C语言中，当将右值（如无符号数运算结果）赋值给不同类型的左值（如带符号整型）时，系统会自动进行隐式类型转换。若右值超出左值类型的表示范围，则会发生截断或重新解释（即直接按补码 reinterpret），但底层二进制位模式保持不变。",
-          "affects_what": "",
-          "common_misunderstanding": "",
-          "subject": "C语言程序设计"
         }
       ]
     },
@@ -176,8 +175,8 @@
           "activates": {
             "targets": [
               {
-                "target_type": "mechanism",
-                "target_name": "赋值运算中的类型转换",
+                "target_type": "knowledge",
+                "target_name": "赋值时的类型转换规则",
                 "action": "modify"
               }
             ]
@@ -320,7 +319,7 @@
           "input": "无符号运算结果0x00000000，左值z的类型为int。",
           "output": "无符号数0的位模式赋给int型变量z，最高位（符号位）为0，解析为有符号整数0，未发生溢出。",
           "required_knowledge": [
-            "赋值运算中的类型转换"
+            "赋值时的类型转换规则"
           ],
           "common_error_at_this_step": "混淆赋值时的类型转换与运算时的类型转换，混淆有符号溢出与无符号回绕的概念。"
         }
@@ -365,53 +364,21 @@
         "warnings": []
       },
       "domain_review": {
-        "answer_consistency_check": {
-          "raw_answer": "A",
-          "option_content": "0",
-          "derived_value": "0",
-          "is_consistent": true,
-          "notes": "rule-based answer_consistency 已经判定一致，且候选数据中推理模式步骤计算得出127-127=0，与原题答案一致。"
-        },
         "domain_review": {
-          "major_issues": [
-            {
-              "issue_type": "unsupported_trigger",
-              "evidence_path": "trigger_rules[1]",
-              "evidence_text": "{\"name\": \"运算结果向左值赋值转换\", \"activates\": {\"targets\": [{\"target_type\": \"mechanism\", \"target_name\": \"不同数据类型的隐式类型转换（算术转换）\", \"action\": \"modify\"}]}}",
-              "reason": "触发规则指向 'activates' 一个名为 '运算结果向左值转换' 的机制，但在 knowledge_units.mechanisms 中只定义了两个机制（'不同数据类型的隐式类型转换（算术转换）' 和 '无符号数减法运算与回绕机制'）。这是一个悬空引用或命名不匹配问题。",
-              "severity": "medium",
-              "suggested_action": "needs_human_check"
-            },
-            {
-              "issue_type": "other",
-              "evidence_path": "reasoning_pattern.steps[3].required_knowledge",
-              "evidence_text": "required_knowledge: [\"127的机器数表示\", \"补码与无符号数的编码规则\"]",
-              "reason": "引用的 '补码与无符号数的编码规则' 知识单元在 knowledge_units.knowledge_units 和 mechanisms 中均不存在，属于悬空引用。",
-              "severity": "medium",
-              "suggested_action": "needs_human_check"
-            }
-          ],
-          "minor_issues": [
-            {
-              "issue_type": "other",
-              "evidence_path": "reasoning_pattern.steps[5].required_knowledge",
-              "evidence_text": "required_knowledge: [\"运算结果向左值赋值转换\"]",
-              "reason": "引用的 '运算结果向左值赋值转换' 知识点在候选数据的现有知识单元列表中缺失，应视为悬空引用，但相对次要。",
-              "severity": "low",
-              "suggested_action": "candidate"
-            }
-          ],
+          "major_issues": [],
+          "minor_issues": [],
           "uncertain_items": []
         },
-        "review_summary": "推理逻辑和干扰项分析整体完整且专业，answer_consistency已验证通过。但存在字段引用的一致性问题：候选数据中 trigger_rules 和 reasoning_pattern 里引用的机制/知识单元（如'运算结果向左值赋值转换'和'补码与无符号数的编码规则'）在 knowledge_units 结构中缺失。为避免图数据库导入或知识图谱关联失败，需人工修复这些悬空引用或补充对应节点。",
-        "recommended_status": "needs_human_check"
+        "review_summary": "Deep critic skipped after link repair; prior review is stale.",
+        "recommended_status": "candidate",
+        "stale": true
       },
       "readiness": {
-        "status": "needs_human_check",
-        "requires_human_or_rule_check": true,
+        "status": "candidate",
+        "requires_human_or_rule_check": false,
+        "requires_domain_recheck": true,
         "reasons": [
-          "Domain: unsupported_trigger — 触发规则指向 'activates' 一个名为 '运算结果向左值转换' 的机制，但在 knowledge_units.mechanisms 中只定义了两个机制（'不同数据类型的隐式类型转换（算术转换）",
-          "Domain: other — 引用的 '补码与无符号数的编码规则' 知识单元在 knowledge_units.knowledge_units 和 mechanisms 中均不存在，属于悬空引用。"
+          "All checks passed; MVP default is candidate"
         ]
       }
     },
@@ -431,35 +398,35 @@
           "canonical_name": "补码与无符号数的编码规则",
           "candidate_node": null,
           "map_target": "127的机器数表示",
-          "reason": "此处考察的是具体数值的底层二进制编码，而在32位机器中，正数127的补码与无符号编码完全相同，直接映射到已有的知识点即可说明问题。"
+          "reason": "该引用描述的是底层编码规则，已有知识节点'127的机器数表示'明确说明了127的补码与无符号数形式完全一致，直接涵盖了该知识点，无需重复新增节点。"
         },
         {
           "orphan_name": "运算结果向左值赋值转换",
           "source": "pattern_step",
           "source_detail": "step 5",
-          "verdict": "new_mechanism",
-          "canonical_name": "赋值运算中的类型转换",
+          "verdict": "new_knowledge",
+          "canonical_name": "赋值时的类型转换规则",
           "candidate_node": {
-            "name": "赋值运算中的类型转换",
-            "description": "在C语言中，当将右值（如无符号数运算结果）赋值给不同类型的左值（如带符号整型）时，系统会自动进行隐式类型转换。若右值超出左值类型的表示范围，则会发生截断或重新解释（即直接按补码 reinterpret），但底层二进制位模式保持不变。",
+            "name": "赋值时的类型转换规则",
+            "description": "在C语言中，当将一种类型的值赋给另一种类型的变量（左值）时，系统会自动将右侧表达式的结果转换为左侧变量的数据类型。若将无符号数赋值给有符号的int型变量（且未发生实质性的越界截断），其二进制位模式被原样保留并按有符号数（补码）进行重新解析。",
             "subtype": "rule",
             "subject": "C语言程序设计"
           },
           "map_target": null,
-          "reason": "将无符号数的减法结果（0）重新赋值给有符号整型变量（z）时，属于独立的赋值转换机制，当前P2中仅有算术运算时的隐式转换，缺少赋值时的转换机制。"
+          "reason": "它描述的是表达式计算完成后，将结果赋值给变量z（int型）时的类型转换机制。这是一个独立于算术隐式转换的赋值阶段规则，应该作为一个新的知识节点加入。"
         }
       ],
       "retargets": [
         {
           "trigger_name": "运算结果向左值赋值转换",
           "old_target_name": "不同数据类型的隐式类型转换（算术转换）",
-          "new_target_name": "赋值运算中的类型转换",
-          "new_target_type": "mechanism",
-          "reason": "原 target 描述的是算术表达式运算过程中的类型提升与转换，而当前触发器描述的是运算完成后向左值（变量z）赋值时的类型转换，属于不同阶段的机制，因此需要重新指向新的机制节点。"
+          "new_target_name": "赋值时的类型转换规则",
+          "new_target_type": "knowledge",
+          "reason": "原target指向的是算术运算过程中的隐式转换，而该触发器针对的是运算完成后向左值（变量z）赋值时的转换行为。两者的触发时机和机制不同，应该指向新增的'赋值时的类型转换规则'节点。"
         }
       ],
       "suggested_p2_additions": [
-        "赋值运算中的类型转换"
+        "赋值时的类型转换规则"
       ],
       "orphan_count": 2
     },
@@ -474,12 +441,12 @@
         {
           "path": "reasoning_pattern.steps[5].required_knowledge",
           "old": "运算结果向左值赋值转换",
-          "new": "赋值运算中的类型转换"
+          "new": "赋值时的类型转换规则"
         },
         {
           "path": "trigger_rules.运算结果向左值赋值转换.retarget",
           "old": "不同数据类型的隐式类型转换（算术转换）",
-          "new": "赋值运算中的类型转换"
+          "new": "赋值时的类型转换规则"
         }
       ]
     }

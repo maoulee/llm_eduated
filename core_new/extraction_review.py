@@ -388,6 +388,7 @@ class ReadinessAggregator:
         return {
             "status": status,
             "requires_human_or_rule_check": requires_human,
+            "requires_domain_recheck": bool(domain_review and domain_review.get("stale")),
             "reasons": reasons if reasons else ["All checks passed; MVP default is candidate"],
         }
 

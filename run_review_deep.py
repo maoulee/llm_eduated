@@ -98,7 +98,12 @@ async def deep_review_question(
         critic = DomainCritic(provider, max_tokens=16384, enable_thinking=True)
         domain_result = await critic.review(updated, rule_result)
     else:
-        domain_result = result.get("review", {}).get("domain_review", {})
+        domain_result = {
+            "domain_review": {"major_issues": [], "minor_issues": [], "uncertain_items": []},
+            "review_summary": "Deep critic skipped after link repair; prior review is stale.",
+            "recommended_status": "candidate",
+            "stale": True,
+        }
 
     # Aggregate
     readiness = ReadinessAggregator.aggregate(rule_result, domain_result)
