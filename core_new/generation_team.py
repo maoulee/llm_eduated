@@ -21,6 +21,7 @@ Usage:
 
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from .generation_prompts import (
@@ -35,21 +36,82 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
-    """Parse JSON from LLM output with fallback for markdown code blocks."""
+def _parse_xml(text: str) -> Optional[Dict[str, Any]]:
+    """Extract XML-tagged fields from model output into a dict.
+
+    Handles semicolon-separated lists within tags and provides fallback to JSON.
+    Special handling for options with option_A, option_B, option_C, option_D tags.
+    Reconstructs nested structures from flattened XML tags.
+    """
+    result = {}
+
+    # Try XML parsing first
+    for m in re.finditer(r'<(\w+)>(.*?)</\w+>', text, re.DOTALL):
+        key = m.group(1)
+        value = m.group(2).strip()
+        # Split semicolon-separated lists
+        if ';' in value:
+            result[key] = [v.strip() for v in value.split(';') if v.strip()]
+        else:
+            result[key] = value
+
+    if result:
+        # Special handling for options: convert option_A, option_B, option_C, option_D to options dict
+        if "option_A" in result or "option_B" in result:
+            options = {}
+            for opt_key in ["option_A", "option_B", "option_C", "option_D"]:
+                if opt_key in result:
+                    letter = opt_key.split("_")[1]
+                    options[letter] = result.pop(opt_key)
+            result["options"] = options
+
+        # Reconstruct primary_target from flattened fields for BlueprintPlanner
+        if "primary_target_type" in result or "primary_target_name" in result:
+            primary_target = {
+                "type": result.pop("primary_target_type", ""),
+                "name": result.pop("primary_target_name", ""),
+                "description": result.pop("primary_target_description", ""),
+            }
+            result["primary_target"] = primary_target
+
+        # Reconstruct target_mapping for QuestionWriter
+        if "primary_target_hit" in result or "expected_wrong_option" in result:
+            target_mapping = {
+                "primary_target_hit": result.pop("primary_target_hit", True),
+                "expected_wrong_option": result.pop("expected_wrong_option", ""),
+                "expected_wrong_reason": result.pop("expected_wrong_reason", ""),
+            }
+            result["target_mapping"] = target_mapping
+
+        # Convert string "true"/"false" to boolean for known fields
+        for bool_field in ["consistent", "unique_answer", "solvable", "primary_target_hit", "matched_expected_failure"]:
+            if bool_field in result and isinstance(result[bool_field], str):
+                result[bool_field] = result[bool_field].lower() == "true"
+
+        # Convert numeric fields
+        for num_field in ["recommended_difficulty", "difficulty", "difficulty_self_assessment"]:
+            if num_field in result and isinstance(result[num_field], str):
+                try:
+                    result[num_field] = int(result[num_field])
+                except ValueError:
+                    pass
+
+        return result
+
+    # Fallback to JSON parsing for backward compatibility
     try:
-        return json.loads(raw)
+        return json.loads(text)
     except (json.JSONDecodeError, TypeError):
         pass
     try:
-        if "```json" in raw:
-            clean = raw.split("```json\n", 1)[1].rsplit("```", 1)[0]
+        if "```json" in text:
+            clean = text.split("```json\n", 1)[1].rsplit("```", 1)[0]
         else:
-            start, end = raw.find("{"), raw.rfind("}")
-            clean = raw[start:end + 1] if start != -1 and end != -1 else raw
+            start, end = text.find("{"), text.rfind("}")
+            clean = text[start:end + 1] if start != -1 and end != -1 else text
         return json.loads(clean)
     except (json.JSONDecodeError, IndexError, TypeError):
-        logger.warning("Failed to parse JSON. Raw output: %s", raw[:200])
+        logger.warning("Failed to parse XML and JSON. Raw output: %s", text[:200])
         return None
 
 
@@ -73,7 +135,7 @@ class ProfileInterpreter:
         messages = [[{"role": "user", "content": prompt}]]
 
         results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=False
+            messages, max_tokens=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -81,7 +143,10 @@ class ProfileInterpreter:
             logger.error("ProfileInterpreter returned None")
             return {}
 
-        return result
+        # Parse XML content from the result
+        content = result.get("content", "")
+        parsed = _parse_xml(content) if content else result
+        return parsed if parsed else result
 
 
 class BlueprintPlanner:
@@ -102,7 +167,7 @@ class BlueprintPlanner:
         messages = [[{"role": "user", "content": prompt}]]
 
         results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=False
+            messages, max_tokens=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -110,7 +175,10 @@ class BlueprintPlanner:
             logger.error("BlueprintPlanner returned None")
             return {}
 
-        return result
+        # Parse XML content from the result
+        content = result.get("content", "")
+        parsed = _parse_xml(content) if content else result
+        return parsed if parsed else result
 
 
 class QuestionWriter:
@@ -141,7 +209,7 @@ class QuestionWriter:
         messages = [[{"role": "user", "content": prompt}]]
 
         results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=False
+            messages, max_tokens=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -149,7 +217,10 @@ class QuestionWriter:
             logger.error("QuestionWriter returned None")
             return {}
 
-        return result
+        # Parse XML content from the result
+        content = result.get("content", "")
+        parsed = _parse_xml(content) if content else result
+        return parsed if parsed else result
 
 
 class SolverVerifier:
@@ -170,7 +241,7 @@ class SolverVerifier:
         messages = [[{"role": "user", "content": prompt}]]
 
         results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=False
+            messages, max_tokens=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -178,7 +249,10 @@ class SolverVerifier:
             logger.error("SolverVerifier returned None")
             return {}
 
-        return result
+        # Parse XML content from the result
+        content = result.get("content", "")
+        parsed = _parse_xml(content) if content else result
+        return parsed if parsed else result
 
 
 class UserSimulator:
@@ -199,7 +273,7 @@ class UserSimulator:
         messages = [[{"role": "user", "content": prompt}]]
 
         results = await self.llm.generate_json_batch(
-            messages, max_tokens=self.max_tokens, enable_thinking=False
+            messages, max_tokens=self.max_tokens, enable_thinking=True
         )
 
         result = results[0] if results else None
@@ -207,7 +281,10 @@ class UserSimulator:
             logger.error("UserSimulator returned None")
             return {}
 
-        return result
+        # Parse XML content from the result
+        content = result.get("content", "")
+        parsed = _parse_xml(content) if content else result
+        return parsed if parsed else result
 
 
 class GenerationAggregator:
@@ -256,9 +333,25 @@ class GenerationAggregator:
 
         # Rule 5: If simulation matched expected failure AND solver consistent → accept_candidate
         matched_failure = simulation_result.get("matched_expected_failure", False)
-        expected_wrong = blueprint.get("distractor_plan", [{}])[0].get("targeted_weakness", "")
+        # Handle distractor_plan as either list (from JSON) or string (from XML)
+        distractor_plan = blueprint.get("distractor_plan", [])
+        if isinstance(distractor_plan, str):
+            # Parse semicolon-separated distractor plan from XML
+            # Format: role1:desc1:weakness1;role2:desc2:weakness2
+            expected_wrong = ""
+            if distractor_plan:
+                parts = distractor_plan.split(';')[0] if ';' in distractor_plan else distractor_plan
+                if ':' in parts:
+                    expected_wrong = parts.split(':')[-1] if parts.count(':') >= 2 else ""
+        else:
+            expected_wrong = distractor_plan[0].get("targeted_weakness", "") if distractor_plan else ""
         actual_wrong_option = simulation_result.get("simulated_answer", "")
-        expected_wrong_option = blueprint.get("expected_wrong_option", "")
+        # Get expected_wrong_option from blueprint's target_mapping if available
+        target_mapping = blueprint.get("target_mapping", {})
+        if isinstance(target_mapping, dict):
+            expected_wrong_option = target_mapping.get("expected_wrong_option", "")
+        else:
+            expected_wrong_option = blueprint.get("expected_wrong_option", "")
 
         if matched_failure:
             reasons.append("User simulation matched expected failure pattern")

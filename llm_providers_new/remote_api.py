@@ -307,14 +307,30 @@ class RemoteAPIProvider(BaseLLMProvider):
         return list(await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch]))
 
     @staticmethod
-    def _parse_think_answer(raw_output: str, enable_thinking: bool) -> Dict[str, str]:
-        if enable_thinking and "<think>" in raw_output and "</think>" in raw_output:
+    def _parse_think_answer(output: Dict[str, Any], enable_thinking: bool) -> Dict[str, str]:
+        """Parse thinking and answer from API response.
+        
+        Args:
+            output: Dict with 'content' and 'reasoning_content' keys from API response.
+            enable_thinking: Whether thinking mode was enabled.
+            
+        Returns:
+            Dict with 'think' and 'answer' keys.
+        """
+        reasoning = output.get("reasoning_content", "")
+        content = output.get("content", "")
+        
+        if reasoning:
+            return {"think": reasoning, "answer": content}
+        
+        # Fallback for legacy responses without reasoning_content field
+        if enable_thinking and "" in content:
             try:
-                parts = raw_output.split("<think>", 1)[1].split("</think>", 1)
+                parts = content.split("<think>", 1)[1].split("</think>", 1)
                 return {"think": parts[0].strip(), "answer": parts[1].strip()}
             except IndexError:
-                return {"think": "N/A (parse error)", "answer": raw_output.strip()}
-        return {"think": "N/A (thinking disabled or not present)", "answer": raw_output.strip()}
+                return {"think": "N/A (parse error)", "answer": content.strip()}
+        return {"think": "N/A (thinking disabled or not present)", "answer": content.strip()}
 
     @staticmethod
     def _parse_json(raw_output: str) -> Optional[Dict[str, Any]]:
@@ -350,12 +366,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         )
         results = []
         for output in raw_outputs:
-            reasoning = output.get("reasoning_content", "")
-            content = output.get("content", "")
-            if reasoning:
-                results.append({"think": reasoning, "answer": content})
-            else:
-                results.append(self._parse_think_answer(content, enable_thinking=enable_thinking))
+            results.append(self._parse_think_answer(output, enable_thinking=enable_thinking))
         return results
 
     async def generate_json_batch(
