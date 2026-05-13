@@ -21,7 +21,7 @@ import logging
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional
 
-from .extraction_prompts import PASS5_DOMAIN_CRITIC
+from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -390,6 +390,110 @@ class ReadinessAggregator:
             "requires_human_or_rule_check": requires_human,
             "reasons": reasons if reasons else ["All checks passed; MVP default is candidate"],
         }
+
+
+# ---------------------------------------------------------------------------
+# OrphanReferenceResolver
+# ---------------------------------------------------------------------------
+
+class OrphanReferenceResolver:
+    """Resolves orphan references from P4 pattern steps and P3 trigger targets.
+
+    For each orphan, asks LLM whether it should be:
+    - new_knowledge: add to P2 knowledge_units
+    - new_mechanism: add to P2 mechanisms
+    - map_to_existing: remap to an existing P2 node
+    - uncertain: keep for human review
+    """
+
+    def __init__(self, llm_provider, max_tokens: int = 4096):
+        self.llm = llm_provider
+        self.max_tokens = max_tokens
+
+    async def resolve(
+        self,
+        extraction_result: Dict[str, Any],
+        rule_validation: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        orphans = rule_validation.get("link_validation", {}).get("orphan_targets", [])
+        if not orphans:
+            return {"resolutions": [], "suggested_p2_additions": [], "orphan_count": 0}
+
+        question = extraction_result.get("raw_question", {})
+        stem = question.get("prompt", "")
+        answer = question.get("answer", "")
+        ku = json.dumps(extraction_result.get("knowledge_units", {}), ensure_ascii=False)
+
+        orphan_str = json.dumps(orphans, ensure_ascii=False, indent=2)
+
+        prompt = ORPHAN_RESOLVER.format(
+            stem=stem,
+            answer=answer,
+            knowledge_units=ku,
+            orphan_refs=orphan_str,
+        )
+
+        logger.info("Running OrphanReferenceResolver for %d orphans", len(orphans))
+        messages = [[{"role": "user", "content": prompt}]]
+
+        raw = await self.llm.generate_json_batch(
+            messages, max_tokens=self.max_tokens, enable_thinking=False,
+        )
+        result = raw[0] if raw else None
+
+        if result is None:
+            logger.warning("OrphanReferenceResolver JSON parse failed")
+            return {
+                "resolutions": [],
+                "suggested_p2_additions": [],
+                "orphan_count": len(orphans),
+                "error": "JSON parse failed",
+            }
+
+        result["orphan_count"] = len(orphans)
+        logger.info(
+            "OrphanReferenceResolver: %d orphans → %d new_knowledge, %d new_mechanism, %d map_to_existing, %d uncertain",
+            len(orphans),
+            sum(1 for r in result.get("resolutions", []) if r.get("verdict") == "new_knowledge"),
+            sum(1 for r in result.get("resolutions", []) if r.get("verdict") == "new_mechanism"),
+            sum(1 for r in result.get("resolutions", []) if r.get("verdict") == "map_to_existing"),
+            sum(1 for r in result.get("resolutions", []) if r.get("verdict") == "uncertain"),
+        )
+        return result
+
+    @staticmethod
+    def apply_resolutions(
+        extraction_result: Dict[str, Any],
+        resolution: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Apply resolved nodes back into extraction_result. Returns modified copy."""
+        import copy
+        result = copy.deepcopy(extraction_result)
+        ku = result.get("knowledge_units", {})
+
+        for r in resolution.get("resolutions", []):
+            verdict = r.get("verdict", "")
+            node = r.get("candidate_node")
+            if not node:
+                continue
+
+            if verdict == "new_knowledge" and "knowledge_units" in ku:
+                ku["knowledge_units"].append({
+                    "name": node.get("name", ""),
+                    "description": node.get("description", ""),
+                    "subtype": node.get("subtype", "term"),
+                    "subject": node.get("subject", ""),
+                })
+            elif verdict == "new_mechanism" and "mechanisms" in ku:
+                ku["mechanisms"].append({
+                    "name": node.get("name", ""),
+                    "description": node.get("description", ""),
+                    "affects_what": "",
+                    "common_misunderstanding": "",
+                    "subject": node.get("subject", ""),
+                })
+
+        return result
 
 
 # ---------------------------------------------------------------------------

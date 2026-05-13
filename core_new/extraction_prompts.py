@@ -352,3 +352,48 @@ PASS5_DOMAIN_CRITIC = """你是独立的408题库审稿人。以下候选条目�
   "recommended_status": "candidate | rejected | needs_human_check"
 }}
 ```"""
+
+ORPHAN_RESOLVER = """你是一位408考研知识库结构化专家。以下抽取结果中，推理模式（P4）和触发规则（P3）引用了一些在知识单元（P2）中不存在的实体。
+
+你的任务是对每个孤立引用做出判断：
+1. 如果它是合理的知识节点（概念、公式、规则、数值约定），给出候选 knowledge 节点
+2. 如果它是合理的机制节点（影响推理路径的系统机制），给出候选 mechanism 节点
+3. 如果它只是推理步骤的描述性用语，建议映射到已有的某个知识/机制节点
+4. 如果无法判断，标记 uncertain
+
+## 题目信息
+题干：{stem}
+答案：{answer}
+
+## 已有知识单元（P2）
+{knowledge_units}
+
+## 孤立引用列表
+{orphan_refs}
+
+## 要求
+请输出JSON：
+
+```json
+{{
+  "resolutions": [
+    {{
+      "orphan_name": "孤立引用名称",
+      "source": "pattern_step | trigger_target",
+      "source_detail": "来自哪个步骤或触发规则",
+      "verdict": "new_knowledge | new_mechanism | map_to_existing | uncertain",
+      "candidate_node": {{
+        "name": "节点名称",
+        "description": "具体内容",
+        "subtype": "definition | formula | rule | convention | term",
+        "subject": "所属科目"
+      }},
+      "map_target": "如果 map_to_existing，指向哪个已有节点名称",
+      "reason": "判断理由"
+    }}
+  ],
+  "suggested_p2_additions": [
+    "建议新增的节点名称列表"
+  ]
+}}
+```"""
