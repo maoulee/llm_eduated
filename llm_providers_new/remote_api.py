@@ -168,7 +168,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         max_tokens: Optional[int],
         enable_thinking: bool,
         json_mode: bool,
-    ) -> List[str]:
+    ) -> List[Dict[str, Any]]:
         processed_batch = [
             self._prepare_messages(msgs, enable_thinking=enable_thinking, json_mode=json_mode)
             for msgs in messages_batch
@@ -223,7 +223,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         max_tokens: Optional[int],
         enable_thinking: bool,
         json_mode: bool,
-    ) -> List[str]:
+    ) -> List[Dict[str, Any]]:
         prompts = [
             self._messages_to_prompt(msgs, enable_thinking=enable_thinking, json_mode=json_mode)
             for msgs in messages_batch

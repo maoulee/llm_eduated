@@ -5,8 +5,8 @@ Multi-pass extraction prompt templates for 408 question structuring.
 
 Pipeline passes:
   P1: question_structure  - extract conditions, target, constraints, distractors
-  P2: knowledge_units     - extract concepts, facts, mechanisms
-  P3: trigger_rules       - extract question signals → mechanism activation
+  P2: knowledge_units     - extract knowledge (merged concept+fact) and mechanisms
+  P3: trigger_rules       - extract question signals as diagnostic/routing constraints
   P4: reasoning_pattern   - extract step-by-step reasoning procedure
   P5: link_and_validate   - cross-reference and consistency check
 """
@@ -70,28 +70,24 @@ PASS2_KNOWLEDGE_UNITS = """你是一位408考研知识点分析专家。请根�
 正确答案：{answer}
 
 ## 知识单元分类
-只抽取三类内容知识：
-- concept：概念性知识（术语定义、基本概念）
-- fact：事实/公式知识（具体公式、规则、数值关系）
-- mechanism：机制知识（系统机制、原理如何影响推导）
+只抽取两类：
+- knowledge：基础知识（概念、定义、事实、公式、规则、数值约定等）
+- mechanism：机制知识（系统机制如何影响推导和结果）
+
+判断标准：
+- knowledge 回答"需要知道什么"（定义、数值、公式、约定）
+- mechanism 回答"为什么这个条件会改变推理路径或结果"
 
 ## 要求
 请严格按照以下JSON格式输出：
 
 ```json
 {{
-  "concepts": [
+  "knowledge_units": [
     {{
-      "name": "概念名称",
-      "description": "简短描述",
-      "subject": "所属科目"
-    }}
-  ],
-  "facts": [
-    {{
-      "name": "事实/公式名称",
+      "name": "知识名称",
       "description": "具体内容",
-      "formula_or_rule": "公式或规则表达式（如有）",
+      "subtype": "definition | formula | rule | convention | term",
       "subject": "所属科目"
     }}
   ],
@@ -109,8 +105,9 @@ PASS2_KNOWLEDGE_UNITS = """你是一位408考研知识点分析专家。请根�
 
 注意：
 1. 只抽取本题直接涉及的知识，不要泛化
-2. mechanism 重点关注那些"如果不知道就会做错"的机制
-3. 每个知识单元应该是原子性的，不要把多个知识混在一起"""
+2. knowledge 统一归入 knowledge_units，不区分 concept/fact，subtype 只是弱标签
+3. mechanism 重点关注那些"如果不知道就会做错"的机制
+4. 每个知识单元应该是原子性的，不要把多个知识混在一起"""
 
 PASS3_TRIGGER_RULES = """你是一位408考研题目信号分析专家。请分析以下题目中，题干的哪些信号决定了应该调用哪些机制或推理路径。
 
@@ -121,7 +118,8 @@ PASS3_TRIGGER_RULES = """你是一位408考研题目信号分析专家。请分�
 正确答案：{answer}
 
 ## 触发规则定义
-触发规则描述的是：题干中的什么信号 → 决定应该使用什么机制/解法。
+触发规则是系统内部的诊断和路由约束，用于识别题干信号如何影响解题路径。
+触发规则不作为用户训练目标，而是服务于选题、诊断、出题约束和错因解释。
 
 重点分析：
 - 哪些题干关键词改变了推理路径？
@@ -156,6 +154,12 @@ PASS3_TRIGGER_RULES = """你是一位408考研题目信号分析专家。请分�
       "wrong_if_missing": [
         "如果漏掉这个触发会犯什么错误"
       ],
+      "diagnostic_role": "missed_condition | wrong_route | mechanism_selection | blocks_wrong_pattern",
+      "generation_constraints": {{
+        "must_include_signals": ["出题时必须包含的题干信号"],
+        "must_expose_failure_mode": "出题时必须能测试的错误模式",
+        "expected_wrong_reason_if_missed": "用户漏掉此触发时的典型错误原因"
+      }},
       "diagnostic_value": 0.0到1.0的数值,
       "difficulty": "easy | medium | hard"
     }}
@@ -173,7 +177,9 @@ PASS3_TRIGGER_RULES = """你是一位408考研题目信号分析专家。请分�
 注意：
 1. 重点关注"容易被忽略"的触发信号
 2. 每个触发规则必须对应至少一种可能的错误
-3. diagnostic_value 反映该触发规则对诊断用户能力的价值"""
+3. diagnostic_value 反映该触发规则对诊断用户能力的价值
+4. diagnostic_role 说明该触发在诊断中的具体作用
+5. generation_constraints 直接服务于后续出题蓝图生成"""
 
 PASS4_REASONING_PATTERN = """你是一位408考研解题方法分析专家。请根据以下题目的完整信息，抽取出本题使用的推理模式。
 

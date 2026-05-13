@@ -44,9 +44,10 @@ logger = logging.getLogger(__name__)
 class ExtractionPipeline:
     """Orchestrates the 5-pass extraction pipeline for a single question."""
 
-    def __init__(self, llm_provider, max_tokens: int = 8192):
+    def __init__(self, llm_provider, max_tokens: int = 8192, enable_thinking: bool = False):
         self.llm = llm_provider
         self.max_tokens = max_tokens
+        self.enable_thinking = enable_thinking
 
     def _parse_json_output(self, raw: Optional[Dict]) -> Optional[Dict]:
         if raw is None:
@@ -63,7 +64,7 @@ class ExtractionPipeline:
         results = await self.llm.generate_json_batch(
             messages,
             max_tokens=self.max_tokens,
-            enable_thinking=True,
+            enable_thinking=self.enable_thinking,
         )
         result = results[0] if results else None
         if result is None:
