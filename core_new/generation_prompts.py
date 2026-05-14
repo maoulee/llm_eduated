@@ -83,23 +83,20 @@ QUESTION_WRITER = """你是一位408考研命题专家。请根据以下蓝图�
 <expected_wrong_option>B</expected_wrong_option>
 <expected_wrong_reason>为什么薄弱用户会选这个</expected_wrong_reason>"""
 
-SOLVER_VERIFIER = """你是一位408考研解题专家。请独立解答以下题目，不依赖给定的标准答案。
+SOLVER_VERIFIER = """你是一位408考研解题专家。请独立解答以下题目。
 
 ## 题目
 {question}
 
 ## 要求
-请独立推导出答案，然后与标准答案比对。
+请仅依据题目本身独立推导出答案。
 
-请用以下XML标签输出：
-<my_answer>我推导出的答案</my_answer>
-<my_reasoning>详细推导过程</my_reasoning>
-<given_answer>{given_answer}</given_answer>
-<consistent>true</consistent>
+请用以下XML标签输出最终结果：
+<derived_answer>我推导出的答案（选项字母或数值）</derived_answer>
 <unique_answer>true</unique_answer>
 <ambiguity_found>如果发现歧义，说明在哪里（无歧义则留空）</ambiguity_found>
 <solvable>true</solvable>
-<issues>问题1;问题2</issues>"""
+<confidence>0.9</confidence>"""
 
 USER_SIMULATOR = """你正在模拟一位408考研考生。你有特定的知识缺陷，请按照这个真实水平作答，不要使用你没有掌握的机制。
 
@@ -112,9 +109,8 @@ USER_SIMULATOR = """你正在模拟一位408考研考生。你有特定的知识
 ## 要求
 请按照模拟用户的真实水平作答。你可以使用该用户已掌握的知识，但不能使用标记为薄弱的知识/机制。
 
-请用以下XML标签输出：
+请用以下XML标签输出最终结果：
 <simulated_answer>A</simulated_answer>
-<reasoning>模拟用户的推理过程</reasoning>
 <used_knowledge>知识1;知识2</used_knowledge>
 <missed_mechanism>是否忽略了某个机制（如果有）</missed_mechanism>
 <matched_expected_failure>true</matched_expected_failure>"""

@@ -50,8 +50,12 @@ PROMPT_CODE = """请为以下题目编写Python代码来独立计算并验证答
 3. 最后打印最终答案
 4. 如果题目不适合用代码解答（如纯概念题），请设置code_applicable为false
 
-请按以下XML格式输出：
-<code>完整的Python代码字符串</code>
+请按以下格式输出：
+```python
+# 完整的Python代码
+```
+
+并在代码后按XML格式输出：
 <computed_answer>代码运行后得到的答案</computed_answer>
 <explanation>对代码逻辑的简要说明</explanation>
 <code_applicable>true或false，表示本题是否适合用代码解答</code_applicable>
@@ -67,6 +71,14 @@ def _extract_xml_tag(text: str, tag: str) -> str:
     pattern = rf'<{tag}>(.*?)</{tag}>'
     match = re.search(pattern, text, re.DOTALL)
     return match.group(1).strip() if match else ""
+
+
+def _extract_code_block(text: str) -> str:
+    """Extract Python code from ```python ... ``` blocks, falling back to XML <code> tags."""
+    m = re.search(r'```(?:python)?\s*\n?(.*?)```', text, re.DOTALL)
+    if m:
+        return m.group(1).strip()
+    return _extract_xml_tag(text, "code")
 
 
 def _format_options(options: Dict[str, str]) -> str:
@@ -262,8 +274,8 @@ class DualPathSolver:
         result = results[0]
         content = result.get("answer", "")
 
-        # Parse XML tags
-        code = _extract_xml_tag(content, "code")
+        # Extract code (```python blocks first, then XML fallback)
+        code = _extract_code_block(content)
         computed_answer = _extract_xml_tag(content, "computed_answer")
         explanation = _extract_xml_tag(content, "explanation")
         code_applicable_str = _extract_xml_tag(content, "code_applicable").lower()

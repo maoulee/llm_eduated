@@ -23,6 +23,7 @@ import asyncio
 import copy
 import json
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -68,6 +69,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         self.sampling_params = {
             "temperature": float(kwargs.get("temperature", 0.6)),
             "top_p": float(kwargs.get("top_p", 0.9)),
+            "top_k": int(kwargs.get("top_k", -1)),
             "max_tokens": int(kwargs.get("default_max_tokens", 4096)),
         }
 
@@ -136,10 +138,12 @@ class RemoteAPIProvider(BaseLLMProvider):
         json_mode: bool,
     ) -> Dict[str, Any]:
         processed_messages = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
+        # OpenAI client doesn't accept top_k; pass it via extra_body for vLLM
+        sampling = {k: v for k, v in self.sampling_params.items() if k != "top_k"}
         params: Dict[str, Any] = {
             "model": self.model_name,
             "messages": processed_messages,
-            **self.sampling_params,
+            **sampling,
         }
         if max_tokens:
             params["max_tokens"] = max_tokens
@@ -155,7 +159,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         try:
             response = await self.client.chat.completions.create(**params)
             msg = response.choices[0].message
-            reasoning_content = getattr(msg, "reasoning_content", None) or ""
+            reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
             return {"content": msg.content or "", "reasoning_content": reasoning_content}
         except Exception as e:
             logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
@@ -200,6 +204,12 @@ class RemoteAPIProvider(BaseLLMProvider):
                 response = await client.post(url, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning("vLLM batch endpoint not available (404), falling back to sequential calls")
+                return await self._fallback_sequential_chat(processed_batch, stop_sequences, max_tokens, enable_thinking, json_mode)
+            logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
+            return [{"content": f"Error: vLLM chat batch call failed. Details: {e}", "reasoning_content": ""} for _ in processed_batch]
         except Exception as e:
             logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
             return [{"content": f"Error: vLLM chat batch call failed. Details: {e}", "reasoning_content": ""} for _ in processed_batch]
@@ -212,9 +222,32 @@ class RemoteAPIProvider(BaseLLMProvider):
             message = choice.get("message") or {}
             ordered[idx] = {
                 "content": message.get("content") or "",
-                "reasoning_content": message.get("reasoning_content") or "",
+                "reasoning_content": message.get("reasoning_content") or message.get("reasoning") or "",
             }
         return ordered
+
+    async def _fallback_sequential_chat(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[Dict[str, Any]]:
+        """Fallback: send batch requests as individual concurrent chat calls."""
+        semaphore = asyncio.Semaphore(self.batch_size)
+
+        async def single_call(msgs):
+            async with semaphore:
+                return await self._chat_call(
+                    msgs,
+                    stop_sequences=stop_sequences,
+                    max_tokens=max_tokens,
+                    enable_thinking=enable_thinking,
+                    json_mode=json_mode,
+                )
+
+        return list(await asyncio.gather(*[single_call(msgs) for msgs in messages_batch]))
 
     async def _completion_batch_call(
         self,
@@ -307,26 +340,35 @@ class RemoteAPIProvider(BaseLLMProvider):
         return list(await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch]))
 
     @staticmethod
+    @staticmethod
     def _parse_think_answer(output: Dict[str, Any], enable_thinking: bool) -> Dict[str, str]:
         """Parse thinking and answer from API response.
-        
+
         Args:
             output: Dict with 'content' and 'reasoning_content' keys from API response.
             enable_thinking: Whether thinking mode was enabled.
-            
+
         Returns:
             Dict with 'think' and 'answer' keys.
         """
         reasoning = output.get("reasoning_content", "")
         content = output.get("content", "")
-        
+
         if reasoning:
+            # GLM thinking mode may put XML output into reasoning_content
+            # instead of content. Extract XML-tagged tail as answer.
+            if not content and enable_thinking:
+                xml_match = re.search(r'(<\w+>.*?</\w+>\s*)+$', reasoning, re.DOTALL)
+                if xml_match:
+                    xml_part = xml_match.group(0)
+                    think_part = reasoning[:xml_match.start()].strip()
+                    return {"think": think_part, "answer": xml_part.strip()}
             return {"think": reasoning, "answer": content}
-        
+
         # Fallback for legacy responses without reasoning_content field
-        if enable_thinking and "" in content:
+        if enable_thinking and "<think" in content:
             try:
-                parts = content.split("<think>", 1)[1].split("</think>", 1)
+                parts = content.split("<think", 1)[1].split("</think", 1)
                 return {"think": parts[0].strip(), "answer": parts[1].strip()}
             except IndexError:
                 return {"think": "N/A (parse error)", "answer": content.strip()}
@@ -365,8 +407,31 @@ class RemoteAPIProvider(BaseLLMProvider):
             json_mode=False,
         )
         results = []
-        for output in raw_outputs:
-            results.append(self._parse_think_answer(output, enable_thinking=enable_thinking))
+        retry_indices = []
+        for i, output in enumerate(raw_outputs):
+            parsed = self._parse_think_answer(output, enable_thinking=enable_thinking)
+            # GLM thinking mode sometimes empties content into reasoning_content only.
+            # Retry once for affected messages.
+            if enable_thinking and not parsed.get("answer"):
+                retry_indices.append(i)
+            results.append(parsed)
+
+        if retry_indices:
+            logger.warning("GLM returned empty content for %d messages, retrying", len(retry_indices))
+            retry_batch = [messages_batch[i] for i in retry_indices]
+            retry_outputs = await self._generate_raw_batch(
+                messages_batch=retry_batch,
+                stop_sequences=stop_sequences,
+                max_tokens=max_token,
+                enable_thinking=enable_thinking,
+                json_mode=False,
+            )
+            for j, idx in enumerate(retry_indices):
+                retry_parsed = self._parse_think_answer(retry_outputs[j], enable_thinking=enable_thinking)
+                if retry_parsed.get("answer"):
+                    results[idx] = retry_parsed
+                    logger.info("Retry succeeded for message %d", idx)
+
         return results
 
     async def generate_json_batch(

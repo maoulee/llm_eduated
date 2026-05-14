@@ -33,39 +33,27 @@ from llm_providers_new import get_llm_provider
 # Prompts
 # ---------------------------------------------------------------------------
 
-PROMPT_REASON = """请解答以下{question_type}题目，给出你的推理过程和最终答案。
+PROMPT_REASON = """请解答以下题目。这是真题，不要质疑题目的合理性，直接推理作答。将最终答案放在 \\boxed{{}} 中。
 
-{stem}
-
-{options}
-正确答案：{answer}
-
-请按以下JSON格式输出：
-{{
-  "reasoning": "你的详细推理过程",
-  "answer": "你的最终答案（选项字母或计算结果）",
-  "confidence": "high/medium/low"
-}}"""
+{raw_question}"""
 
 
-PROMPT_CODE = """请为以下{question_type}题目编写Python代码来独立计算并验证答案。
+PROMPT_CODE = """请为以下题目编写Python代码来独立计算答案。这是真题，不要质疑题目。
 
-{stem}
+{raw_question}
 
-{options}
-正确答案：{answer}
+代码规范：
+- 代码必须是完整的、可直接执行的Python代码
+- 不要有前导缩进（从第一列开始写）
+- 使用 print() 输出中间步骤和最终答案
+- 如果需要位运算，使用 & | ^ << >> 等运算符
+- 只允许使用Python内置函数和math模块
+- 不要使用input()、open()、__import__等
 
-要求：
-1. 代码必须独立计算，不要依赖上面的"正确答案"
-2. 逐步计算并打印中间结果
-3. 最后打印最终答案
-4. 只输出Python代码，不要输出其他内容
-
-请用以下格式输出JSON：
-{{
-  "code": "完整的Python代码字符串",
-  "expected_output": "你预期代码运行后得到的答案"
-}}"""
+请只输出代码，不要输出其他内容：
+```python
+# 你的代码
+```"""
 
 
 # ---------------------------------------------------------------------------
@@ -151,8 +139,18 @@ def execute_code_safely(code: str, timeout: int = 10) -> Dict[str, Any]:
     stderr_buf = StringIO()
 
     import math
+    SAFE_BUILTINS = {
+        "range": range, "len": len, "int": int, "str": str, "float": float,
+        "bin": bin, "hex": hex, "oct": oct, "bool": bool, "list": list,
+        "dict": dict, "tuple": tuple, "set": set, "sorted": sorted,
+        "print": print, "sum": sum, "min": min, "max": max, "abs": abs,
+        "enumerate": enumerate, "zip": zip, "map": map, "filter": filter,
+        "isinstance": isinstance, "type": type, "round": round, "pow": pow,
+        "reversed": reversed, "all": all, "any": any, "divmod": divmod,
+        "chr": chr, "ord": ord, "format": format,
+    }
     restricted_globals = {
-        "__builtins__": __builtins__,
+        "__builtins__": SAFE_BUILTINS,
         "math": math,
     }
 
@@ -213,38 +211,40 @@ def extract_answer_letter(text: str) -> Optional[str]:
     return text.strip()[:50]
 
 
-def compare_answers(reasoning_answer: str, code_output: str, ground_truth: str) -> Dict[str, Any]:
-    """Compare reasoning answer, code output, and ground truth."""
-    ra = extract_answer_letter(str(reasoning_answer))
-    ca = extract_answer_letter(code_output)
+def _extract_xml_tags(text: str) -> Dict[str, str]:
+    """Extract XML-tagged fields from model output."""
+    result = {}
+    for m in re.finditer(r'<(\w+)>(.*?)</\1>', text, re.DOTALL):
+        result[m.group(1)] = m.group(2).strip()
+    return result
 
-    # For ground truth, extract key answer from potentially long text
-    # First try to find option letter, then number
-    gt_raw = str(ground_truth)
-    gt = extract_answer_letter(gt_raw)
-    # Special handling: if ground truth starts with a known option letter
-    if gt_raw.strip() in ("A", "B", "C", "D"):
-        gt = gt_raw.strip()
-    # If ground truth contains answer_key info, extract key answer
-    for pattern in [
-        r'CRC校验码为(\d+)',
-        r'余数为(\d+)',
-        r'即([+-]?\d+)',
-        r'叶子结点数为(\d+)',
-        r'([+-]?\d+)',
-    ]:
-        m = re.search(pattern, gt_raw)
+
+def _extract_boxed_answer(text: str) -> str:
+    """Extract answer from \\boxed{} notation."""
+    m = re.search(r'\\boxed\{([^}]+)\}', text)
+    return m.group(1).strip() if m else ""
+
+
+def compare_offline(reasoning_answer: str, code_answer: str, ground_truth: str) -> Dict[str, Any]:
+    """Offline comparison: model answers vs ground truth (not shown to model)."""
+    gt = str(ground_truth).strip().upper()
+    # For numeric ground truths, try to extract the key number
+    for pattern in [r'CRC校验码为(\d+)', r'余数为(\d+)', r'即([+-]?\d+)', r'叶子结点数为(\d+)', r'([+-]?\d+)']:
+        m = re.search(pattern, str(ground_truth))
         if m:
             gt = m.group(1)
             break
 
-    reasoning_correct = ra is not None and gt is not None and ra == gt
-    code_correct = ca is not None and gt is not None and ca == gt
-    consistent = ra is not None and ca is not None and ra == ca
+    ra = str(reasoning_answer).strip().upper() if reasoning_answer else ""
+    ca = str(code_answer).strip().upper() if code_answer else ""
+
+    reasoning_correct = ra == gt if ra else False
+    code_correct = ca == gt if ca else False
+    consistent = ra == ca if (ra and ca) else False
 
     return {
-        "reasoning_answer": ra,
-        "code_answer": ca,
+        "reasoning_answer": ra or None,
+        "code_answer": ca or None,
         "ground_truth": gt,
         "reasoning_correct": reasoning_correct,
         "code_correct": code_correct,
@@ -259,81 +259,59 @@ def compare_answers(reasoning_answer: str, code_output: str, ground_truth: str) 
 async def solve_with_code(
     provider,
     question: Dict[str, Any],
-    extraction: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Solve a question: reasoning pass + code pass + compare."""
+    """Solve a question: reasoning pass + code pass + offline compare."""
 
-    q_type = question.get("type", "单选题")
-    stem = question.get("prompt", "")
+    raw_question = question.get("prompt", "")
     answer = question.get("answer", "")
-    options = format_options(extraction)
 
-    # --- Pass 1: Reasoning ---
-    reason_prompt = PROMPT_REASON.format(
-        question_type=q_type, stem=stem, options=options, answer=answer,
-    )
+    # --- Pass 1: Reasoning (blind — no answer) ---
+    reason_prompt = PROMPT_REASON.format(raw_question=raw_question)
     reason_messages = [[{"role": "user", "content": reason_prompt}]]
-    reason_results = await provider.generate_json_batch(
-        reason_messages, max_tokens=4096, enable_thinking=True,
+    reason_results = await provider.generate_with_think_and_parse_batch(
+        reason_messages, max_token=4096, enable_thinking=True,
     )
     reason_raw = reason_results[0] if reason_results else {}
 
-    # Parse reasoning output
-    reason_text = ""
-    if isinstance(reason_raw, dict):
-        reason_text = reason_raw.get("answer", reason_raw.get("reasoning", str(reason_raw)))
-        if isinstance(reason_text, dict):
-            reason_text = reason_text.get("reasoning", str(reason_text))
-    reasoning_answer = reason_raw.get("answer", "") if isinstance(reason_raw, dict) else ""
-    if isinstance(reasoning_answer, dict):
-        reasoning_answer = str(reasoning_answer)
+    # Parse answer from \boxed{} or XML tags
+    reason_text = reason_raw.get("answer", "") if isinstance(reason_raw, dict) else ""
+    reason_parsed = _extract_xml_tags(reason_text)
+    reasoning_answer = _extract_boxed_answer(reason_text)
+    if not reasoning_answer:
+        reasoning_answer = reason_parsed.get("answer_option", "") or reason_parsed.get("answer_value", "")
+    reasoning_confidence = ""
 
-    # Try dict extraction if answer not clean
-    if not reasoning_answer or reasoning_answer == str(reason_raw):
-        parsed = extract_dict_from_text(str(reason_raw))
-        if parsed:
-            reasoning_answer = parsed.get("answer", "")
-            reason_text = parsed.get("reasoning", reason_text)
-
-    # --- Pass 2: Code generation ---
-    code_prompt = PROMPT_CODE.format(
-        question_type=q_type, stem=stem, options=options, answer=answer,
-    )
+    # --- Pass 2: Code generation (blind — no answer) ---
+    code_prompt = PROMPT_CODE.format(raw_question=raw_question)
     code_messages = [[{"role": "user", "content": code_prompt}]]
-    code_results = await provider.generate_json_batch(
-        code_messages, max_tokens=4096, enable_thinking=True,
+    code_results = await provider.generate_with_think_and_parse_batch(
+        code_messages, max_token=4096, enable_thinking=True,
     )
     code_raw = code_results[0] if code_results else {}
 
-    # Extract code from model output
-    code_output_text = ""
-    if isinstance(code_raw, dict):
-        code_output_text = code_raw.get("answer", code_raw.get("code", str(code_raw)))
-    else:
-        code_output_text = str(code_raw)
-    if isinstance(code_output_text, dict):
-        code_output_text = str(code_output_text)
-    code = extract_code_from_text(code_output_text)
+    code_output_text = code_raw.get("answer", "") if isinstance(code_raw, dict) else ""
+    code = extract_code_from_text(code_output_text) or ""
+    if not code:
+        code_parsed = _extract_xml_tags(code_output_text)
+        code = code_parsed.get("code", "")
 
     # --- Pass 3: Execute code ---
     exec_result = {"success": False, "output": "", "error": "no code generated"}
     if code:
         exec_result = execute_code_safely(code)
 
-    # --- Pass 4: Compare ---
-    comparison = compare_answers(
-        str(reasoning_answer),
-        exec_result.get("output", ""),
-        answer,
-    )
+    # --- Pass 4: Offline comparison against ground truth ---
+    code_answer = extract_answer_letter(exec_result.get("output", "")) if exec_result.get("success") else ""
+    comparison = compare_offline(reasoning_answer, code_answer, answer)
 
     return {
         "question_id": question.get("id", "?"),
         "ground_truth": answer,
         "reasoning": {
-            "answer": reasoning_answer,
-            "confidence": reason_raw.get("confidence", "") if isinstance(reason_raw, dict) else "",
-            "preview": str(reason_text)[:300],
+            "answer_option": reason_parsed.get("answer_option", ""),
+            "answer_value": reason_parsed.get("answer_value", ""),
+            "confidence": reasoning_confidence,
+            "preview": reason_parsed.get("reasoning", "")[:300],
         },
         "code": {
             "generated": bool(code),
@@ -349,13 +327,6 @@ async def solve_with_code(
 async def main():
     from run_extraction_sample import QUESTIONS
 
-    # Load extraction results
-    extraction_path = os.path.join(os.path.dirname(__file__), "docs", "extraction_deep_v4.json")
-    with open(extraction_path, encoding="utf-8") as f:
-        extractions = json.load(f)
-
-    ext_map = {r.get("question_id"): r for r in extractions if "error" not in r}
-
     # Init provider
     config = get_provider_config("api_vllm")
     served_model = os.environ.get("VLLM_SERVED_MODEL")
@@ -369,16 +340,12 @@ async def main():
 
     for i, q in enumerate(QUESTIONS):
         qid = q.get("id", "?")
-        ext = ext_map.get(qid)
-        if not ext:
-            print(f"[{i+1}] {qid}: no extraction data, skipping")
-            continue
 
         print(f"\n{'='*60}")
         print(f"[{i+1}/{len(QUESTIONS)}] {qid}: {q['prompt'][:50]}...")
         start = time.time()
 
-        result = await solve_with_code(provider, q, ext)
+        result = await solve_with_code(provider, q)
         elapsed = time.time() - start
         result["elapsed"] = elapsed
         all_results.append(result)
@@ -407,7 +374,7 @@ async def main():
     code_ok = sum(1 for r in all_results if r["code"]["exec_success"])
     total = len(all_results)
 
-    print(f"\n--- Summary ---")
+    print(f"\n--- Summary (blind solve, offline eval) ---")
     print(f"  Reasoning correct: {r_correct}/{total}")
     print(f"  Code correct:      {c_correct}/{total}")
     print(f"  Both consistent:   {consistent}/{total}")

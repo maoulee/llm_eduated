@@ -1,0 +1,312 @@
+[
+  {
+    "_index": 11,
+    "question_preview": "[2009年考研真题第43题]某计算机的CPU主频为500MHz,CPI为5（即执行每条指令平均需5个时钟周期)。假定某外设的数据传输率为0.5MB/s,采用中断方式与主机进行数据传送，以32位为传输",
+    "gt_answer": "【解析】1)按题意， 外设每秒传送0.5MB, 中断时每次传送4B。 中断方式下，CPU每次用于数据传送的时钟周期 为5x18 + 5x2 = 100。\\n为达到外设0.5MB/s的数据传输率， 外设每秒申请的中断次数为0.5MB/4B = 125000。\\n1s内用于中断的开销为100x125000 = 12500000 = 12.5M个时钟周期。\\nCPU用于外设1/0的时间占整个CPU时间的",
+    "model_answer": "2.5,0.1",
+    "score_detail": "4/13",
+    "brief": "模型回答虽然得出了正确的最终数值结果，但完全缺失题目明确要求的“计算过程”，因此丧失了绝大部分过程分，仅获得了微量结果分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>\n假设本小题满分7分，关键得分点如下：\n1. 计算出每次中断处理所需的时钟周期数（5×(18+2)=100个），得2分。\n2. 计算出外设每秒申请的中断次数（0.5MB/4B=125000次），得2分。\n3. 计算出1秒内用于中断的总开销（12.5M个时钟周期），得1分。\n4. 计算出CPU用于该外设I/O的时间占整个CPU时间的百分比（2.5%），得2分。\n</ref_points>\n<model_coverage>\n模型仅给出了第1小题的最终数值结果“2.5”，完全缺乏必要的计算步骤。覆盖情况：未覆盖第1、2、3点，部分覆盖第4点（由于缺少百分号及过程，仅能获得极少的结果分）。\n</model_coverage>\n<score>2/7</score>\n</sub>\n<sub id=\"2\">\n<ref_points>\n假设本小题满分6分，关键得分点如下：\n1. 计算出每秒DMA传送的次数（5MB/5000B=1000次），得2分。\n2. 计算出每秒DMA处理的总时钟周期开销（1000×500=0.5M个），得2分。\n3. 计算出CPU用于该外设I/O的时间占整个CPU时间的百分比（0.1%），得2分。\n</ref_points>\n<model_coverage>\n模型仅给出了第2小题的最终数值结果“0.1”，完全缺乏必要的计算步骤。覆盖情况：未覆盖第1、2点，部分覆盖第3点。\n</model_coverage>\n<score>2/6</score>\n</sub>\n</sub_questions>\n<total_score>4/13</total_score>\n<brief>模型回答虽然得出了正确的最终数值结果，但完全缺失题目明确要求的“计算过程”，因此丧失了绝大部分过程分，仅获得了微量结果分。</brief>\n</scoring>",
+    "time": 39.77039861679077
+  },
+  {
+    "_index": 12,
+    "question_preview": "[2009年考研真题第44题]某计算机字长为16位，采用16位定长指令字结构，部分数据通路结构如下图所示，图中所有控制信号为1时表示有效、为0时表示无效。例如，控制信号MDrinE 为1表示允许数据从",
+    "gt_answer": "【解析】题干己给出取值和译码阶段每个节拍的功能和有效控制信号 ， 我们应以弄清楚取指阶段中数据通路的信息流动作为突破口，读懂每个节拍的功能和有效控制信号。 然后应用到解题思路中， 包括划分执行步骤、 确定完成的功能、 需要的控制信号。\\n先分析题干中提供的示例（本部分解题时不做要求）：\\n取指令的功能是根据PC的内容所指主存 地址， 取出指令代码，经过MDR, 最终送至IR。这部分和后面的指令执行",
+    "model_answer": "| 节拍 | 功能 | 有效控制信号 |\n| T1 | (R1)→MAR，读存储器 | R1out，MARin，MDRinE，MemR |\n| T2 | (MDR)+(R0)→MDR | MDRout，R0out，ALUin1，ALUin2，ALUop，ALUout，MDRin |\n| T3 | (MDR)→M[(R1)]，写存储器 | MDRout，MemW |",
+    "score_detail": "?/?",
+    "brief": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>功能：(R1)→MAR；控制信号：R1out, MARin。（2分）</ref_points>\n<",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>功能：(R1)→MAR；控制信号：R1out, MARin。（2分）</ref_points>\n<model_coverage>模型回答在T1中包含了将R1内容送入MAR的功能，并给出了正确的控制信号R1out和MARin。完全覆盖",
+    "time": 97.41059994697571
+  },
+  {
+    "_index": 24,
+    "question_preview": "[2010年考研真题第43题]某计算机字节长为16位，主存地址空间大小为128KB,按字编址。采用单字长指令格式，指令各字段定义如下：\n| OP | Ms | Rs | Md | Rd |\n转移指令采",
+    "gt_answer": "【解析】1) 操作码占4位，则该指令系统最多可有2^4= 16条指令 。操作数占6位，其中寻址方式占3位、寄存器编号占3位，因此该机最多有2^3=8个通用寄存器。主存地址空间大小为128KB, 按字编址，字长为16位，共有128KB/2B = 2^16个存储单元 ，因此MAR至少为16位；因为字长为16位，故MDR至少为16位。\\n2)寄存器 字长为16位，PC 和Rn可表示的地址范围均为0~2^",
+    "model_answer": "16 8 16 16 -32768~32767 2315H R5和M[5678H] 5679H和68ACH",
+    "score_detail": "9/11",
+    "brief": "模型回答格式极其精简，完美答对了第1、3小题的全部要点，但在第2小题上混淆了“偏移量范围”与“目标地址范围”这两个概念导致失分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 指令系统最多可有16条指令（2^4）；2. 最多有8个通用寄存器（2^3）；3. 存储器地址寄存器(MAR)至少需要16位（128KB/2B = 2^16）；4. 存储器数据寄存器(MDR)至少需要16位（机器字长）。</ref_points>\n<model_coverage>覆盖。模型依次输出的“16 8 16 16”准确对应了参考答案中的四个关键要点。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>转移指令的目标地址范围为0000H~FFFFH（或0~2^16-1，0~65535）。</ref_points>\n<model_coverage>未覆盖。模型回答“-32768~32767”错误地将题目中相对偏移量（补码）的取值范围当作了转移的目标地址范围。目标地址是计算得到的绝对地址，受限于16位的地址空间，其范围应为0~65535。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 机器码为2315H；2. 寄存器R5和存储单元5678H（或M[5678H]）的内容会改变；3. R5的内容变为5679H，存储单元5678H的内容变为68ACH。</ref_points>\n<model_coverage>覆盖。模型依次输出“2315H”、“R5和M[5678H]”、“5679H和68ACH”，完全精简且准确地覆盖了参考答案中的三个核心得分点。</model_coverage>\n<score>5/5</score>\n</sub>\n</sub_questions>\n<total_score>9/11</total_score>\n<brief>模型回答格式极其精简，完美答对了第1、3小题的全部要点，但在第2小题上混淆了“偏移量范围”与“目标地址范围”这两个概念导致失分。</brief>\n</scoring>",
+    "time": 59.42886257171631
+  },
+  {
+    "_index": 25,
+    "question_preview": "[2010年考研真题第44题]某计算机的主存地址空间大小为256MB,按字节编址。指令Cache 和数据Cache 分离，均有8个Cache 行，每个Cache 行大小为64B,数据Cache 采用直",
+    "gt_answer": "【解析】1)每个Cache行对应一个标记项，如下图所示\n\n不考虑用于Cache 一致性维护和替换算法的控制位。地址总长度为28位(2^28=256M)\n块内地址6位(2^6=64) , Cache块号3位(2^3=8)' 故Tag的位数为28-6:-3= 19位，还需使\n用 一个有效位，故题中 数据Cache行的结构如下图所示。\n\n数据Cache共有8行，因此数据Cache的总容量为8x(64 +",
+    "model_answer": "512B;6,7;93.75%,0%,A",
+    "score_detail": "3/8",
+    "brief": "模型回答给出了部分正确的结果数值，但缺失了Cache总容量中的Tag位和有效位计算，a[1][1]的映射行号计算错误，且全卷完全缺失了必要的计算过程和理由说明，因此失分严重。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 计算出主存地址、块内地址、Cache行号的位数（分别为28、6、3位），从而得出标记（Tag）位为19位，加上1位有效位，共计20位（或2.5B）。（1分）\\n2. 正确计算出数据Cache的总容量：8行 × (64B + 2.5B) = 532B。（1分）</ref_points>\n<model_coverage>未覆盖（模型回答为“512B”，仅计算了数据区容量8×64B，遗漏了有效位和Tag标记位的容量）。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 计算出a[0][31]所在主存块对应的Cache行号为6。（1分）\\n2. 计算出a[1][1]所在主存块对应的Cache行号为5。（1分）</ref_points>\n<model_coverage>部分覆盖（a[0][31]的行号6回答正确，但a[1][1]的行号回答为7，计算错误，正确应为5）。</model_coverage>\n<score>1/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 程序A的数据访问命中率及计算/理由（93.75%）。（1分）\\n2. 程序B的数据访问命中率及计算/理由（0%）。（1分）\\n3. 给出计算过程或分析理由。（1分）\\n4. 得出A执行时间更短的结论。（1分）</ref_points>\n<model_coverage>部分覆盖（得出了A和B的命中率及A更快的正确结论，但缺少题目明确要求的“说明理由或给出计算过程”）。</model_coverage>\n<score>2/4</score>\n</sub>\n</sub_questions>\n<total_score>3/8</total_score>\n<brief>模型回答给出了部分正确的结果数值，但缺失了Cache总容量中的Tag位和有效位计算，a[1][1]的映射行号计算错误，且全卷完全缺失了必要的计算过程和理由说明，因此失分严重。</brief>\n</scoring>",
+    "time": 68.34656977653503
+  },
+  {
+    "_index": 37,
+    "question_preview": "[2011年考研真题第43题]假定在一个8位字长的计算机中运行如下类C程序段：\nunsigned int x =134;\nunsigned int y=246 int m=x \nInt n=y:uns",
+    "gt_answer": "【解析】1) 134 = 128 + 6 = 1000 0110B, 所以x的机器数为1000 0110B, 故R1的内容为8 6H。\\n246 = 255 - 9 = 1111 0110B, 所以y的机器数为1111 0110B。X -y: 1000 0110 + 0000 1010 = (0)1001 0000, 括弧中为加法器的进位， 故R5的内容为90H。\\nX + y: 1000 011",
+    "model_answer": "(1)86H,90H,7CH (2)-122,-112 (3)能，补码表示下位级运算规则相同 (4)最高位与次高位进位异或为1，k2=m+n",
+    "score_detail": "11/12",
+    "brief": "模型回答整体表现优秀，各小题计算结果准确无误，对溢出判断的原理和定位非常精准；仅在第三问的理由阐述上略显简略，缺少对无符号数减法和辅助电路的展开说明，但抓住了“位级运算相同”的核心得分点。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>\n1. 寄存器R1（变量x）的内容为86H（1分）。\n2. 寄存器R5（变量z1）的内容为90H（1分）。\n3. 寄存器R6（变量z2）的内容为7CH（1分）。\n（本小题满分3分）\n</ref_points>\n<model_coverage>完全覆盖。模型正确得出了R1、R5和R6的十六进制结果。</model_coverage>\n<score>3/3</score>\n</sub>\n<sub id=\"2\">\n<ref_points>\n1. 变量m的值为-122（1分）。\n2. 变量k1的值为-112（1分）。\n（本小题满分2分）\n</ref_points>\n<model_coverage>完全覆盖。模型准确给出了m和k1的十进制数值结果。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>\n1. 结论：能利用同一个加法器及辅助电路实现（1分）。\n2. 理由部分一：无符号整数的加/减法运算都可以在加法器中通过模2^n运算实现（减法转为加补数）（1分）。\n3. 理由部分二：带符号整数用补码表示，其加减法的位级运算规则与无符号整数相同，也可直接用同一加法器实现（1分）。\n（本小题满分3分）\n</ref_points>\n<model_coverage>部分覆盖。模型给出了正确结论，且指出了“位级运算规则相同”这一补码运算的核心原理，但缺少对“无符号整数减法通过加补数（取反加1）实现”以及“辅助电路（如求补器）”的具体说明。</model_coverage>\n<score>2/3</score>\n</sub>\n<sub id=\"4\">\n<ref_points>\n1. 溢出判断规则：若加法器的两个输入端符号相同且不同于输出端符号，或者最高位进位与次高位进位不同（异或为1）（2分）。\n2. 发生溢出的语句：指出最后一条语句 `k2=m+n`（或 `m+n`）会发生溢出（2分）。\n（本小题满分4分）\n</ref_points>\n<model_coverage>完全覆盖。模型不仅完整写出了“最高位与次高位进位异或为1”的硬件溢出判断规则，还准确找出了发生溢出的具体语句k2=m+n。</model_coverage>\n<score>4/4</score>\n</sub>\n</sub_questions>\n<total_score>11/12</total_score>\n<brief>模型回答整体表现优秀，各小题计算结果准确无误，对溢出判断的原理和定位非常精准；仅在第三问的理由阐述上略显简略，缺少对无符号数减法和辅助电路的展开说明，但抓住了“位级运算相同”的核心得分点。</brief>\n</scoring>",
+    "time": 72.82582449913025
+  },
+  {
+    "_index": 38,
+    "question_preview": "[2011年考研真题第44题]某计算机存储器按字节编址，虚拟（逻辑）地址空间大小为16MB,主存（物理)地址空间大小为1MB,页面大小为4KB:Cache 采用直接映射方式，共8行；主存与Cache ",
+    "gt_answer": "【解析】1)存储器按字节编址， 虚拟地址空间大小为1 6MB = 2^24B, 故虚拟地址为24位；页面大小为4KB=2^12B, 故高 12位为虚页号。 主存地址空间大小为1MB = 2^20B, 故物理地址为20位；由于页内地址为12位， 故高8位为页框号。\\n2)由于Cache采用直接映射方式， 所以物理地址各字段的划分如下。\n \n由于块大小为32B, 故字块内地址占5位；Cache共8行，",
+    "model_answer": "(1)24位，23~12位；20位，19~12位\n(2)标记12位(19~8)，索引3位(7~5)，块内偏移5位(4~0)\n(3)在主存中；03C60H；未命中；物理地址对应Cache索引为3，第3行有效位为0\n(4)不在主存中；虚页号024H在TLB对应组有效位为0",
+    "score_detail": "6/13",
+    "brief": "模型在地址位数与字段划分的基础概念题(1)(2)上回答完美，但在进行具体的地址转换计算(3)及查表映射分析(4)时出现严重错误，未能正确提取图表信息，导致失分严重。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 虚拟地址位数及虚页号位置：虚拟地址24位，高12位（或23~12位）为虚页号。2. 物理地址位数及页框号位置：物理地址20位，高8位（或19~12位）为页框号。</ref_points>\n<model_coverage>模型回答“24位，23~12位；20位，19~12位”完全正确，精准覆盖了所有得分点。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>物理地址各字段划分及位数：1. 主存字块标记：12位（19~8位）；2. Cache字块标记（行号/索引）：3位（7~5位）；3. 字块内地址（块内偏移）：5位（4~0位）。</ref_points>\n<model_coverage>模型回答“标记12位(19~8)，索引3位(7~5)，块内偏移5位(4~0)”与参考答案完全一致，完全覆盖。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 判断页面在主存中（因有效位为1）。2. 物理地址计算正确（页框号04H与页内偏移C60H拼接），结果为04C60H。3. 判断Cache未命中。4. 理由充分：物理地址前12位（04CH）与Cache第3行（索引011）的标记（105H）不相等（尽管有效位为1，但标记不匹配）。</ref_points>\n<model_coverage>模型回答正确判断了“在主存中”和“未命中”，但在关键的物理地址计算上出错（错算为03C60H）。此外，未命中的理由也描述错误（模型称“第3行有效位为0”，而根据原题图表及参考答案，有效位为1，未命中原因是标记不符）。部分覆盖。</model_coverage>\n<score>2/5</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 虚页号为024H。2. TLB组号计算（虚页号最低1位，即0组）及TLB标记计算（虚页号高11位，即012H）。3. 正确判断在主存中。4. 理由正确：TLB第0组中存在有效位=1且标记=012H的项。</ref_points>\n<model_coverage>模型回答判断“不在主存中”，理由是“对应组有效位为0”，这与参考答案及实际图表反映的情况完全相反，未覆盖任何得分点。</model_coverage>\n<score>0/4</score>\n</sub>\n</sub_questions>\n<total_score>6/13</total_score>\n<brief>模型在地址位数与字段划分的基础概念题(1)(2)上回答完美，但在进行具体的地址转换计算(3)及查表映射分析(4)时出现严重错误，未能正确提取图表信息，导致失分严重。</brief>\n</scoring>",
+    "time": 79.46073246002197
+  },
+  {
+    "_index": 50,
+    "question_preview": "[2012年考研真题第43题] 假定某计算机的CPU主频为80MHz,CPI为4,平均每条指令访存1.5次，主存与Cache之间交换的块大小为 16B, Cache的命中率为99%, 存储器总线宽度为",
+    "gt_answer": "【答案解析】\n【(3)的评分说明】若考生所估计的时间复杂度与考生所实现的算法一致，可给1分。\n(1)平均每秒CPU执行的指令数为：80M/4=20M,故MIPS数为20；(1分)平均每条指令访存1.5次，故平均每秒Cache 缺失的次数=20M×1.5×(1-99%)=300k;(1分)当Cache 缺失时，CPU访问主存，主存与Cache 之间以块为传送单位，此时，主存带宽为16B×300k/s",
+    "model_answer": "20, 300000, 4.8MB/s, 1.5, 1536, DMA控制器, 80MB/s",
+    "score_detail": "7/10",
+    "brief": "模型回答准确地计算出了前两问的所有结果，正确判断了第三问的优先级，但未能说明原因，且在第四问中仅计算了单体带宽而未得出四体交叉存储的最大带宽。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>MIPS数计算正确（1分）；平均每秒Cache缺失次数计算正确（1分）；主存带宽计算正确并给出正确结果（2分）。满分4分。</ref_points>\n<model_coverage>MIPS数回答为20（覆盖）；Cache缺失次数回答为300000（覆盖）；主存带宽回答为4.8MB/s（覆盖）。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>CPU平均每秒产生缺页异常次数计算正确（1分）；磁盘I/O接口平均每秒发出的DMA请求次数计算正确（1分）。满分2分。</ref_points>\n<model_coverage>缺页异常次数回答为1.5（覆盖）；DMA请求次数回答为1536（覆盖）。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>判断DMA控制器（或DMA请求）优先级更高（1分）；说明原因是因为不及时响应会导致I/O传输数据丢失（1分）。满分2分。</ref_points>\n<model_coverage>优先级判断回答为DMA控制器（覆盖）；未提供具体的理由说明（未覆盖）。</model_coverage>\n<score>1/2</score>\n</sub>\n<sub id=\"4\">\n<ref_points>正确计算四体低位交叉存储模式的最大带宽，结果为320MB/s。满分2分。</ref_points>\n<model_coverage>回答为80MB/s，该数值仅为单个存储体的带宽，未正确乘以4，计算错误（未覆盖）。</model_coverage>\n<score>0/2</score>\n</sub>\n</sub_questions>\n<total_score>7/10</total_score>\n<brief>模型回答准确地计算出了前两问的所有结果，正确判断了第三问的优先级，但未能说明原因，且在第四问中仅计算了单体带宽而未得出四体交叉存储的最大带宽。</brief>\n</scoring>",
+    "time": 31.458329916000366
+  },
+  {
+    "_index": 51,
+    "question_preview": "[2012年考研真题第44题]某16位计算机中，带符号整数用补码表示，数据Cache 和指令Cache 分离。题44表给出了指令系统中部分指令格式，其中Rs和Rd表示寄存器，mem表示存储单元地址，(",
+    "gt_answer": "【答案解析】\n(1)x的机器码为[]=1111110111111111B,即指令执行前(R1)=FDFFH ,右移1位后为1111111011111111B,即指令执行后(R1)=FEFFH 。(2分)\n【评分说明】仅正确写出指令执行前的(R1)可给1分。\n(2)至少需要4+(5-1)=8个时钟周期数。(2分)\n(3)l3的ID段被阻塞的原因：因为l3与I1和l2都存在数据相关，需等到1和l2将结",
+    "model_answer": "12",
+    "score_detail": "0/13",
+    "brief": "模型回答仅输出了毫无关联的数字“12”，未对题目的四个问题进行任何作答。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 指令执行前(R1)的机器码（FDFFH）或能体现正确推导过程的表达式（1分）；2. 执行后(R1)的结果（FEFFH）（1分）</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>计算执行4条指令所需的时钟周期数为8（或写出公式4+(5-1)=8）（2分）</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. I3的ID段被阻塞的原因：I3与I1、I2存在数据相关，需等I1和I2将结果写回寄存器后，I3才能读寄存器内容（1分）；2. I4的IF段被阻塞的原因：由于前一条指令I3在ID段被阻塞，导致I4的IF段也被阻塞（1分）</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 写出实现x=x*2+a对应的指令序列（如采用左移或加法实现乘2）（3分）；2. 画出指令序列在流水线中的执行过程（时空图），要求考虑数据相关引起的阻塞，并得出执行该语句所需的最少时钟周期数（4分）</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/7</score>\n</sub>\n</sub_questions>\n<total_score>0/13</total_score>\n<brief>模型回答仅输出了毫无关联的数字“12”，未对题目的四个问题进行任何作答。</brief>\n</scoring>",
+    "time": 30.504075288772583
+  },
+  {
+    "_index": 63,
+    "question_preview": "[2013年考研真题第43题]某32位计算机，CPU主频为800MHz,Cache 命中时的CPI为4，Cache 块大小为32字节；主存采用8体交叉存储方式，每个体的存储字长为32位、存储周期为40",
+    "gt_answer": "【答案解析】\n(1)CPU的时钟周期为：1/800MHz=1.25ns。(1分)\n总线的时钟周期为：1/200MHz=5ns。(1分)\n总线带宽为：4B×200MHz=800MB/s或4B/5ns=800MB/s。(1分)\n(2)Cache 块大小是32B,因此Cache 缺失时需要一个读突发传送总线事务读取一个主存块。(1分)\n(3)一次读突发传送总线事务包括一次地址传送和32B数据传送：用1个",
+    "model_answer": "1.25,5,800,1,85,1010",
+    "score_detail": "4.5/10",
+    "brief": "模型回答以逗号分隔的纯数字序列给出了各小题的最终数值结果且数值均完全正确，但作为考研408主观题，完全缺乏必要的文字说明、计算公式、推导过程与物理单位，因此被大量扣除了过程分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. CPU的时钟周期计算过程及结果1.25ns（1分）；2. 总线的时钟周期计算过程及结果5ns（1分）；3. 总线带宽的计算过程及结果800MB/s（1分）。</ref_points>\n<model_coverage>模型直接给出了数值“1.25, 5, 800”，关键结果正确。但由于题目明确要求给出理由或计算过程，且主观题作答需要带上单位，模型回答缺乏对应关系、计算过程和单位，属于部分覆盖。</model_coverage>\n<score>1.5/3</score>\n</sub>\n<sub id=\"2\">\n<ref_points>Cache缺失时需要1个读突发传送总线事务来完成一个主存块的读取，并给出相应理由（1分）。</ref_points>\n<model_coverage>模型给出了数值“1”，结果正确，但缺乏理由说明。考虑到分值较小且结论正确，判定为覆盖。</model_coverage>\n<score>1/1</score>\n</sub>\n<sub id=\"3\">\n<ref_points>一次读突发传送总线事务所需时间的计算过程（1分）及最终结果85ns（1分）。</ref_points>\n<model_coverage>模型仅给出了最终数值“85”，完全缺失题目要求的分析过程（地址传送、存储器准备、数据传送的时间计算），且无单位，部分覆盖。</model_coverage>\n<score>1/2</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 命中时的指令执行时间500ns（1分）；2. 缺失时的额外开销510ns（1分）；3. BP的CPU执行时间总和1010ns（2分）。</ref_points>\n<model_coverage>模型给出了最终数值“1010”，但缺失了中间的步骤分（如500ns和510ns的得出），且完全没有列出执行时间的相关计算公式，属于部分覆盖。</model_coverage>\n<score>1/4</score>\n</sub>\n</sub_questions>\n<total_score>4.5/10</total_score>\n<brief>模型回答以逗号分隔的纯数字序列给出了各小题的最终数值结果且数值均完全正确，但作为考研408主观题，完全缺乏必要的文字说明、计算公式、推导过程与物理单位，因此被大量扣除了过程分。</brief>\n</scoring>",
+    "time": 75.20828247070312
+  },
+  {
+    "_index": 64,
+    "question_preview": "[2013年考研真题第44题]某计算机采用16位定长指令字格式，其CPU中有一个标志寄存器，其中包含进位/借位标志CF、零标志ZF和符号标志NF。假定为该机设计了条件转移指令，其格式如下：\n\n其中，0",
+    "gt_answer": "【答案解析】\n(1)因为指令长度为16位，且下条指令地址为(PC)+2,故编址单位是字节。(1分)偏移OFFSET 为8位补码，范围为-128~127，故相对于当前条件转移指令，向后最多可跳转127条指令。(2分)\n【评分说明】若正确给出OFFSET 的取值范围，则酌情给分。\n(2)指令中C=0,Z=1,N=1,故应根据ZF和NF的值来判断是否转移。当CF=0,ZF=0,NF=1时，需转移。(1分",
+    "model_answer": "字节编址 128 200E 201E C=1Z=1N=0 ①标志寄存器②符号扩展器③加法器",
+    "score_detail": "?/?",
+    "brief": "",
+    "full_scoring": "",
+    "time": 97.94989323616028
+  },
+  {
+    "_index": 76,
+    "question_preview": "[2014年考研真题第43题]请根据题42描述的网络，继续回答下列问题。\\n1)假设路由表结构如下表所示，请给出题42图中R1的路由表，要求包括到达题42图中子网192.1。xx的路由，且路由表中的路",
+    "gt_answer": "【答案解析】解答：\n(1)因为题目要求路由表中的的路由项尽可能少，所以这里可以把子网192.1.6.0/24和192.1.7.0/24聚合为子网192.1.6.0/23。其他网络照常，可得到路由表如下：(6分)\n\n【评分说明】\n①每正确解答一个路由项，给2分，共6分。\n②路由项解答不完全正确，或路由项多于3条，可酌情给分。\n(2)通过查路由表可知：R1通过L0接口转发该IP分组。(1分)因为该分组",
+    "model_answer": "1)192.1.1.0/24直接交付/e0,192.1.2.0/24直接交付/e1,192.1.3.0/24直接交付/e2,192.1.4.0/22 R2/e3 2)e3,62 3)链路类型,链路ID,链路与R1相连的IP地址,链路开销",
+    "score_detail": "?/?",
+    "brief": "",
+    "full_scoring": "",
+    "time": 84.9981324672699
+  },
+  {
+    "_index": 77,
+    "question_preview": "[2014年考研真题第44题]某程序中有如下循环代码段P:“for(nti=0;i<N;i++)sum+=A[i];”。假设编译时变量sum和i分别分配在寄存器R1和R2中。常量N在寄存器R6中，数组",
+    "gt_answer": "【答案解析】解答：\n该题为计算机组成原理科目的综合题型，涉及到指令系统、存储管理以及CPU三个部分内容，考生因注意各章节内容之间的联系，才能更好的把握当前考试的趋势。\n(1)已知计算机M采用32位定长指令字，即一条指令占4B,观察表中各指令的地址可知，每条指令的地址差为4个地址单位，即4个地址单位代表4B,一个地址单位就代表了1B,所以该计算机是按字节编址的。(2分)\n(2)在二进制中某数左移二位",
+    "model_answer": "字节 32 -5 PC+OFFSET*4 指令2 3 4 6 指令6 循环相关",
+    "score_detail": "?/?",
+    "brief": "",
+    "full_scoring": "",
+    "time": 97.90489864349365
+  },
+  {
+    "_index": 89,
+    "question_preview": "[2015年考研真题第43题]某16位计算机的主存按字节编码，存取单位为16位；采用16位定长指令字 格式；CPU采用单总线结构，主要部分如下图所示。\\n \\n图中R0～R3为通用寄存器；T为暂存器；",
+    "gt_answer": "【答案解析】解答：\n 1)程序员可见寄存器为通用寄存器(RO～R3)和PC。因为采用了单总线结构，因此，若 无暂存器T,则ALU的A、B端口会同时获得两个相同的数据，使数据通路不能正常工作。\n 【评分说明】回答通用寄存器(R0～R3),给分；回答PC,给分；部分正确，酌情给分。 设置暂存器T的原因若回答用于暂时存放端口A的数据，则给分；其他答案，酌情给分。\n 2)ALU共有7种操作，故其操作控制信",
+    "model_answer": "1R0~R3单总线每次只能传输一个数据T用于暂存操作数2323SR输出控制门4①②③④⑤⑥⑦⑧⑨5①→④②→⑤③→⑥6指令字长16位按字节编址顺序执行时PC需加2",
+    "score_detail": "5.5/10",
+    "brief": "模型对基础概念计算（如位数、寻址逻辑）回答较好，但在需要结合具体数据通路图分析的连线题和硬件控制端点题上完全失分，反映出缺乏对底层数据通路逻辑的准确理解。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 程序员可见的寄存器包含R0～R3（或通用寄存器）和PC；2. 设置暂存器T的原因：单总线结构下，ALU的A、B端口会同时获取相同数据（或用于暂存操作数/暂存端口A的数据）。本小题满分2分。</ref_points>\n<model_coverage>模型回答指出了R0~R3，但未回答出PC（部分覆盖）；对于设置暂存器T的原因，回答了“单总线每次只能传输一个数据，T用于暂存操作数”，符合评分标准中的酌情给分条件（覆盖）。</model_coverage>\n<score>1.5/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>ALUop至少需要3位（1分）；SRop至少需要2位（1分）。本小题满分2分。</ref_points>\n<model_coverage>模型回答分别为“3”和“2”，完全覆盖得分点。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>控制信号SRout所控制的部件是三态门，或用于控制连接/断开移位器与总线之间的数据通路。本小题满分1分。</ref_points>\n<model_coverage>模型回答为“SR输出控制门”，虽然未直接答出“三态门”，但表达了控制输出通路的含义，基本覆盖得分点。</model_coverage>\n<score>1/1</score>\n</sub>\n<sub id=\"4\">\n<ref_points>端点①、②、③、⑤、⑧须连接到控制部件输出端。评分说明严格要求：包含④、⑥、⑦、⑨中任意一个不给分。本小题满分2分。</ref_points>\n<model_coverage>模型回答包含了①~⑨所有端点，违反了评分说明中的否定条件（多选了④、⑥、⑦、⑨），未覆盖。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"5\">\n<ref_points>需要添加的连线为：⑥→⑨ 和 ⑦→④。本小题满分2分。</ref_points>\n<model_coverage>模型回答为“①→④、②→⑤、③→⑥”，完全错误，未覆盖。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"6\">\n<ref_points>因为指令字长为16位，按字节编址，所以每条指令占2个存储单元，顺序执行时下条指令地址为(PC)+2。本小题满分1分。</ref_points>\n<model_coverage>模型回答准确表述了“指令字长16位，按字节编址，顺序执行时PC需加2”，完全覆盖得分点。</model_coverage>\n<score>1/1</score>\n</sub>\n</sub_questions>\n<total_score>5.5/10</total_score>\n<brief>模型对基础概念计算（如位数、寻址逻辑）回答较好，但在需要结合具体数据通路图分析的连线题和硬件控制端点题上完全失分，反映出缺乏对底层数据通路逻辑的准确理解。</brief>\n</scoring>",
+    "time": 63.457215785980225
+  },
+  {
+    "_index": 90,
+    "question_preview": "[2015年考研真题第44题]题43中描述的计算机，其部分指令执行过程的控制信号如题44图a所示。\\n \\n 题44图a部分指令控制信号\\n 该机指令格式如题44图b所示，支持寄存器直接和寄存器间接两",
+    "gt_answer": "【答案解析】解答：\n 1)指令操作码有7位，因此最多可定义2⁷=128条指令。\n 2)各条指令的机器代码分别如下：\n ①“inc R1”的机器码为0000001001000000,即0240H。\n ②“shl R2,R1”的机器码为0000010010001000,即0488H。\n ③“sub R3,(R1),R2”的机器码为0000011011101010,即06EAH。\n 3)各标号处的控制信",
+    "model_answer": "16;1100H,2210H,3392H;①PCout②MARin③MEMop=read④IRin⑤OPin⑥ADin⑦R1out⑧Rin;5,3",
+    "score_detail": "0/12",
+    "brief": "模型回答完全错误，所有小题均未覆盖关键得分点，表明模型未能理解该题的指令格式、数据通路及控制信号的运作机制。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>得分点：计算出指令条数为128条（或2^7=128）。</ref_points>\n<model_coverage>模型回答为16，未覆盖得分点（指令操作码占7位，应为2的7次方）。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>得分点：三条指令对应的机器代码分别为0240H、0488H、06EAH。</ref_points>\n<model_coverage>模型回答为1100H, 2210H, 3392H，计算结果完全错误，未覆盖得分点。</model_coverage>\n<score>0/3</score>\n</sub>\n<sub id=\"3\">\n<ref_points>得分点：①0；②mov；③mova；④left；⑤read；⑥sub；⑦mov；⑧Srout。</ref_points>\n<model_coverage>模型回答为①PCout②MARin③MEMop=read④IRin⑤OPin⑥ADin⑦R1out⑧Rin，填写的控制信号与参考答案及数据通路完全不符，未覆盖得分点。</model_coverage>\n<score>0/4</score>\n</sub>\n<sub id=\"4\">\n<ref_points>得分点：“sub R1,R3,(R2)”至少需要4个时钟周期；“inc R1”至少需要2个时钟周期。</ref_points>\n<model_coverage>模型回答为5和3，与参考答案（4和2）不符，未覆盖得分点。</model_coverage>\n<score>0/3</score>\n</sub>\n</sub_questions>\n<total_score>0/12</total_score>\n<brief>模型回答完全错误，所有小题均未覆盖关键得分点，表明模型未能理解该题的指令格式、数据通路及控制信号的运作机制。</brief>\n</scoring>",
+    "time": 52.66450023651123
+  },
+  {
+    "_index": 102,
+    "question_preview": "[2016年考研真题第43题]已知由n(n≥2)个正整数构成的集合A={a_k|0≤k<n},将其划分为两个不相交的子 集A_1和A_2,元素个数分别是n_1和n_2,A_1和A_2中元素之和分别为S",
+    "gt_answer": "【答案解析】解答：\n (1)算法的基本设计思想\n 由题意知，将最小的Ln/2)」个元素放在A_1中，其余的元素放在A_2中，分组结果即可满足题 目要求。仿照快速排序的思想，基于枢轴将n个整数划分为两个子集。根据划分后枢轴所处的 位置i分别处理：\n①若i=Ln/2)」则分组完成，算法结束；\n②若i<Ln/2)」,则枢轴及之前的所有元素均属于A_1,继续对i之后的元素进行划分；\n③若i>Ln/2)」,",
+    "model_answer": "O(nlogn)",
+    "score_detail": "0/13",
+    "brief": "模型回答仅给出了一个O(nlogn)的复杂度，缺乏对空间复杂度的说明，且完全未涉及算法的基本设计思想和代码实现，几乎不得分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 将最小的n/2个元素放在A1中，其余的元素放在A2中；2. 仿照快速排序的思想，基于枢轴对数据进行划分，并根据枢轴最终位置i与n/2的关系决定接下来的操作：若i等于n/2则结束；若小于则继续对右侧划分；若大于则继续对左侧划分。</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>使用C或C++语言描述算法，实现快速选择（基于枢轴划分）的代码逻辑。</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/7</score>\n</sub>\n<sub id=\"3\">\n<ref_points>说明平均时间复杂度（参考答案为O(n)）和空间复杂度（参考答案为O(1)）。</ref_points>\n<model_coverage>部分覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n</sub_questions>\n<total_score>0/13</total_score>\n<brief>模型回答仅给出了一个O(nlogn)的复杂度，缺乏对空间复杂度的说明，且完全未涉及算法的基本设计思想和代码实现，几乎不得分。</brief>\n</scoring>",
+    "time": 42.0349817276001
+  },
+  {
+    "_index": 103,
+    "question_preview": "[2016年考研真题第44题]假定CPU主频为50MHz,CPI为4。设备D采用异步串行通信方式向主机传送7位 ASCII字符，通信规程中有1位奇校验位和1位停止位，从D接收启动命令到字符送入I/O端",
+    "gt_answer": "【答案解析】解答：\n (1)每传送一个ASCII字符，需要传输的位数有1位起始位、7位数据位(ASCII字符占7 位)、1位奇校验位和1位停止位，故总位数为1+7+1+1=10。(2分) IO端口每秒钟最多可接收1000/0.5=2000个字符。(1分)\n 【评分说明】对于第一问，若考生回答总位数为9,则给1分。\n (2)一个字符传送时间包括：设备D将字符送I/O端口的时间、中断响应时间和中断服务",
+    "model_answer": "10,2000,25000000,90000,保存断点（PC）和现场（PSW）、关中断、形成中断服务程序入口地址、跳转至中断服务程序",
+    "score_detail": "8/9",
+    "brief": "模型回答在问题(1)上完全正确，在问题(2)上大部分正确，但完成时间计算有误且中断操作描述不够完整。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 每传送一个字符，在异步串行通信线上共需传输10位（或9位得1分）。2分。2. 每秒钟最多可向I/O端口送入2000个字符。1分。</ref_points>\n<model_coverage>模型回答“10,2000”覆盖了两个得分点：“10”对应传输位数（10位，正确），“2000”对应每秒字符数（2000，正确）。</model_coverage>\n<score>3/3</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 完成1000个字符传送所需时间大约是25,070,000个时钟周期（包括设备D传送时间、中断响应时间和中断服务程序前15条指令时间）。3分。2. CPU用于完成这一任务的时间大约是90,000个时钟周期（包括中断响应时间和中断服务程序所有20条指令时间）。1分。3. 在中断响应阶段CPU进行了关中断、保护断点和程序状态、识别中断源的操作。2分。</ref_points>\n<model_coverage>模型回答覆盖情况：1. 完成时间：“25000000”部分覆盖，但计算错误（正确值为25,070,000，忽略了中断响应和指令时间）。2. CPU时间：“90000”覆盖（正确）。3. 中断操作：“保存断点（PC）和现场（PSW）、关中断、形成中断服务程序入口地址、跳转至中断服务程序”覆盖了关中断和保护断点，但“识别中断源”未明确提及，部分覆盖。</model_coverage>\n<score>5/6</score>\n</sub>\n</sub_questions>\n<total_score>8/9</total_score>\n<brief>模型回答在问题(1)上完全正确，在问题(2)上大部分正确，但完成时间计算有误且中断操作描述不够完整。</brief>\n</scoring>",
+    "time": 45.426374435424805
+  },
+  {
+    "_index": 104,
+    "question_preview": "[2016年考研真题第45题]某计算机采用页式虚拟存储管理方式，按字节编址，虚拟地址为32位，物理地址为 24位，页大小为8KB;TLB采用全相联映射；Cache数据区大小为64KB,按2路组相联方式",
+    "gt_answer": "【答案解析】解答：\n (1)页大小为8KB,页内偏移地址为13位，故A=B=32-13=19;D=13;C=24-13= 11;主存块大小为64B,故G=6。2路组相联，每组数据区容量有64B×2=128B,共有 64KB/128B=512组，故F=9;E=24-G-F=24-6-9=9。\n 因而A=19,B=19,C=11,D=13,E=9,F=9,G=6。(各1分，共7分) TLB中标记字段B",
+    "model_answer": "3",
+    "score_detail": "0/14",
+    "brief": "模型回答完全无效，仅输出了一个毫无关联的数字“3”，未按题目要求作答任何相关的专业知识。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 字段A的位数（19位）；2. 字段B的位数（19位）；3. 字段C的位数（11位）；4. 字段D的位数（13位）；5. 字段E的位数（9位）；6. 字段F的位数（9位）；7. 字段G的位数（6位）；8. TLB标记字段B中存放的信息（虚页号/对应哪个虚页的页表项）。</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/8</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 所映射的Cache组号（3）；2. 对应的H字段内容（000001000B 或 8）。</ref_points>\n<model_coverage>未覆盖。虽然模型回答输出了数字“3”，但由于完全没有上下文、未按小题作答且未包含第(2)小题的其他得分点，视为无效回答。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 时间开销比较（缺页处理的开销大/Cache缺失的开销小）；2. 原因（缺页需要访问磁盘，Cache缺失只需访问主存 / 缺页由软件实现，Cache缺失由硬件实现）。</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"4\">\n<ref_points>Cache直写与页面回写策略的原因（直写需要同时写快速和慢速存储器，Cache-主存层次速度差异小可以接受直写；而磁盘速度太慢，主存-外存层次若采用直写效率极低，因此采用回写策略）。</ref_points>\n<model_coverage>未覆盖</model_coverage>\n<score>0/2</score>\n</sub>\n</sub_questions>\n<total_score>0/14</total_score>\n<brief>模型回答完全无效，仅输出了一个毫无关联的数字“3”，未按题目要求作答任何相关的专业知识。</brief>\n</scoring>",
+    "time": 37.016437292099
+  },
+  {
+    "_index": 116,
+    "question_preview": "[2017年考研真题第43题]已知 ，计算f(n)的C语言函数f1如下：\\n int f1(unsigned n){\\n int sum=1,power=1;\\n for(unsigned i=0;i",
+    "gt_answer": "【答案解析】解答：\n (1)由于i和n是unsigne d型，故“i<=n-l”是无符号数比较，n=0时，n-1的机器数\n 为全1,值是2^32-1,为unsigne d型可表示的最大数，条件“i<=n-1”永真，因此出现死循环。 (2分)\n 若i和n改为int类型，则不会出现死循环。(1分)\n 因为“i<=n-1”是带符号整数比较，n=0时，n-1的值是-1,当i=0时条件“i<=n-1” 不成",
+    "model_answer": "(3) float有效位24位，2^25-1需25位，超出",
+    "score_detail": "1/13",
+    "brief": "模型仅回答了第(3)小题且得分点覆盖正确，对其余所有小题均未作答。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 解释n=0时死循环的原因：n为unsigned型，n-1的机器数为全1（即2^32-1），导致循环条件“i<=n-1”永真。（2分） 2. 判断改为int型后不会死循环。（1分） 3. 解释不会死循环的原因：n为int型时，n-1的值为-1，条件“i<=n-1”不成立。（1分）</ref_points>\n<model_coverage>未覆盖（模型未作答）</model_coverage>\n<score>0/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 判断f1(23)与f2(23)的返回值相等。（1分） 2. 给出f1(23)的机器数：00FFFFFFH。（1分） 3. 给出f2(23)的机器数：4B7FFFFFH。（1分）</ref_points>\n<model_coverage>未覆盖（模型未作答）</model_coverage>\n<score>0/3</score>\n</sub>\n<sub id=\"3\">\n<ref_points>说明f2(24)的结果因超出float有效位而需要舍入处理（导致数值增大1）。（1分）</ref_points>\n<model_coverage>覆盖。模型正确指出了float有效位为24位，而2^25-1需要25位，超出了表示范围（隐含了需要舍入）。</model_coverage>\n<score>1/1</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 解释f1(31)返回值为-1的原因：f(31)的机器数为32个1，作为int型（补码）解释时其值为-1。（1分） 2. 给出使f1(n)返回值与f(n)相等的最大n值：30。（1分）</ref_points>\n<model_coverage>未覆盖（模型未作答）</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"5\">\n<ref_points>1. 指出机器数7F800000H对应的值是+∞（正无穷大）。（1分） 2. 给出不溢出的最大n值：126。（1分） 3. 给出结果精确（无舍入）的最大n值：23。（1分）</ref_points>\n<model_coverage>未覆盖（模型未作答）</model_coverage>\n<score>0/3</score>\n</sub>\n</sub_questions>\n<total_score>1/13</total_score>\n<brief>模型仅回答了第(3)小题且得分点覆盖正确，对其余所有小题均未作答。</brief>\n</scoring>",
+    "time": 30.77984356880188
+  },
+  {
+    "_index": 117,
+    "question_preview": "[2017年考研真题第44题](10分)在按字节编址的计算机M上，题43中f1的部分源程序(阴影部分)与对应 的机器级代码(包括指令的虚拟地址)如下图所示。\\n \\n \\n其中，机器级代码行包括行号、",
+    "gt_answer": "【答案解析】解答：\n (1)M为CISC。(1分)\n M的指令长短不一，不符合RISC指令系统特点。(1分)\n (2)fl的机器代码占96B。(1分)\n 因为fl的第一条指令“push ebp”所在的虚拟地址为00401020H,最后一条指令“ret”所 在的虚拟地址为0040107FH,所以，fl的机器指令代码长度为0040107FH-00401020H+1=60H= 96个字节。(1分)\n (",
+    "model_answer": "CISC;28;1;不能",
+    "score_detail": "3/10",
+    "brief": "模型回答仅凭猜测或极简方式给出了四问的最终结论（且第2问结论错误），完全没有展现出必要的计算步骤和原理分析，不符合主观题的解答规范。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 判断计算机M为CISC（1分）；2. 给出理由：例如指令长短不一/指令格式不固定/寄存器寻址方式多样等（1分）。</ref_points>\n<model_coverage>覆盖了结论“CISC”；未覆盖具体理由。</model_coverage>\n<score>1/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 得出正确的字节总数96B（或60H）（1分）；2. 给出计算过程：末地址(0040107FH) - 首地址(00401020H) + 1（1分）。</ref_points>\n<model_coverage>未覆盖。模型回答结果为“28”（数值计算错误），且未提供任何计算过程。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 判断进/借位标志CF的内容为1（1分）；2. 给出计算过程：说明n=0时n-1=FFFFFFFFH，执行0减FFFFFFFFH，即00000000H + FFFFFFFFH + 1，得出进位输出C=0，减法时借位标志CF=C取反=1（2分）。</ref_points>\n<model_coverage>覆盖了结论“1”（即CF=1）；未覆盖具体的推导和计算过程。</model_coverage>\n<score>1/3</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 判断f2中不能用shl指令实现（1分）；2. 给出理由：f2中的power是浮点数（float型），其机器数包含符号位和阶码部分，不能作为整体进行移位操作来实现乘2（2分）。</ref_points>\n<model_coverage>覆盖了结论“不能”；未覆盖关于浮点数格式的理由说明。</model_coverage>\n<score>1/3</score>\n</sub>\n</sub_questions>\n<total_score>3/10</total_score>\n<brief>模型回答仅凭猜测或极简方式给出了四问的最终结论（且第2问结论错误），完全没有展现出必要的计算步骤和原理分析，不符合主观题的解答规范。</brief>\n</scoring>",
+    "time": 39.72985625267029
+  },
+  {
+    "_index": 129,
+    "question_preview": "[2018年考研真题第43题]假定计算机的主频为500MHz,CPI为4。现有设备A和B,其数据传输率分别为2MB/s和40MB/s,对应I/O接口中各有一个32位数据缓冲寄存器。请回答下列问题，要求",
+    "gt_answer": "【答案解析】 解答： \n1)程序定时向缓存端口查询数据， 由于缓存端口大小有限，必须在传输完端口大小的数 \n据时访问端口， 以防止部分数据未被及时读取而丢失。 设备 A准备 32 位数据所用的时间为 4B/2MB = 2µs, 所以最多每隔2µs必须查询一次， 每秒的查询次数至少是1s/2µs= 5xl0^ 5 , 每秒 CPU用于设备A输入／输出的时间至少为5x10^5 x10x4= 2x10^",
+    "model_answer": "2μs,4%,不能,4%",
+    "score_detail": "5/13",
+    "brief": "模型仅给出了干瘪的最终计算结果，完全忽略了题目“要求给出计算过程”的硬性规定以及第(2)问的原因阐述，只能获得极少的结果分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>\n1. 计算设备A最多间隔多长时间查询一次：32位=4B，时间=4B / 2MB/s = 2μs。（2分）\n2. 计算CPU用于设备A的时间占总时间的百分比：每秒查询次数=1s / 2μs = 5×10^5次，每秒消耗时钟周期=5×10^5 × 10条 × 4 = 2×10^7个，占比=2×10^7 / 500M = 4%。（2分）\n满分共计4分。\n</ref_points>\n<model_coverage>\n模型给出了最终答案“2μs”和“4%”，覆盖了数值结果。但题目明确要求“给出计算过程”，模型未提供任何推导步骤和中间计算，属于部分覆盖。\n</model_coverage>\n<score>2/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>\n1. 明确结论：不能采用中断I/O方式。（1分）\n2. 计算中断处理时间：400 × (1/500MHz) = 0.8μs。（1分）\n3. 计算设备B准备32位数据的时间：4B / 40MB/s = 0.1μs。（1分）\n4. 解释原因：中断响应和处理时间(0.8μs)大于设备B准备数据的时间(0.1μs)，会导致数据丢失。（1分）\n满分共计4分。\n</ref_points>\n<model_coverage>\n模型给出了结论“不能”，覆盖了第1点。但未给出任何原因分析和计算对比过程，未覆盖第2、3、4点。\n</model_coverage>\n<score>1/4</score>\n</sub>\n<sub id=\"3\">\n<ref_points>\n1. 计算每秒DMA传送次数：40MB/s / 1000B = 40000次。（1分）\n2. 计算CPU每秒用于DMA预处理和后处理的总时钟周期：40000 × 500 = 2×10^7个。（2分）\n3. 计算占比：2×10^7 / 500M = 4%。（2分）\n满分共计5分。\n</ref_points>\n<model_coverage>\n模型给出了最终答案“4%”，覆盖了最终结果。同样完全缺失题目要求的计算过程，属于部分覆盖。\n</model_coverage>\n<score>2/5</score>\n</sub>\n</sub_questions>\n<total_score>5/13</total_score>\n<brief>模型仅给出了干瘪的最终计算结果，完全忽略了题目“要求给出计算过程”的硬性规定以及第(2)问的原因阐述，只能获得极少的结果分。</brief>\n</scoring>",
+    "time": 55.79900908470154
+  },
+  {
+    "_index": 130,
+    "question_preview": "[2018年考研真题第44题]某计算机采用页式虚拟存储管理方式，按字节编址。CPU进行存储访问的过程如题44图所示。\n \n根据题44图回答下列问题。\n(1)主存物理地址占多少位？\n(2)TLB采用什么",
+    "gt_answer": "【答案解析】解答：\n1) 物理地址由实页号和页内地址拼接， 因此其位数为 16 + 12 = 28 或直接可得 20 + 3 + \n5 =28。 \n2) TLB 采用全相联映射，可以把页表内容调入任一块空 TLB 项中， TLB 中每项都有一个 \n比较器，没有映射规则，只要空闲就行。TLB 采用静态存储器 SRAM, 读写速度快，但成本高， 多用于容量较小的高速缓冲存储器。 \n3) 从图 中可以看",
+    "model_answer": "32,全相联,SRAM,2路组相联,Dirty位和LRU位,64KB,标识Cache行是否有效,000AC040H,是,物理地址的Tag与Cache对应组Tag一致且有效位为1,26H",
+    "score_detail": "6/13",
+    "brief": "模型在TLB与Cache的基本概念问答上表现良好，但在涉及地址转换、容量计算及命中逻辑分析的综合计算部分存在严重错误。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>\n1. 主存物理地址位数：28位。（2分）\n</ref_points>\n<model_coverage>\n模型回答为“32”，未覆盖（模型将虚拟地址的32位与物理地址混淆，物理地址应为28位）。\n</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>\n1. TLB映射方式：全相联映射。（1分）\n2. TLB实现材质：SRAM。（1分）\n</ref_points>\n<model_coverage>\n模型回答为“全相联, SRAM”，完全覆盖了两个得分点。\n</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>\n1. Cache映射方式：2路组相联。（1分）\n2. 附加位：LRU位和脏位/修改位。（2分）\n3. Cache总容量：4464位或558字节。（1分）\n4. 有效位的作用：指出/标识所在Cache行中的信息是否有效。（1分）\n</ref_points>\n<model_coverage>\n- “2路组相联”：完全覆盖。\n- “Dirty位和LRU位”：完全覆盖。\n- “64KB”：未覆盖（计算错误，正确容量为558字节）。\n- “标识Cache行是否有效”：完全覆盖。\n</model_coverage>\n<score>4/5</score>\n</sub>\n<sub id=\"4\">\n<ref_points>\n1. 物理地址：0040040H。（1分）\n2. 是否命中：不命中。（1分）\n3. 理由：Tag虽匹配但有效位为0（或Tag不匹配且有效位为0）。（1分）\n4. 映射的Cache组号：3（或011B）。（1分）\n</ref_points>\n<model_coverage>\n- “000AC040H”：未覆盖（物理地址转换错误）。\n- “是”：未覆盖（命中情况判断错误）。\n- “物理地址的Tag与Cache对应组Tag一致且有效位为1”：未覆盖（理由陈述与正确情况完全相反，正确应为有效位为0导致未命中）。\n- “26H”：未覆盖（组号计算错误，正确应为3）。\n</model_coverage>\n<score>0/4</score>\n</sub>\n</sub_questions>\n<total_score>6/13</total_score>\n<brief>模型在TLB与Cache的基本概念问答上表现良好，但在涉及地址转换、容量计算及命中逻辑分析的综合计算部分存在严重错误。</brief>\n</scoring>",
+    "time": 60.27805519104004
+  },
+  {
+    "_index": 142,
+    "question_preview": "[2019年考研真题第43题]有n(n≥3)位哲学家围坐在一张圆桌边，每位哲学家交替地就餐和思考。在圆桌中心有m(m≥1)个碗，每两位哲学家之间有一根筷子。每位哲学家必须取到一个碗和两侧的筷子后，才能",
+    "gt_answer": "【答案解析】解答：\n回顾传统的哲学家问题，假设餐桌上有n个哲学家、n根筷子，那么可以用这种方法避免\n死锁(王道单科书上提供了这一思路):限制至多允许n-1个哲学家同时“抢”筷子，那么至\n少会有1个哲学家可以获得两根筷子并顺利进餐，于是不可能发生死锁的情况。\n本题可以用碗这个限制资源来避免死锁：当碗的数量m小于哲学家的数量n时，可以直接\n让碗的资源量等于m,确保不会出现所有哲学家都拿·侧筷子而无限等",
+    "model_answer": "信号量定义：\nsemaphore bowl = m;\nsemaphore chopstick[n] = {1, 1, ..., 1};\n\n哲学家i的过程：\nwhile(true) {\n    思考;\n    P(bowl);\n    if(i % 2 == 0) {\n        P(chopstick[i]);\n        P(chopstick[(i+1) % n]);\n    } el",
+    "score_detail": "?/?",
+    "brief": "",
+    "full_scoring": "",
+    "time": 105.54010272026062
+  },
+  {
+    "_index": 143,
+    "question_preview": "[2019年考研真题第44题]某计算机系统中的磁盘有300个柱面，每个柱面有10个磁道，每个磁道有200个扇区，扇区大小为512B。文件系统的每个簇包含2个扇区。请回答下列问题：\n(1)磁盘的容量是多",
+    "gt_answer": "【答案解析】解答：\n(1)磁盘容量=磁盘的柱面数x每个柱面的磁道数x每个磁道的扇区数x每个扇区的大小=\n(300×10×200×512/1024)KB=3×10^5KB。 \n(2)磁头在85号柱面上，对SSTF算法而言，总是访问当前柱面距离最近的地址。注意每\n个簇包含2个扇区，通过计算得到，85号柱面对应的簇号为85000～85999。通过比较得出，系统最先访问离85000～85999最近的100",
+    "model_answer": "300MB 100260,101660,110560,60005 (100,5,61) 逻辑地址到物理地址的变换程序",
+    "score_detail": "8/10",
+    "brief": "模型在第(1)、(2)问表现出色，准确得出了容量和SSTF调度顺序；但在第(3)问中，物理地址的扇区号计算存在偏差，且回答的转换程序名称未使用标准专业术语，导致失分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>准确计算出磁盘容量。计算公式为：柱面数×磁道数×扇区数×扇区大小（300×10×200×512B = 3×10^8B = 300MB 或 3×10^5KB）。</ref_points>\n<model_coverage>覆盖。模型给出了近似数值结果“300MB”，符合通常的容量表示习惯。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>正确运用最短寻道时间优先(SSTF)算法。计算各簇号对应的柱面号，得出当前磁头85号柱面距离目标柱面的远近，并写出正确的访问顺序：100260、101660、110560、60005。</ref_points>\n<model_coverage>覆盖。模型给出了完全正确的访问序列。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 正确计算柱面号（100）；2. 正确计算磁头号（5）；3. 正确计算扇区号（60）；4. 正确指出该过程由“磁盘驱动程序”完成。</ref_points>\n<model_coverage>部分覆盖。模型正确得出了柱面号(100)和磁头号(5)，但扇区号计算错误(61，参考答案为60)；在程序名词回答上，模型回答“逻辑地址到物理地址的变换程序”未准确命中操作系统的专业术语“磁盘驱动程序”。</model_coverage>\n<score>2/4</score>\n</sub>\n</sub_questions>\n<total_score>8/10</total_score>\n<brief>模型在第(1)、(2)问表现出色，准确得出了容量和SSTF调度顺序；但在第(3)问中，物理地址的扇区号计算存在偏差，且回答的转换程序名称未使用标准专业术语，导致失分。</brief>\n</scoring>",
+    "time": 69.21231436729431
+  },
+  {
+    "_index": 154,
+    "question_preview": "[2020年考研真题第43题]有实现xxy的两个C语言函数如下：\n \n假定某计算机M中ALU只能进行加减运算和逻辑运算。请回答下列问题。\n(1)若M的指令系统中没有乘法指令，但有加法、减法和位移等指令",
+    "gt_answer": " 【答案解析】 \n1）乘法运算可以通过加法和移位来实现。编译器可以将乘法运算转换为一个循环代码段， \n在循环代码段中通过比较、加法和移位等指令实现乘法运算。 \n2）控制逻辑的作用是控制循环次数，控制加法和移位操作。 \n3）①最长，③最短。对于①，需要用循环代码段（即软件）实现乘法操作，因而需要反复 \n执行很多条指令，而每条指令都需要取指令、译码、取数、执行并保存结果，所以执行 \n时间很长；对于②和",
+    "model_answer": "(1) 乘法可等价转换为移位与加法运算。利用移位指令实现权值定位，利用加法指令实现部分积累加，结合逻辑与分支指令控制循环迭代，即可在无乘法指令时实现乘法。\n(2) 产生并管理微操作控制信号，协调ALU、位移器和寄存器的时序；控制循环次数；根据乘数当前位状态决定ALU是否执行加法；控制部分积累加与移位，最终输出结果。\n(3) 最长：a；最短：c。理由：a为软件循环实现，指令开销最大；b为硬件串行移位",
+    "score_detail": "12/12",
+    "brief": "模型回答逻辑清晰、语言精炼，不仅准确覆盖了所有标准答案的得分点，而且在控制逻辑和执行周期的解释上更加专业透彻，是一份高质量的满分答卷。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 核心原理：乘法运算可以通过加法和移位来实现（1分）；2. 实现方式：通过软件循环代码段，结合比较、加法、移位和逻辑分支指令来完成（1分）。</ref_points>\n<model_coverage>\n- \"乘法可等价转换为移位与加法运算\"：覆盖（得分点1）\n- \"利用移位指令实现权值定位，利用加法指令实现部分积累加，结合逻辑与分支指令控制循环迭代\"：覆盖（得分点2）\n</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>控制逻辑的两个主要作用：1. 控制循环（迭代/移位）次数（1分）；2. 控制加法和移位操作的执行（判断当前位状态并决定是否加法，以及控制移位）（1分）。</ref_points>\n<model_coverage>\n- \"控制循环次数\"：覆盖（得分点1）\n- \"根据乘数当前位状态决定ALU是否执行加法；控制部分积累加与移位\"：覆盖（得分点2）\n</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 结论：a执行时间最长，c执行时间最短（1分）；2. a的理由：纯软件循环实现，需要反复执行多条指令（包含取指、译码等开销），指令周期多（1分）；3. b和c的理由：b为硬件串行实现，需多个时钟周期；c为阵列乘法器（并行硬件），只需一个时钟周期即可完成（2分）。</ref_points>\n<model_coverage>\n- \"最长：a；最短：c\"：覆盖（得分点1）\n- \"a为软件循环实现，指令开销最大\"：覆盖（得分点2）\n- \"b为硬件串行移位加法，需n个周期；c为并行阵列乘法器，1~2个周期完成，速度最快\"：覆盖（得分点3）\n</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 乘积结果：带符号和无符号的64位乘积均为00000000FFFFFFFE（1分）；2. 溢出判断：函数umul()不溢出，函数imul()溢出（1分）；3. 溢出规则：对于无符号乘法，判断2n位乘积的高n位是否全为0，全为0则无溢出，否则溢出（2分）。</ref_points>\n<model_coverage>\n- \"00000000FFFFFFFE，00000000FFFFFFFE\"：覆盖（得分点1）\n- \"不溢出，溢出（对应umul和imul）\"：覆盖（得分点2）\n- \"判断2n位乘积的高n位是否全为0，全0则无溢出，否则溢出\"：覆盖（得分点3）\n</model_coverage>\n<score>4/4</score>\n</sub>\n</sub_questions>\n<total_score>12/12</total_score>\n<brief>模型回答逻辑清晰、语言精炼，不仅准确覆盖了所有标准答案的得分点，而且在控制逻辑和执行周期的解释上更加专业透彻，是一份高质量的满分答卷。</brief>\n</scoring>",
+    "time": 70.06536769866943
+  },
+  {
+    "_index": 155,
+    "question_preview": "[2020年考研真题第44题]假定主存地址为32位，按字节编址，指令Cache 和数据Cache 与主存之间均采用8路组相联映射方式，直写(Write Through )写策略和LRU替换算法，主存块",
+    "gt_answer": " 【答案解析】 \n1）主 存 块 大 小 为 64B = 2^6字节，所 以 主 存 地 址 低 6 位为块内地址，C a ch e组数为 32KB/（64Bx 8）= 64 = 2^6 , 故主存地址中间6 位 为 Cache组号，主存地址中高3 2 - 6 - 6 = 2 0 位为标记，采 用 8 路组相联映射，故每行中的LRU位 占 3 位，采用直写方式，故没有修改位\n2）0080 00C0",
+    "model_answer": "- **缺失分析**：D-Cache共64组，8路相联，容量32KB。数组4KB < Cache容量，且无",
+    "score_detail": "0/13",
+    "brief": "模型回答出现截断，仅输出了第二小题的少量无关分析碎片，未能回答任何一个小题的核心问题，得分为0。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>\n1. Tag（标记）占20位。\n2. LRU位占3位。\n3. 没有修改位（因为采用直写策略）。\n</ref_points>\n<model_coverage>\n未覆盖。模型回答未包含第一小题的任何作答内容。\n</model_coverage>\n<score>0/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>\n1. 分析数组s的起始地址（最低6位为全0），说明其恰好位于一个主存块的开始处。\n2. 计算得出数组s总共占用64个主存块（1024*4B/64B = 64）。\n3. 分析访问规律：每个主存块有16个数组元素，依次读写。第一次访问时缺失，将主存块调入Cache，后续15次访问均命中。\n4. 得出最终缺失次数为64次。\n</ref_points>\n<model_coverage>\n未覆盖。模型回答仅提到“D-Cache共64组...数组4KB < Cache容量”等部分前提条件，且语句未完成，未给出缺失次数及具体的推导分析过程。\n</model_coverage>\n<score>0/5</score>\n</sub>\n<sub id=\"3\">\n<ref_points>\n1. 根据地址0001003H的中间6位（组索引）得出其映射到指令Cache的第0组。\n2. 说明因为Cache初始为空，有效位为0，所以发生Cache缺失。\n3. 缺失处理过程：将该主存块取出存入指令Cache第0组的任意一行。\n4. 更新Cache行信息：将高20位（00010H）填入标记字段，设置有效位，并修改LRU位。\n5. 根据块内地址（000011B）从该行中取出指令内容并返回。\n</ref_points>\n<model_coverage>\n未覆盖。模型回答未包含第三小题的任何作答内容。\n</model_coverage>\n<score>0/4</score>\n</sub>\n</sub_questions>\n<total_score>0/13</total_score>\n<brief>模型回答出现截断，仅输出了第二小题的少量无关分析碎片，未能回答任何一个小题的核心问题，得分为0。</brief>\n</scoring>",
+    "time": 32.1190345287323
+  },
+  {
+    "_index": 167,
+    "question_preview": "[2021年考研真题第43题]假定计算机M字长为16位，按字节编址，连接CPU和主存的系统总线中地址线为20位、数据线为8位，采用16位定长指令字，指令格式及其说明如下：\\n\n \n其中，op1～op3",
+    "gt_answer": "【答案解析】\n1)ALU的宽度为16位，ALU  的宽度即ALU 运算对象的宽度，通常与字长相同。地址线 为20位，按字节编址，可寻址主存空间大小为220字节(或1MB)。 指令寄存器有16 位，和单条指令长度相同。MAR 有20位，和地址线位数相同。MDR 有8位，和数据 线宽度相同。\n2)R 型格式的操作码有4位，最多有2⁴(或16)种操作。 I 型 和J 型格式的操作码有6位， 因为它们的操",
+    "model_answer": "04",
+    "score_detail": "0/13",
+    "brief": "模型回答仅输出了“04”，未包含任何与题目相关的有效信息，完全未作答。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. ALU的宽度为16位（1分）；2. 可寻址主存空间大小为1MB（或2^20字节）（1分）；3. 指令寄存器（IR）有16位（1分）；4. 主存地址寄存器（MAR）有20位（1分）；5. 主存数据寄存器（MDR）有8位（1分）。</ref_points>\n<model_coverage>模型回答为“04”，未覆盖任何得分点。</model_coverage>\n<score>0/5</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. R型格式最多可定义16种操作（1分）；2. I型和J型格式总共最多可定义63种操作（1分）；3. 通用寄存器最多有4个（1分）。</ref_points>\n<model_coverage>模型回答为“04”，未覆盖任何得分点。</model_coverage>\n<score>0/3</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 指令01B2H的功能是带符号整数减法：R[3]=R[1]-R[2]（1分）；2. 执行01B2H后，R[3]=B04AH，结果未溢出（1分）；3. 执行01B3H后，R[3]=8290H，结果溢出（1分）。</ref_points>\n<model_coverage>模型回答为“04”，未覆盖任何得分点。</model_coverage>\n<score>0/3</score>\n</sub>\n<sub id=\"4\">\n<ref_points>应对imm进行符号扩展（1分）。</ref_points>\n<model_coverage>模型回答为“04”，未覆盖任何得分点。</model_coverage>\n<score>0/1</score>\n</sub>\n<sub id=\"5\">\n<ref_points>可以采用J型格式（1分）。</ref_points>\n<model_coverage>模型回答为“04”，未覆盖任何得分点。</model_coverage>\n<score>0/1</score>\n</sub>\n</sub_questions>\n<total_score>0/13</total_score>\n<brief>模型回答仅输出了“04”，未包含任何与题目相关的有效信息，完全未作答。</brief>\n</scoring>",
+    "time": 44.41090202331543
+  },
+  {
+    "_index": 168,
+    "question_preview": "[2021年考研真题第44题]假设计算机M的主存地址为24位，按字节编址；采用分页存储管理方式，虚拟地址为30位，页大小为4 KB;TLB采用2路组相联方式和LRU替换策略，共8组。请回答下列问题。\\",
+    "gt_answer": "【答案解析】\n注意：对于本题的TLB,  需要采用处理Cache的方式求解。\n1)按字节编址，页面大小为4 KB=2^12B,页内地址为12位。虚拟地址中高30-12=18 位表示虚页号，虚拟地址中低12位表示页内地址。\n2)TLB采用2路组相联方式，共8=2^3组，用3位来标记组号。虚拟地址(或虚页号)中 高18-3=15位为TLB 标记，虚拟地址中随后3位(或虚页号中低3位)为TLB 组号。\n",
+    "model_answer": "12~29 0~11 15~29 12~14 4 2",
+    "score_detail": "7/10",
+    "brief": "模型回答以极其简略的方式给出了全部计算结果，前三问的位号和第四问的结论均正确，但完全缺失了第三问的“说明理由”部分，导致该问过程分丢失。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 虚页号为虚拟地址的高18位（位12~29）；2. 页内地址为虚拟地址的低12位（位0~11）。</ref_points>\n<model_coverage>模型回答为“12~29”和“0~11”，分别对应虚页号和页内地址，完全覆盖了两个得分点。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. TLB标记为虚页号的高15位（位15~29）；2. TLB组号为虚页号的低3位（位12~14）。</ref_points>\n<model_coverage>模型回答为“15~29”和“12~14”，分别对应TLB标记和TLB组号，完全覆盖了两个得分点。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 回答出被替换的虚页号为4；2. 给出正确的理由：虚页号4映射到4号组（4 mod 8=4），映射到4号组的虚页号依次为12、4、12和20，根据LRU替换策略，访问虚页号20时，最久未被访问的虚页号4被替换。</ref_points>\n<model_coverage>模型回答为“4”，仅覆盖了第1个得分点（结论），但没有提供任何推导和替换理由说明，未覆盖第2个得分点。</model_coverage>\n<score>1/4</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 虚拟地址位数增加2位，使得TLB表项中的标记字段增加2位，因此每个TLB表项的位数增加2位。</ref_points>\n<model_coverage>模型回答为“2”，直接给出了正确的增加位数，完全覆盖了得分点。</model_coverage>\n<score>2/2</score>\n</sub>\n</sub_questions>\n<total_score>7/10</total_score>\n<brief>模型回答以极其简略的方式给出了全部计算结果，前三问的位号和第四问的结论均正确，但完全缺失了第三问的“说明理由”部分，导致该问过程分丢失。</brief>\n</scoring>",
+    "time": 66.53083658218384
+  },
+  {
+    "_index": 180,
+    "question_preview": "[2022年考研真题第43题]某CPU 中部分数据通路如题43图所示，其中，GPRs为通用寄存器组；FR为标志 寄存器，用于存放ALU 产生的标志信息；带箭头虚线表示控制信号，如控制信号Read、Wr",
+    "gt_answer": "【答案解析】\n1)符号标志SF 表示运算结果的正负性，因此SF=F₁5。\n对于加法运算A+B→F,   若A 、B为负，且F 为正，则说明发生溢出；或者，若A 、B为正， 且F 为负，也说明发生溢出。因此，加运算时，溢出标志OF=~A_15 ·~B_15 ·F_15+A_15 ·B_15 ·~F15。\n对于减法运算A-B→F,   若 A 为负、B 为正，且F 为正，则说明发生溢出；或者，若A 为",
+    "model_answer": "SF=F_15;OF(A+B)=A_15B_15\\overline{F_15}+\\overline{A_15}\\overline{B_15}F_15;OF(A-B)=A_15\\overline{B_15}\\overline{F_15}+\\overline{A_15}B_15F_15\n暂存操作数保证ALU输入稳定\n32;IR;地址译码器\nPCout Read MDRin MDRout;7\n控制器;I",
+    "score_detail": "?/?",
+    "brief": "",
+    "full_scoring": "",
+    "time": 90.88523125648499
+  },
+  {
+    "_index": 181,
+    "question_preview": "[2022年考研真题第44题]假设某磁盘驱动器中有4个双面盘片，每个盘面有20000个磁道，每个磁道有500个 扇区，每个扇区可记录512字节的数据，盘片转速为7200 RPM (转/分),平均寻道时",
+    "gt_answer": "【答案解析】\n1)3个字段的名称为柱面号(或磁道号)、磁头号(或盘面号)、扇区号。由于每个盘面有 20000个磁道，因此该磁盘共有20000个柱面，柱面号字段至少占[log_220000]=15   位；\n由于该磁盘共有4个盘片，每个盘片有2个盘面，因此磁头号字段至少占1og_2(4×2)=3位； 由于每个磁道有500个扇区，因此扇区号字段至少占[log_2(500)]=9 位。\n2)一个扇区的访",
+    "model_answer": "磁柱面号 磁头号 扇区号 15 3 9 9.17 64 可以 DMA优先级高于CPU",
+    "score_detail": "10/13",
+    "brief": "模型回答极其精简，第1问和第3问准确命中核心得分点，但第2问缺失了必要的文字说明、计算过程和单位，仅凭一个数值结果遗憾失分。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 三个字段的名称正确：柱面号（或磁道号）、磁头号（或盘面号）、扇区号；2. 三个字段至少占的位数正确：15位、3位、9位。</ref_points>\n<model_coverage>模型回答了“磁柱面号 磁头号 扇区号 15 3 9”，除“磁柱面号”带有一个多余的“磁”字外，核心名称和所有位数均回答正确，完全覆盖关键得分点。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 明确指出平均访问时间的三个组成部分（平均寻道时间、平均延迟时间、传输时间）；2. 列出正确的计算公式及过程；3. 给出正确的计算结果（约9.18ms）并带单位。</ref_points>\n<model_coverage>模型仅给出了数值结果“9.17”，没有写出计算过程、时间组成部分，且缺失单位（ms）。仅有最终数值结果且存在微小误差，部分覆盖。</model_coverage>\n<score>1/4</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 计算总线请求次数（512B/64bit = 64次）；2. 判断是否能获得总线使用权（可以）；3. 解释原因（磁盘读写必须按时完成数据传送，否则数据会丢失，即DMA优先级高于CPU）。</ref_points>\n<model_coverage>模型回答了“64 可以 DMA优先级高于CPU”，次数计算正确，判断正确，且简明扼要地指出了核心原因（DMA优先级高于CPU）。完全覆盖。</model_coverage>\n<score>5/5</score>\n</sub>\n</sub_questions>\n<total_score>10/13</total_score>\n<brief>模型回答极其精简，第1问和第3问准确命中核心得分点，但第2问缺失了必要的文字说明、计算过程和单位，仅凭一个数值结果遗憾失分。</brief>\n</scoring>",
+    "time": 78.33672070503235
+  },
+  {
+    "_index": 193,
+    "question_preview": "[2023年考研真题第43题]某机器字长为32位的计算机M，采用请求调页存储管理。虚拟地址32位，页面大小4KB。Cache采用4路组相联映射，内存块大小为32B，Cache数据区大小为8KB。二维数",
+    "gt_answer": "【答案解析】\n(1)数组a分布在2个页面中。缺页异常次数为2。两个页故障地址分别是00422000H、00423000H。\n(2)该程序段的数据访问没有时间局部性。因为每个数组元素仅访问1次。\n(3)虚拟地址中低5位(A4~A0)用作块内地址；低11位虚拟地址中高6位(A10~A5)用作Cache组号。a[1][0]的虚拟地址为00422000H+1×64×4+0×4=00422100H。a[1]",
+    "model_answer": "4",
+    "score_detail": "0/13",
+    "brief": "模型回答完全偏题，仅输出了一个无意义的数字“4”，未能解答题目中的任何一个小问。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>1. 数组a分布在2个页面中（1分）；2. 缺页异常次数为2次（1分）；3. 两个页故障地址分别是00422000H、00423000H（1分）。</ref_points>\n<model_coverage>模型回答为“4”，未覆盖任何得分点。</model_coverage>\n<score>0/3</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 该程序段的数据访问没有时间局部性（1分）；2. 原因是每个数组元素仅访问1次，没有被重复访问（1分）。</ref_points>\n<model_coverage>模型回答为“4”，未覆盖任何得分点。</model_coverage>\n<score>0/2</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 块内地址是低5位（A4~A0）（1分）；2. Cache组号是低11位中的高6位（A10~A5）（1分）；3. a[1][0]的虚拟地址为00422100H（1分）；4. 对应的Cache组号为8（1分）。</ref_points>\n<model_coverage>模型回答为“4”，未覆盖任何得分点。</model_coverage>\n<score>0/4</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 数组a总共占192个主存块（1分）；2. 第一种访问方式下Cache命中率为87.5%（1分）；3. 第二种访问方式下分析映射情况，每个Cache组中只有3行存放数据，不会发生替换（1分）；4. 第二种访问方式下Cache命中率依然为87.5%（1分）。</ref_points>\n<model_coverage>模型回答为“4”，未覆盖任何得分点。</model_coverage>\n<score>0/4</score>\n</sub>\n</sub_questions>\n<total_score>0/13</total_score>\n<brief>模型回答完全偏题，仅输出了一个无意义的数字“4”，未能解答题目中的任何一个小问。</brief>\n</scoring>",
+    "time": 42.276928424835205
+  },
+  {
+    "_index": 194,
+    "question_preview": "[2023年考研真题第44题]43题中C程序段在计算机M上的部分机器级代码如下，每个机器级代码行中依次包含指令序号、虚拟地址、机器指令和汇编指令。\n\\n```markdown\n1  for(int i",
+    "gt_answer": "【答案解析】\n(1)第20条指令的虚拟地址为004010B9H。\n(2)第2条jmp和第7条jge指令都采用相对寻址方式。\n第2条指令jmp的跳转目标地址=00401079H+2+09H=00401084H。\n(3)第19条指令中源操作数采用立即(数)寻址方式。\n根据汇编指令中给出的计算公式ecx+edx*4+00422000h可知，ecx中存放的是i×256。M采用小端方式。\n(4)第一次执行第",
+    "model_answer": "(1)004010B9H\n(2)相对寻址；相对寻址；计算过程：目标地址=当前指令地址+指令长度+偏移量=00401079H+2+09H=00401084H\n(3)立即寻址；i*256；小端\n(4)不发生缺页；该指令所在页面已在内存中（或与第1条指令位于同一页面，已调入）",
+    "score_detail": "12/12",
+    "brief": "模型回答精准、精炼，完全踩中了所有小题的核心得分点，计算过程严谨，专有名词使用准确，是一份满分的作答。",
+    "full_scoring": "<scoring>\n<sub_questions>\n<sub id=\"1\">\n<ref_points>正确计算并写出第20条指令的虚拟地址（004010B9H）。(2分)</ref_points>\n<model_coverage>覆盖。模型准确计算并输出了该地址。</model_coverage>\n<score>2/2</score>\n</sub>\n<sub id=\"2\">\n<ref_points>1. 正确指出jmp指令采用相对寻址（1分）；2. 正确指出jge指令采用相对寻址（1分）；3. 给出正确的jmp指令转移目标地址计算过程，即：目标地址 = 当前指令地址 + 指令长度 + 偏移量 = 00401079H + 2 + 09H = 00401084H（2分）。</ref_points>\n<model_coverage>覆盖。模型给出了两条指令的正确寻址方式，并完整写出了目标地址的计算公式和代入数据的过程。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"3\">\n<ref_points>1. 源操作数采用立即（数）寻址方式（1分）；2. ecx存放的是i*256（或i<<8）（2分）；3. 系统采用小端存储方式（1分）。</ref_points>\n<model_coverage>覆盖。模型正确回答了寻址方式、ecx寄存器的内容以及系统的端序。</model_coverage>\n<score>4/4</score>\n</sub>\n<sub id=\"4\">\n<ref_points>1. 结论：不发生缺页（1分）；2. 原因：第19条指令与前面的指令处在同一个页面中（页号00401H），而在执行到第19条指令前该页面已被调入主存（1分）。</ref_points>\n<model_coverage>覆盖。模型给出了正确结论，并准确说明了“所在页面已在内存中（或与第1条指令位于同一页面）”的核心原因。</model_coverage>\n<score>2/2</score>\n</sub>\n</sub_questions>\n<total_score>12/12</total_score>\n<brief>模型回答精准、精炼，完全踩中了所有小题的核心得分点，计算过程严谨，专有名词使用准确，是一份满分的作答。</brief>\n</scoring>",
+    "time": 38.547168493270874
+  }
+]

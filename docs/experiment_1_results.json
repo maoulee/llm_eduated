@@ -1,0 +1,116 @@
+[
+  {
+    "question_id": "2009-12",
+    "ground_truth": "A",
+    "setting1": {
+      "answer": "1.  **Analyze the Problem:**",
+      "correct": false,
+      "time": 84.1,
+      "raw_answer_preview": "Here's a thinking process that leads to the correct answer:\n\n1.  **Analyze the Problem:**\n    *   **Context:** C language program running on a 32-bit machine.\n    *   **Variables:**\n        *   `x`: `"
+    },
+    "setting2": {
+      "reasoning_answer": "B",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": true,
+      "consistent": false,
+      "time": 168.3
+    }
+  },
+  {
+    "question_id": "2009-14",
+    "ground_truth": "C",
+    "setting1": {
+      "answer": "C",
+      "correct": true,
+      "time": 53.8,
+      "raw_answer_preview": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Question:** [2009年考研真题第14题]某计算机的Cache共有16块，采用2路组相联映射方式（即每组2块）。每个主存块大小为32字节，按字节编址。主存第129号单元所在的主存块应装入的Cache组号是（ ）。\n   - **Options:** A. 0  "
+    },
+    "setting2": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "\\boxed{4}",
+      "code_correct": false,
+      "code_executed": true,
+      "consistent": false,
+      "time": 131.9
+    }
+  },
+  {
+    "question_id": "2010-33",
+    "ground_truth": "C",
+    "setting1": {
+      "answer": "C",
+      "correct": true,
+      "time": 38.2,
+      "raw_answer_preview": "Here's a thinking process:\n\n1.  **Analyze User Input:**\n   - **Question:** [2010年考研真题第33题]下列选项中，不属于网络体系结构中所描述的内容是（ ）。\n   - **Options:**\n     - A. 每一层的功能 (Function of each layer)\n     - B. 层与层之间的接口 (In"
+    },
+    "setting2": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 114.3
+    }
+  },
+  {
+    "question_id": "2012-02",
+    "ground_truth": "不完全正确。700个结点的完全二叉树，叶子结点数为350个。由完全二叉树性质：n0 = (n+1)/2 向下取整 = 350。",
+    "setting1": {
+      "answer": "350",
+      "correct": true,
+      "time": 84.2,
+      "raw_answer_preview": "Here's a thinking process that leads to the solution:\n\n1.  **Understand the Goal:** The user wants to verify a statement about a Complete Binary Tree (CBT) with 700 nodes. The statement claims it has "
+    },
+    "setting2": {
+      "reasoning_answer": "350",
+      "reasoning_correct": true,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.3
+    }
+  },
+  {
+    "question_id": "crc-link",
+    "ground_truth": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。",
+    "setting1": {
+      "answer": "1.  **Understand the Goal:** The objective is to c",
+      "correct": false,
+      "time": 84.2,
+      "raw_answer_preview": "Here's a thinking process that leads to the solution:\n\n1.  **Understand the Goal:** The objective is to calculate the CRC (Cyclic Redundancy Check) code for a specific data bit string using a specific"
+    },
+    "setting2": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.4
+    }
+  },
+  {
+    "question_id": "complement-8bit",
+    "ground_truth": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
+    "setting1": {
+      "answer": "1.  **Understand the Goal:** The user wants to sol",
+      "correct": false,
+      "time": 84.2,
+      "raw_answer_preview": "Here's a thinking process that leads to the suggested solution:\n\n1.  **Understand the Goal:** The user wants to solve a computer arithmetic problem involving 8-bit two's complement integers.\n    *   S"
+    },
+    "setting2": {
+      "reasoning_answer": "结果为+8，无溢出",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": true,
+      "consistent": false,
+      "time": 168.3
+    }
+  }
+]

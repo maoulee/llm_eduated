@@ -41,8 +41,17 @@ from .extraction_prompts import (
     PASS3_TRIGGER_RULES,
     PASS4_REASONING_PATTERN,
     PASS5_LINK_AND_VALIDATE,
+    PASS1_QUESTION_STRUCTURE_MD,
+    PASS2_KNOWLEDGE_UNITS_MD,
+    PASS3_TRIGGER_RULES_MD,
+    PASS4_REASONING_PATTERN_MD,
 )
 from .extraction_review import RuleChecker, DomainCritic, ReadinessAggregator
+
+try:
+    from .markdown_parser import parse_extraction_markdown
+except ImportError:
+    parse_extraction_markdown = None  # type: ignore[assignment]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -59,6 +68,7 @@ class ExtractionPipeline:
         review_mode: str = "fast",
         review_max_tokens: int = 10000,
         review_provider=None,
+        output_format: str = "json",
     ):
         self.llm = llm_provider
         self.max_tokens = max_tokens
@@ -66,6 +76,7 @@ class ExtractionPipeline:
         self.review_mode = review_mode
         self.review_max_tokens = review_max_tokens
         self.review_llm = review_provider or llm_provider
+        self.output_format = output_format
 
     def _parse_json_output(self, raw: Optional[Dict]) -> Optional[Dict]:
         if raw is None:
@@ -90,6 +101,39 @@ class ExtractionPipeline:
         else:
             logger.info("Pass %s completed successfully", pass_name)
         return result
+
+    async def _run_pass_md(self, pass_name: str, prompt: str) -> Optional[Dict]:
+        """Run extraction pass using Markdown output + thinking mode."""
+        messages = [[{"role": "user", "content": prompt}]]
+        results = await self.llm.generate_with_think_and_parse_batch(
+            messages, max_token=self.max_tokens, enable_thinking=True,
+        )
+        if not results:
+            return None
+
+        content = results[0].get("answer", "")
+        if not content:
+            return None
+
+        # Try Markdown parse first
+        if parse_extraction_markdown is not None:
+            parsed = parse_extraction_markdown(content, pass_name)
+        else:
+            parsed = None
+
+        # Fallback: try JSON parse
+        if parsed is None:
+            try:
+                if "```json" in content:
+                    clean = content.split("```json\n", 1)[1].rsplit("```", 1)[0]
+                else:
+                    start, end = content.find("{"), content.rfind("}")
+                    clean = content[start:end + 1] if start != -1 and end != -1 else content
+                parsed = json.loads(clean)
+            except (json.JSONDecodeError, IndexError, TypeError):
+                pass
+
+        return parsed
 
     async def _run_review(self, extraction_result: Dict[str, Any]) -> Dict[str, Any]:
         if self.review_mode == "none":
@@ -166,12 +210,12 @@ class ExtractionPipeline:
         logger.info("Starting extraction pipeline for question: %s", q_id)
 
         # --- P1: Question Structure ---
-        p1_prompt = PASS1_QUESTION_STRUCTURE.format(
-            question_type=q_type,
-            stem=stem,
-            answer=answer,
-        )
-        p1_result = await self._run_pass("P1_question_structure", p1_prompt)
+        if self.output_format == "markdown":
+            p1_prompt = PASS1_QUESTION_STRUCTURE_MD.format(question_type=q_type, stem=stem, answer=answer)
+            p1_result = await self._run_pass_md("P1", p1_prompt)
+        else:
+            p1_prompt = PASS1_QUESTION_STRUCTURE.format(question_type=q_type, stem=stem, answer=answer)
+            p1_result = await self._run_pass("P1_question_structure", p1_prompt)
         if p1_result is None:
             return self._error_result(q_id, "P1 failed: could not extract question structure")
 
@@ -179,39 +223,36 @@ class ExtractionPipeline:
         distractor_str = json.dumps(p1_result.get("distractor_analysis", []), ensure_ascii=False)
 
         # --- P2: Knowledge Units ---
-        p2_prompt = PASS2_KNOWLEDGE_UNITS.format(
-            stem=stem,
-            structure=structure_str,
-            answer=answer,
-        )
-        p2_result = await self._run_pass("P2_knowledge_units", p2_prompt)
+        if self.output_format == "markdown":
+            p2_prompt = PASS2_KNOWLEDGE_UNITS_MD.format(stem=stem, structure=structure_str, answer=answer)
+            p2_result = await self._run_pass_md("P2", p2_prompt)
+        else:
+            p2_prompt = PASS2_KNOWLEDGE_UNITS.format(stem=stem, structure=structure_str, answer=answer)
+            p2_result = await self._run_pass("P2_knowledge_units", p2_prompt)
         if p2_result is None:
             return self._error_result(q_id, "P2 failed: could not extract knowledge units")
 
         ku_str = json.dumps(p2_result, ensure_ascii=False)
 
         # --- P3: Trigger Rules ---
-        p3_prompt = PASS3_TRIGGER_RULES.format(
-            stem=stem,
-            structure=structure_str,
-            knowledge_units=ku_str,
-            answer=answer,
-        )
-        p3_result = await self._run_pass("P3_trigger_rules", p3_prompt)
+        if self.output_format == "markdown":
+            p3_prompt = PASS3_TRIGGER_RULES_MD.format(stem=stem, structure=structure_str, knowledge_units=ku_str, answer=answer)
+            p3_result = await self._run_pass_md("P3", p3_prompt)
+        else:
+            p3_prompt = PASS3_TRIGGER_RULES.format(stem=stem, structure=structure_str, knowledge_units=ku_str, answer=answer)
+            p3_result = await self._run_pass("P3_trigger_rules", p3_prompt)
         if p3_result is None:
             return self._error_result(q_id, "P3 failed: could not extract trigger rules")
 
         tr_str = json.dumps(p3_result, ensure_ascii=False)
 
         # --- P4: Reasoning Pattern ---
-        p4_prompt = PASS4_REASONING_PATTERN.format(
-            stem=stem,
-            structure=structure_str,
-            knowledge_units=ku_str,
-            trigger_rules=tr_str,
-            answer=answer,
-        )
-        p4_result = await self._run_pass("P4_reasoning_pattern", p4_prompt)
+        if self.output_format == "markdown":
+            p4_prompt = PASS4_REASONING_PATTERN_MD.format(stem=stem, structure=structure_str, knowledge_units=ku_str, trigger_rules=tr_str, answer=answer)
+            p4_result = await self._run_pass_md("P4", p4_prompt)
+        else:
+            p4_prompt = PASS4_REASONING_PATTERN.format(stem=stem, structure=structure_str, knowledge_units=ku_str, trigger_rules=tr_str, answer=answer)
+            p4_result = await self._run_pass("P4_reasoning_pattern", p4_prompt)
         if p4_result is None:
             return self._error_result(q_id, "P4 failed: could not extract reasoning pattern")
 

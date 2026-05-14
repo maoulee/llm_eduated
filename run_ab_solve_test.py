@@ -20,14 +20,11 @@ load_dotenv()
 from config import get_provider_config
 from llm_providers_new import get_llm_provider
 
-PROMPT_BARE = """请解答以下{question_type}题目。
+PROMPT_BARE = """请解答以下{question_type}题目。请逐步推理，并将最终答案放在 \\boxed{{}} 中。
 
 {stem}
 
-{options}
-正确答案：{answer}
-
-请给出详细解答过程。"""
+{options}"""
 
 
 PROMPT_INJECT = """请解答以下{question_type}题目。以下提供了该题的结构化分析数据（由专家系统提取），供你参考。
@@ -36,7 +33,6 @@ PROMPT_INJECT = """请解答以下{question_type}题目。以下提供了该题�
 {stem}
 
 {options}
-正确答案：{answer}
 
 ## 结构化分析数据（参考）
 
@@ -52,7 +48,7 @@ PROMPT_INJECT = """请解答以下{question_type}题目。以下提供了该题�
 ### 推理模式
 {reasoning_pattern}
 
-请基于以上结构化分析数据，给出详细解答过程。"""
+请基于以上结构化分析数据，给出详细解答过程，并在最后明确写出你的答案。"""
 
 
 def format_options(result: Dict[str, Any]) -> str:
@@ -71,7 +67,7 @@ async def solve_question(
     extraction: Dict[str, Any],
     mode: str,
 ) -> Dict[str, Any]:
-    """Solve a single question in given mode."""
+    """Solve a single question in given mode (blind — no answer in prompt)."""
 
     q_type = question.get("type", "单选题")
     stem = question.get("prompt", "")
@@ -80,7 +76,7 @@ async def solve_question(
 
     if mode == "bare":
         prompt = PROMPT_BARE.format(
-            question_type=q_type, stem=stem, options=options, answer=answer,
+            question_type=q_type, stem=stem, options=options,
         )
     else:
         structure = json.dumps(
@@ -100,22 +96,40 @@ async def solve_question(
             ensure_ascii=False, indent=2,
         )
         prompt = PROMPT_INJECT.format(
-            question_type=q_type, stem=stem, options=options, answer=answer,
+            question_type=q_type, stem=stem, options=options,
             structure=structure, knowledge_units=ku,
             trigger_rules=tr, reasoning_pattern=rp,
         )
 
     messages = [[{"role": "user", "content": prompt}]]
-    results = await provider.generate_json_batch(
-        messages, max_tokens=4096, enable_thinking=True,
+    results = await provider.generate_with_think_and_parse_batch(
+        messages, max_token=4096, enable_thinking=True,
     )
 
     raw = results[0] if results else {}
     content = raw.get("answer", str(raw)) if raw else ""
 
+    # Offline comparison: extract model's answer from \boxed{} first, then fallback
+    import re
+    model_answer = ""
+    boxed = re.search(r'\\boxed\{([^}]+)\}', content)
+    if boxed:
+        model_answer = boxed.group(1).strip().upper()
+    if not model_answer:
+        for pat in [r'[最终答案|答案|answer][：:]\s*([A-D])\b', r'\b([A-D])\b']:
+            m = re.search(pat, content, re.IGNORECASE)
+            if m:
+                model_answer = m.group(1).upper()
+                break
+    ground_truth = str(answer).strip().upper()
+    correct = model_answer == ground_truth if model_answer else None
+
     return {
         "mode": mode,
         "question_id": question.get("id", "?"),
+        "model_answer": model_answer,
+        "ground_truth": ground_truth,
+        "correct": correct,
         "response": content,
         "thinking": raw.get("think", "")[:500] if raw else "",
     }

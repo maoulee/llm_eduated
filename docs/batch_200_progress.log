@@ -1,0 +1,345 @@
+Loaded 195 questions from /home/dev/full_question.json
+  MCQ: 164, Subjective: 31
+vLLM: /root/shared-nvme/llm_edu/models/Qwen3.6-27B-AWQ-INT4
+GLM: available
+Checkpoint: 0 already done
+
+============================================================
+Batch 1: 20 questions [0-19]
+  Routing 20 questions...
+  Routes: 10 code, 10 concept
+  Sending 30 prompts (20 reason + 10 code)...
+  vLLM done in 459s
+  [  0] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [  1] code     R=3           (N) C=            (?) cons=N exec=FAIL final=N
+  [  2] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [  3] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [  4] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [  5] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [  6] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [  7] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [  8] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [  9] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 10] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 11] code     R=2.5,0.1     (?) C=0.1         (?) cons=N exec=OK final=?
+  [ 12] concept  R=| 节拍 | 功能 | (?) C=            (?) cons=- exec=- final=?
+  [ 13] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 14] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [ 15] code     R=B           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 16] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 17] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 18] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 19] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 20/195
+
+============================================================
+Batch 2: 20 questions [20-39]
+  Routing 20 questions...
+  Routes: 8 code, 12 concept
+  Sending 28 prompts (20 reason + 8 code)...
+  vLLM done in 571s
+  [ 20] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 21] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 22] concept  R=D           (N) C=            (?) cons=- exec=- final=N
+  [ 23] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 24] code     R=16 8 16 16 -(?) C=            (?) cons=N exec=FAIL final=?
+  [ 25] code     R=512B;6,7;93.(?) C=            (?) cons=N exec=FAIL final=?
+  [ 26] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 27] code     R=6           (N) C=A           (Y) cons=N exec=OK final=N
+  [ 28] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 29] code     R=D           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 30] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 31] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 32] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 33] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 34] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 35] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 36] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 37] code     R=(1)86H,90H,7(?) C=            (?) cons=N exec=FAIL final=?
+  [ 38] code     R=(1)24位，23~12(?) C=            (?) cons=N exec=FAIL final=?
+  [ 39] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 40/195
+
+============================================================
+Batch 3: 20 questions [40-59]
+  Routing 20 questions...
+  Routes: 12 code, 8 concept
+  Sending 32 prompts (20 reason + 12 code)...
+  vLLM done in 707s
+  [ 40] concept  R=A           (N) C=            (?) cons=- exec=- final=N
+  [ 41] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 42] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 43] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 44] code     R=A           (N) C=A           (-) cons=Y exec=OK final=N
+  [ 45] code     R=C           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 46] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 47] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 48] concept  R=A           (N) C=            (?) cons=- exec=- final=N
+  [ 49] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 50] code     R=20, 300000, (?) C=            (?) cons=N exec=FAIL final=?
+  [ 51] code     R=12          (?) C=            (?) cons=N exec=FAIL final=?
+  [ 52] code     R=B           (N) C=D           (-) cons=N exec=OK final=N
+  [ 53] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [ 54] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [ 55] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 56] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [ 57] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 58] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 59] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 60/195
+
+============================================================
+Batch 4: 20 questions [60-79]
+  Routing 20 questions...
+  Routes: 13 code, 7 concept
+  Sending 33 prompts (20 reason + 13 code)...
+  vLLM done in 701s
+  [ 60] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 61] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [ 62] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 63] code     R=1.25,5,800,1(?) C=            (?) cons=N exec=FAIL final=?
+  [ 64] code     R=字节编址 128 200(?) C=            (?) cons=N exec=FAIL final=?
+  [ 65] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 66] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 67] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [ 68] code     R=A           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 69] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 70] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 71] code     R=C           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 72] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 73] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 74] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 75] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [ 76] code     R=1)192.1.1.0/(?) C=S1,62,邻居路由器I(?) cons=Y exec=OK final=?
+  [ 77] code     R=字节 32 -5 PC+(?) C=最终答案：1)字节 2)(?) cons=N exec=OK final=?
+  [ 78] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 79] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  Checkpoint: 80/195
+
+============================================================
+Batch 5: 20 questions [80-99]
+  Routing 20 questions...
+  Routes: 7 code, 13 concept
+  Sending 27 prompts (20 reason + 7 code)...
+  vLLM done in 483s
+  [ 80] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 81] code     R=C           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 82] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 83] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 84] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [ 85] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 86] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [ 87] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 88] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 89] concept  R=1R0~R3单总线每次只(?) C=            (?) cons=- exec=- final=?
+  [ 90] code     R=16;1100H,221(?) C=            (?) cons=N exec=FAIL final=?
+  [ 91] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 92] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [ 93] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [ 94] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 95] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [ 96] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [ 97] code     R=B           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [ 98] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [ 99] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 100/195
+
+============================================================
+Batch 6: 20 questions [100-119]
+  Routing 20 questions...
+  Routes: 9 code, 11 concept
+  Sending 29 prompts (20 reason + 9 code)...
+  vLLM done in 573s
+  [100] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [101] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [102] code     R=O(nlogn)    (?) C=O(n log n)  (?) cons=N exec=OK final=?
+  [103] code     R=10,2000,2500(?) C=10, 2000, 25(?) cons=Y exec=OK final=?
+  [104] code     R=3           (?) C=            (?) cons=N exec=FAIL final=?
+  [105] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [106] code     R=B           (N) C=C           (Y) cons=N exec=OK final=N
+  [107] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [108] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [109] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [110] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [111] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [112] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [113] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [114] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [115] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [116] code     R=(3) float有效位(?) C=            (?) cons=N exec=FAIL final=?
+  [117] code     R=CISC;28;1;不能(?) C=CISC 54 0 不能(?) cons=N exec=OK final=?
+  [118] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [119] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  Checkpoint: 120/195
+
+============================================================
+Batch 7: 20 questions [120-139]
+  Routing 20 questions...
+  Routes: 9 code, 11 concept
+  Sending 29 prompts (20 reason + 9 code)...
+  vLLM done in 508s
+  [120] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [121] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [122] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [123] concept  R=B           (N) C=            (?) cons=- exec=- final=N
+  [124] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [125] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [126] code     R=D           (N) C=D           (-) cons=Y exec=OK final=N
+  [127] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [128] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [129] code     R=2μs,4%,不能,4%(?) C=            (?) cons=N exec=FAIL final=?
+  [130] code     R=32,全相联,SRAM,(?) C=            (?) cons=N exec=FAIL final=?
+  [131] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [132] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [133] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [134] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [135] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [136] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [137] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [138] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [139] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 140/195
+
+============================================================
+Batch 8: 20 questions [140-159]
+  Routing 20 questions...
+  Routes: 9 code, 11 concept
+  Sending 29 prompts (20 reason + 9 code)...
+  vLLM done in 543s
+  [140] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [141] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [142] concept  R=信号量定义：
+semap(?) C=            (?) cons=- exec=- final=?
+  [143] code     R=300MB 100260(?) C=            (?) cons=N exec=FAIL final=?
+  [144] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [145] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [146] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [147] code     R=C           (N) C=            (?) cons=N exec=FAIL final=N
+  [148] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [149] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [150] code     R=C           (Y) C=B           (-) cons=N exec=OK final=Y
+  [151] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [152] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [153] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [154] code     R=(1) 乘法可等价转换为(?) C=0x00000000FF(?) cons=N exec=OK final=?
+  [155] code     R=- **缺失分析**：D(?) C=            (?) cons=N exec=FAIL final=?
+  [156] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [157] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [158] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [159] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  Checkpoint: 160/195
+
+============================================================
+Batch 9: 20 questions [160-179]
+  Routing 20 questions...
+  Routes: 9 code, 11 concept
+  Sending 29 prompts (20 reason + 9 code)...
+  vLLM done in 453s
+  [160] code     R=A           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [161] concept  R=D           (Y) C=            (?) cons=- exec=- final=Y
+  [162] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [163] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [164] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [165] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [166] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [167] concept  R=04          (?) C=            (?) cons=- exec=- final=?
+  [168] code     R=12~29 0~11 1(?) C=            (?) cons=N exec=FAIL final=?
+  [169] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [170] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [171] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [172] code     R=D           (N) C=B           (-) cons=N exec=OK final=N
+  [173] code     R=A           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [174] code     R=C           (Y) C=            (?) cons=N exec=FAIL final=Y
+  [175] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [176] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [177] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [178] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [179] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  Checkpoint: 180/195
+
+============================================================
+Batch 10: 15 questions [180-194]
+  Routing 15 questions...
+  Routes: 9 code, 6 concept
+  Sending 24 prompts (15 reason + 9 code)...
+  vLLM done in 499s
+  [180] concept  R=SF=F_15;OF(A(?) C=            (?) cons=- exec=- final=?
+  [181] code     R=磁柱面号 磁头号 扇区号(?) C=            (?) cons=N exec=FAIL final=?
+  [182] code     R=C           (Y) C=C           (Y) cons=Y exec=OK final=Y
+  [183] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [184] code     R=A           (Y) C=A           (Y) cons=Y exec=OK final=Y
+  [185] code     R=B           (N) C=D           (-) cons=N exec=OK final=N
+  [186] code     R=B           (Y) C=B           (Y) cons=Y exec=OK final=Y
+  [187] concept  R=A           (Y) C=            (?) cons=- exec=- final=Y
+  [188] concept  R=B           (Y) C=            (?) cons=- exec=- final=Y
+  [189] code     R=8           (N) C=            (?) cons=N exec=FAIL final=N
+  [190] code     R=D           (Y) C=D           (Y) cons=Y exec=OK final=Y
+  [191] concept  R=C           (N) C=            (?) cons=- exec=- final=N
+  [192] concept  R=C           (Y) C=            (?) cons=- exec=- final=Y
+  [193] code     R=4           (?) C=            (?) cons=N exec=FAIL final=?
+  [194] concept  R=(1)004010B9H(?) C=            (?) cons=- exec=- final=?
+  Checkpoint: 195/195
+
+============================================================
+Phase 3: GLM evaluation for 31 subjective questions
+  Sending 27 evaluations to GLM 5.1...
+  [11] GLM score: 50
+  [12] GLM score: None
+  [24] GLM score: None
+  [25] GLM score: None
+  [37] GLM score: 83
+  [38] GLM score: 33
+  [50] GLM score: 50
+  [63] GLM score: 33
+  [64] GLM score: None
+  [76] GLM score: None
+  [77] GLM score: None
+  [89] GLM score: None
+  [90] GLM score: None
+  [102] GLM score: 18
+  [103] GLM score: None
+  [116] GLM score: None
+  [117] GLM score: None
+  [129] GLM score: 20
+  [130] GLM score: None
+  [142] GLM score: None
+  [143] GLM score: None
+  [154] GLM score: None
+  [155] GLM score: 30
+  [168] GLM score: None
+  [180] GLM score: None
+  [181] GLM score: None
+  [194] GLM score: None
+  GLM done in 670s
+
+============================================================
+SUMMARY (195 questions, 6169s)
+============================================================
+  Routing: 95 code, 100 concept
+  MCQ (164):
+    Reasoning correct:  149/164 (90.9%)
+    Code correct:       51/95 (53.7% of code-routed)
+    Code executed OK:   64/95 (67.4%)
+    Consistent:         53/95
+    Final correct:      149/164 (90.9%)
+  Subjective (31): avg score 39.6/100
+
+  By year (MCQ accuracy):
+    2009: 10/11 (91%) [13 total questions]
+    2010: 10/11 (91%) [13 total questions]
+    2011: 10/11 (91%) [13 total questions]
+    2012: 8/11 (73%) [13 total questions]
+    2013: 10/11 (91%) [13 total questions]
+    2014: 11/11 (100%) [13 total questions]
+    2015: 11/11 (100%) [13 total questions]
+    2016: 11/11 (100%) [14 total questions]
+    2017: 10/11 (91%) [13 total questions]
+    2018: 9/11 (82%) [13 total questions]
+    2019: 11/11 (100%) [13 total questions]
+    2020: 9/10 (90%) [12 total questions]
+    2021: 11/11 (100%) [13 total questions]
+    2022: 10/11 (91%) [13 total questions]
+    2023: 8/11 (73%) [13 total questions]
+
+Results saved to docs/batch_200_results.json
+Checkpoint cleaned up

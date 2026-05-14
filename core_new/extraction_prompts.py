@@ -467,3 +467,161 @@ DOMAIN_ISSUE_FIXER = """你是408题库抽取数据修复专家。以下候选�
   ]
 }}
 ```"""
+
+# ──────────────────────────────────────────────────────────
+# Markdown-format extraction prompts (for thinking mode)
+# ──────────────────────────────────────────────────────────
+
+PASS1_QUESTION_STRUCTURE_MD = """你是一位408考研题目结构化分析专家。请对以下题目进行结构化分析。
+
+## 题目
+类型：{question_type}
+题干：{stem}
+答案：{answer}
+
+## 输出格式
+请严格按照以下Markdown格式输出，不要输出其他内容：
+
+### 基本信息
+question_type: {question_type}
+subject: 计算机组成原理
+year: 2009
+correct_answer: A
+stem: (题干原文)
+
+### 选项
+- A: 选项A内容
+- B: 选项B内容
+- C: 选项C内容
+- D: 选项D内容
+
+### 结构分析
+#### 已知条件
+- 条件1
+- 条件2
+#### 求解目标
+asked_target: 题目问的是什么
+#### 隐含条件
+- 隐含条件1
+#### 单位约束
+- 约束1
+#### 关键术语
+- 术语1
+
+### 干扰项分析
+- 选项: A | 错误类型: 概念混淆 | 针对的误解: 混淆了xxx和yyy
+
+### 正确答案诊断
+answer_status: correct_answer_correct_reason
+diagnostic_note: 推理正确
+
+注意：不需要展示推理过程，直接输出结构化分析结果。"""
+
+PASS2_KNOWLEDGE_UNITS_MD = """你是一位408考研知识点分析专家。请根据以下题目的结构化信息，抽取题目涉及的知识单元。
+
+## 题目信息
+题干：{stem}
+题目结构：{structure}
+正确答案：{answer}
+
+## 输出格式
+请严格按照以下Markdown格式输出，不要输出其他内容：
+
+### 知识单元
+- name: 知识名称
+  description: 具体内容
+  subtype: definition | formula | rule | convention | term
+  subject: 所属科目
+
+### 机制
+- name: 机制名称
+  description: 该机制如何影响推导
+  affects_what: 影响哪些计算或判断
+  common_misunderstanding: 常见误解
+  subject: 所属科目
+
+注意：
+1. 只抽取本题直接涉及的知识，不要泛化
+2. 机制重点关注那些"如果不知道就会做错"的机制
+3. 每个知识单元应该是原子性的，不要把多个知识混在一起
+
+注意：不需要展示推理过程，直接输出结构化分析结果。"""
+
+PASS3_TRIGGER_RULES_MD = """你是一位408考研题目信号分析专家。请分析以下题目中，题干的哪些信号决定了应该调用哪些机制或推理路径。
+
+## 题目信息
+题干：{stem}
+题目结构：{structure}
+涉及的知识单元：{knowledge_units}
+正确答案：{answer}
+
+## 输出格式
+请严格按照以下Markdown格式输出，不要输出其他内容：
+
+### 触发规则
+- name: 触发规则名称
+  source_signals: keyword:具体信号; condition:条件
+  activation_logic: AND
+  conditions: 条件1; 条件2
+  activates: knowledge:知识名称:activate
+  wrong_if_missing: 如果漏掉会犯什么错
+  diagnostic_role: missed_condition | wrong_route | mechanism_selection
+  must_include_signals: 出题必须包含的信号1; 信号2
+  must_expose_failure_mode: 必须能测试的错误模式
+  expected_wrong_reason_if_missed: 漏掉时的典型错误原因
+  diagnostic_value: 0.8
+  difficulty: medium
+
+### 负触发
+- signal: 信号 | blocks_pattern: 被阻断的错误解法 | reason: 为什么不适用
+
+注意：
+1. 重点关注"容易被忽略"的触发信号
+2. 每个触发规则必须对应至少一种可能的错误
+3. source_signals、conditions、activates 等多值字段用分号分隔
+
+注意：不需要展示推理过程，直接输出结构化分析结果。"""
+
+PASS4_REASONING_PATTERN_MD = """你是一位408考研解题方法分析专家。请根据以下题目的完整信息，抽取出本题使用的推理模式。
+
+## 题目信息
+题干：{stem}
+题目结构：{structure}
+涉及的知识单元：{knowledge_units}
+触发规则：{trigger_rules}
+正确答案及解析：{answer}
+
+## 输出格式
+请严格按照以下Markdown格式输出，不要输出其他内容：
+
+pattern_name: 推理模式名称
+subject: 所属科目
+
+### 适用条件
+- 条件1
+- 条件2
+
+### 推理步骤
+- order: 1
+  name: 步骤名称
+  description: 这一步做什么
+  input: 需要什么输入
+  output: 产生什么输出
+  required_knowledge: 知识1; 知识2
+  common_error_at_this_step: 容易犯什么错
+
+### 常见断点
+- step: 2
+  reason: 为什么容易断
+  error_manifestation: 错了表现什么
+
+can_verify_with_code: true
+verification_approach: 如何用代码验证
+
+注意：
+1. 步骤应该足够细粒度，每一步是一个明确的原子操作
+2. 每一步都要标注依赖的知识
+3. common_breakpoints 是最重要的字段——它直接服务于用户诊断
+4. required_knowledge 等多值字段用分号分隔
+
+注意：不需要展示推理过程，直接输出结构化分析结果。"""

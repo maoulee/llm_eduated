@@ -1,0 +1,152 @@
+[
+  {
+    "question_id": "2009-12",
+    "ground_truth": "A",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: C语言基本数据类型: int为有符号整型，unsigned为无符号整型，在32位机器上通常占用4字节\n- 知识: C语言整型提升规则: 当int和unsigned进行运算时，int会转换为unsigned类型\n- 知识: 无符号整数运算规则: 无符号整数运算结果始终为非负，采用模运算处理溢出\n- 知识: 类型转换与截断: 将无符号整数赋值给有符号整型变量时，发生类型转换，可能产生负数\n- 机制: 整型提升机制: 在混合类型运算中，有符号整型会被提升为无符号整型，改变运算的符号解释 (影响: x-y的运算过程)\n- 机制: 无符号运算溢出处理: 无符号运算结果超出范围时，采用模2^n",
+    "setting2": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.3
+    },
+    "setting3": {
+      "reasoning_answer": "B",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 163.7
+    },
+    "improvement": "SAME (both wrong)"
+  },
+  {
+    "question_id": "2009-14",
+    "ground_truth": "C",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: Cache组相联映射: Cache采用组相联映射时，主存块被映射到Cache的特定组中，组号由主存块号对组数取模得到。\n- 知识: 主存块号计算: 主存块号等于主存地址除以块大小（整除），即主存地址按块大小进行分块后的索引。\n- 知识: Cache组数计算: Cache组数等于Cache总块数除以路数（每组块数），即总块数/路数。\n- 知识: 按字节编址: 主存地址以字节为单位进行编号，每个地址对应一个字节。\n- 机制: 组相联映射的取模机制: 主存块号通过取模运算映射到Cache组号，该机制决定了主存块只能装入特定组，影响Cache组号的计算结果。 (影响: Cache组号的计算",
+    "setting2": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 163.9
+    },
+    "setting3": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "4",
+      "code_correct": false,
+      "code_executed": true,
+      "consistent": false,
+      "time": 92.5
+    },
+    "improvement": "SAME (both correct)"
+  },
+  {
+    "question_id": "2010-33",
+    "ground_truth": "C",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: 网络体系结构: 网络体系结构是指计算机网络的层次结构模型，如OSI七层模型或TCP/IP四层模型，它定义了每一层的功能、层与层之间的接口以及每一层使用的协议。\n- 知识: 网络体系结构的内容: 网络体系结构包含每一层的功能、层与层之间的接口、每一层使用的协议，但不包含协议的实现细节。\n- 机制: 网络体系结构与实现细节的区分: 网络体系结构关注的是抽象的层次结构和功能定义，而协议的实现细节属于具体的技术实现，不属于体系结构的描述范围。如果混淆两者，可能会错误地认为实现细节是体系结构的一部分。 (影响: 判断选项C是否属于网络体系结构的内容)",
+    "setting2": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 106.2
+    },
+    "setting3": {
+      "reasoning_answer": "C",
+      "reasoning_correct": true,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 89.2
+    },
+    "improvement": "SAME (both correct)"
+  },
+  {
+    "question_id": "2012-02",
+    "ground_truth": "不完全正确。700个结点的完全二叉树，叶子结点数为350个。由完全二叉树性质：n0 = (n+1)/2 向下取整 = 350。",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: 完全二叉树: 完全二叉树是除最后一层外，每一层上的结点数均达到最大值，在最后一层上只缺少右边的若干结点。\n- 知识: 叶子结点: 叶子结点是指度为0的结点，即没有子结点的结点。\n- 知识: 完全二叉树叶子结点数量公式: 对于n个结点的完全二叉树，叶子结点数量 n0 = ⌈n/2⌉ 或 n0 = (n+1)/2 向下取整。\n- 知识: 完全二叉树中度为1的结点数量: 完全二叉树中度为1的结点数量只能是0或1。\n- 机制: 完全二叉树结构特性对叶子结点计算的影响: 完全二叉树的特定结构（除最后一层外满，最后一层靠左排列）决定了其叶子结点数量与总结点数之间的确定关系，即 n0 = ⌈n/",
+    "setting2": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 164.6
+    },
+    "setting3": {
+      "reasoning_answer": "不正确，正确叶子结点数量为350",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 132.1
+    },
+    "improvement": "SAME (both wrong)"
+  },
+  {
+    "question_id": "crc-link",
+    "ground_truth": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: 循环冗余校验码（CRC）: 一种用于检测数据传输错误的差错检测码，基于多项式除法原理，通过计算余数作为校验码附加在数据后。\n- 知识: 生成多项式: 用于CRC校验的除数多项式，其阶数决定了校验码的位数。例如G(x)=x³+1对应二进制除数1001。\n- 知识: 模2除法: CRC计算中使用的除法运算，采用异或（XOR）规则，无借位和进位，仅按位异或。\n- 知识: CRC校验码长度: 校验码的位数等于生成多项式的最高次幂（阶数）。例如G(x)=x³+1的阶数为3，校验码为3位。\n- 知识: 数据补零规则: 在CRC计算前，需在原始数据比特串后附加与校验码位数相同数量的0，形成被除数",
+    "setting2": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.4
+    },
+    "setting3": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.7
+    },
+    "improvement": "SAME (both wrong)"
+  },
+  {
+    "question_id": "complement-8bit",
+    "ground_truth": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
+    "has_extraction": true,
+    "knowledge_summary_preview": "- 知识: 8位补码表示范围: 8位补码整数的表示范围是-128到+127\n- 知识: 负数补码计算方法: 负数补码 = 2^n + X（n为位数），或先求原码再取反加1\n- 知识: 正数补码计算方法: 正数补码与原码相同\n- 知识: 补码加法运算规则: 补码加法直接将两个补码相加，最高位进位丢弃\n- 知识: 补码溢出判断规则: 异号数相加不会发生溢出；同号数相加且结果符号与操作数符号不同则溢出\n- 机制: 最高位进位丢弃机制: 在8位补码加法中，第9位的进位必须丢弃，否则会导致结果错误 (影响: 影响X+Y的补码计算结果)\n- 机制: 异号相加无溢出机制: 两个符号相反的补码数相加，结果必然",
+    "setting2": {
+      "reasoning_answer": "0000\\ 1000\\ (\\text{或",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.3
+    },
+    "setting3": {
+      "reasoning_answer": "",
+      "reasoning_correct": false,
+      "code_answer": "",
+      "code_correct": false,
+      "code_executed": false,
+      "consistent": false,
+      "time": 168.5
+    },
+    "improvement": "SAME (both wrong)"
+  }
+]

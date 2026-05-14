@@ -1,0 +1,122 @@
+[
+  {
+    "question_id": "2009-12",
+    "extraction_success": true,
+    "p1_fields_found": 29,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 3,
+    "mechanisms_count": 2,
+    "trigger_rules_count": 3,
+    "reasoning_steps_count": 4,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": true,
+      "orphan_count": 2
+    },
+    "domain_review_available": true,
+    "review_readiness": "needs_link_fix",
+    "requires_human": true,
+    "md_file": "docs/extractions/2009-12.md",
+    "time": 328.7
+  },
+  {
+    "question_id": "2009-14",
+    "extraction_success": true,
+    "p1_fields_found": 27,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 4,
+    "mechanisms_count": 3,
+    "trigger_rules_count": 3,
+    "reasoning_steps_count": 3,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": true,
+      "orphan_count": 0
+    },
+    "domain_review_available": true,
+    "review_readiness": "candidate",
+    "requires_human": false,
+    "md_file": "docs/extractions/2009-14.md",
+    "time": 278.6
+  },
+  {
+    "question_id": "2010-33",
+    "extraction_success": true,
+    "p1_fields_found": 23,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 3,
+    "mechanisms_count": 1,
+    "trigger_rules_count": 1,
+    "reasoning_steps_count": 4,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": true,
+      "orphan_count": 1
+    },
+    "domain_review_available": true,
+    "review_readiness": "needs_link_fix",
+    "requires_human": true,
+    "md_file": "docs/extractions/2010-33.md",
+    "time": 230.9
+  },
+  {
+    "question_id": "2012-02",
+    "extraction_success": true,
+    "p1_fields_found": 22,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 4,
+    "mechanisms_count": 2,
+    "trigger_rules_count": 2,
+    "reasoning_steps_count": 5,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": true,
+      "orphan_count": 2
+    },
+    "domain_review_available": true,
+    "review_readiness": "needs_link_fix",
+    "requires_human": true,
+    "md_file": "docs/extractions/2012-02.md",
+    "time": 340.5
+  },
+  {
+    "question_id": "crc-link",
+    "extraction_success": true,
+    "p1_fields_found": 25,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 4,
+    "mechanisms_count": 3,
+    "trigger_rules_count": 0,
+    "reasoning_steps_count": 5,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": false,
+      "orphan_count": 0
+    },
+    "domain_review_available": true,
+    "review_readiness": "needs_human_judgment",
+    "requires_human": true,
+    "md_file": "docs/extractions/crc-link.md",
+    "time": 375.3
+  },
+  {
+    "question_id": "complement-8bit",
+    "extraction_success": true,
+    "p1_fields_found": 26,
+    "p1_fields_total": 10,
+    "knowledge_units_count": 3,
+    "mechanisms_count": 2,
+    "trigger_rules_count": 3,
+    "reasoning_steps_count": 5,
+    "rule_validation": {
+      "schema_valid": true,
+      "answer_consistent": false,
+      "orphan_count": 2
+    },
+    "domain_review_available": true,
+    "review_readiness": "needs_link_fix",
+    "requires_human": true,
+    "md_file": "docs/extractions/complement-8bit.md",
+    "time": 310.8
+  }
+]

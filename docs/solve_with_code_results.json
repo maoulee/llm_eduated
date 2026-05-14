@@ -3,16 +3,17 @@
     "question_id": "2009-12",
     "ground_truth": "A",
     "reasoning": {
-      "answer": "A",
-      "confidence": "high",
-      "preview": "A"
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
     },
     "code": {
-      "generated": false,
-      "source": null,
-      "exec_success": false,
+      "generated": true,
+      "source": "...",
+      "exec_success": true,
       "output": "",
-      "error": "no code generated"
+      "error": null
     },
     "comparison": {
       "reasoning_answer": "A",
@@ -22,47 +23,49 @@
       "code_correct": false,
       "consistent": false
     },
-    "elapsed": 5.79632830619812
+    "elapsed": 152.075270652771
   },
   {
     "question_id": "2009-14",
     "ground_truth": "C",
     "reasoning": {
-      "answer": "C",
-      "confidence": "high",
-      "preview": "C"
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
     },
     "code": {
-      "generated": false,
-      "source": null,
-      "exec_success": false,
-      "output": "",
-      "error": "no code generated"
+      "generated": true,
+      "source": "# 题目给定参数\ncache_total_blocks = 16      # Cache总块数\nways = 2                     # 2路组相联映射\nblock_size = 32              # 主存块大小（字节），按字节编址\ntarget_address = 129         # 目标主存单元地址\n\n# 逐步计算并打印中间结果\n# 步骤1：计算Cache的组数\nnum_sets = cache_total_blocks // ways\nprint(f\"1. Cache组数 = Cache总块数 / 路数 = {cache_total_blocks} / {ways} = {num_sets} 组\")\n\n# 步骤2：计算目标地址所在的主存块号\nmemory_block_num = target_address // block_size\nprint(f\"2. 主存块号 = 目标地址 // 块大小 = {target_address} // {block_size} = {memory_block_num}\")\n\n# 步骤3：根据组相联映射",
+      "exec_success": true,
+      "output": "1. Cache组数 = Cache总块数 / 路数 = 16 / 2 = 8 组\n2. 主存块号 = 目标地址 // 块大小 = 129 // 32 = 4\n3. Cache组号 = 主存块号 % Cache组数 = 4 % 8 = 4\n4. 计算结果对应选项: C\n最终答案: \\boxed{C}",
+      "error": null
     },
     "comparison": {
       "reasoning_answer": "C",
-      "code_answer": null,
+      "code_answer": "\\BOXED{C}",
       "ground_truth": "C",
       "reasoning_correct": true,
       "code_correct": false,
       "consistent": false
     },
-    "elapsed": 8.211853742599487
+    "elapsed": 155.46856832504272
   },
   {
     "question_id": "2010-33",
     "ground_truth": "C",
     "reasoning": {
-      "answer": "C",
-      "confidence": "high",
-      "preview": "C"
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
     },
     "code": {
-      "generated": false,
-      "source": null,
+      "generated": true,
+      "source": "def solve_network_architecture_question():\n    # 定义题目选项\n    options = {\n        'A': '每一层的功能',\n        'B': '层与层之间的接口',\n        'C': '协议的实现细节',\n        'D': '每一层使用的协议'\n    }\n    \n    # 根据计算机网络体系结构的标准定义（如OSI参考模型、TCP/IP体系结构）\n    # 网络体系结构主要描述：网络的层次划分、每一层的功能、层与层之间的接口、每一层使用的协议。\n    # 体系结构的核心思想是“抽象”，它将协议的实现细节隐藏起来，使得不同厂商可以独立实现，只要遵循相同的规范即可互操作。\n    architecture_describes = {'每一层的功能', '层与层之间的接口', '每一层使用的协议'}\n    \n    print(\"=== 逐步推理过程 ===\")\n    print(\"步骤1: 明确网络体系结构的描述范围\")\n    print(f\"       标准定义涵盖集合: {arc",
       "exec_success": false,
       "output": "",
-      "error": "no code generated"
+      "error": "Traceback (most recent call last):\n  File \"/root/shared-nvme/llm_edu/run_solve_with_code.py\", line 156, in execute_code_safely\n    exec(code, restricted_globals)\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 37, in <module>\nNameError: name '__name__' is not defined\n"
     },
     "comparison": {
       "reasoning_answer": "C",
@@ -72,15 +75,42 @@
       "code_correct": false,
       "consistent": false
     },
-    "elapsed": 4.726238250732422
+    "elapsed": 108.71192049980164
   },
   {
     "question_id": "2012-02",
     "ground_truth": "不完全正确。700个结点的完全二叉树，叶子结点数为350个。由完全二叉树性质：n0 = (n+1)/2 向下取整 = 350。",
     "reasoning": {
-      "answer": "B",
-      "confidence": "high",
-      "preview": "B"
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
+    },
+    "code": {
+      "generated": true,
+      "source": "` tags and expected output inside `<expected_output>` tags. The final answer must be boxed.\n\n2.  **Analyze the Problem (Mathematical Logic):**\n    *   **Definition of Complete Binary Tree:** A binary tree in which every level, except possibly the last, is completely filled, and all nodes in the last level are as far left as possible.\n    *   **Node Count ($n$):** 700.\n    *   **Relationship between nodes and leaves:**\n        *   Let $n_0$ be the number of leaf nodes (degree 0).\n        *   Let ",
+      "exec_success": false,
+      "output": "",
+      "error": "Traceback (most recent call last):\n  File \"/root/shared-nvme/llm_edu/run_solve_with_code.py\", line 156, in execute_code_safely\n    exec(code, restricted_globals)\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 12\n    *   Substitute $n_2 = n_0 - 1$ into the total sum: $n = n_0 + n_1 + (n_0 - 1) = 2n_0 + n_1 - 1$.\n                                                                                    ^\nSyntaxError: invalid decimal literal\n"
+    },
+    "comparison": {
+      "reasoning_answer": "350",
+      "code_answer": null,
+      "ground_truth": "350",
+      "reasoning_correct": true,
+      "code_correct": false,
+      "consistent": false
+    },
+    "elapsed": 168.3409662246704
+  },
+  {
+    "question_id": "crc-link",
+    "ground_truth": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。",
+    "reasoning": {
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
     },
     "code": {
       "generated": false,
@@ -90,63 +120,39 @@
       "error": "no code generated"
     },
     "comparison": {
-      "reasoning_answer": "B",
+      "reasoning_answer": "100",
       "code_answer": null,
-      "ground_truth": "350",
+      "ground_truth": "001",
       "reasoning_correct": false,
       "code_correct": false,
       "consistent": false
     },
-    "elapsed": 12.202226161956787
-  },
-  {
-    "question_id": "crc-link",
-    "ground_truth": "CRC校验码为001。计算过程：数据101001后补3个0得到101001000，除以生成多项式对应的除数1001，余数为001。",
-    "reasoning": {
-      "answer": "CRC校验码为001",
-      "confidence": "high",
-      "preview": "CRC校验码为001"
-    },
-    "code": {
-      "generated": true,
-      "source": "def crc_calculator(data, generator):\n    # 将数据字符串转换为整数列表\n    data_bits = [int(bit) for bit in data]\n    gen_bits = [int(bit) for bit in generator]\n    \n    # 生成多项式的阶数（位数减1）\n    n = len(gen_bits) - 1\n    \n    # 在数据后补n个0\n    augmented_data = data_bits + [0] * n\n    \n    print(f\"原始数据: {data}\")\n    print(f\"生成多项式对应的除数: {generator}\")\n    print(f\"补零后的数据: {''.join(map(str, augmented_data))}\")\n    \n    # 模2除法（异或运算）\n    remainder = augmented_data[:]\n    for i in range(len(data_bits)):\n        if remainder",
-      "exec_success": true,
-      "output": "原始数据: 101001\n生成多项式对应的除数: 1001\n补零后的数据: 101001000\n计算过程：\n  模2除法余数: 100\n最终答案: CRC校验码为100",
-      "error": null
-    },
-    "comparison": {
-      "reasoning_answer": "001",
-      "code_answer": "CRC校验码为100",
-      "ground_truth": "001",
-      "reasoning_correct": true,
-      "code_correct": false,
-      "consistent": false
-    },
-    "elapsed": 48.29650354385376
+    "elapsed": 168.34350109100342
   },
   {
     "question_id": "complement-8bit",
     "ground_truth": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
     "reasoning": {
-      "answer": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。",
-      "confidence": "high",
-      "preview": "X=-75的8位补码为10110101，Y=+83的8位补码为01010011。X+Y=10110101+01010011=00001000（丢弃进位），即+8。未溢出（两个异号数相加不会溢出）。"
+      "answer_option": "",
+      "answer_value": "",
+      "confidence": "",
+      "preview": ""
     },
     "code": {
       "generated": true,
-      "source": "def to_8bit_twos_complement(n):\n    # 将整数转换为8位补码表示\n    if n < 0:\n        # 负数：取绝对值，按位取反，加1\n        n = abs(n)\n        # 8位表示\n        n = n & 0xFF\n        # 取反\n        n = ~n & 0xFF\n        # 加1\n        n = (n + 1) & 0xFF\n    else:\n        # 正数：直接取低8位\n        n = n & 0xFF\n    return n\n\n# 已知X=-75，Y=+83\nX = -75\nY = 83\n\n# 转换为8位补码\nX_comp = to_8bit_twos_complement(X)\nY_comp = to_8bit_twos_complement(Y)\n\nprint(f\"X={X}的8位补码为: {bin(X_comp)[2:].zfill(8)}\")\nprint(f\"Y={Y}的8位补码为: {bin(Y_comp)[2:].zfill(8)}\")",
-      "exec_success": true,
-      "output": "X=-75的8位补码为: 10110101\nY=83的8位补码为: 01010011\nX+Y的补码结果: 00001000\nX+Y的十进制结果: 8\n是否溢出: False\n最终答案: X+Y=8，未溢出",
-      "error": null
+      "source": "完整的Python代码",
+      "exec_success": false,
+      "output": "",
+      "error": "Traceback (most recent call last):\n  File \"/root/shared-nvme/llm_edu/run_solve_with_code.py\", line 156, in execute_code_safely\n    exec(code, restricted_globals)\n    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"<string>\", line 1, in <module>\nNameError: name '完整的Python代码' is not defined\n"
     },
     "comparison": {
-      "reasoning_answer": "-75",
-      "code_answer": "X+Y=8，未溢出",
+      "reasoning_answer": null,
+      "code_answer": null,
       "ground_truth": "+8",
       "reasoning_correct": false,
       "code_correct": false,
       "consistent": false
     },
-    "elapsed": 26.662341117858887
+    "elapsed": 168.3847200870514
   }
 ]

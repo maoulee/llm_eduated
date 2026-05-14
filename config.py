@@ -17,7 +17,7 @@ class PathSettings(BaseModel):
     log_dir: str = LOG_DIR_PATH
 
     evaluation_questions: str = os.path.join(DATA_DIR_PATH, "evaluation_questions.json")
-    seed_questions: str = os.path.join(DATA_DIR_PATH, "full_question.json")
+    seed_questions: str = os.environ.get("SEED_QUESTIONS_FILE", os.path.join(DATA_DIR_PATH, "full_question.json"))
 
     batch_results_template: str = os.path.join(DATA_DIR_PATH, "batch_results_{run_name}.json")
     evaluation_report_template: str = os.path.join(DATA_DIR_PATH, "evaluation_report_{run_name}.json")
@@ -65,6 +65,7 @@ class ProviderSettings(BaseModel):
 
     temperature: float = 0.6
     top_p: float = 0.9
+    top_k: int = -1
     default_max_tokens: int = 4096
 
 
@@ -82,7 +83,7 @@ class GlobalSettings(BaseSettings):
         ),
         "api_vllm": ProviderSettings(
             provider_type="api",
-            model_path=os.getenv("VLLM_MODEL", "/zhaoshu/llm/qwen3-32b/"),
+            model_path=os.getenv("VLLM_MODEL", "/root/shared-nvme/llm_edu/models/Qwen3.6-27B-AWQ-INT4"),
             api_url=os.getenv("VLLM_API_BASE", f"http://127.0.0.1:{ServerSettings().vllm_api_port}/v1"),
             api_key=os.getenv("VLLM_API_KEY", "EMPTY"),
             api_protocol=os.getenv("VLLM_API_PROTOCOL", "vllm_chat_batch"),
@@ -90,7 +91,10 @@ class GlobalSettings(BaseSettings):
             prompt_template_style=os.getenv("VLLM_PROMPT_TEMPLATE_STYLE", "qwen"),
             thinking_control_method=os.getenv("VLLM_THINKING_CONTROL_METHOD", "chat_template_kwargs"),
             supports_response_format=os.getenv("VLLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
-            default_max_tokens=int(os.getenv("VLLM_DEFAULT_MAX_TOKENS", "4096")),
+            temperature=float(os.getenv("VLLM_TEMPERATURE", "1.0")),
+            top_p=float(os.getenv("VLLM_TOP_P", "0.95")),
+            top_k=int(os.getenv("VLLM_TOP_K", "20")),
+            default_max_tokens=int(os.getenv("VLLM_DEFAULT_MAX_TOKENS", "8192")),
         ),
         "glm5.1": ProviderSettings(
             provider_type="api",

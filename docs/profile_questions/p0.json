@@ -1,0 +1,7 @@
+{
+  "error": "Blueprint incomplete: missing ['question_type', 'primary_target', 'diagnostic_focus', 'reference_concept']",
+  "blueprint": {
+    "think": "N/A (thinking disabled or not present)",
+    "answer": "Error: API call failed. Details: Error code: 429 - {'error': {'code': '1302', 'message': '您的账户已达到速率限制，请您控制请求频率'}}"
+  }
+}
