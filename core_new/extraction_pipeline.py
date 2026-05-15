@@ -57,8 +57,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
+def _unwrap_gateway(obj):
+    """Extract raw provider from LLMGateway if needed, else pass through."""
+    from core_new.llm_gateway import LLMGateway
+    if isinstance(obj, LLMGateway):
+        return obj.raw_provider
+    return obj
+
+
 class ExtractionPipeline:
-    """Orchestrates the 5-pass extraction pipeline for a single question."""
+    """Orchestrates the 5-pass extraction pipeline for a single question.
+
+    Accepts either a raw LLM provider or an LLMGateway instance.
+    """
 
     def __init__(
         self,
@@ -70,12 +81,12 @@ class ExtractionPipeline:
         review_provider=None,
         output_format: str = "json",
     ):
-        self.llm = llm_provider
+        self.llm = _unwrap_gateway(llm_provider)
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
         self.review_mode = review_mode
         self.review_max_tokens = review_max_tokens
-        self.review_llm = review_provider or llm_provider
+        self.review_llm = _unwrap_gateway(review_provider) if review_provider else self.llm
         self.output_format = output_format
 
     def _parse_json_output(self, raw: Optional[Dict]) -> Optional[Dict]:

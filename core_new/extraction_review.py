@@ -23,6 +23,14 @@ from typing import Any, Dict, List, Optional
 
 from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER, DOMAIN_ISSUE_FIXER
 
+
+def _unwrap_gateway(obj):
+    """Extract raw provider from LLMGateway if needed, else pass through."""
+    from core_new.llm_gateway import LLMGateway
+    if isinstance(obj, LLMGateway):
+        return obj.raw_provider
+    return obj
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
@@ -237,7 +245,7 @@ class DomainCritic:
     """Adversarial LLM reviewer for domain-level semantic issues."""
 
     def __init__(self, llm_provider, max_tokens: int = 10000, enable_thinking: bool = True):
-        self.llm = llm_provider
+        self.llm = _unwrap_gateway(llm_provider)
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
 
@@ -468,7 +476,7 @@ class OrphanReferenceResolver:
     """
 
     def __init__(self, llm_provider, max_tokens: int = 4096):
-        self.llm = llm_provider
+        self.llm = _unwrap_gateway(llm_provider)
         self.max_tokens = max_tokens
 
     async def resolve(
@@ -855,7 +863,7 @@ class DomainIssueFixer:
     """
 
     def __init__(self, llm_provider, max_tokens: int = 8192):
-        self.llm = llm_provider
+        self.llm = _unwrap_gateway(llm_provider)
         self.max_tokens = max_tokens
 
     async def fix(

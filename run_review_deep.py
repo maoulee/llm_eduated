@@ -41,8 +41,7 @@ from typing import Any, Dict, List
 from dotenv import load_dotenv
 load_dotenv()
 
-from config import get_provider_config
-from llm_providers_new import get_llm_provider
+from core_new.llm_gateway import get_gateway
 from core_new.extraction_review import (
     RuleChecker,
     DomainCritic,
@@ -88,7 +87,7 @@ def classify_risk(result: Dict[str, Any]) -> str:
 
 
 async def deep_review_question(
-    provider,
+    gateway,
     result: Dict[str, Any],
     resolve_orphans: bool = True,
     run_deep_critic: bool = True,
@@ -114,7 +113,7 @@ async def deep_review_question(
 
     # Step 2: Resolve orphans + repair links
     if resolve_orphans and rule_result.get("link_validation", {}).get("orphan_targets"):
-        resolver = OrphanReferenceResolver(provider)
+        resolver = OrphanReferenceResolver(gateway)
         resolution = await resolver.resolve(updated, rule_result)
 
         if resolution.get("resolutions"):
@@ -130,7 +129,7 @@ async def deep_review_question(
 
     # Step 4: Deep DomainCritic (optional)
     if run_deep_critic:
-        critic = DomainCritic(provider, max_tokens=10000, enable_thinking=True)
+        critic = DomainCritic(gateway, max_tokens=10000, enable_thinking=True)
         domain_result = await critic.review(updated, rule_result)
     else:
         domain_result = {
@@ -149,7 +148,7 @@ async def deep_review_question(
     final_readiness = readiness
 
     if run_fix and readiness.get("status") == "needs_content_fix" and run_deep_critic:
-        fixer = DomainIssueFixer(provider, max_tokens=8192)
+        fixer = DomainIssueFixer(gateway, max_tokens=8192)
         fix_raw = await fixer.fix(updated, domain_result)
 
         # Apply patched result and strip to prevent circular reference
@@ -168,7 +167,7 @@ async def deep_review_question(
             rule_result = RuleChecker.validate(updated)
 
             # DomainCritic recheck (max 1 iteration)
-            critic = DomainCritic(provider, max_tokens=10000, enable_thinking=True)
+            critic = DomainCritic(gateway, max_tokens=10000, enable_thinking=True)
             recheck_domain_result = await critic.review(updated, rule_result)
 
             # Final aggregation
@@ -213,8 +212,7 @@ async def main():
     with open(args.input, encoding="utf-8") as f:
         results = json.load(f)
 
-    config = get_provider_config(args.provider)
-    provider = get_llm_provider(config)
+    gateway = get_gateway(args.provider)
 
     # Select which questions to process
     targets: List[Dict[str, Any]] = []
@@ -250,7 +248,7 @@ async def main():
 
         try:
             updated = await deep_review_question(
-                provider, target,
+                gateway, target,
                 resolve_orphans=True,
                 run_deep_critic=not args.resolve_only,
                 run_fix=not args.no_fix,
