@@ -147,6 +147,18 @@ class GlobalSettings(BaseSettings):
             tensor_parallel_size=1,
             serve_as_api=True,
         ),
+        "qwen35_0.8b": ProviderSettings(
+            provider_type="api",
+            model_path=os.getenv("QWEN35_08B_MODEL", "Qwen3.5-0.8B"),
+            api_url=os.getenv("QWEN35_08B_API_BASE", "http://localhost:8000/v1"),
+            api_key=os.getenv("QWEN35_08B_API_KEY", "EMPTY"),
+            api_protocol="openai_chat",
+            batch_size=int(os.getenv("QWEN35_08B_BATCH_SIZE", "8")),
+            thinking_control_method=os.getenv("QWEN35_08B_THINKING_CONTROL_METHOD", "chat_template_kwargs"),
+            prompt_template_style="qwen",
+            temperature=float(os.getenv("QWEN35_08B_TEMPERATURE", "0.7")),
+            top_p=float(os.getenv("QWEN35_08B_TOP_P", "0.9")),
+        ),
     }
 
     embedding_model_path: str = os.getenv("EMBEDDING_MODEL_PATH", "/data/amax/home/E22101006/model/bge-m3/")

@@ -33,6 +33,8 @@ __pycache__/
 .eggs/
 dist/
 build/
+.venv/
+uv.lock
 
 # Model weights (too large for git)
 models/

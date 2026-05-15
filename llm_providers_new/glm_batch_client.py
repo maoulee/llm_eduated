@@ -1,113 +1,92 @@
 # llm_providers_new/glm_batch_client.py
 
+"""
+GLM Batch API client using OpenAI-compatible interface.
+
+The GLM API (https://open.bigmodel.cn/api/paas/v4) is fully OpenAI-compatible,
+so we use the standard openai SDK directly — no need for a separate zhipuai SDK.
+"""
+
 import json
 import logging
-import time
 import os
-from typing import List, Dict, Any
-from zai import ZhipuAiClient
+import time
+from typing import Dict, List
 
-try:
-    from zhipuai import ZhipuAI
-except ImportError:
-    raise ImportError("ZhipuAI SDK not installed. Please run 'pip install zhipuai'.")
+from openai import OpenAI
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-class GLMBatchClient:
-    """
-    一个封装了智谱AI Batch API完整流程的客户端。
-    """
-    def __init__(self, api_key: str):
-        self.client = ZhipuAiClient(api_key=api_key)
+GLM_BASE_URL = "https://open.bigmodel.cn/api/paas/v4"
 
-    def create_batch_input_file(self, requests: List[Dict], filename: str = "batch_input.jsonl"):
-        """根据请求列表创建符合Batch API格式的 .jsonl 文件。"""
-        with open(filename, 'w', encoding='utf-8') as f:
+
+class GLMBatchClient:
+    """GLM Batch API client via OpenAI-compatible interface."""
+
+    def __init__(self, api_key: str, base_url: str = GLM_BASE_URL):
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+
+    def create_batch_input_file(self, requests: List[Dict], filename: str = "batch_input.jsonl") -> str:
+        with open(filename, "w", encoding="utf-8") as f:
             for req in requests:
-                f.write(json.dumps(req, ensure_ascii=False) + '\n')
-        logger.info(f"Successfully created batch input file: {filename}")
+                f.write(json.dumps(req, ensure_ascii=False) + "\n")
+        logger.info("Created batch input file: %s", filename)
         return filename
 
     def upload_file(self, filepath: str) -> str:
-        """上传文件并返回文件ID。"""
-        logger.info(f"Uploading file: {filepath}...")
-        try:
-            file_object = self.client.files.create(file=open(filepath, "rb"), purpose="batch")
-            logger.info(f"File uploaded successfully. File ID: {file_object.id}")
-            return file_object.id
-        except Exception as e:
-            logger.error(f"File upload failed: {e}", exc_info=True)
-            raise
+        logger.info("Uploading file: %s ...", filepath)
+        file_object = self.client.files.create(file=open(filepath, "rb"), purpose="batch")
+        logger.info("File uploaded. ID: %s", file_object.id)
+        return file_object.id
 
-    def create_batch_job(self, file_id: str, endpoint: str = "/v4/chat/completions", metadata: Dict = None) -> str:
-        """创建批处理任务并返回任务ID。"""
-        logger.info(f"Creating batch job for file_id: {file_id}...")
-        try:
-            batch_job = self.client.batches.create(
-                input_file_id=file_id,
-                endpoint=endpoint,
-                metadata=metadata or {}
-            )
-            logger.info(f"Batch job created successfully. Batch ID: {batch_job.id}")
-            return batch_job.id
-        except Exception as e:
-            logger.error(f"Batch job creation failed: {e}", exc_info=True)
-            raise
+    def create_batch_job(self, file_id: str, endpoint: str = "/v4/chat/completions",
+                         metadata: Dict = None) -> str:
+        logger.info("Creating batch job for file_id: %s ...", file_id)
+        batch_job = self.client.batches.create(
+            input_file_id=file_id, endpoint=endpoint, metadata=metadata or {},
+        )
+        logger.info("Batch job created. ID: %s", batch_job.id)
+        return batch_job.id
 
     def monitor_job_status(self, batch_id: str, interval: int = 30) -> bool:
-        """监控任务状态，直到完成或失败。"""
-        logger.info(f"Monitoring status for batch_id: {batch_id}...")
+        logger.info("Monitoring batch_id: %s ...", batch_id)
         while True:
-            try:
-                status = self.client.batches.retrieve(batch_id)
-                logger.info(f"  - Current status: {status.status}")
-                if status.status == "completed":
-                    logger.info("Batch job completed successfully!")
-                    return True
-                elif status.status in ["failed", "expired", "cancelled"]:
-                    logger.error(f"Batch job ended with status: {status.status}")
-                    return False
-                time.sleep(interval)
-            except Exception as e:
-                logger.error(f"Failed to retrieve batch status: {e}", exc_info=True)
-                # In case of API error during monitoring, wait and retry
-                time.sleep(interval * 2)
-
+            status = self.client.batches.retrieve(batch_id)
+            logger.info("  Status: %s", status.status)
+            if status.status == "completed":
+                logger.info("Batch job completed!")
+                return True
+            if status.status in ("failed", "expired", "cancelled"):
+                logger.error("Batch job ended: %s", status.status)
+                return False
+            time.sleep(interval)
 
     def download_and_parse_results(self, batch_id: str, output_dir: str = ".") -> List[Dict]:
-        """下载并解析成功的结果文件。"""
-        logger.info("Downloading and parsing results...")
-        try:
-            batch_info = self.client.batches.retrieve(batch_id)
-            if batch_info.output_file_id:
-                output_filepath = os.path.join(output_dir, f"{batch_id}_results.jsonl")
-                content = self.client.files.content(batch_info.output_file_id)
-                content.write_to_file(output_filepath)
-                logger.info(f"Results downloaded to: {output_filepath}")
-                
-                # 解析结果文件
-                results = []
-                with open(output_filepath, 'r', encoding='utf-8') as f:
-                    for line in f:
-                        results.append(json.loads(line))
-                return results
-            else:
-                logger.warning("No output file ID found for this batch job.")
-                return []
-        except Exception as e:
-            logger.error(f"Failed to download or parse results: {e}", exc_info=True)
+        logger.info("Downloading results ...")
+        batch_info = self.client.batches.retrieve(batch_id)
+        if not batch_info.output_file_id:
+            logger.warning("No output file ID for this batch job.")
             return []
 
+        output_filepath = os.path.join(output_dir, f"{batch_id}_results.jsonl")
+        content = self.client.files.content(batch_info.output_file_id)
+        content.write_to_file(output_filepath)
+        logger.info("Results saved to: %s", output_filepath)
+
+        results = []
+        with open(output_filepath, encoding="utf-8") as f:
+            for line in f:
+                results.append(json.loads(line))
+        return results
+
     def run_full_batch_process(self, requests: List[Dict], job_description: str) -> List[Dict]:
-        """执行完整的批处理流程：创建文件 -> 上传 -> 创建任务 -> 监控 -> 下载结果。"""
         input_file = self.create_batch_input_file(requests)
         file_id = self.upload_file(input_file)
         batch_id = self.create_batch_job(file_id, metadata={"description": job_description})
-        
+
         if self.monitor_job_status(batch_id):
             return self.download_and_parse_results(batch_id)
-        else:
-            logger.error("Batch process failed. No results will be returned.")
-            return []
+
+        logger.error("Batch process failed.")
+        return []

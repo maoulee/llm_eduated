@@ -24,12 +24,12 @@ from typing import Any, Dict, List, Optional
 from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER, DOMAIN_ISSUE_FIXER
 
 
-def _unwrap_gateway(obj):
-    """Extract raw provider from LLMGateway if needed, else pass through."""
+def _ensure_gateway(obj):
+    """Ensure obj is an LLMGateway. Wrap raw providers automatically."""
     from core_new.llm_gateway import LLMGateway
     if isinstance(obj, LLMGateway):
-        return obj.raw_provider
-    return obj
+        return obj
+    return LLMGateway.from_provider(obj, "wrapped")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -245,7 +245,7 @@ class DomainCritic:
     """Adversarial LLM reviewer for domain-level semantic issues."""
 
     def __init__(self, llm_provider, max_tokens: int = 10000, enable_thinking: bool = True):
-        self.llm = _unwrap_gateway(llm_provider)
+        self.llm = _ensure_gateway(llm_provider)
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
 
@@ -279,26 +279,29 @@ class DomainCritic:
         messages = [[{"role": "user", "content": prompt}]]
 
         if self.enable_thinking:
-            raw = await self.llm.generate_with_think_and_parse_batch(
-                messages, enable_thinking=True, max_token=self.max_tokens,
+            results = await self.llm.generate_reasoned_batch(
+                messages, max_tokens=self.max_tokens, enable_thinking=True,
             )
-            content = raw[0].get("answer", "") if raw else ""
-            reasoning = raw[0].get("think", "") if raw else ""
+            r = results[0]
+            content = r.content if r.ok else ""
+            reasoning = r.reasoning or "" if r.ok else ""
         else:
-            raw = await self.llm.generate_json_batch(
+            results = await self.llm.generate_json_batch(
                 messages, max_tokens=self.max_tokens, enable_thinking=False,
             )
-            content = json.dumps(raw[0], ensure_ascii=False) if raw and raw[0] else ""
+            r = results[0]
+            content = json.dumps(r.parsed_json, ensure_ascii=False) if r.ok and r.parsed_json else ""
             reasoning = ""
 
         parsed = _parse_json(content)
 
         if parsed is None and self.enable_thinking:
             logger.warning("DomainCritic JSON parse failed, retrying without thinking")
-            raw = await self.llm.generate_json_batch(
+            results = await self.llm.generate_json_batch(
                 messages, max_tokens=self.max_tokens, enable_thinking=False,
             )
-            parsed = raw[0] if raw else None
+            r = results[0]
+            parsed = r.parsed_json if r.ok else None
 
         if parsed is None:
             return {
@@ -476,7 +479,7 @@ class OrphanReferenceResolver:
     """
 
     def __init__(self, llm_provider, max_tokens: int = 4096):
-        self.llm = _unwrap_gateway(llm_provider)
+        self.llm = _ensure_gateway(llm_provider)
         self.max_tokens = max_tokens
 
     async def resolve(
@@ -517,10 +520,11 @@ class OrphanReferenceResolver:
         logger.info("Running OrphanReferenceResolver for %d orphans", len(orphans))
         messages = [[{"role": "user", "content": prompt}]]
 
-        raw = await self.llm.generate_json_batch(
+        results = await self.llm.generate_json_batch(
             messages, max_tokens=self.max_tokens, enable_thinking=False,
         )
-        result = raw[0] if raw else None
+        r = results[0]
+        result = r.parsed_json if r.ok else None
 
         if result is None:
             logger.warning("OrphanReferenceResolver JSON parse failed")
@@ -863,7 +867,7 @@ class DomainIssueFixer:
     """
 
     def __init__(self, llm_provider, max_tokens: int = 8192):
-        self.llm = _unwrap_gateway(llm_provider)
+        self.llm = _ensure_gateway(llm_provider)
         self.max_tokens = max_tokens
 
     async def fix(
@@ -902,10 +906,11 @@ class DomainIssueFixer:
 
         logger.info("Running DomainIssueFixer for %d fixable issues", len(fixable))
         messages = [[{"role": "user", "content": prompt}]]
-        raw = await self.llm.generate_json_batch(
+        results = await self.llm.generate_json_batch(
             messages, max_tokens=self.max_tokens, enable_thinking=False,
         )
-        result = raw[0] if raw else None
+        r = results[0]
+        result = r.parsed_json if r.ok else None
 
         if result is None:
             logger.warning("DomainIssueFixer: LLM returned no result")

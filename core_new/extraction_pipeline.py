@@ -3,30 +3,12 @@
 """
 Multi-pass extraction pipeline for 408 question structuring.
 
-Uses GLM-5.1 (or any OpenAI-compatible provider) to extract structured
-entities from raw 408 exam questions through 5 sequential passes:
-
-  P1: question_structure  → conditions, target, constraints, distractors
-  P2: knowledge_units     → knowledge (merged concept+fact) and mechanisms
-  P3: trigger_rules       → question signals as diagnostic/routing constraints
-  P4: reasoning_pattern   → step-by-step reasoning procedure
-  P5: review              → rule validation + domain critic + readiness aggregation
-
-Review modes:
-  "none"  — skip P5 entirely (for debugging)
-  "fast"  — RuleChecker + DomainCritic (thinking OFF)
-  "deep"  — RuleChecker + DomainCritic (thinking ON)
-  "legacy" — old single-pass LLM self-review
-
 Usage:
-    from config import get_provider_config
-    from llm_providers_new import get_llm_provider
+    from core_new.llm_gateway import get_gateway
     from core_new.extraction_pipeline import ExtractionPipeline
 
-    config = get_provider_config("glm5.1")
-    provider = get_llm_provider(config)
-    pipeline = ExtractionPipeline(provider, review_mode="deep")
-
+    gateway = get_gateway("glm5.1")
+    pipeline = ExtractionPipeline(gateway, review_mode="deep")
     result = await pipeline.extract(raw_question)
 """
 
@@ -57,18 +39,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 
-def _unwrap_gateway(obj):
-    """Extract raw provider from LLMGateway if needed, else pass through."""
+def _ensure_gateway(obj):
+    """Ensure obj is an LLMGateway. Wrap raw providers automatically."""
     from core_new.llm_gateway import LLMGateway
     if isinstance(obj, LLMGateway):
-        return obj.raw_provider
-    return obj
+        return obj
+    return LLMGateway.from_provider(obj, "wrapped")
 
 
 class ExtractionPipeline:
     """Orchestrates the 5-pass extraction pipeline for a single question.
 
-    Accepts either a raw LLM provider or an LLMGateway instance.
+    Accepts either an LLMGateway or a raw LLM provider (auto-wrapped).
+    All LLM calls go through the gateway for structured error handling.
     """
 
     def __init__(
@@ -81,50 +64,39 @@ class ExtractionPipeline:
         review_provider=None,
         output_format: str = "json",
     ):
-        self.llm = _unwrap_gateway(llm_provider)
+        self.llm = _ensure_gateway(llm_provider)
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
         self.review_mode = review_mode
         self.review_max_tokens = review_max_tokens
-        self.review_llm = _unwrap_gateway(review_provider) if review_provider else self.llm
+        self.review_llm = _ensure_gateway(review_provider) if review_provider else self.llm
         self.output_format = output_format
 
-    def _parse_json_output(self, raw: Optional[Dict]) -> Optional[Dict]:
-        if raw is None:
-            return None
-        return raw
-
-    async def _run_pass(
-        self,
-        pass_name: str,
-        prompt: str,
-    ) -> Optional[Dict]:
+    async def _run_pass(self, pass_name: str, prompt: str) -> Optional[Dict]:
         logger.info("Running extraction pass: %s", pass_name)
         messages = [[{"role": "user", "content": prompt}]]
         results = await self.llm.generate_json_batch(
-            messages,
-            max_tokens=self.max_tokens,
-            enable_thinking=self.enable_thinking,
+            messages, max_tokens=self.max_tokens, enable_thinking=self.enable_thinking,
         )
-        result = results[0] if results else None
-        if result is None:
-            logger.warning("Pass %s returned None", pass_name)
-        else:
-            logger.info("Pass %s completed successfully", pass_name)
-        return result
+        r = results[0]
+        if not r.ok:
+            logger.warning("Pass %s failed: [%s] %s", pass_name, r.error_code, r.error_message)
+            return None
+        logger.info("Pass %s completed successfully", pass_name)
+        return r.parsed_json
 
     async def _run_pass_md(self, pass_name: str, prompt: str) -> Optional[Dict]:
         """Run extraction pass using Markdown output + thinking mode."""
         messages = [[{"role": "user", "content": prompt}]]
-        results = await self.llm.generate_with_think_and_parse_batch(
-            messages, max_token=self.max_tokens, enable_thinking=True,
+        results = await self.llm.generate_reasoned_batch(
+            messages, max_tokens=self.max_tokens, enable_thinking=True,
         )
-        if not results:
+        r = results[0]
+        if not r.ok or not r.content:
+            logger.warning("Pass %s (md) failed: [%s] %s", pass_name, r.error_code, r.error_message)
             return None
 
-        content = results[0].get("answer", "")
-        if not content:
-            return None
+        content = r.content
 
         # Try Markdown parse first
         if parse_extraction_markdown is not None:
@@ -200,19 +172,11 @@ class ExtractionPipeline:
         results = await self.review_llm.generate_json_batch(
             messages, max_tokens=self.max_tokens, enable_thinking=self.enable_thinking,
         )
-        return results[0] if results else {}
+        r = results[0]
+        return r.parsed_json if r.ok else {}
 
     async def extract(self, question: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Run the full 5-pass extraction pipeline on a single question.
-
-        Args:
-            question: dict with keys 'type', 'prompt', 'answer' (and optionally 'id')
-
-        Returns:
-            dict with keys: question_structure, knowledge_units, trigger_rules,
-                            reasoning_pattern, review, raw_question
-        """
+        """Run the full 5-pass extraction pipeline on a single question."""
         q_type = question.get("type", "单选题")
         stem = question.get("prompt", "")
         answer = question.get("answer", "")
@@ -291,11 +255,7 @@ class ExtractionPipeline:
 
     @staticmethod
     def _error_result(q_id: str, error: str) -> Dict[str, Any]:
-        return {
-            "question_id": q_id,
-            "error": error,
-            "raw_question": None,
-        }
+        return {"question_id": q_id, "error": error, "raw_question": None}
 
 
 async def extract_batch(
@@ -306,20 +266,7 @@ async def extract_batch(
     review_mode: str = "fast",
     review_provider=None,
 ) -> List[Dict[str, Any]]:
-    """
-    Run the extraction pipeline on a batch of questions with limited concurrency.
-
-    Args:
-        provider: LLM provider instance for extraction (P1-P4)
-        questions: list of question dicts
-        max_tokens: max tokens per pass
-        concurrency: number of concurrent extractions
-        review_mode: "none", "fast", "deep", or "legacy"
-        review_provider: optional separate LLM provider for P5 review
-
-    Returns:
-        list of extraction results
-    """
+    """Run the extraction pipeline on a batch of questions with limited concurrency."""
     pipeline = ExtractionPipeline(
         provider, max_tokens=max_tokens, review_mode=review_mode,
         review_provider=review_provider,
