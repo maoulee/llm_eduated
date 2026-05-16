@@ -134,6 +134,10 @@ class PaperComposerAgent(BaseAgent):
         overall = sections.get("整体", {})
         result = dict(overall)
 
+        # Extract difficulty budget section
+        budget = sections.get("难度预算", {})
+        result.update(budget)
+
         # Extract slot blueprints
         slots = []
         for name, kv in sections.items():

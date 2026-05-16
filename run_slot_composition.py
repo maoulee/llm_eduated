@@ -401,6 +401,16 @@ async def run_composition(
     if not blueprint:
         return {"status": "error", "step": "compose"}
 
+    # Step 1b: Skeleton check (code-level hard rules)
+    from core_new.skeleton_checker import check_blueprint_skeleton
+    skeleton_violations = check_blueprint_skeleton(blueprint)
+    if skeleton_violations:
+        print(f"  骨架检查: {len(skeleton_violations)} violations")
+        for v in skeleton_violations:
+            print(f"    [{v['slot_id']}] {v['rule']}: {v['detail']}")
+    else:
+        print("  骨架检查: pass")
+
     # Step 2: Review blueprint
     blueprint, blueprint_review = await review_blueprint(
         gateway, blueprint, templates, user_requirements, max_revisions=max_bp_revisions
@@ -428,6 +438,7 @@ async def run_composition(
         "user_requirements": user_requirements,
         "paper_blueprint": blueprint,
         "blueprint_review": blueprint_review,
+        "skeleton_violations": skeleton_violations,
         "initial_questions": initial_questions,
         "revision_rounds": revision_rounds,
         "final_questions": final_questions,

@@ -160,6 +160,8 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
    - option_style=概念判断时，calculation_load应≤1
    - reasoning_shape=one_formula时，推理步数应≤2
 
+6. **整卷预算一致性**：primary_role_distribution各项之和必须等于total_questions；difficulty_distribution各项之和必须等于total_questions；calculation_load_distribution各项之和必须等于total_questions。
+
 请严格按以下markdown格式输出：
 
 # paper_blueprint
@@ -169,7 +171,7 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **total_questions**: {total_slots}
 - **difficulty_target**: 整体难度目标（1-5整数）
 - **difficulty_distribution**: {{"level_1": 数量, "level_2": 数量, "level_3": 数量, "level_4": 数量, "level_5": 数量}}
-- **role_distribution**: {{"foundation_check": 数量, "mechanism_trigger": 数量, "pattern_execution": 数量, "trap_diagnosis": 数量, "calculation_stability": 数量, "cross_topic_integration": 数量, "difficulty_separator": 数量}}
+- **primary_role_distribution**: {{"foundation_check": 数量, "mechanism_trigger": 数量, "pattern_execution": 数量, "trap_diagnosis": 数量, "calculation_stability": 数量, "cross_topic_integration": 数量, "difficulty_separator": 数量}}（各值之和必须等于total_questions）
 - **composition_rationale**: 整卷组卷思路说明（2-3句话）
 
 ## 难度预算
@@ -182,7 +184,8 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **target_family**: 知识领域
 - **primary_target_name**: 具体考点（单个明确考点，不要"A与B综合应用"）
 - **target_depth**: knowledge 或 mechanism 或 pattern
-- **paper_role**: 功能角色
+- **primary_paper_role**: 主功能角色（单个，从foundation_check/mechanism_trigger/pattern_execution/trap_diagnosis/calculation_stability/cross_topic_integration/difficulty_separator中选择）
+- **secondary_paper_roles**: 辅助功能标签（逗号分隔，可为空）
 - **target_difficulty**: 目标难度1-5
 - **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
 - **option_style**: 数字结果 或 概念判断 或 代码分析
@@ -202,7 +205,8 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **target_family**: 知识领域
 - **primary_target_name**: 具体考点
 - **target_depth**: knowledge 或 mechanism 或 pattern
-- **paper_role**: 功能角色
+- **primary_paper_role**: 主功能角色（单个）
+- **secondary_paper_roles**: 辅助功能标签（逗号分隔，可为空）
 - **target_difficulty**: 目标难度1-5
 - **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
 - **option_style**: none
@@ -242,7 +246,7 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 - 综合应用题的option_style不为none（必须为none）
 
 **soft_deviation（软偏离）**：
-- major: 难度超出合理范围、计算量明显高于soft_max、paper_role属于discouraged、考点属于should_not_be
+- major: 难度超出合理范围、计算量明显高于soft_max、primary_paper_role属于discouraged、考点属于should_not_be
 - minor: 轻微偏离偏好约束但仍在合理范围内
 
 **acceptable（可接受）**：
@@ -253,10 +257,11 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 1. 硬约束是否全部满足（题型、分值、选项数）
 2. 难度是否在合理范围内
 3. 计算量是否匹配题型和难度
-4. paper_role是否合理
+4. primary_paper_role是否合理
 5. 整卷知识点是否覆盖均匀、无重叠
 6. 难度曲线是否合理（前易后难）
 7. 偏离理由是否合理（如果有偏离）
+8. 整卷预算一致性：primary_role_distribution之和、difficulty_distribution之和、calculation_load_distribution之和是否都等于total_questions
 
 请严格按以下markdown格式输出：
 

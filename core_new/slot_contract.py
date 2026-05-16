@@ -114,7 +114,7 @@ def build_slot_contract(
     lines.append("- **allowed_deviation**: yes")
     lines.append("- **deviation_requires_reason**: yes")
     lines.append("- **major_deviation_requires_review**: yes")
-    lines.append("- **hard_fail_only_if**: 题型错误, 分值错误, 多个正确答案, 无法作答, 输出格式缺失")
+    lines.append("- **hard_fail_only_if**: 题型错误, 分值错误, 多个正确答案, 无法作答, 输出格式缺失, 综合题出现选项字段, 综合题option_style不为none, 综合题reasoning_shape不为none")
     lines.append("")
 
     # ── Evidence ──────────────────────────────────────────────
