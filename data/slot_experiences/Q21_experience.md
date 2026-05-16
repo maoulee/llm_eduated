@@ -49,35 +49,35 @@
 
 ## 出题类型-难度指导
 
-- **Guide ID**: CO_knowledge_pattern_level2_single_choice
+- **Guide ID**: CO_mechanism_level3_single_choice
 - **科目**: 计算机组成原理
-- **深度**: knowledge 或 pattern
-- **难度**: 2
-- **功能角色**: foundation_check 或 calculation_stability
+- **深度**: mechanism
+- **难度**: 3
+- **功能角色**: mechanism_trigger
 
 ### 预期形态
-- reasoning_steps: 2
-- stem_length: short
-- condition_count: 2
+- reasoning_steps: 3
+- stem_length: medium
+- condition_count: 4
 - calculation_load: 2
 - trap_strength: 3
-- option_style: 数字结果 或 概念判断
+- option_style: 数字结果
 
 ### 适合考点
-- 计算机性能指标计算(CPI, 执行时间, MIPS, MFLOPS)
-- 计算机系统层次与语言处理
-- 机器字长与部件宽度
-- 冯诺依曼体系结构特点
+- Cache映射机制与硬件实现
+- 指令扩展操作码设计
+- 指令执行过程与访存分析
+- ALU标志位生成逻辑与运算电路
 
 ### 干扰项风格
-- 单位换算陷阱(如ms, us, GHz, 数量级)
-- 相似概念混淆(如存储字长与机器字长, 编译与汇编)
-- 公式逆用或漏乘系数
+- 忽略隐含的机制步骤（如PC自增、对齐规则）
+- 混淆相似机制的作用与目的（如直写与写回、全相联与组相联）
+- 计算过程少算附加位（如脏位、有效位）
 
 ### 不应出现的特征
-- 涉及流水线或复杂总线交互的机制题
-- 需要画图或大量推导的综合题
-- 考查过于偏僻的历史性常识
+- 需要极其庞杂的状态机模拟
+- 纯粹考察记忆而无任何推导
+- 包含大量无关背景信息的冗长题干
 
 
 ## 逐题分析

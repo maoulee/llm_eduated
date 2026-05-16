@@ -246,15 +246,31 @@ def main():
         slot_obs = obs_by_slot.get(slot_id, [])
         slot_tpl = templates.get(slot_id, {})
 
-        # Find matching guide
+        # Find matching guide: try slot_id match first, then by template properties
         slot_guide = {}
         for gid, g in guides.items():
             if slot_id in gid or g.get("guide_id", "").endswith(slot_id.lower()):
                 slot_guide = g
                 break
-        # Fallback: use first guide if none matched
-        if not slot_guide and guides:
-            slot_guide = list(guides.values())[0]
+
+        # If no direct match, try matching by template's subject + depth + difficulty
+        if not slot_guide and slot_tpl and guides:
+            tpl_subject = str(slot_tpl.get("subject_stability", ""))
+            tpl_depth_dist = slot_tpl.get("target_depth_distribution", {})
+            tpl_diff_anchor = slot_tpl.get("difficulty_anchor", {})
+            tpl_depth_mode = max(tpl_depth_dist, key=tpl_depth_dist.get) if isinstance(tpl_depth_dist, dict) and tpl_depth_dist else ""
+            tpl_diff_mode = str(tpl_diff_anchor.get("overall_mode", "")) if isinstance(tpl_diff_anchor, dict) else ""
+
+            for gid, g in guides.items():
+                g_subject = g.get("subject", "")
+                g_depth = g.get("target_depth", "")
+                g_diff = str(g.get("difficulty", ""))
+                # Match if subject and depth overlap
+                if (tpl_subject and tpl_subject in g_subject) and (tpl_depth_mode and tpl_depth_mode == g_depth):
+                    slot_guide = g
+                    break
+
+        # No fallback — leave empty rather than assign wrong guide
 
         md_content = generate_experience_card(slot_id, slot_obs, slot_tpl, slot_guide)
 

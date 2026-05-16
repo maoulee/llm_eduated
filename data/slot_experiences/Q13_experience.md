@@ -41,39 +41,6 @@
 - **生成风格**: 给出具体的数值或位模式，要求考生进行某种编码的解释、转换或运算。
 - **稳定性评价**: 极高，连续15年几乎全部指向计算机组成原理的数据表示与运算章节。
 
-## 出题类型-难度指导
-
-- **Guide ID**: CO_knowledge_pattern_level2_single_choice
-- **科目**: 计算机组成原理
-- **深度**: knowledge 或 pattern
-- **难度**: 2
-- **功能角色**: foundation_check 或 calculation_stability
-
-### 预期形态
-- reasoning_steps: 2
-- stem_length: short
-- condition_count: 2
-- calculation_load: 2
-- trap_strength: 3
-- option_style: 数字结果 或 概念判断
-
-### 适合考点
-- 计算机性能指标计算(CPI, 执行时间, MIPS, MFLOPS)
-- 计算机系统层次与语言处理
-- 机器字长与部件宽度
-- 冯诺依曼体系结构特点
-
-### 干扰项风格
-- 单位换算陷阱(如ms, us, GHz, 数量级)
-- 相似概念混淆(如存储字长与机器字长, 编译与汇编)
-- 公式逆用或漏乘系数
-
-### 不应出现的特征
-- 涉及流水线或复杂总线交互的机制题
-- 需要画图或大量推导的综合题
-- 考查过于偏僻的历史性常识
-
-
 ## 逐题分析
 
 ### 2009-Q13

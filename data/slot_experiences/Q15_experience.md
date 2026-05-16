@@ -48,35 +48,35 @@
 
 ## 出题类型-难度指导
 
-- **Guide ID**: CO_knowledge_pattern_level2_single_choice
+- **Guide ID**: CO_pattern_level3_calculation_single_choice
 - **科目**: 计算机组成原理
-- **深度**: knowledge 或 pattern
-- **难度**: 2
-- **功能角色**: foundation_check 或 calculation_stability
+- **深度**: pattern
+- **难度**: 3
+- **功能角色**: calculation_stability
 
 ### 预期形态
-- reasoning_steps: 2
-- stem_length: short
-- condition_count: 2
-- calculation_load: 2
-- trap_strength: 3
-- option_style: 数字结果 或 概念判断
+- reasoning_steps: 3
+- stem_length: medium
+- condition_count: 3
+- calculation_load: 3
+- trap_strength: 2
+- option_style: 数字结果
 
 ### 适合考点
-- 计算机性能指标计算(CPI, 执行时间, MIPS, MFLOPS)
-- 计算机系统层次与语言处理
-- 机器字长与部件宽度
-- 冯诺依曼体系结构特点
+- 总线带宽与传输时间计算
+- 突发/复用总线事务分析
+- 扩展操作码指令条数推算
+- 标志寄存器(CF/OF)底层逻辑计算
 
 ### 干扰项风格
-- 单位换算陷阱(如ms, us, GHz, 数量级)
-- 相似概念混淆(如存储字长与机器字长, 编译与汇编)
-- 公式逆用或漏乘系数
+- 倍率因子遗漏(如DDR双沿、全双工)
+- 进制或单位换算错误(如bit与Byte)
+- 层级空间扣减遗漏
 
 ### 不应出现的特征
-- 涉及流水线或复杂总线交互的机制题
-- 需要画图或大量推导的综合题
-- 考查过于偏僻的历史性常识
+- 需要死记硬背的具体型号参数
+- 纯文字叙述无计算推演
+- 选项差异极小导致沦为纯粹算数而非机制理解
 
 
 ## 逐题分析

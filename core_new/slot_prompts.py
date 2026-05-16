@@ -220,16 +220,12 @@ SLOT_QUESTION_WRITER = """你是一位408考研出题专家。请严格按照以
 
 # question {slot_id}
 
-## 题干
-{stem}
-
-（题干全文，包含所有条件和问题）
-
-## 选项
-- **A**: 选项A内容
-- **B**: 选项B内容
-- **C**: 选项C内容
-- **D**: 选项D内容
+## 题目
+- **stem**: 题干全文（包含所有条件和问题）
+- **option_A**: 选项A内容
+- **option_B**: 选项B内容
+- **option_C**: 选项C内容
+- **option_D**: 选项D内容
 
 ## 答案
 - **correct_answer**: 正确选项字母
@@ -254,16 +250,12 @@ QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整�
 
 # question {slot_id}
 
-## 题干
-{stem}
-
-（题干全文，通常不变）
-
-## 选项
-- **A**: 选项A内容
-- **B**: 选项B内容
-- **C**: 选项C内容
-- **D**: 选项D内容
+## 题目
+- **stem**: 题干全文（通常不变）
+- **option_A**: 选项A内容
+- **option_B**: 选项B内容
+- **option_C**: 选项C内容
+- **option_D**: 选项D内容
 
 ## 答案
 - **correct_answer**: 正确答案字母
@@ -306,9 +298,9 @@ PAPER_REVIEWER_PROMPT = """你是一位408考研试卷质量评审专家。请�
 # paper_review
 
 ## 总体
-- **status**: pass 或 has_issues
-- **score**: 0-100
-- **comment**: 总体评价
+- **overall_status**: pass 或 has_issues
+- **overall_score**: 0-100
+- **overall_comment**: 总体评价
 
 ## Q12
 - **status**: pass 或 content_mismatch 或 answer_error

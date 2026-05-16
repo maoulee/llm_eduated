@@ -53,35 +53,38 @@
 
 ## 出题类型-难度指导
 
-- **Guide ID**: CO_knowledge_pattern_level2_single_choice
+- **Guide ID**: CO_DataRep_knowledge_mechanism_level2_single_choice
 - **科目**: 计算机组成原理
-- **深度**: knowledge 或 pattern
+- **深度**: knowledge
 - **难度**: 2
-- **功能角色**: foundation_check 或 calculation_stability
+- **功能角色**: foundation_check
 
 ### 预期形态
-- reasoning_steps: 2
+- reasoning_steps: 3
 - stem_length: short
 - condition_count: 2
 - calculation_load: 2
-- trap_strength: 3
-- option_style: 数字结果 或 概念判断
+- trap_strength: 2
+- option_style: 数字结果
 
 ### 适合考点
-- 计算机性能指标计算(CPI, 执行时间, MIPS, MFLOPS)
-- 计算机系统层次与语言处理
-- 机器字长与部件宽度
-- 冯诺依曼体系结构特点
+- 补码与真值的相互转换
+- IEEE 754浮点数格式解析
+- 补码整数的表示范围
+- C语言中的类型转换(有符号/无符号)
+- 浮点数加减运算过程
 
 ### 干扰项风格
-- 单位换算陷阱(如ms, us, GHz, 数量级)
-- 相似概念混淆(如存储字长与机器字长, 编译与汇编)
-- 公式逆用或漏乘系数
+- 未考虑隐藏位
+- 零扩展与符号扩展混淆
+- 中间计算结果作为选项
+- 偏置值(128/127)混淆
+- 取反加一计算错误
 
 ### 不应出现的特征
-- 涉及流水线或复杂总线交互的机制题
-- 需要画图或大量推导的综合题
-- 考查过于偏僻的历史性常识
+- 需要编写代码判断
+- 考察微机原理特定的芯片指令
+- 无具体数据的纯概念背诵
 
 
 ## 逐题分析

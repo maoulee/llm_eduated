@@ -233,14 +233,9 @@ class QuestionWriterAgent(BaseAgent):
 
         result = {}
 
-        # Merge 题干 section
-        if "题干" in sections:
-            stem_data = sections["题干"]
-            result["stem"] = stem_data.get("stem", stem_data.get("题干", ""))
-
-        # Merge 选项 section
-        if "选项" in sections:
-            result.update(sections["选项"])
+        # Merge 题目 section (stem + options)
+        if "题目" in sections:
+            result.update(sections["题目"])
 
         # Merge 答案 section
         if "答案" in sections:
@@ -292,11 +287,8 @@ class QuestionFixerAgent(BaseAgent):
         sections = _parse_md_sections(raw)
 
         result = {}
-        if "题干" in sections:
-            stem_data = sections["题干"]
-            result["stem"] = stem_data.get("stem", stem_data.get("题干", ""))
-        if "选项" in sections:
-            result.update(sections["选项"])
+        if "题目" in sections:
+            result.update(sections["题目"])
         if "答案" in sections:
             result.update(sections["答案"])
 
