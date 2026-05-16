@@ -255,7 +255,7 @@ async def review_and_fix(
         if status != "pass" and not issues:
             print("  WARNING: reviewer reported issues but no actionable fix targets parsed")
             review["overall_status"] = "needs_human_review"
-            review["overall_comment"] += (
+            review["overall_comment"] = str(review.get("overall_comment") or "") + (
                 " Reviewer reported issues but no actionable fix targets were parsed."
             )
             break
@@ -350,7 +350,11 @@ async def review_and_fix(
             fix_actions.append({
                 "slot_id": slot_id,
                 "revision_type": fixed_q.get("revision_type", "unknown"),
-                "instruction": issues[0].get("fix_instruction", "") if issues else "",
+                "instruction": (
+                    fixed_q.get("fix_instruction")
+                    or fixed_q.get("regenerate_reason")
+                    or ""
+                ),
             })
             current_questions[q_idx] = fixed_q
 
@@ -359,6 +363,7 @@ async def review_and_fix(
             "round": round_num + 1,
             "issues_found": [{"slot_id": sr.get("slot_id"), "status": sr.get("status"), "issue": sr.get("issue", "")} for sr in issues],
             "fix_actions": fix_actions,
+            "questions_before_fix": questions_before_fix,
             "questions_after_fix": [dict(q) for q in current_questions],
         })
 
