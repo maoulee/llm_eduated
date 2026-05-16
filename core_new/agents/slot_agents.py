@@ -22,6 +22,18 @@ from core_new.blackboard import Blackboard
 # ── Markdown parsing helpers ─────────────────────────────────
 
 
+# Known LLM key spelling drift
+_FIELD_ALIASES = {
+    "hard_viation": "hard_violation",
+    "hard_violation_count": "hard_violation_count",
+    "soft_devation": "soft_deviation",
+    "soft_deviation_count": "soft_deviation_count",
+    "major_devation_count": "major_deviation_count",
+    "minor_devation_count": "minor_deviation_count",
+    "diffculty": "difficulty",
+}
+
+
 def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
     """Parse '- **key**: value' lines into a dict."""
     result = {}
@@ -45,6 +57,11 @@ def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
                 result[current_key] = existing + "\n" + line.strip()
         elif current_key and current_key in result and isinstance(result[current_key], str):
             result[current_key] = result[current_key] + "\n" + line
+
+    # Normalize known misspellings
+    for wrong, correct in _FIELD_ALIASES.items():
+        if wrong in result and correct not in result:
+            result[correct] = result.pop(wrong)
 
     return result
 
