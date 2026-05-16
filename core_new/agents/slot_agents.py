@@ -355,6 +355,7 @@ class PaperReviewerAgent(BaseAgent):
                 output_key="paper_review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                timeout_s=900.0,
                 system_prompt="你是一位408考研试卷质量评审专家，严格区分内容问题和答案问题。严格按markdown格式输出。",
             ),
             llm_backend,
