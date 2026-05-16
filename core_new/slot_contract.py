@@ -43,7 +43,8 @@ def build_slot_contract(
     else:
         lines.append("- **answer_rule**: 需要完整的解答过程和最终结果")
         lines.append("- **output_format**: stem, standard_answer, solution_steps, explanation")
-        lines.append("- **no_options**: 综合应用题不设置选项")
+        lines.append("- **option_style**: none")
+        lines.append("- **reasoning_shape**: none")
     lines.append("")
 
     # ── L1: Strong soft constraints ───────────────────────────

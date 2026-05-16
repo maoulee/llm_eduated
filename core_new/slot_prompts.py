@@ -143,6 +143,23 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - calculation_load=4: 完整过程模拟（CRC、页面置换、Cache多轮推演）
 - calculation_load=5: 跨机制复杂计算
 
+## 关键约束
+
+1. **题型字段区分（硬约束！）**：
+   - single_choice题位：option_style为数字结果/概念判断/代码分析，同时输出reasoning_shape、stem_length、condition_count、distractor_strategy
+   - comprehensive题位：option_style必须为none，reasoning_shape必须为none，不输出stem_length、condition_count、distractor_strategy，改为输出sub_questions和answer_format
+   - 违反此规则视为硬违规
+
+2. **考点复杂度**：primary_target_name应是单个明确考点，避免"A与B综合应用"。辅助考点放在must_include中。
+
+3. **难度不超标**：target_difficulty必须在该题位契约的difficulty_reasonable_range范围内。
+
+4. **题型匹配**：option_style和reasoning_shape必须从经验卡的历年真题模式中选择。
+
+5. **计算难度匹配**：
+   - option_style=概念判断时，calculation_load应≤1
+   - reasoning_shape=one_formula时，推理步数应≤2
+
 请严格按以下markdown格式输出：
 
 # paper_blueprint
@@ -160,7 +177,7 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **reasoning_steps_distribution**: {{"steps_1": 数量, "steps_2": 数量, "steps_3": 数量, "steps_4": 数量, "steps_5": 数量}}
 - **difficulty_curve_strategy**: 前中后段难度策略描述（一句话，如"前段基础稳定，中段机制触发，后段适度区分"）
 
-## Q12
+## Q12（选择题示例）
 - **target_subject**: 科目
 - **target_family**: 知识领域
 - **primary_target_name**: 具体考点（单个明确考点，不要"A与B综合应用"）
@@ -168,19 +185,11 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **paper_role**: 功能角色
 - **target_difficulty**: 目标难度1-5
 - **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
-
-选择题额外字段（仅single_choice题位）：
 - **option_style**: 数字结果 或 概念判断 或 代码分析
 - **reasoning_shape**: one_formula 或 multi_step 或 elimination 或 simulation
 - **stem_length**: short 或 medium 或 long
 - **condition_count**: 条件数量（整数）
 - **distractor_strategy**: 干扰项设计策略
-
-综合应用题额外字段（仅comprehensive题位）：
-- **sub_questions**: 子问题数量（整数）
-- **answer_format**: 解答过程+最终结果（不设选项）
-
-公共字段：
 - **must_include**: 要素1, 要素2
 - **must_avoid**: 避免项1, 避免项2
 - **reference_experience**: 参考哪几年的真题经验
@@ -188,7 +197,26 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **deviation_level**: none 或 minor 或 major
 - **deviation_reason**: 偏离理由（无偏离写"无"）
 
-（每个题位一个 ## 标题的section，格式同上）
+## Q43（综合应用题示例）
+- **target_subject**: 科目
+- **target_family**: 知识领域
+- **primary_target_name**: 具体考点
+- **target_depth**: knowledge 或 mechanism 或 pattern
+- **paper_role**: 功能角色
+- **target_difficulty**: 目标难度1-5
+- **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
+- **option_style**: none
+- **reasoning_shape**: none
+- **sub_questions**: 子问题数量（整数）
+- **answer_format**: 解答过程+最终结果
+- **must_include**: 要素1, 要素2
+- **must_avoid**: 避免项1, 避免项2
+- **reference_experience**: 参考哪几年的真题经验
+- **has_deviation**: yes 或 no
+- **deviation_level**: none 或 minor 或 major
+- **deviation_reason**: 偏离理由（无偏离写"无"）
+
+（每个题位一个 ## 标题的section，格式根据题型选择上面两种之一。注意：综合应用题option_style和reasoning_shape必须为none！）
 """
 
 BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审核以下组卷蓝图的质量，区分硬违规和软偏离。
@@ -211,6 +239,7 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 - 分值错误
 - 多个正确答案或无法作答
 - 输出格式缺失
+- 综合应用题的option_style不为none（必须为none）
 
 **soft_deviation（软偏离）**：
 - major: 难度超出合理范围、计算量明显高于soft_max、paper_role属于discouraged、考点属于should_not_be
