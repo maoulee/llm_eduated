@@ -168,11 +168,19 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **paper_role**: 功能角色
 - **target_difficulty**: 目标难度1-5
 - **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
-- **option_style**: 数字结果 或 概念判断 或 代码分析 或 混合
+
+选择题额外字段（仅single_choice题位）：
+- **option_style**: 数字结果 或 概念判断 或 代码分析
 - **reasoning_shape**: one_formula 或 multi_step 或 elimination 或 simulation
 - **stem_length**: short 或 medium 或 long
 - **condition_count**: 条件数量（整数）
 - **distractor_strategy**: 干扰项设计策略
+
+综合应用题额外字段（仅comprehensive题位）：
+- **sub_questions**: 子问题数量（整数）
+- **answer_format**: 解答过程+最终结果（不设选项）
+
+公共字段：
 - **must_include**: 要素1, 要素2
 - **must_avoid**: 避免项1, 避免项2
 - **reference_experience**: 参考哪几年的真题经验

@@ -32,11 +32,18 @@ def build_slot_contract(
     lines.append("")
     lines.append(f"- **slot_id**: {slot_id}")
     lines.append(f"- **section**: {template.get('section', '?')}")
-    lines.append(f"- **question_type**: {template.get('question_type', 'single_choice')}")
+    qtype = template.get('question_type', 'single_choice')
+    lines.append(f"- **question_type**: {qtype}")
     lines.append(f"- **score**: {template.get('typical_score', 2)}")
-    lines.append("- **option_count**: 4")
-    lines.append("- **answer_rule**: 只能有一个正确答案")
-    lines.append("- **output_format**: stem, option_A, option_B, option_C, option_D, correct_answer, explanation")
+
+    if qtype == 'single_choice':
+        lines.append("- **option_count**: 4")
+        lines.append("- **answer_rule**: 只能有一个正确答案")
+        lines.append("- **output_format**: stem, option_A, option_B, option_C, option_D, correct_answer, explanation")
+    else:
+        lines.append("- **answer_rule**: 需要完整的解答过程和最终结果")
+        lines.append("- **output_format**: stem, standard_answer, solution_steps, explanation")
+        lines.append("- **no_options**: 综合应用题不设置选项")
     lines.append("")
 
     # ── L1: Strong soft constraints ───────────────────────────
