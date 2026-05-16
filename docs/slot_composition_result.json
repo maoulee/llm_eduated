@@ -1,0 +1,178 @@
+{
+  "user_requirements": "出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点",
+  "paper_blueprint": {
+    "paper_type": "408模拟卷",
+    "total_questions": "3",
+    "difficulty_target": "3",
+    "difficulty_distribution": "level_1: 0, level_2: 1, level_3: 2, level_4: 0, level_5: 0",
+    "role_distribution": "foundation_check: 0, mechanism_trigger: 1, pattern_execution: 0, trap_diagnosis: 1, calculation_stability: 1, cross_topic_integration: 0, difficulty_separator: 0",
+    "slots": [
+      {
+        "target_subject": "计算机组成原理",
+        "target_family": "计算机性能指标",
+        "primary_target_name": "多类型指令CPI综合计算与Amdahl定律应用",
+        "target_depth": "pattern",
+        "paper_role": "calculation_stability",
+        "target_difficulty": "3",
+        "difficulty_profile": {
+          "knowledge_depth": 2,
+          "mechanism_depth": 1,
+          "reasoning_steps": 3,
+          "calculation_load": 3,
+          "trap_strength": 2,
+          "cross_topic": 0
+        },
+        "distractor_requirements": [
+          "未统一时钟频率单位(GHz与Hz)导致的数量级错误",
+          "加权CPI计算时混淆指令条数占比与执行时间占比",
+          "Amdahl定律加速比公式中可改进比例设置错误"
+        ],
+        "must_include": "具体的时钟频率, 多种指令的CPI及使用频度, 明确的计算目标(执行时间或MIPS)",
+        "must_avoid": "纯记忆无理解的死记硬背题, 跨越多章节的复杂综合题, 深入底层硬件电路的机制分析题",
+        "reference_experience": "2012, 2015, 2019",
+        "slot_id": "Q12"
+      },
+      {
+        "target_subject": "计算机组成原理",
+        "target_family": "数据表示与运算",
+        "primary_target_name": "IEEE754单精度浮点数机器码的转换与边界解释",
+        "target_depth": "mechanism",
+        "paper_role": "mechanism_trigger",
+        "target_difficulty": "2",
+        "difficulty_profile": {
+          "knowledge_depth": 2,
+          "mechanism_depth": 2,
+          "reasoning_steps": 2,
+          "calculation_load": 2,
+          "trap_strength": 2,
+          "cross_topic": 0
+        },
+        "distractor_requirements": [
+          "忽略隐藏位1导致的尾数计算错误",
+          "移码偏置值计算错误(误用128而非127)",
+          "混淆规格化数与非规格化数(如最接近0的数)的解码规则"
+        ],
+        "must_include": "具体的十进制小数或浮点机器码(十六进制), IEEE754格式拆解(符号位、阶码、尾数)",
+        "must_avoid": "纯记忆题, 复杂的硬件设计题, 跨多章节的综合题",
+        "reference_experience": "2013, 2016, 2021",
+        "slot_id": "Q13"
+      },
+      {
+        "target_subject": "计算机组成原理",
+        "target_family": "存储系统与Cache",
+        "primary_target_name": "C语言结构体成员的存储对齐规则与总空间计算",
+        "target_depth": "mechanism",
+        "paper_role": "trap_diagnosis",
+        "target_difficulty": "3",
+        "difficulty_profile": {
+          "knowledge_depth": 2,
+          "mechanism_depth": 3,
+          "reasoning_steps": 3,
+          "calculation_load": 2,
+          "trap_strength": 3,
+          "cross_topic": 1
+        },
+        "distractor_requirements": [
+          "未按最大对齐模数进行整体尾部填充",
+          "忽略内部成员偏移地址必须为自身大小整数倍的对齐要求",
+          "错误计算数组类型成员的边界对齐"
+        ],
+        "must_include": "包含不同数据类型(char, int, double, short等)的结构体定义, 32位或64位系统环境声明, 求解结构体总大小",
+        "must_avoid": "纯记忆概念题, 跨多科目综合题, 过于简单的常识题",
+        "reference_experience": "2011, 2017, 2022",
+        "slot_id": "Q14"
+      }
+    ],
+    "composition_rationale": "本套计组选择题部分遵循标准408难度，聚焦核心基础与易错机制。Q12定位性能指标的基础计算，强调单位换算与公式推理的稳定性；Q13下沉至数据表示层，直击IEEE754机制转换的细节陷阱；Q14则融合数据表示与存储对齐规则，考查结构体空间映射的机制深度与诊断能力，整体实现从宏观计算到微观机制的均匀覆盖。"
+  },
+  "generated_questions": [
+    {
+      "stem": "某计算机的主频为 2 GHz。运行某程序时，指令按类型可分为三类，其 CPI 和使用频度分别为：算术逻辑指令（CPI=1，频度 50%）、访存指令（CPI=4，频度 25%）、转移指令（CPI=2，频度 25%）。现采用某种硬件优化措施，使访存指令的执行速度提高到原来的 4 倍（其他指令的 CPI 不变），则优化后该计算机运行该程序的 MIPS 速率为（ ）。",
+      "option_A": "1230",
+      "option_B": "400",
+      "option_C": "1600",
+      "option_D": "1.6",
+      "correct_answer": "C",
+      "explanation": "本题考查多类型指令CPI的综合计算、Amdahl定律的应用以及MIPS的计算。\n1. 计算原综合CPI：\n原CPI = 1×50% + 4×25% + 2×25% = 0.5 + 1.0 + 0.5 = 2.0。\n2. 计算优化后的综合CPI（两种方法）：\n方法一（直接计算）：访存指令速度提升4倍，即CPI从4变为1。新CPI = 1×50% + 1×25% + 2×25% = 0.5 + 0.25 + 0.5 = 1.25。\n方法二（Amdahl定律）：可改进比例 $p$ 为访存指令原执行时间占总时间的比例，$p = (4×25\\%) / 2.0 = 0.5$；加速比 $S_e = 4$。系统加速比 $S = 1 / ((1-p) + p/S_e) = 1 / (0.5 + 0.5/4) = 1.6$。新CPI = 原CPI / S = 2.0 / 1.6 = 1.25。\n3. 计算优化后的MIPS：\n主频 $f = 2 \\text{ GHz} = 2 \\times 10^9 \\text{ Hz}$。\nMIPS = $f / (\\text{CPI} \\times 10^6) = 2 \\times 10^9 / (1.25 \\times 10^6) = 2000 / 1.25 = 1600$。\n\n干扰项分析：\nA项：混淆了指令条数占比与执行时间占比。若误将指令频度25%作为Amdahl定律中的 $p$，计算加速比 $S = 1 / (0.75 + 0.25/4) \\approx 1.23$，新CPI $\\approx 1.626$，MIPS $\\approx 1230$。\nB项：Amdahl定律加速比公式中可改进比例设置错误。若误将公式写为 $S = 1 / (p + (1-p)/S_e)$，则会得到 $S = 1 / (0.5 + 0.5 \\times 4) = 0.4$，新CPI = 5，MIPS = 400。\nD项：未统一时钟频率单位，误将2 GHz的主频直接当作2 Hz代入公式，MIPS = 2 / 1.25 = 1.6。",
+      "solution_steps": "计算原综合CPI=2.0; 计算访存指令执行时间占比p=0.5; 应用Amdahl定律计算系统加速比S=1.6(或直接计算新CPI=1.25); 根据主频2GHz和新CPI计算MIPS=1600",
+      "difficulty_self_assessment": "3",
+      "trap_description": "干扰项A设置了混淆指令条数占比与执行时间占比的陷阱；干扰项B设置了Amdahl定律公式中可改进比例与不可改进比例写反的陷阱；干扰项D设置了未将GHz换算为Hz导致的数量级错误陷阱。",
+      "knowledge_points": "计算机性能指标,加权平均CPI,Amdahl定律,MIPS计算",
+      "slot_id": "Q12",
+      "generation_time_s": 158.7
+    },
+    {
+      "stem": "已知按IEEE 754单精度浮点数格式表示的机器码为80800000H，则该浮点数对应的十进制真值为",
+      "option_A": "$-2^{-127}$",
+      "option_B": "$-2^{-128}$",
+      "option_C": "$-3 \\times 2^{-128}$",
+      "option_D": "$-3 \\times 2^{-127}$",
+      "correct_answer": "A",
+      "explanation": "将十六进制机器码80800000H转换为二进制：1000 0000 1000 0000 0000 0000 0000 0000。\n按照IEEE 754单精度格式拆解：\n符号位 S = 1（表示负数）；\n阶码 E = 0000 0000（十进制为0）；\n尾数 M = 100 0000 0000 0000 0000 0000。\n由于阶码E全为0且尾数M不全为0，该浮点数属于非规格化数。对于非规格化数，其真实指数固定为1-127 = -126（偏置值取127，而非128），且尾数部分不包含隐藏的1，真实尾数为0.M = 0.1（二进制）= 0.5（十进制）。\n因此，该浮点数的真值为：(-1)^S × 0.M × 2^(1-127) = -1 × 0.5 × 2^(-126) = -2^(-1) × 2^(-126) = -2^(-127)。\n选项B的错误在于偏置值误用128，导致指数算成1-128=-127，得到-0.5×2^(-127) = -2^(-128)；\n选项D的错误在于混淆了规格化数与非规格化数的规则，误加了隐藏位1，将尾数算作1.M = 1.5，得到-1.5×2^(-126) = -3×2^(-127)；\n选项C的错误在于同时误加了隐藏位且偏置值误用128，得到-1.5×2^(-127) = -3×2^(-128)。",
+      "solution_steps": "将80800000H转为二进制并按1-8-23拆解为符号位、阶码和尾数;根据阶码E=0判断其为非规格化数;应用非规格化数规则：指数为1-127=-126，尾数无隐藏位1，为0.M=0.5;计算真值：-1 × 0.5 × 2^(-126) = -2^(-127)",
+      "difficulty_self_assessment": "2",
+      "trap_description": "选项D设置了误加隐藏位1的陷阱（混淆规格化数与非规格化数规则）；选项B设置了偏置值误用128的陷阱；选项C设置了同时踩中上述两个陷阱的复合错误",
+      "knowledge_points": "IEEE754单精度浮点数,非规格化数,移码偏置值,隐藏位",
+      "slot_id": "Q13",
+      "generation_time_s": 76.9
+    },
+    {
+      "stem": "在64位系统中，C语言编译器默认按结构体成员的自然对齐模数进行内存分配。有如下结构体定义：\n  \nstruct Test {\n    char a;\n    short b[3];\n    double c;\n    int d;\n};\n\n请问该结构体在内存中所占的总字节数为？",
+      "option_A": "19",
+      "option_B": "20",
+      "option_C": "24",
+      "option_D": "32",
+      "correct_answer": "C",
+      "explanation": "在64位系统中，各数据类型的长度和对齐模数分别为：char占1字节（对齐模数1），short占2字节（对齐模数2），int占4字节（对齐模数4），double占8字节（对齐模数8）。结构体的对齐规则为：1. 每个成员的偏移量必须是该成员对齐模数的整数倍；2. 结构体的总大小必须是其最大对齐模数（此处为8）的整数倍；3. 数组类型的对齐模数按其元素类型计算（short b[3]的对齐模数为2，而不是6）。\n\n正确计算过程如下：\n- char a：占1字节，偏移量为0（0是1的倍数），存放在0~0单元。\n- short b[3]：占6字节，对齐模数为2。当前偏移量为1，1不是2的倍数，需填充1字节，偏移量调整为2。存放在2~7单元。\n- double c：占8字节，对齐模数为8。当前偏移量为8，8是8的倍数，无需填充，存放在8~15单元。\n- int d：占4字节，对齐模数为4。当前偏移量为16，16是4的倍数，无需填充，存放在16~19单元。\n此时结构体占用到第19个单元，总大小需为最大对齐模数8的倍数，19向上取整到8的倍数为24，故需在尾部填充4字节（20~23），最终总大小为24字节。\n\n干扰项分析：\n选项A（19）：忽略了所有内部对齐填充和尾部填充，直接将各成员大小相加（1+6+8+4=19）。\n选项B（20）：考虑了内部对齐填充（1+1+6+8+4=20），但未进行整体尾部填充使其满足最大对齐模数8的倍数要求。\n选项D（32）：错误计算了数组类型成员的边界对齐，将short b[3]的对齐模数误认为数组总大小6。当前偏移量1不是6的倍数，需填充5字节到偏移量6，b占6~11单元；double c偏移量12需填充4字节到16，占16~23单元；int d偏移量24，占24~27单元；最终按8对齐填充至32字节。这是典型的数组对齐规则误用陷阱。",
+      "solution_steps": "确定各成员大小与对齐模数(char:1/1, short:2/2, int:4/4, double:8/8); 计算成员a偏移0占1字节; 计算成员b偏移1需填1字节到2占6字节; 计算成员c偏移8无需填充占8字节; 计算成员d偏移16无需填充占4字节; 当前总计19字节; 按最大对齐模数8进行尾部填充至24字节",
+      "difficulty_self_assessment": "3",
+      "trap_description": "选项A陷阱为忽略所有对齐填充；选项B陷阱为忽略结构体尾部按最大模数填充；选项D陷阱为将数组的对齐模数错误地当作数组总大小（6）而非元素大小（2），导致连锁偏移错误",
+      "knowledge_points": "存储对齐规则,结构体总空间计算,数组类型对齐模数,数据类型长度",
+      "slot_id": "Q14",
+      "generation_time_s": 271.1
+    }
+  ],
+  "quality_review": {
+    "overall_status": "pass",
+    "overall_score": "96",
+    "overall_comment": "本套模拟卷质量极高，三道题目完全契合整卷蓝图与题位模板的设计要求。题目精准覆盖了计算机性能指标、IEEE754浮点数边界机制、结构体对齐规则三个核心考点，干扰项设计极具针对性，完美呼应了蓝图中的陷阱预设。难度分布与角色分配完全符合预期，是一份优秀的408模拟试题。",
+    "slot_reviews": [
+      {
+        "status": "pass",
+        "quality_score": "9.5",
+        "blueprint_compliance": "是。题目精准定位“计算机性能指标”家族，包含具体的时钟频率、多类指令CPI及频度，计算目标明确为MIPS。角色完美匹配calculation_stability，深度符合pattern要求。",
+        "difficulty_match": "是。题目需要经历原CPI计算、优化后CPI/加速比计算、单位换算与MIPS计算三步推理，计算负荷与推理步骤均达标，难度契合level 3。",
+        "issue": "无。干扰项A、B、D严格按照蓝图的distractor_requirements（占比混淆、公式反写、单位未统一）进行设置，解析详实严密。",
+        "revision_instruction": "无",
+        "slot_id": "Q12"
+      },
+      {
+        "status": "pass",
+        "quality_score": "9.8",
+        "blueprint_compliance": "是。考查“数据表示与运算”中的IEEE754机制，给出十六进制机器码，角色匹配mechanism_trigger，深度符合mechanism要求。",
+        "difficulty_match": "是。本题巧妙选取了阶码全0的非规格化数（80800000H）作为切入点，避开了常规的规格化数考查，机制深度适中，难度契合level 2。",
+        "issue": "无。干扰项B（偏置值误用128）、C/D（误加隐藏位1）完全贯彻了蓝图对隐藏位和偏置值陷阱的设定，是一道极具区分度的经典机制题。",
+        "revision_instruction": "无",
+        "slot_id": "Q13"
+      },
+      {
+        "status": "pass",
+        "quality_score": "9.6",
+        "blueprint_compliance": "是。融合数据表示与存储对齐规则，给出包含数组的多数据类型结构体及64位环境声明，求解总空间，角色匹配trap_diagnosis，深度符合mechanism要求。",
+        "difficulty_match": "是。对齐规则推理步骤较多，且涉及数组对齐模数的易错点，陷阱强度高，难度契合level 3。",
+        "issue": "无。干扰项设置精准：A项针对无填充，B项针对无尾部填充，D项针对数组对齐模数误用（按6而非2对齐），完美覆盖蓝图要求的三大陷阱。",
+        "revision_instruction": "无",
+        "slot_id": "Q14"
+      }
+    ],
+    "distribution_check": {
+      "difficulty_curve": "难度曲线合理。三题难度分别为3、2、3，整体均分符合整卷难度目标3，且实现了“level_2: 1, level_3: 2”的预设分布，无偏颇。",
+      "role_balance": "功能角色分布极度均衡。calculation_stability（Q12）、mechanism_trigger（Q13）、trap_diagnosis（Q14）各占一题，完全符合蓝图设计，考查维度全面。",
+      "knowledge_overlap": "无重叠。三题分别考查性能指标计算、浮点数编码机制、内存对齐映射，均属于计组不同子章节的核心考点，互不干扰。",
+      "originality": "原创性优秀。虽然考查模式参考了历年真题（如2012、2019的CPI计算，2016、2021的浮点数），但具体参数设计（如非规格化数的巧妙构造、short数组对齐陷阱的植入）均有新意，无直接照搬真题痕迹。"
+    }
+  },
+  "total_time_s": 614.7,
+  "compose_time_s": 49.7,
+  "review_time_s": 58.2
+}

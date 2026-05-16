@@ -9,6 +9,8 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR_PATH = os.path.join(PROJECT_ROOT, "data")
 ARTIFACTS_DIR_PATH = os.path.join(PROJECT_ROOT, "artifacts")
 LOG_DIR_PATH = os.path.join(PROJECT_ROOT, "log")
+MODELS_DIR = os.path.join(PROJECT_ROOT, "models")
+MODELSCOPE_CACHE = os.path.join(os.path.expanduser("~"), ".cache", "modelscope", "hub", "models")
 
 
 class PathSettings(BaseModel):
@@ -77,13 +79,13 @@ class GlobalSettings(BaseSettings):
     providers: Dict[str, ProviderSettings] = {
         "local": ProviderSettings(
             provider_type="local",
-            model_path=os.getenv("LOCAL_MODEL_PATH", "/zhaoshu/llm/qwen3-32b/"),
+            model_path=os.getenv("LOCAL_MODEL_PATH", os.path.join(MODELS_DIR, "qwen3-32b")),
             thinking_control_method=os.getenv("LOCAL_THINKING_CONTROL_METHOD", "prompt"),
             tensor_parallel_size=int(os.getenv("LOCAL_TENSOR_PARALLEL_SIZE", "2")),
         ),
         "api_vllm": ProviderSettings(
             provider_type="api",
-            model_path=os.getenv("VLLM_MODEL", "/root/shared-nvme/llm_edu/models/Qwen3.6-27B-AWQ-INT4"),
+            model_path=os.getenv("VLLM_MODEL", os.path.join(MODELS_DIR, "Qwen3.6-27B-AWQ-INT4")),
             api_url=os.getenv("VLLM_API_BASE", f"http://127.0.0.1:{ServerSettings().vllm_api_port}/v1"),
             api_key=os.getenv("VLLM_API_KEY", "EMPTY"),
             api_protocol=os.getenv("VLLM_API_PROTOCOL", "vllm_chat_batch"),
@@ -99,7 +101,7 @@ class GlobalSettings(BaseSettings):
         "glm5.1": ProviderSettings(
             provider_type="api",
             model_path=os.getenv("GLM_MODEL", "glm-5.1"),
-            api_url=os.getenv("GLM_API_BASE", "https://open.bigmodel.cn/api/paas/v4/"),
+            api_url=os.getenv("GLM_API_BASE", "https://open.bigmodel.cn/api/coding/paas/v4/"),
             api_key=os.getenv("GLM_API_KEY"),
             api_protocol="openai_chat",
             batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
@@ -134,7 +136,7 @@ class GlobalSettings(BaseSettings):
         ),
         "qwen3": ProviderSettings(
             provider_type="api",
-            model_path=os.getenv("QWEN3_MODEL", "/data/amax/home/E22101006/.cache/modelscope/hub/models/Qwen/Qwen3-8B/"),
+            model_path=os.getenv("QWEN3_MODEL", os.path.join(MODELSCOPE_CACHE, "Qwen", "Qwen3-8B")),
             api_url=os.getenv("QWEN3_API_BASE", "http://localhost:8000/v1"),
             api_key=os.getenv("QWEN3_API_KEY", "EMPTY"),
             api_protocol=os.getenv("QWEN3_API_PROTOCOL", "openai_chat"),
@@ -142,7 +144,7 @@ class GlobalSettings(BaseSettings):
         ),
         "qwen3local_api": ProviderSettings(
             provider_type="local",
-            model_path=os.getenv("QWEN3_LOCAL_MODEL_PATH", "/data/amax/home/E22101006/.cache/modelscope/hub/models/Qwen/Qwen3-8B/"),
+            model_path=os.getenv("QWEN3_LOCAL_MODEL_PATH", os.path.join(MODELSCOPE_CACHE, "Qwen", "Qwen3-8B")),
             thinking_control_method=os.getenv("QWEN3_LOCAL_THINKING_CONTROL_METHOD", "prompt"),
             tensor_parallel_size=1,
             serve_as_api=True,
@@ -159,9 +161,23 @@ class GlobalSettings(BaseSettings):
             temperature=float(os.getenv("QWEN35_08B_TEMPERATURE", "0.7")),
             top_p=float(os.getenv("QWEN35_08B_TOP_P", "0.9")),
         ),
+        "qwen36_a35": ProviderSettings(
+            provider_type="api",
+            model_path=os.getenv("QWEN36_A35_MODEL", "Qwen3.6-35B-A3B"),
+            api_url=os.getenv("QWEN36_A35_API_BASE", "http://localhost:8000/v1"),
+            api_key=os.getenv("QWEN36_A35_API_KEY", "EMPTY"),
+            api_protocol=os.getenv("QWEN36_A35_API_PROTOCOL", "vllm_chat_batch"),
+            batch_size=int(os.getenv("QWEN36_A35_BATCH_SIZE", "4")),
+            thinking_control_method=os.getenv("QWEN36_A35_THINKING_CONTROL_METHOD", "chat_template_kwargs"),
+            prompt_template_style="qwen",
+            request_timeout=float(os.getenv("QWEN36_A35_REQUEST_TIMEOUT", "600")),
+            temperature=float(os.getenv("QWEN36_A35_TEMPERATURE", "0.7")),
+            top_p=float(os.getenv("QWEN36_A35_TOP_P", "0.9")),
+            default_max_tokens=int(os.getenv("QWEN36_A35_DEFAULT_MAX_TOKENS", "8192")),
+        ),
     }
 
-    embedding_model_path: str = os.getenv("EMBEDDING_MODEL_PATH", "/data/amax/home/E22101006/model/bge-m3/")
+    embedding_model_path: str = os.getenv("EMBEDDING_MODEL_PATH", os.path.join(MODELS_DIR, "bge-m3"))
     retrieval_k: int = 3
     evaluation_runs: int = 3
 
