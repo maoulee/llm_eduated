@@ -6,13 +6,14 @@ Extraction:
 
 Composition:
   PAPER_COMPOSER_PROMPT — generates PaperBlueprint from SlotTemplates
-  SLOT_BLUEPRINT_REFINER — refines single SlotBlueprint
+  BLUEPRINT_REVIEWER_PROMPT — reviews blueprint before sending to writers
 
 Generation:
   SLOT_QUESTION_WRITER — generates question from SlotBlueprint + experience card
+  QUESTION_FIXER_PROMPT — fixes specific issues in questions
 
 Review:
-  PAPER_QUALITY_REVIEWER — reviews generated paper against templates
+  PAPER_REVIEWER_PROMPT — whole-paper review with issue categorization
 """
 
 SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试卷结构和题位分析。
@@ -115,7 +116,7 @@ SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试
 请严格按照上述XML格式输出，确保每个标签都有内容。不要输出XML标签以外的额外解释。"""
 
 # ═══════════════════════════════════════════════════════════════
-# Composition prompts
+# Composition prompts (markdown output)
 # ═══════════════════════════════════════════════════════════════
 
 PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是基于题位模板规划一套完整的模拟试卷。
@@ -130,125 +131,33 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 
 为每个题位生成一个SlotBlueprint，即该题位应该出什么样的题。请严格遵循模板中定义的难度范围、功能角色和知识领域。
 
-输出格式（XML）：
+请严格按以下markdown格式输出：
 
-<paper_blueprint>
-  <paper_type>408模拟卷</paper_type>
-  <total_questions>{total_slots}</total_questions>
-  <difficulty_target>整体难度目标（1-5）</difficulty_target>
+# paper_blueprint
 
-  <difficulty_distribution>
-    level_1: 数量, level_2: 数量, level_3: 数量, level_4: 数量, level_5: 数量
-  </difficulty_distribution>
+## 整体
+- **paper_type**: 408模拟卷
+- **total_questions**: {total_slots}
+- **difficulty_target**: 整体难度目标（1-5整数）
+- **difficulty_distribution**: {{"level_1": 数量, "level_2": 数量, "level_3": 数量, "level_4": 数量, "level_5": 数量}}
+- **role_distribution**: {{"foundation_check": 数量, "mechanism_trigger": 数量, "pattern_execution": 数量, "trap_diagnosis": 数量, "calculation_stability": 数量, "cross_topic_integration": 数量, "difficulty_separator": 数量}}
+- **composition_rationale**: 整卷组卷思路说明（2-3句话）
 
-  <role_distribution>
-    foundation_check: 数量, mechanism_trigger: 数量, pattern_execution: 数量, trap_diagnosis: 数量, calculation_stability: 数量, cross_topic_integration: 数量, difficulty_separator: 数量
-  </role_distribution>
+## Q12
+- **target_subject**: 科目
+- **target_family**: 知识领域
+- **primary_target_name**: 具体考点（从该题位经验卡中选择，不要和真题重复）
+- **target_depth**: knowledge 或 mechanism 或 pattern
+- **paper_role**: 功能角色
+- **target_difficulty**: 目标难度1-5
+- **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
+- **distractor_requirements**: ["要求1", "要求2"]
+- **must_include**: 要素1, 要素2
+- **must_avoid**: 避免项1, 避免项2
+- **reference_experience**: 参考哪几年的真题经验
 
-  <slots>
-    <slot_blueprint slot_id="Q12">
-      <target_subject>科目</target_subject>
-      <target_family>知识领域</target_family>
-      <primary_target_name>具体考点（从该题位经验卡中选择，不要和真题重复）</primary_target_name>
-      <target_depth>knowledge 或 mechanism 或 pattern</target_depth>
-      <paper_role>功能角色</paper_role>
-      <target_difficulty>目标难度1-5</target_difficulty>
-      <difficulty_profile>JSON格式的6维难度画像</difficulty_profile>
-      <distractor_requirements>干扰项要求，JSON数组</distractor_requirements>
-      <must_include>题目必须包含的要素，逗号分隔</must_include>
-      <must_avoid>题目必须避免的要素，逗号分隔</must_avoid>
-      <reference_experience>参考哪几年的真题经验</reference_experience>
-    </slot_blueprint>
-
-    ...（每个题位一个slot_blueprint）
-  </slots>
-
-  <composition_rationale>整卷组卷思路说明（2-3句话）</composition_rationale>
-</paper_blueprint>
+（每个题位一个 ## 标题的section，格式同上）
 """
-
-SLOT_QUESTION_WRITER = """你是一位408考研出题专家。请严格按照以下SlotBlueprint生成一道完整的题目。
-
-## 出题蓝图
-{slot_blueprint_json}
-
-## 经验卡参考
-{experience_card_md}
-
-## 参考真题（风格参考，请勿照抄）
-{reference_questions}
-
-## 输出要求
-
-请生成一道完全原创的题目，风格和难度匹配蓝图要求。严格按以下XML格式输出：
-
-<question slot_id="{slot_id}">
-  <stem>题干全文（包含所有条件和问题）</stem>
-  <option_A>选项A内容</option_A>
-  <option_B>选项B内容</option_B>
-  <option_C>选项C内容</option_C>
-  <option_D>选项D内容</option_D>
-  <correct_answer>正确选项字母</correct_answer>
-  <explanation>详细解析</explanation>
-  <solution_steps>解题步骤，分号分隔</solution_steps>
-  <difficulty_self_assessment>1-5自评难度</difficulty_self_assessment>
-  <trap_description>陷阱设计说明</trap_description>
-  <knowledge_points>考查的知识点，逗号分隔</knowledge_points>
-</question>
-"""
-
-PAPER_QUALITY_REVIEWER = """你是一位408考研试卷质量评审专家。请评审以下生成的模拟卷。
-
-## 整卷蓝图
-{paper_blueprint_json}
-
-## 生成的题目
-{generated_questions_json}
-
-## 题位模板（用于对照）
-{slot_templates_json}
-
-## 评审要点
-
-请逐一检查：
-1. 每道题是否符合自己的SlotBlueprint（难度、功能、知识点）
-2. 整体难度曲线是否合理（前易后难，逐步提升）
-3. 题目功能分布是否均衡
-4. 是否有重复考查的知识点
-5. 题目质量和原创性
-6. 是否和参考真题过于相似
-
-输出格式（XML）：
-
-<paper_review>
-  <overall_status>pass 或 revise 或 reject</overall_status>
-  <overall_score>0-100分</overall_score>
-  <overall_comment>总体评价（2-3句话）</overall_comment>
-
-  <slot_reviews>
-    <slot_review slot_id="Q12">
-      <status>pass 或 regenerate 或 revise</status>
-      <quality_score>0-10分</quality_score>
-      <blueprint_compliance>是否符合蓝图（是/否+理由）</blueprint_compliance>
-      <difficulty_match>难度是否匹配（是/否+理由）</difficulty_match>
-      <issue>存在的问题（如果没有则写"无"）</issue>
-      <revision_instruction>修改指令（如果需要重出，给出具体要求）</revision_instruction>
-    </slot_review>
-    ...（每道题一个slot_review）
-  </slot_reviews>
-
-  <distribution_check>
-    <difficulty_curve>难度曲线评价</difficulty_curve>
-    <role_balance>功能角色分布评价</role_balance>
-    <knowledge_overlap>知识点重叠问题（如有）</knowledge_overlap>
-    <originality>原创性评价</originality>
-  </distribution_check>
-</paper_review>
-"""
-
-# ═══════════════════════════════════════════════════════════════
-# Blueprint review + question fix + whole-paper review
-# ═══════════════════════════════════════════════════════════════
 
 BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审核以下组卷蓝图的质量。
 
@@ -271,23 +180,64 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 5. 难度曲线是否合理（前易后难）
 6. 干扰项要求是否明确可执行
 
-输出格式（XML）：
+请严格按以下markdown格式输出：
 
-<blueprint_review>
-  <overall_status>pass 或 revise</overall_status>
-  <overall_comment>总体评价（2-3句话）</overall_comment>
+# blueprint_review
 
-  <slot_reviews>
-    <slot_review slot_id="Q12">
-      <status>pass 或 revise</status>
-      <issue>问题描述（无问题写"无"）</issue>
-      <revision_instruction>修改建议（如需修改）</revision_instruction>
-    </slot_review>
-    ...
-  </slot_reviews>
+## 总体
+- **status**: pass 或 revise
+- **comment**: 总体评价（2-3句话）
 
-  <global_issues>整卷层面的问题（如有）</global_issues>
-</blueprint_review>
+## Q12
+- **status**: pass 或 revise
+- **issue**: 问题描述（无问题写"无"）
+- **revision_instruction**: 修改建议（如不需要修改写"无"）
+
+（每个题位一个 ## 标题的section，格式同上）
+
+## 全局问题
+整卷层面的问题描述（无问题写"无"）
+"""
+
+# ═══════════════════════════════════════════════════════════════
+# Generation prompts (markdown output)
+# ═══════════════════════════════════════════════════════════════
+
+SLOT_QUESTION_WRITER = """你是一位408考研出题专家。请严格按照以下SlotBlueprint生成一道完整的题目。
+
+## 出题蓝图
+{slot_blueprint_json}
+
+## 经验卡参考
+{experience_card_md}
+
+## 参考真题（风格参考，请勿照抄）
+{reference_questions}
+
+## 输出要求
+
+请生成一道完全原创的题目，风格和难度匹配蓝图要求。严格按以下markdown格式输出：
+
+# question {slot_id}
+
+## 题干
+{stem}
+
+（题干全文，包含所有条件和问题）
+
+## 选项
+- **A**: 选项A内容
+- **B**: 选项B内容
+- **C**: 选项C内容
+- **D**: 选项D内容
+
+## 答案
+- **correct_answer**: 正确选项字母
+- **explanation**: 详细解析
+- **solution_steps**: 步骤1; 步骤2; 步骤3
+- **difficulty_self_assessment**: 1-5自评难度
+- **trap_description**: 陷阱设计说明
+- **knowledge_points**: 知识点1, 知识点2
 """
 
 QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整体质量不错，但存在需要修正的具体问题。请只修复指出的错误，保持题干、考点、风格不变。
@@ -300,20 +250,31 @@ QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整�
 
 ## 输出要求
 
-严格按以下XML格式输出修正后的完整题目（包含未修改的部分）：
+严格按以下markdown格式输出修正后的完整题目（包含未修改的部分）：
 
-<question slot_id="{slot_id}">
-  <stem>题干全文（通常不变）</stem>
-  <option_A>选项A</option_A>
-  <option_B>选项B</option_B>
-  <option_C>选项C</option_C>
-  <option_D>选项D</option_D>
-  <correct_answer>正确答案字母</correct_answer>
-  <explanation>修正后的解析</explanation>
-  <solution_steps>解题步骤</solution_steps>
-  <fix_summary>修改了什么，为什么修改</fix_summary>
-</question>
+# question {slot_id}
+
+## 题干
+{stem}
+
+（题干全文，通常不变）
+
+## 选项
+- **A**: 选项A内容
+- **B**: 选项B内容
+- **C**: 选项C内容
+- **D**: 选项D内容
+
+## 答案
+- **correct_answer**: 正确答案字母
+- **explanation**: 修正后的解析
+- **solution_steps**: 解题步骤
+- **fix_summary**: 修改了什么，为什么修改
 """
+
+# ═══════════════════════════════════════════════════════════════
+# Review prompt (markdown output)
+# ═══════════════════════════════════════════════════════════════
 
 PAPER_REVIEWER_PROMPT = """你是一位408考研试卷质量评审专家。请审核以下生成的模拟卷，区分内容问题和答案问题。
 
@@ -340,29 +301,30 @@ PAPER_REVIEWER_PROMPT = """你是一位408考研试卷质量评审专家。请�
 - **answer_error**: 内容符合但答案或计算有误 → 只需修复答案
 - **pass**: 质量合格
 
-输出格式（XML）：
+请严格按以下markdown格式输出：
 
-<paper_review>
-  <overall_status>pass 或 has_issues</overall_status>
-  <overall_score>0-100</overall_score>
-  <overall_comment>总体评价</overall_comment>
+# paper_review
 
-  <slot_reviews>
-    <slot_review slot_id="Q12">
-      <status>pass 或 content_mismatch 或 answer_error</status>
-      <quality_score>0-10</quality_score>
-      <blueprint_compliance>是否符合蓝图</blueprint_compliance>
-      <issue>问题描述（pass写"无"）</issue>
-      <fix_instruction>具体修复指令（answer_error时指出错在哪、正确答案应该是什么；content_mismatch时说明应该如何调整）</fix_instruction>
-    </slot_review>
-    ...
-  </slot_reviews>
+## 总体
+- **status**: pass 或 has_issues
+- **score**: 0-100
+- **comment**: 总体评价
 
-  <distribution_check>
-    <difficulty_curve>难度曲线评价</difficulty_curve>
-    <role_balance>功能角色分布</role_balance>
-    <knowledge_overlap>知识点重叠</knowledge_overlap>
-    <originality>原创性</originality>
-  </distribution_check>
-</paper_review>
+## Q12
+- **status**: pass 或 content_mismatch 或 answer_error
+- **quality_score**: 0-10
+- **blueprint_compliance**: 是否符合蓝图（一句话）
+- **issue**: 问题描述（pass写"无"）
+- **fix_instruction**: 具体修复指令（pass写"无"；answer_error时指出错在哪、正确答案应该是什么；content_mismatch时说明应该如何调整）
+
+（每个题位一个 ## 标题的section，格式同上）
+
+## distribution
+- **difficulty_curve**: 难度曲线评价
+- **role_balance**: 功能角色分布评价
+- **knowledge_overlap**: 知识点重叠问题
+- **originality**: 原创性评价
 """
+
+# Legacy prompt (kept for backward compatibility)
+PAPER_QUALITY_REVIEWER = PAPER_REVIEWER_PROMPT

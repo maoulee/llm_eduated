@@ -6,7 +6,7 @@ Agents:
   QuestionWriterAgent   — SlotBlueprint → question
   QuestionFixerAgent    — question + fix instructions → fixed question
   PaperReviewerAgent    — generated paper + templates → categorized review
-  QualityReviewerAgent  — (legacy) generated paper + templates → review
+  QualityReviewerAgent  — (legacy) same as PaperReviewerAgent
 """
 
 from __future__ import annotations
@@ -17,70 +17,64 @@ import os
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
-from core_new.blackboard import AgentRecord, Blackboard
+from core_new.blackboard import Blackboard
 
 
-# ── Helpers ────────────────────────────────────────────────────
+# ── Markdown parsing helpers ─────────────────────────────────
 
 
-def _parse_xml_to_dict(text: str) -> Dict[str, Any]:
-    """Parse XML-tagged fields into a dict, handling JSON values."""
+def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
+    """Parse '- **key**: value' lines into a dict."""
     result = {}
-    for m in re.finditer(r"<(\w+)>(.*?)</\1>", text, re.DOTALL):
-        key = m.group(1)
-        value = m.group(2).strip()
-        # Try JSON parse for complex values
-        if value.startswith("{") or value.startswith("["):
-            try:
-                value = json.loads(value)
-            except json.JSONDecodeError:
-                pass
-        result[key] = value
+    current_key = None
+
+    for line in lines:
+        m = re.match(r"^- \*\*(.+?)\*\*:\s*(.*)", line)
+        if m:
+            key = m.group(1).strip()
+            value = m.group(2).strip()
+            if value and (value.startswith("{") or value.startswith("[")):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    pass
+            result[key] = value
+            current_key = key
+        elif line.startswith("  ") and current_key and current_key in result:
+            existing = result[current_key]
+            if isinstance(existing, str):
+                result[current_key] = existing + "\n" + line.strip()
+        elif current_key and current_key in result and isinstance(result[current_key], str):
+            result[current_key] = result[current_key] + "\n" + line
+
     return result
 
 
-def _parse_slot_blueprints(raw: str) -> List[Dict[str, Any]]:
-    """Parse multiple <slot_blueprint> blocks from PaperComposer output."""
-    blueprints = []
-    for m in re.finditer(
-        r"<slot_blueprint\s+slot_id=\"(\w+)\">(.*?)</slot_blueprint>",
-        raw,
-        re.DOTALL,
-    ):
-        slot_id = m.group(1)
-        inner = m.group(2)
-        parsed = _parse_xml_to_dict(inner)
-        parsed["slot_id"] = slot_id
-        blueprints.append(parsed)
-    return blueprints
+def _parse_md_sections(text: str) -> Dict[str, Any]:
+    """Split markdown by ## headers, parse each section's key-value pairs."""
+    sections = {}
+    current_name = None
+    current_lines: List[str] = []
+
+    for line in text.split("\n"):
+        m = re.match(r"^##\s+(.+)", line)
+        if m:
+            if current_name:
+                sections[current_name] = _parse_md_kv(current_lines)
+            current_name = m.group(1).strip()
+            current_lines = []
+        elif current_name:
+            current_lines.append(line)
+
+    if current_name:
+        sections[current_name] = _parse_md_kv(current_lines)
+
+    return sections
 
 
-def _parse_questions(raw: str) -> List[Dict[str, Any]]:
-    """Parse multiple <question> blocks from QuestionWriter output."""
-    questions = []
-    for m in re.finditer(
-        r"<question\s+slot_id=\"(\w+)\">(.*?)</question>", raw, re.DOTALL
-    ):
-        slot_id = m.group(1)
-        inner = m.group(2)
-        parsed = _parse_xml_to_dict(inner)
-        parsed["slot_id"] = slot_id
-        questions.append(parsed)
-    return questions
-
-
-def _parse_slot_reviews(raw: str) -> List[Dict[str, Any]]:
-    """Parse multiple <slot_review> blocks from QualityReviewer output."""
-    reviews = []
-    for m in re.finditer(
-        r"<slot_review\s+slot_id=\"(\w+)\">(.*?)</slot_review>", raw, re.DOTALL
-    ):
-        slot_id = m.group(1)
-        inner = m.group(2)
-        parsed = _parse_xml_to_dict(inner)
-        parsed["slot_id"] = slot_id
-        reviews.append(parsed)
-    return reviews
+def _is_slot_id(name: str) -> bool:
+    """Check if a section name looks like a slot ID (Q12, Q43, etc.)."""
+    return bool(re.match(r"^Q\d+$", name))
 
 
 def _load_experience_card(slot_id: str, exp_dir: str = "data/slot_experiences") -> str:
@@ -107,7 +101,7 @@ class PaperComposerAgent(BaseAgent):
                 output_key="paper_blueprint",
                 max_tokens=max_tokens,
                 enable_thinking=True,
-                system_prompt="你是一位408考研组卷专家，擅长基于题位模板规划试卷结构。",
+                system_prompt="你是一位408考研组卷专家，擅长基于题位模板规划试卷结构。严格按markdown格式输出。",
             ),
             llm_backend,
         )
@@ -127,124 +121,19 @@ class PaperComposerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        # Extract the paper_blueprint block
-        m = re.search(r"<paper_blueprint>(.*?)</paper_blueprint>", raw, re.DOTALL)
-        text = m.group(1) if m else raw
+        sections = _parse_md_sections(raw)
 
-        result = _parse_xml_to_dict(text)
+        # Extract overall section
+        overall = sections.get("整体", {})
+        result = dict(overall)
 
-        # Parse slot blueprints
-        result["slots"] = _parse_slot_blueprints(raw)
-
-        # Parse distribution
-        if "difficulty_distribution" in result and isinstance(
-            result["difficulty_distribution"], str
-        ):
-            try:
-                result["difficulty_distribution"] = json.loads(
-                    result["difficulty_distribution"]
-                )
-            except json.JSONDecodeError:
-                pass
-
-        return result
-
-
-# ── QuestionWriterAgent ────────────────────────────────────────
-
-
-class QuestionWriterAgent(BaseAgent):
-    """Generate a single question from SlotBlueprint + experience card."""
-
-    def __init__(self, llm_backend, *, max_tokens: int = 8192):
-        super().__init__(
-            AgentConfig(
-                name="question_writer",
-                phase="generate",
-                output_format="markdown",
-                output_key="generated_question",
-                max_tokens=max_tokens,
-                enable_thinking=True,
-                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确出题。",
-            ),
-            llm_backend,
-        )
-
-    def build_input(self, blackboard: Blackboard) -> str:
-        from core_new.slot_prompts import SLOT_QUESTION_WRITER
-
-        blueprint = blackboard.get("current_blueprint", {})
-        slot_id = blueprint.get("slot_id", "Q12")
-
-        # Load experience card
-        exp_card = _load_experience_card(slot_id)
-
-        # Reference questions from template
-        ref_questions = blackboard.read("reference_questions", "无参考真题")
-
-        return SLOT_QUESTION_WRITER.format(
-            slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            experience_card_md=exp_card,
-            reference_questions=ref_questions,
-            slot_id=slot_id,
-        )
-
-    def parse_output(self, raw: Any) -> Any:
-        questions = _parse_questions(raw)
-        if questions:
-            return questions[0]
-        # Fallback: parse the whole thing
-        return _parse_xml_to_dict(raw)
-
-
-# ── QualityReviewerAgent ──────────────────────────────────────
-
-
-class QualityReviewerAgent(BaseAgent):
-    """Review generated paper against SlotTemplates."""
-
-    def __init__(self, llm_backend, *, max_tokens: int = 8192):
-        super().__init__(
-            AgentConfig(
-                name="quality_reviewer",
-                phase="review",
-                output_format="markdown",
-                output_key="paper_review",
-                max_tokens=max_tokens,
-                enable_thinking=True,
-                system_prompt="你是一位408考研试卷质量评审专家，严格按题位模板评审。",
-            ),
-            llm_backend,
-        )
-
-    def build_input(self, blackboard: Blackboard) -> str:
-        from core_new.slot_prompts import PAPER_QUALITY_REVIEWER
-
-        blueprint = blackboard.get("paper_blueprint", {})
-        questions = blackboard.get("generated_questions", [])
-        templates = blackboard.get("slot_templates", {})
-
-        return PAPER_QUALITY_REVIEWER.format(
-            paper_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            generated_questions_json=json.dumps(questions, ensure_ascii=False, indent=2),
-            slot_templates_json=json.dumps(templates, ensure_ascii=False, indent=2),
-        )
-
-    def parse_output(self, raw: Any) -> Any:
-        m = re.search(r"<paper_review>(.*?)</paper_review>", raw, re.DOTALL)
-        text = m.group(1) if m else raw
-
-        result = _parse_xml_to_dict(text)
-
-        # Parse slot reviews
-        result["slot_reviews"] = _parse_slot_reviews(raw)
-
-        # Parse distribution check
-        m2 = re.search(
-            r"<distribution_check>(.*?)</distribution_check>", text, re.DOTALL
-        )
-        if m2:
-            result["distribution_check"] = _parse_xml_to_dict(m2.group(1))
+        # Extract slot blueprints
+        slots = []
+        for name, kv in sections.items():
+            if _is_slot_id(name):
+                kv["slot_id"] = name
+                slots.append(kv)
+        result["slots"] = slots
 
         return result
 
@@ -264,7 +153,7 @@ class BlueprintReviewerAgent(BaseAgent):
                 output_key="blueprint_review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
-                system_prompt="你是一位408考研组卷审核专家，负责审核组卷蓝图的合理性。",
+                system_prompt="你是一位408考研组卷审核专家，负责审核组卷蓝图的合理性。严格按markdown格式输出。",
             ),
             llm_backend,
         )
@@ -283,11 +172,85 @@ class BlueprintReviewerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        m = re.search(r"<blueprint_review>(.*?)</blueprint_review>", raw, re.DOTALL)
-        text = m.group(1) if m else raw
+        sections = _parse_md_sections(raw)
 
-        result = _parse_xml_to_dict(text)
-        result["slot_reviews"] = _parse_slot_reviews(raw)
+        overall = sections.get("总体", {})
+        result = dict(overall)
+
+        slot_reviews = []
+        for name, kv in sections.items():
+            if _is_slot_id(name):
+                kv["slot_id"] = name
+                slot_reviews.append(kv)
+
+        result["slot_reviews"] = slot_reviews
+
+        # Extract global issues (last free-text section)
+        if "全局问题" in sections:
+            result["global_issues"] = sections["全局问题"]
+
+        return result
+
+
+# ── QuestionWriterAgent ────────────────────────────────────────
+
+
+class QuestionWriterAgent(BaseAgent):
+    """Generate a single question from SlotBlueprint."""
+
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
+        super().__init__(
+            AgentConfig(
+                name="question_writer",
+                phase="generate",
+                output_format="markdown",
+                output_key="generated_question",
+                max_tokens=max_tokens,
+                enable_thinking=True,
+                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确出题。严格按markdown格式输出。",
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import SLOT_QUESTION_WRITER
+
+        blueprint = blackboard.get("current_blueprint", {})
+        slot_id = blueprint.get("slot_id", "Q12")
+
+        exp_card = _load_experience_card(slot_id)
+        ref_questions = blackboard.read("reference_questions", "无参考真题")
+
+        return SLOT_QUESTION_WRITER.format(
+            slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
+            experience_card_md=exp_card,
+            reference_questions=ref_questions,
+            slot_id=slot_id,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        sections = _parse_md_sections(raw)
+
+        result = {}
+
+        # Merge 题干 section
+        if "题干" in sections:
+            stem_data = sections["题干"]
+            result["stem"] = stem_data.get("stem", stem_data.get("题干", ""))
+
+        # Merge 选项 section
+        if "选项" in sections:
+            result.update(sections["选项"])
+
+        # Merge 答案 section
+        if "答案" in sections:
+            result.update(sections["答案"])
+
+        # Extract slot_id from # heading
+        m = re.match(r"#\s+question\s+(Q\d+)", raw)
+        if m:
+            result["slot_id"] = m.group(1)
+
         return result
 
 
@@ -306,7 +269,7 @@ class QuestionFixerAgent(BaseAgent):
                 output_key="fixed_question",
                 max_tokens=max_tokens,
                 enable_thinking=True,
-                system_prompt="你是一位408考研出题专家，擅长精确修正题目中的错误。",
+                system_prompt="你是一位408考研出题专家，擅长精确修正题目中的错误。严格按markdown格式输出。",
             ),
             llm_backend,
         )
@@ -325,10 +288,23 @@ class QuestionFixerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        questions = _parse_questions(raw)
-        if questions:
-            return questions[0]
-        return _parse_xml_to_dict(raw)
+        # Same format as QuestionWriter
+        sections = _parse_md_sections(raw)
+
+        result = {}
+        if "题干" in sections:
+            stem_data = sections["题干"]
+            result["stem"] = stem_data.get("stem", stem_data.get("题干", ""))
+        if "选项" in sections:
+            result.update(sections["选项"])
+        if "答案" in sections:
+            result.update(sections["答案"])
+
+        m = re.match(r"#\s+question\s+(Q\d+)", raw)
+        if m:
+            result["slot_id"] = m.group(1)
+
+        return result
 
 
 # ── PaperReviewerAgent ──────────────────────────────────────────
@@ -346,7 +322,7 @@ class PaperReviewerAgent(BaseAgent):
                 output_key="paper_review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
-                system_prompt="你是一位408考研试卷质量评审专家，严格区分内容问题和答案问题。",
+                system_prompt="你是一位408考研试卷质量评审专家，严格区分内容问题和答案问题。严格按markdown格式输出。",
             ),
             llm_backend,
         )
@@ -365,16 +341,27 @@ class PaperReviewerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        m = re.search(r"<paper_review>(.*?)</paper_review>", raw, re.DOTALL)
-        text = m.group(1) if m else raw
+        sections = _parse_md_sections(raw)
 
-        result = _parse_xml_to_dict(text)
-        result["slot_reviews"] = _parse_slot_reviews(raw)
+        overall = sections.get("总体", {})
+        result = dict(overall)
 
-        m2 = re.search(
-            r"<distribution_check>(.*?)</distribution_check>", text, re.DOTALL
-        )
-        if m2:
-            result["distribution_check"] = _parse_xml_to_dict(m2.group(1))
+        slot_reviews = []
+        for name, kv in sections.items():
+            if _is_slot_id(name):
+                kv["slot_id"] = name
+                slot_reviews.append(kv)
+        result["slot_reviews"] = slot_reviews
+
+        if "distribution" in sections:
+            result["distribution_check"] = sections["distribution"]
 
         return result
+
+
+# ── QualityReviewerAgent (legacy) ──────────────────────────────
+
+
+class QualityReviewerAgent(PaperReviewerAgent):
+    """Legacy alias for PaperReviewerAgent."""
+    pass
