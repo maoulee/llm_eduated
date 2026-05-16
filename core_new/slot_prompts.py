@@ -119,17 +119,29 @@ SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试
 # Composition prompts (markdown output)
 # ═══════════════════════════════════════════════════════════════
 
-PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是基于题位模板规划一套完整的模拟试卷。
+PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是基于题位契约(SlotContract)规划一套完整的模拟试卷。
 
 ## 用户需求
 {user_requirements}
 
-## 可用题位模板
-{slot_templates_json}
+## 各题位契约
+{slot_contracts_md}
 
-## 你的任务
+## 规划原则
 
-为每个题位生成一个SlotBlueprint，即该题位应该出什么样的题。请严格遵循模板中定义的难度范围、功能角色和知识领域。
+你的规划必须在题位契约框架内进行：
+- **硬约束**：必须绝对遵守，违反即为错误（题型、分值、选项数、答案唯一性、输出格式）
+- **强软约束**：默认遵守，如果偏离必须写出偏离理由（难度范围、计算量、推理步数）
+- **偏好约束**：尽量满足，不强制（知识领域、paper_role、风格）
+- **偏离策略**：允许偏离，但每个偏离都需要说明；重大偏离需要后续审核确认
+
+计算难度定义：
+- calculation_load=0: 无计算，纯概念判断
+- calculation_load=1: 一步代入、简单比较
+- calculation_load=2: 两步以内公式计算、简单单位换算
+- calculation_load=3: 三到四步计算，需要中间量
+- calculation_load=4: 完整过程模拟（CRC、页面置换、Cache多轮推演）
+- calculation_load=5: 跨机制复杂计算
 
 请严格按以下markdown格式输出：
 
@@ -146,20 +158,27 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 ## Q12
 - **target_subject**: 科目
 - **target_family**: 知识领域
-- **primary_target_name**: 具体考点（从该题位经验卡中选择，不要和真题重复）
+- **primary_target_name**: 具体考点（单个明确考点，不要"A与B综合应用"）
 - **target_depth**: knowledge 或 mechanism 或 pattern
 - **paper_role**: 功能角色
 - **target_difficulty**: 目标难度1-5
 - **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
-- **distractor_requirements**: ["要求1", "要求2"]
+- **option_style**: 数字结果 或 概念判断 或 代码分析 或 混合
+- **reasoning_shape**: one_formula 或 multi_step 或 elimination 或 simulation
+- **stem_length**: short 或 medium 或 long
+- **condition_count**: 条件数量（整数）
+- **distractor_strategy**: 干扰项设计策略
 - **must_include**: 要素1, 要素2
 - **must_avoid**: 避免项1, 避免项2
 - **reference_experience**: 参考哪几年的真题经验
+- **has_deviation**: yes 或 no
+- **deviation_level**: none 或 minor 或 major
+- **deviation_reason**: 偏离理由（无偏离写"无"）
 
 （每个题位一个 ## 标题的section，格式同上）
 """
 
-BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审核以下组卷蓝图的质量。
+BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审核以下组卷蓝图的质量，区分硬违规和软偏离。
 
 ## 用户需求
 {user_requirements}
@@ -167,18 +186,35 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 ## 组卷蓝图
 {paper_blueprint_json}
 
-## 题位模板（用于对照）
-{slot_templates_json}
+## 题位契约（用于对照）
+{slot_contracts_md}
+
+## 审核分类标准
+
+对每个SlotBlueprint，按以下标准判定：
+
+**hard_violation（硬违规，必须修复）**：
+- 题型错误（如应该是single_choice却规划了综合题格式）
+- 分值错误
+- 多个正确答案或无法作答
+- 输出格式缺失
+
+**soft_deviation（软偏离）**：
+- major: 难度超出合理范围、计算量明显高于soft_max、paper_role属于discouraged、考点属于should_not_be
+- minor: 轻微偏离偏好约束但仍在合理范围内
+
+**acceptable（可接受）**：
+- 完全符合或仅有minor偏离且理由合理
 
 ## 审核要点
 
-逐一检查每个SlotBlueprint：
-1. 考点是否在题位模板的常见范围内
-2. 难度是否在模板定义的合理范围内
-3. 功能角色是否符合该题位的典型分布
-4. 整卷知识点是否覆盖均匀，有无重叠
-5. 难度曲线是否合理（前易后难）
-6. 干扰项要求是否明确可执行
+1. 硬约束是否全部满足（题型、分值、选项数）
+2. 难度是否在合理范围内
+3. 计算量是否匹配题型和难度
+4. paper_role是否合理
+5. 整卷知识点是否覆盖均匀、无重叠
+6. 难度曲线是否合理（前易后难）
+7. 偏离理由是否合理（如果有偏离）
 
 请严格按以下markdown格式输出：
 
@@ -186,12 +222,18 @@ BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审�
 
 ## 总体
 - **status**: pass 或 revise
+- **hard_violation_count**: 硬违规数量
+- **major_deviation_count**: 重大偏离数量
+- **minor_deviation_count**: 轻微偏离数量
 - **comment**: 总体评价（2-3句话）
 
 ## Q12
 - **status**: pass 或 revise
+- **hard_violation**: yes 或 no
+- **soft_deviation**: none 或 minor 或 major
+- **deviation_fields**: 偏离的字段（无偏离写"无"）
 - **issue**: 问题描述（无问题写"无"）
-- **revision_instruction**: 修改建议（如不需要修改写"无"）
+- **revision_instruction**: 修改建议（无写"无"）
 
 （每个题位一个 ## 标题的section，格式同上）
 
@@ -213,6 +255,14 @@ SLOT_QUESTION_WRITER = """你是一位408考研出题专家。请严格按照以
 
 ## 参考真题（风格参考，请勿照抄）
 {reference_questions}
+
+## 出题格式要求（严格遵守蓝图）
+
+- **option_style**决定选项格式：数字结果→选项必须是具体数值或表达式；概念判断→选项是命题判断或概念辨析
+- **reasoning_shape**决定解题路径：one_formula→一步公式代入即可得答案；multi_step→需要分步推理；elimination→逐一排除错误选项
+- **stem_length**决定题干长度：short≤50字，medium≤100字，long≤150字
+- **condition_count**决定已知条件数量，不要多也不要少
+- **distractor_strategy**指导每个错误选项的设计方向，确保每个干扰项都有明确的"为什么有人会选错"的理由
 
 ## 输出要求
 

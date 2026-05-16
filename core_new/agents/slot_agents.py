@@ -108,15 +108,23 @@ class PaperComposerAgent(BaseAgent):
 
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import PAPER_COMPOSER_PROMPT
+        from core_new.slot_contract import build_slot_contract
 
         templates = blackboard.get("slot_templates", {})
-        templates_json = json.dumps(templates, ensure_ascii=False, indent=2)
         requirements = blackboard.read("user_requirements", "出一套标准难度的408模拟卷（选择题部分）")
         total_slots = blackboard.get("total_slots", len(templates))
 
+        # Build SlotContracts for each slot
+        contracts = []
+        for slot_id, tpl in templates.items():
+            card = _load_experience_card(slot_id)
+            contract = build_slot_contract(slot_id, tpl, card)
+            contracts.append(contract)
+        slot_contracts_md = "\n\n---\n\n".join(contracts) if contracts else "（无题位契约）"
+
         return PAPER_COMPOSER_PROMPT.format(
             user_requirements=requirements,
-            slot_templates_json=templates_json,
+            slot_contracts_md=slot_contracts_md,
             total_slots=total_slots,
         )
 
@@ -160,15 +168,24 @@ class BlueprintReviewerAgent(BaseAgent):
 
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import BLUEPRINT_REVIEWER_PROMPT
+        from core_new.slot_contract import build_slot_contract
 
         blueprint = blackboard.get("paper_blueprint", {})
         templates = blackboard.get("slot_templates", {})
         requirements = blackboard.read("user_requirements", "")
 
+        # Build SlotContracts for reviewer to check against
+        contracts = []
+        for slot_id, tpl in templates.items():
+            card = _load_experience_card(slot_id)
+            contract = build_slot_contract(slot_id, tpl, card)
+            contracts.append(contract)
+        slot_contracts_md = "\n\n---\n\n".join(contracts) if contracts else "（无题位契约）"
+
         return BLUEPRINT_REVIEWER_PROMPT.format(
             user_requirements=requirements,
             paper_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            slot_templates_json=json.dumps(templates, ensure_ascii=False, indent=2),
+            slot_contracts_md=slot_contracts_md,
         )
 
     def parse_output(self, raw: Any) -> Any:
