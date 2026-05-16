@@ -80,8 +80,8 @@ async def compose_paper(gateway, templates, user_requirements) -> dict:
 # ── Step 2: Review Blueprint ──────────────────────────────────
 
 
-async def review_blueprint(gateway, blueprint, templates, user_requirements, max_revisions=1) -> dict:
-    """Step 2: BlueprintReviewer → pass or revise blueprint."""
+async def review_blueprint(gateway, blueprint, templates, user_requirements, max_revisions=1) -> tuple:
+    """Step 2: BlueprintReviewer → pass or revise blueprint. Returns (blueprint, review)."""
     print("\n" + "=" * 60)
     print("Step 2: BlueprintReviewer — 审核蓝图")
     print("=" * 60)
@@ -105,7 +105,7 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
 
         if record.error:
             print(f"  ERROR: {record.error}")
-            return blueprint
+            return blueprint, {"status": "review_error", "comment": record.error, "slot_reviews": []}
 
         review = bb.get("blueprint_review") or {}
         status = review.get("status", "unknown")
@@ -119,19 +119,19 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
 
         if status == "pass":
             print("  蓝图审核通过")
-            return blueprint
+            return blueprint, review
 
         if attempt >= max_revisions:
             print(f"  达到最大修订次数({max_revisions})，使用当前蓝图")
-            return blueprint
+            return blueprint, review
 
         # Revise blueprint based on review feedback
         print(f"  蓝图需要修订，重新组卷... (attempt {attempt + 1}/{max_revisions})")
         blueprint = await compose_paper(gateway, templates, user_requirements)
         if not blueprint:
-            return blueprint
+            return blueprint, review
 
-    return blueprint
+    return blueprint, review
 
 
 # ── Step 3: Generate Questions (parallel) ─────────────────────
@@ -201,6 +201,7 @@ async def review_and_fix(
     writer = QuestionWriterAgent(gateway)
 
     current_questions = list(questions)
+    revision_rounds = []
 
     for round_num in range(max_rounds + 1):
         rbb = Blackboard(
@@ -217,9 +218,14 @@ async def review_and_fix(
         record = await reviewer.execute(rbb)
         elapsed = time.monotonic() - t0
 
+        # P0-1: return immediately on reviewer error instead of breaking to unbound review
         if record.error:
             print(f"  ERROR: {record.error}")
-            break
+            return current_questions, {
+                "overall_status": "review_error",
+                "overall_comment": record.error,
+                "slot_reviews": [],
+            }, revision_rounds
 
         review = rbb.get("paper_review") or {}
         status = review.get("overall_status", "unknown")
@@ -241,8 +247,17 @@ async def review_and_fix(
             if s in ("answer_error", "content_mismatch"):
                 issues.append(sr)
 
-        if status == "pass" or not issues:
+        # P0-2: only pass on explicit "pass"; flag unparseable issues
+        if status == "pass":
             print("  审核通过!")
+            break
+
+        if status != "pass" and not issues:
+            print("  WARNING: reviewer reported issues but no actionable fix targets parsed")
+            review["overall_status"] = "needs_human_review"
+            review["overall_comment"] += (
+                " Reviewer reported issues but no actionable fix targets were parsed."
+            )
             break
 
         if round_num >= max_rounds:
@@ -292,10 +307,12 @@ async def review_and_fix(
                     return q_idx, current_questions[q_idx]
                 fixed = fbb.get("fixed_question") or {}
                 fixed["slot_id"] = slot_id
+                fixed["revision_type"] = "answer_fix"
+                fixed["fix_instruction"] = instruction
+                fixed["revision_round"] = round_num + 1
                 print(f"    [{slot_id}] Fixed: answer={fixed.get('correct_answer','?')}")
                 return q_idx, fixed
             else:  # regen
-                # Find blueprint for this slot
                 sb = None
                 for s in blueprint.get("slots", []):
                     if s.get("slot_id") == slot_id:
@@ -317,16 +334,37 @@ async def review_and_fix(
                     return q_idx, current_questions[q_idx]
                 regen = qbb.get("generated_question") or {}
                 regen["slot_id"] = slot_id
+                regen["revision_type"] = "regenerate"
+                regen["regenerate_reason"] = instruction
+                regen["revision_round"] = round_num + 1
                 print(f"    [{slot_id}] Regenerated: answer={regen.get('correct_answer','?')}")
                 return q_idx, regen
 
+        # Snapshot questions before fix for round record
+        questions_before_fix = [dict(q) for q in current_questions]
+
         results = await asyncio.gather(*[_do_fix(t) for t in fix_tasks])
+        fix_actions = []
         for q_idx, fixed_q in results:
+            slot_id = fixed_q.get("slot_id", "?")
+            fix_actions.append({
+                "slot_id": slot_id,
+                "revision_type": fixed_q.get("revision_type", "unknown"),
+                "instruction": issues[0].get("fix_instruction", "") if issues else "",
+            })
             current_questions[q_idx] = fixed_q
+
+        # Record this round
+        revision_rounds.append({
+            "round": round_num + 1,
+            "issues_found": [{"slot_id": sr.get("slot_id"), "status": sr.get("status"), "issue": sr.get("issue", "")} for sr in issues],
+            "fix_actions": fix_actions,
+            "questions_after_fix": [dict(q) for q in current_questions],
+        })
 
         print(f"\n  修复完成，重新审核...")
 
-    return current_questions, review
+    return current_questions, review, revision_rounds
 
 
 # ── Main ──────────────────────────────────────────────────────
@@ -359,7 +397,7 @@ async def run_composition(
         return {"status": "error", "step": "compose"}
 
     # Step 2: Review blueprint
-    blueprint = await review_blueprint(
+    blueprint, blueprint_review = await review_blueprint(
         gateway, blueprint, templates, user_requirements, max_revisions=max_bp_revisions
     )
     if not blueprint:
@@ -371,21 +409,24 @@ async def run_composition(
         return {"status": "error", "step": "compose", "error": "empty slots"}
 
     # Step 3: Generate questions (parallel)
-    questions = await generate_questions(gateway, slot_blueprints, experience_cards)
+    initial_questions = await generate_questions(gateway, slot_blueprints, experience_cards)
 
     # Step 4-5: Review + fix loop
-    final_questions, final_review = await review_and_fix(
-        gateway, blueprint, questions, templates, experience_cards, max_rounds=max_fix_rounds
+    final_questions, final_review, revision_rounds = await review_and_fix(
+        gateway, blueprint, initial_questions, templates, experience_cards, max_rounds=max_fix_rounds
     )
 
     total_time = time.monotonic() - total_start
 
-    # Save results
+    # Save results with full observability
     output = {
         "user_requirements": user_requirements,
         "paper_blueprint": blueprint,
-        "generated_questions": final_questions,
-        "quality_review": final_review,
+        "blueprint_review": blueprint_review,
+        "initial_questions": initial_questions,
+        "revision_rounds": revision_rounds,
+        "final_questions": final_questions,
+        "final_review": final_review,
         "total_time_s": round(total_time, 1),
     }
 
