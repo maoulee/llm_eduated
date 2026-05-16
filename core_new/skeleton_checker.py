@@ -30,6 +30,7 @@ def check_blueprint_skeleton(blueprint: Dict[str, Any]) -> List[Dict[str, str]]:
     _check_budget_sum(violations, "primary_role_distribution", blueprint.get("primary_role_distribution"), total)
     _check_budget_sum(violations, "difficulty_distribution", blueprint.get("difficulty_distribution"), total)
     _check_budget_sum(violations, "calculation_load_distribution", blueprint.get("calculation_load_distribution"), total)
+    _check_budget_sum(violations, "reasoning_steps_distribution", blueprint.get("reasoning_steps_distribution"), total)
 
     # ── Per-slot field protocol ─────────────────────────────
     for slot in blueprint.get("slots", []):
@@ -125,10 +126,20 @@ def _check_budget_sum(
 ) -> None:
     """Check that a distribution dict sums to expected_total."""
     if not isinstance(distribution, dict):
+        violations.append({
+            "slot_id": "GLOBAL",
+            "rule": "budget_missing",
+            "detail": f"{name} is missing or not a dict",
+        })
         return
     try:
         actual = sum(int(v) for v in distribution.values())
     except (ValueError, TypeError):
+        violations.append({
+            "slot_id": "GLOBAL",
+            "rule": "budget_parse_error",
+            "detail": f"{name} has non-integer values",
+        })
         return
     if actual != expected_total:
         violations.append({
