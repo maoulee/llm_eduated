@@ -155,6 +155,11 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **role_distribution**: {{"foundation_check": 数量, "mechanism_trigger": 数量, "pattern_execution": 数量, "trap_diagnosis": 数量, "calculation_stability": 数量, "cross_topic_integration": 数量, "difficulty_separator": 数量}}
 - **composition_rationale**: 整卷组卷思路说明（2-3句话）
 
+## 难度预算
+- **calculation_load_distribution**: {{"load_0": 数量, "load_1": 数量, "load_2": 数量, "load_3": 数量, "load_4": 数量, "load_5": 数量}}
+- **reasoning_steps_distribution**: {{"steps_1": 数量, "steps_2": 数量, "steps_3": 数量, "steps_4": 数量, "steps_5": 数量}}
+- **difficulty_curve_strategy**: 前中后段难度策略描述（一句话，如"前段基础稳定，中段机制触发，后段适度区分"）
+
 ## Q12
 - **target_subject**: 科目
 - **target_family**: 知识领域
@@ -294,6 +299,16 @@ QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整�
 ## 需要修复的问题
 {fix_instructions}
 
+## 双重校验要求
+
+如果修复涉及**数值计算**（如CPI、执行时间、地址计算、浮点数转换等），你必须：
+1. 用推理给出答案
+2. 用Python代码验证计算结果
+
+代码验证格式：在solution_steps后附上Python代码块，用实际数值验证每个关键计算步骤。如果推理和代码结果不一致，以代码计算为准。
+
+如果修复仅涉及**概念辨析**（不涉及数值），则只需要推理，不需要代码。
+
 ## 输出要求
 
 严格按以下markdown格式输出修正后的完整题目（包含未修改的部分）：
@@ -311,6 +326,8 @@ QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整�
 - **correct_answer**: 正确答案字母
 - **explanation**: 修正后的解析
 - **solution_steps**: 解题步骤
+- **verification_code**: Python验证代码（概念题写"不适用"）
+- **verification_result**: 代码验证结果摘要（概念题写"不适用"）
 - **fix_summary**: 修改了什么，为什么修改
 """
 

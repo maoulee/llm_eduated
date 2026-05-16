@@ -1,12 +1,11 @@
 """Slot-template driven composition and generation agents.
 
 Agents:
-  PaperComposerAgent    — SlotTemplates + requirements → PaperBlueprint
-  BlueprintReviewerAgent — PaperBlueprint → blueprint quality review
+  PaperComposerAgent    — SlotContract + requirements → PaperBlueprint
+  BlueprintReviewerAgent — PaperBlueprint → hard_violation / soft_deviation review
   QuestionWriterAgent   — SlotBlueprint → question
-  QuestionFixerAgent    — question + fix instructions → fixed question
-  PaperReviewerAgent    — generated paper + templates → categorized review
-  QualityReviewerAgent  — (legacy) same as PaperReviewerAgent
+  QuestionFixerAgent    — question + fix instructions → fixed question (reasoning + code verification)
+  PaperReviewerAgent    — generated paper + contracts → categorized review
 """
 
 from __future__ import annotations
@@ -367,10 +366,3 @@ class PaperReviewerAgent(BaseAgent):
 
         return result
 
-
-# ── QualityReviewerAgent (legacy) ──────────────────────────────
-
-
-class QualityReviewerAgent(PaperReviewerAgent):
-    """Legacy alias for PaperReviewerAgent."""
-    pass
