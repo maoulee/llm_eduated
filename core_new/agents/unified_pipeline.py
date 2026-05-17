@@ -561,6 +561,12 @@ class UnifiedQuestionPipeline:
             fb_result = await self.fallback_executor.try_fallback(record, bb_data)
             if fb_result.used_fallback and not fb_result.error:
                 logger.info("[SC design] Fallback succeeded: %s", fb_result.fallback_target)
+                if fb_result.fallback_target in ("human_review", "needs_human_check"):
+                    return {"status": "needs_human_review",
+                            "reason": fb_result.result_data.get("reason", "SC design failed, routed to human review"),
+                            "fallback_target": fb_result.fallback_target}
+                # For non-human fallbacks (legacy_generator), continue with original error
+                # — pipeline-specific handler should have produced usable output
 
         self._raise_if_failed("SC design", record)
 
@@ -604,6 +610,10 @@ class UnifiedQuestionPipeline:
             fb_result = await self.fallback_executor.try_fallback(record, bb_data)
             if fb_result.used_fallback and not fb_result.error:
                 logger.info("[Comp design] Fallback succeeded: %s", fb_result.fallback_target)
+                if fb_result.fallback_target in ("human_review", "needs_human_check"):
+                    return {"status": "needs_human_review",
+                            "reason": fb_result.result_data.get("reason", "Comp design failed, routed to human review"),
+                            "fallback_target": fb_result.fallback_target}
 
         self._raise_if_failed("Comp design", record)
 
@@ -801,6 +811,10 @@ class UnifiedQuestionPipeline:
             fb_result = await self.fallback_executor.try_fallback(record, bb_data)
             if fb_result.used_fallback and not fb_result.error:
                 logger.info("[Review] Fallback succeeded: %s", fb_result.fallback_target)
+                if fb_result.fallback_target in ("human_review", "needs_human_check"):
+                    return {"status": "needs_human_review",
+                            "reason": fb_result.result_data.get("reason", "Review failed, routed to human review"),
+                            "fallback_target": fb_result.fallback_target}
         self._raise_if_failed("Review", record)
         result = bb.get("review", {})
         self._require_step_fields("Review", result, ["status"])

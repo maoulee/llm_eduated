@@ -600,6 +600,15 @@ class HybridSubjectivePipeline:
                     fb_result = await self.fallback_executor.try_fallback(design_record, bb_data)
                     if fb_result.used_fallback and not fb_result.error:
                         logger.info("[%s] Design fallback succeeded: %s", slot_id, fb_result.fallback_target)
+                        if fb_result.fallback_target in ("human_review", "needs_human_check"):
+                            return HybridSubjectiveResult(
+                                final_question={"status": "needs_human_review",
+                                                "reason": fb_result.result_data.get("reason", "Design failed, routed to human review"),
+                                                "fallback_target": fb_result.fallback_target},
+                                solver_result={}, formatted_solution={},
+                                rubric={}, review={},
+                                generation_time_s=time.monotonic() - total_start,
+                            )
                     logger.error("[%s] Design failed after retries: %s", slot_id, design_record.error)
                     return HybridSubjectiveResult(
                         final_question={"error": design_record.error},
@@ -686,6 +695,11 @@ class HybridSubjectivePipeline:
                 fb_result = await self.fallback_executor.try_fallback(review_record, bb_data)
                 if fb_result.used_fallback and not fb_result.error:
                     logger.info("[%s] Review fallback succeeded: %s", slot_id, fb_result.fallback_target)
+                    if fb_result.fallback_target in ("human_review", "needs_human_check"):
+                        review = {"status": "needs_human_review",
+                                  "reason": fb_result.result_data.get("reason", "Review failed, routed to human review"),
+                                  "fallback_target": fb_result.fallback_target}
+                        break
             review = review_bb.get("review") or {}
             audit = AuditResultNormalizer.normalize(
                 review,
