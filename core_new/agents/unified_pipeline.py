@@ -33,10 +33,12 @@ from core_new.agents.hybrid_subjective_team import (
 )
 from core_new.agents.single_choice_team import (
     SingleChoiceDraftAgent,
+    RuntimeSingleChoiceDraftAgent,
     OptionAndDistractorAgent,
     SCSolutionFormatterAgent,
 )
 from core_new.blackboard import Blackboard
+from core_new.markdown_parser import try_parse_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +155,20 @@ class UnifiedSCReviewer(BaseAgent):
                 output_key="review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                required_fields=["status"],
+                repair_max_retries=1,
+                expected_output_format=(
+                    "## review\n"
+                    "- **status**: pass|needs_fix\n"
+                    "- **computed_vs_intended**: match|mismatch\n"
+                    "- **option_consistency**: pass|fail\n"
+                    "- **slot_match**: pass|fail\n"
+                    "- **answer_correctness**: pass|fail\n"
+                    "- **overall_quality**: 1-10\n\n"
+                    "## fix_instruction\n"
+                    "- **fix_target**: question|options|solution|none\n"
+                    "- **fix_detail**: ..."
+                ),
                 system_prompt="你是一位408考研出题审核专家，负责对比代码验证结果与出题意图。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -187,7 +203,24 @@ class UnifiedSCReviewer(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(str(raw))
+        text = str(raw)
+        data = try_parse_json_object(text)
+        if data:
+            result: Dict[str, Any] = {}
+            nested_review = data.get("review")
+            if isinstance(nested_review, dict):
+                result.update(nested_review)
+            else:
+                result.update(data)
+            if isinstance(data.get("fix_instruction"), dict):
+                result["fix_instruction"] = data["fix_instruction"]
+            if result.get("status"):
+                result["status"] = str(result["status"]).lower()
+                if result["status"] in {"revise", "fail", "failed"}:
+                    result["status"] = "needs_fix"
+            return result
+
+        sections = _parse_md_sections(text)
         result: Dict[str, Any] = {}
 
         for key in ("review", "结果", "检查"):
@@ -196,8 +229,6 @@ class UnifiedSCReviewer(BaseAgent):
 
         if "fix_instruction" in sections:
             result["fix_instruction"] = sections["fix_instruction"]
-
-        text = str(raw)
 
         if "status" not in result:
             m = re.search(r"\*\*status\*\*[:：]\s*(\w+)", text)
@@ -216,8 +247,19 @@ class UnifiedSCReviewer(BaseAgent):
 
         if result.get("status"):
             result["status"] = str(result["status"]).lower()
+            if result["status"] in {"revise", "fail", "failed"}:
+                result["status"] = "needs_fix"
 
         return result
+
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        status = str(parsed.get("status", "")).strip().lower()
+        if status not in {"pass", "needs_fix"}:
+            return False, "status must be pass or needs_fix"
+        return True, ""
 
 
 # ── Result ────────────────────────────────────────────────────
@@ -245,8 +287,16 @@ class UnifiedQuestionPipeline:
     Reviewer compares computation vs intent and routes fixes.
     """
 
-    def __init__(self, *, max_revision_rounds: int = MAX_REVISION_ROUNDS):
+    def __init__(
+        self,
+        *,
+        max_revision_rounds: int = MAX_REVISION_ROUNDS,
+        use_runtime_sc_design: bool = True,
+        runtime_fallback: bool = True,
+    ):
         self.max_revision_rounds = max_revision_rounds
+        self.use_runtime_sc_design = use_runtime_sc_design
+        self.runtime_fallback = runtime_fallback
 
     @staticmethod
     def _is_single_choice(blueprint: Dict[str, Any]) -> bool:
@@ -259,6 +309,21 @@ class UnifiedQuestionPipeline:
         if slot_id.startswith("Q") and slot_id[1:].isdigit():
             return int(slot_id[1:]) < 43
         return True
+
+    @staticmethod
+    def _require_step_fields(
+        step_name: str,
+        data: Dict[str, Any],
+        fields: List[str],
+    ) -> None:
+        missing = [field for field in fields if not data.get(field)]
+        if missing:
+            raise RuntimeError(f"{step_name} produced incomplete output; missing: {', '.join(missing)}")
+
+    @staticmethod
+    def _raise_if_failed(step_name: str, record) -> None:
+        if record and getattr(record, "error", None):
+            raise RuntimeError(f"{step_name} failed: {record.error}")
 
     # ── Main run loop ──────────────────────────────────────────
 
@@ -369,14 +434,32 @@ class UnifiedQuestionPipeline:
         gateway,
     ) -> Dict[str, Any]:
         """SC Step 1: generate question stem."""
-        bb = Blackboard(
-            task_id=f"sc_design_{blueprint.get('slot_id', 'Q1')}",
-            task_type="unified_sc",
-            initial_state={
-                "current_blueprint": blueprint,
-                "experience_card": experience_card,
-            },
-        )
+        def make_blackboard() -> Blackboard:
+            return Blackboard(
+                task_id=f"sc_design_{blueprint.get('slot_id', 'Q1')}",
+                task_type="unified_sc",
+                initial_state={
+                    "current_blueprint": blueprint,
+                    "experience_card": experience_card,
+                },
+            )
+
+        bb = make_blackboard()
+        if self.use_runtime_sc_design:
+            runtime_agent = RuntimeSingleChoiceDraftAgent(gateway)
+            runtime_record = await runtime_agent.execute(bb)
+            if not runtime_record.error:
+                result = bb.get("sc_draft_result", {})
+                self._require_step_fields("Runtime SC design", result, ["stem"])
+                logger.info("[Runtime SC design] stem=%s", str(result.get("stem", ""))[:80])
+                return result
+
+            logger.warning("[Runtime SC design] failed: %s", runtime_record.error)
+            if not self.runtime_fallback:
+                self._raise_if_failed("Runtime SC design", runtime_record)
+
+            bb = make_blackboard()
+
         agent = SingleChoiceDraftAgent(gateway)
         record = None
         for attempt in range(3):
@@ -391,10 +474,10 @@ class UnifiedQuestionPipeline:
                 continue
             break
 
-        if record and record.error:
-            logger.error("[SC design] Failed after retries: %s", record.error)
+        self._raise_if_failed("SC design", record)
 
         result = bb.get("sc_draft_result", {})
+        self._require_step_fields("SC design", result, ["stem"])
         logger.info("[SC design] stem=%s", str(result.get("stem", ""))[:80])
         return result
 
@@ -428,10 +511,10 @@ class UnifiedQuestionPipeline:
                 continue
             break
 
-        if record and record.error:
-            logger.error("[Comp design] Failed after retries: %s", record.error)
+        self._raise_if_failed("Comp design", record)
 
         result = bb.get("question_design", {})
+        self._require_step_fields("Comp design", result, ["stem", "sub_questions"])
         logger.info("[Comp design] stem=%s", str(result.get("stem", ""))[:80])
         return result
 
@@ -451,8 +534,14 @@ class UnifiedQuestionPipeline:
             },
         )
         agent = OptionAndDistractorAgent(gateway)
-        await agent.execute(bb)
+        record = await agent.execute(bb)
+        self._raise_if_failed("SC options", record)
         result = bb.get("sc_options_result", {})
+        self._require_step_fields(
+            "SC options",
+            result,
+            ["option_A", "option_B", "option_C", "option_D", "correct_answer"],
+        )
         logger.info("[SC options] correct=%s", result.get("correct_answer", "?"))
         return result
 
@@ -519,8 +608,11 @@ class UnifiedQuestionPipeline:
             },
         )
         agent = SCSolutionFormatterAgent(gateway)
-        await agent.execute(bb)
-        return bb.get("sc_solution_result", {})
+        record = await agent.execute(bb)
+        self._raise_if_failed("SC format", record)
+        result = bb.get("sc_solution_result", {})
+        self._require_step_fields("SC format", result, ["correct_answer", "explanation"])
+        return result
 
     async def _format_comp(
         self,
@@ -543,8 +635,11 @@ class UnifiedQuestionPipeline:
             },
         )
         agent = HybridSolutionFormatter(gateway)
-        await agent.execute(bb)
-        return bb.get("formatted_solution", {})
+        record = await agent.execute(bb)
+        self._raise_if_failed("Comp format", record)
+        result = bb.get("formatted_solution", {})
+        self._require_step_fields("Comp format", result, ["answers"])
+        return result
 
     async def _write_rubric(
         self,
@@ -606,8 +701,11 @@ class UnifiedQuestionPipeline:
             )
             reviewer = IntentBasedReviewer(gateway)
 
-        await reviewer.execute(bb)
-        return bb.get("review", {})
+        record = await reviewer.execute(bb)
+        self._raise_if_failed("Review", record)
+        result = bb.get("review", {})
+        self._require_step_fields("Review", result, ["status"])
+        return result
 
     # ── Assembly ───────────────────────────────────────────────
 

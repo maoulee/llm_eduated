@@ -256,6 +256,11 @@ def _try_json_parse(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def try_parse_json_object(text: str) -> Optional[Dict[str, Any]]:
+    """Public helper: parse a dict from fenced JSON or whole-text JSON."""
+    return _try_json_parse(text)
+
+
 # ---------------------------------------------------------------------------
 # P1 parser
 # ---------------------------------------------------------------------------

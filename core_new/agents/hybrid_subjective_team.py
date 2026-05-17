@@ -24,6 +24,8 @@ from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
 from core_new.agents.agent_registry import AgentRegistry
 from core_new.blackboard import Blackboard
+from core_new.experience_view import build_design_experience_view
+from core_new.markdown_parser import try_parse_json_object
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +107,22 @@ class QuestionDesignerAgent(BaseAgent):
                 enable_thinking=True,
                 timeout_s=300.0,
                 max_retries=2,
+                required_fields=["stem", "sub_questions"],
+                repair_max_retries=1,
+                expected_output_format=(
+                    "# question Qxx\n\n"
+                    "## 题目\n"
+                    "- **stem**: ...\n"
+                    "- **sub_questions**: [\"...\", \"...\"]\n"
+                    "- **given_conditions**: [\"...\"]\n"
+                    "- **difficulty_self_assessment**: 1-5\n"
+                    "- **knowledge_points**: ...\n"
+                    "- **parameter_notes**: ...\n\n"
+                    "## 设计意图\n"
+                    "- **sub_q1_intent**: ...\n"
+                    "- **trap_design**: ...\n"
+                    "- **sub_question_logic**: ..."
+                ),
                 system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。你必须写清设计意图，但不写答案。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -115,8 +133,8 @@ class QuestionDesignerAgent(BaseAgent):
 
         blueprint = blackboard.get("current_blueprint", {})
         slot_id = blueprint.get("slot_id", "Q43")
-        exp_card = blackboard.read("experience_card", "")
-        ref_questions = blackboard.read("reference_questions", "")
+        exp_card = build_design_experience_view(blackboard.read("experience_card", ""))
+        ref_questions = build_design_experience_view(blackboard.read("reference_questions", ""))
 
         return SUBJECTIVE_DRAFT_ONLY_PROMPT.format(
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
@@ -127,6 +145,22 @@ class QuestionDesignerAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
+        data = try_parse_json_object(text)
+        if data:
+            result = {}
+            question = data.get("question")
+            if isinstance(question, dict):
+                result.update(question)
+            else:
+                result.update(data)
+            intent = data.get("design_intent")
+            if isinstance(intent, dict):
+                result["design_intent"] = intent
+                for key in ("sub_q1_intent", "sub_q2_intent", "sub_q3_intent",
+                            "trap_design", "sub_question_logic"):
+                    if key in intent:
+                        result[key] = intent[key]
+            return result
         sections = _parse_md_sections(text)
         result: Dict[str, Any] = {}
 
@@ -148,6 +182,23 @@ class QuestionDesignerAgent(BaseAgent):
 
         return result
 
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        stem = str(parsed.get("stem", ""))
+        if "```" in stem or re.search(r"\b(int\s+main|#include|def\s+\w+\(|print\s*\()", stem):
+            return False, "stem appears to contain copied code instead of a question stem"
+        sub_questions = parsed.get("sub_questions")
+        if isinstance(sub_questions, str):
+            try:
+                sub_questions = json.loads(sub_questions)
+            except json.JSONDecodeError:
+                sub_questions = [sub_questions] if sub_questions.strip() else []
+        if not isinstance(sub_questions, list) or not sub_questions:
+            return False, "sub_questions must be a non-empty list or parseable JSON array"
+        return True, ""
+
 
 # ── Step 3: Solution formatter ────────────────────────────────
 
@@ -164,6 +215,8 @@ class HybridSolutionFormatter(BaseAgent):
                 output_key="formatted_solution",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                required_fields=["answers"],
+                repair_max_retries=1,
                 system_prompt="你是一位408考研解题专家，擅长根据计算结果整理标准答案。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -182,6 +235,13 @@ class HybridSolutionFormatter(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
+        data = try_parse_json_object(str(raw))
+        if data:
+            nested = data.get("answers")
+            if nested is not None:
+                return data
+            if isinstance(data.get("solution"), dict):
+                return data["solution"]
         sections = _parse_md_sections(str(raw))
         result: Dict[str, Any] = {}
         if "标准答案" in sections:
@@ -254,6 +314,8 @@ class IntentBasedReviewer(BaseAgent):
                 output_key="review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                required_fields=["status"],
+                repair_max_retries=1,
                 system_prompt="你是一位408考研出题审核专家，负责对比出题意图与解题结果，并对照slot蓝图评估。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -287,6 +349,19 @@ class IntentBasedReviewer(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
+        data = try_parse_json_object(text)
+        if data:
+            result = {}
+            nested_review = data.get("review")
+            if isinstance(nested_review, dict):
+                result.update(nested_review)
+            else:
+                result.update(data)
+            if isinstance(data.get("fix_instruction"), dict):
+                result["fix_instruction"] = data["fix_instruction"]
+            if result.get("status"):
+                result["status"] = str(result["status"]).lower()
+            return result
         sections = _parse_md_sections(text)
         result: Dict[str, Any] = {}
 
