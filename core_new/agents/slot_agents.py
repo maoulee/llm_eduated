@@ -245,7 +245,7 @@ class QuestionWriterAgent(BaseAgent):
                 output_format="markdown",
                 output_key="generated_question",
                 max_tokens=max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
                 timeout_s=900.0,
                 system_prompt="你是一位408考研出题专家，擅长按照蓝图精确出题。严格按markdown格式输出。",
             ),

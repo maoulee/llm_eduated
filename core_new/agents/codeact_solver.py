@@ -3,7 +3,7 @@
 Instead of long text reasoning, this agent:
 1. Reads the question
 2. Writes Python code to compute the answer
-3. Executes the code via tool_executor
+3. Executes the code via code_exec_408 in ToolRegistry
 4. Observes the result
 5. Repeats or outputs final_answer
 
@@ -18,10 +18,10 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from core_new.agent_base import AgentConfig, BaseAgent
-from core_new.blackboard import Blackboard
-from core_new.llm_gateway import LLMGateway, LLMResult
-from core_new.tool_executor import execute_python
+from core_new.agent_runtime import ToolRegistry
+from core_new.edu408_runtime import build_408_tools
+from core_new.llm_gateway import LLMGateway
+from core_new.agents.solver_utils import extract_python_code, is_final_answer, parse_exec_result
 
 logger = logging.getLogger(__name__)
 
@@ -52,27 +52,6 @@ class SolverResult:
         if self.sub_answers:
             d["sub_answers"] = self.sub_answers
         return d
-
-
-def _extract_python_code(text: str) -> Optional[str]:
-    """Extract Python code block from model output."""
-    # Case-insensitive match for ```python, ```Python, etc.
-    m = re.search(r"```[Pp]ython\s*\n(.*?)```", text, re.DOTALL)
-    if m:
-        return m.group(1).strip()
-    # Fallback: generic code block with Python keywords
-    m = re.search(r"```\s*\n(.*?)```", text, re.DOTALL)
-    if m:
-        content = m.group(1).strip()
-        if any(kw in content for kw in ["print(", "import ", "def ", "=", "for ", "if "]):
-            return content
-    return None
-
-
-def _is_final_answer(text: str) -> bool:
-    """Check if the model output contains a final_answer section."""
-    return bool(re.search(r"#\s*final_answer", text, re.IGNORECASE)) or \
-           bool(re.search(r"FINAL_ANSWER:", text, re.IGNORECASE))
 
 
 def _parse_final_answer(text: str, question_type: str = "single_choice") -> SolverResult:
@@ -181,8 +160,7 @@ _PROMPT_NO_CODE_YET = """你必须用Python代码求解。请直接写代码，�
 
 示例格式：
 ```python
-from tools_408 import ieee754_single_hex, simulate_cache, simulate_page_replacement
-# 根据题目参数计算
+# 可直接调用已预加载的 408 辅助函数，不要 import tools_408
 result = ...
 print(f"答案: {result}")
 ```
@@ -193,10 +171,18 @@ print(f"答案: {result}")
 class CodeActSolverAgent:
     """Solves questions by writing and executing Python code."""
 
-    def __init__(self, gateway: LLMGateway, *, max_tokens: int = 4096, max_steps: int = MAX_STEPS):
+    def __init__(
+        self,
+        gateway: LLMGateway,
+        *,
+        max_tokens: int = 4096,
+        max_steps: int = MAX_STEPS,
+        tool_registry: Optional[ToolRegistry] = None,
+    ):
         self.gateway = gateway
         self.max_tokens = max_tokens
         self.max_steps = max_steps
+        self.tools = tool_registry or build_408_tools(gateway=None, include_llm_tools=False)
 
     async def solve(
         self,
@@ -240,8 +226,7 @@ class CodeActSolverAgent:
             result = await self.gateway.generate_text(
                 messages,
                 max_tokens=self.max_tokens,
-                enable_thinking=False,
-            )
+                enable_thinking=True,            )
 
             if not result.ok:
                 logger.warning("CodeAct LLM call failed: %s", result.error_message)
@@ -265,7 +250,7 @@ class CodeActSolverAgent:
                 continue
 
             # Check if model gave a final answer
-            if _is_final_answer(response_text):
+            if is_final_answer(response_text):
                 parsed = _parse_final_answer(response_text, question_type)
                 parsed.tool_steps = tool_steps
                 parsed.python_exec_count = python_exec_count
@@ -285,24 +270,36 @@ class CodeActSolverAgent:
                     return text_answer
 
             # Try to extract and execute Python code
-            code = _extract_python_code(response_text)
+            code = extract_python_code(response_text)
             if code:
                 logger.info("CodeAct step %d: extracted %d chars of Python code",
                             step + 1, len(code))
-                exec_result = execute_python(code, timeout=5.0)
+                exec_raw = await self.tools.execute("code_exec_408", {
+                    "code": code,
+                    "slot_id": "codeact",
+                    "step": step + 1,
+                    "timeout": 5.0,
+                    "max_stdout": 4096,
+                    "execution_mode": "sandbox",
+                    "persist": False,
+                })
+                exec_result = parse_exec_result(exec_raw)
                 python_exec_count += 1
                 tool_steps += 1
                 has_code_run = True
 
                 obs = CODEACT_OBSERVATION_TEMPLATE.format(
-                    exit_code=exec_result.exit_code,
-                    stdout=exec_result.stdout[:2000] if exec_result.stdout else "",
-                    stderr=exec_result.stderr[:500] if exec_result.stderr else "",
+                    exit_code=exec_result.get("exit_code", -1),
+                    stdout=str(exec_result.get("stdout", ""))[:2000],
+                    stderr=str(exec_result.get("stderr", ""))[:500],
                 )
 
                 messages.append({"role": "assistant", "content": response_text})
                 messages.append({"role": "user", "content": obs})
-                full_trace_parts.append(f"\n[Observation] exit={exec_result.exit_code} stdout={exec_result.stdout[:200]}")
+                full_trace_parts.append(
+                    f"\n[Observation] exit={exec_result.get('exit_code', -1)} "
+                    f"stdout={str(exec_result.get('stdout', ''))[:200]}"
+                )
                 continue
 
             # No code found and no final answer
@@ -322,11 +319,11 @@ class CodeActSolverAgent:
             "content": _PROMPT_FORCE_FINAL,
         })
         result = await self.gateway.generate_text(
-            messages, max_tokens=self.max_tokens, enable_thinking=False,
+            messages, max_tokens=self.max_tokens, enable_thinking=True,
         )
         if result.ok and result.content:
             response_text = result.content
-            if _is_final_answer(response_text):
+            if is_final_answer(response_text):
                 parsed = _parse_final_answer(response_text, question_type)
             else:
                 # Last resort: try text extraction

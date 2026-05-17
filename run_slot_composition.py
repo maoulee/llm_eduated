@@ -36,6 +36,7 @@ from core_new.agents.slot_agents import (
 )
 from core_new.agents.subjective_team import SubjectivePipeline
 from core_new.agents.hybrid_subjective_team import HybridSubjectivePipeline
+from core_new.agents.unified_pipeline import UnifiedQuestionPipeline
 from core_new.agents.codeact_solver import CodeActSolverAgent
 from core_new.blackboard import Blackboard
 from core_new.llm_gateway import get_gateway
@@ -156,49 +157,56 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
 # ── Step 3: Generate Questions (parallel) ─────────────────────
 
 
+def _is_comprehensive_slot(sb: dict) -> bool:
+    """Determine if a slot blueprint is a comprehensive/subjective question."""
+    q_type = sb.get("question_type", "")
+    if q_type == "comprehensive":
+        return True
+    slot_id = sb.get("slot_id", "")
+    if slot_id.startswith("Q") and slot_id[1:].isdigit() and int(slot_id[1:]) >= 43:
+        return True
+    sub_q = sb.get("sub_questions", "0")
+    try:
+        if int(sub_q) >= 2:
+            return True
+    except (ValueError, TypeError):
+        pass
+    return False
+
+
 async def generate_questions(gateway, slot_blueprints, experience_cards, pipeline_mode="new") -> list:
     """Step 3: Generate questions per slot, routed by question_type.
 
     pipeline_mode:
-      "new"    — single_choice uses legacy QuestionWriter (proven quality),
-                 comprehensive uses new SubjectivePipeline (prevents timeout)
-      "legacy" — use original QuestionWriterAgent for all slots
+      "unified" — all questions use UnifiedQuestionPipeline
+                  (Design → Options(SC) → Solve → Format → Review → Fix)
+      "new"     — single_choice uses legacy QuestionWriter (proven quality),
+                  comprehensive uses HybridSubjectivePipeline
+      "legacy"  — use original QuestionWriterAgent for all slots
     """
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行) [pipeline={pipeline_mode}]")
     print("=" * 60)
 
-    # New mode: legacy for single_choice, hybrid pipeline for comprehensive
-    subj_pipeline = HybridSubjectivePipeline(max_revision_rounds=1) if pipeline_mode == "new" else None
-    legacy_writer = QuestionWriterAgent(gateway)
+    if pipeline_mode == "unified":
+        async def _generate_one(sb):
+            slot_id = sb.get("slot_id", "Q12")
+            exp_card = experience_cards.get(slot_id, "")
+            return await _generate_unified(gateway, sb, slot_id, exp_card)
+    else:
+        subj_pipeline = HybridSubjectivePipeline(max_revision_rounds=1) if pipeline_mode == "new" else None
+        legacy_writer = QuestionWriterAgent(gateway)
+        _is_comprehensive = _is_comprehensive_slot
 
-    def _is_comprehensive(sb):
-        """Determine if a slot is comprehensive/subjective."""
-        q_type = sb.get("question_type", "")
-        if q_type == "comprehensive":
-            return True
-        # Blueprint may not set question_type — check slot_id pattern
-        slot_id = sb.get("slot_id", "")
-        if slot_id.startswith("Q") and int(slot_id[1:]) >= 43:
-            return True
-        # Check sub_questions count
-        sub_q = sb.get("sub_questions", "0")
-        try:
-            if int(sub_q) >= 2:
-                return True
-        except (ValueError, TypeError):
-            pass
-        return False
+        async def _generate_one(sb):
+            slot_id = sb.get("slot_id", "Q12")
+            exp_card = experience_cards.get(slot_id, "")
+            is_comp = _is_comprehensive(sb)
 
-    async def _generate_one(sb):
-        slot_id = sb.get("slot_id", "Q12")
-        exp_card = experience_cards.get(slot_id, "")
-        is_comp = _is_comprehensive(sb)
-
-        if pipeline_mode == "new" and is_comp:
-            return await _generate_subjective(gateway, sb, slot_id, exp_card, subj_pipeline)
-        else:
-            return await _generate_legacy(legacy_writer, sb, slot_id, exp_card, gateway=gateway)
+            if pipeline_mode == "new" and is_comp:
+                return await _generate_subjective(gateway, sb, slot_id, exp_card, subj_pipeline)
+            else:
+                return await _generate_legacy(legacy_writer, sb, slot_id, exp_card, gateway=gateway)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
@@ -276,6 +284,57 @@ async def _generate_subjective(gateway, sb, slot_id, exp_card, subj_pipeline):
         elapsed = time.monotonic() - t0
         print(f"  [{slot_id}] Both pipelines failed ({elapsed:.1f}s): {e2}")
         return {"slot_id": slot_id, "status": "error", "error": str(e2)}
+
+
+async def _generate_unified(gateway, sb, slot_id, exp_card):
+    """Generate a question using the unified pipeline (both SC and Comp).
+
+    UnifiedQuestionPipeline:
+      Design → Options(SC) → FileCodeSolver → Format → Review → Fix loop
+    Solver verifies all 4 options for SC, computes sub-questions for Comp.
+    """
+    is_sc = UnifiedQuestionPipeline._is_single_choice(sb)
+    q_kind = "SC" if is_sc else "Comp"
+    print(f"  [{slot_id}] UnifiedPipeline ({q_kind})...")
+    t0 = time.monotonic()
+
+    try:
+        pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
+        result = await asyncio.wait_for(
+            pipeline.run(sb, exp_card, gateway),
+            timeout=600,
+        )
+        elapsed = time.monotonic() - t0
+
+        q_data = dict(result.final_question or {})
+        q_data["generation_time_s"] = result.generation_time_s
+        q_data["pipeline_type"] = result.pipeline_type
+        q_data["review"] = result.review or {}
+        q_data["solver_result"] = result.solver_result or {}
+        q_data["slot_id"] = slot_id
+        q_data["_blueprint"] = sb
+        q_data["_experience_card"] = exp_card
+
+        if is_sc:
+            answer = q_data.get("correct_answer", "?")
+            execs = q_data.get("python_exec_count", 0)
+            review_status = result.review.get("status", "?")
+            print(f"  [{slot_id}] Unified SC done ({elapsed:.1f}s): "
+                  f"answer={answer} python_execs={execs} review={review_status}")
+        else:
+            answer = str(q_data.get("answer", "?"))[:80]
+            execs = q_data.get("python_exec_count", 0)
+            review_status = result.review.get("status", "?")
+            print(f"  [{slot_id}] Unified Comp done ({elapsed:.1f}s): "
+                  f"answer={answer} python_execs={execs} review={review_status}")
+
+        return q_data
+
+    except (asyncio.TimeoutError, Exception) as e:
+        elapsed = time.monotonic() - t0
+        reason = "timeout" if isinstance(e, asyncio.TimeoutError) else str(e)[:100]
+        print(f"  [{slot_id}] Unified pipeline failed ({elapsed:.1f}s): {reason}")
+        return {"slot_id": slot_id, "status": "error", "error": str(e)}
 
 
 async def _generate_legacy(writer, sb, slot_id, exp_card, gateway=None):
@@ -370,7 +429,12 @@ async def _verify_answer_with_codeact(gateway, q_data, slot_id):
             if opt:
                 options[letter] = opt
                 question_text += f"\n选项{letter}: {opt}"
-        question_text += "\n\n请编写Python脚本计算正确答案，并在最后输出: 最终答案: X (X为A/B/C/D之一)"
+        question_text += (
+            "\n\n请编写Python脚本计算正确答案。要求："
+            "\n- 从题目原始数据（如十六进制数）用代码解析，严禁硬编码中间解析结果"
+            "\n- IEEE 754浮点数必须用struct模块解析，Cache地址必须用代码计算"
+            "\n- 在最后输出: 最终答案: X (X为A/B/C/D之一)"
+        )
 
     print(f"  [{slot_id}] FileCodeSolver verifying...")
     t0 = time.monotonic()
@@ -572,6 +636,11 @@ async def _regenerate_question(gateway, q_data, verified, slot_id):
         re_match = re_verified.get("match", False)
         print(f"  [{slot_id}] Regenerated: answer={new_answer} re-verify={'MATCH' if re_match else 'STILL MISMATCH'}")
 
+        # If re-verified and still mismatch, mark as failed instead of silently accepting
+        if re_verified.get("verified") and not re_match and re_verified.get("solver_confidence") == "high":
+            print(f"  [{slot_id}] WARNING: Regenerated question STILL fails verification — marking as needs_human_review")
+            regen["codeact_verified"]["fix_status"] = "regenerated_but_still_wrong"
+
         return regen
 
     except Exception as e:
@@ -691,54 +760,136 @@ async def review_and_fix(
                 print(f"    [{slot_id}] content_mismatch → Regenerate")
 
         # Execute fixes in parallel
+        async def _do_regen(slot_id: str, q_idx: int, instruction: str):
+            """Regenerate a question, routing by pipeline type."""
+            sb = None
+            for s in blueprint.get("slots", []):
+                if s.get("slot_id") == slot_id:
+                    sb = s
+                    break
+            if not sb:
+                return q_idx, current_questions[q_idx]
+
+            orig_q = current_questions[q_idx]
+            orig_pipeline = orig_q.get("pipeline_type", "")
+
+            # Route through unified pipeline if original was unified
+            if orig_pipeline.startswith("unified"):
+                print(f"    [{slot_id}] Regenerating via UnifiedQuestionPipeline...")
+                try:
+                    pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
+                    result = await asyncio.wait_for(
+                        pipeline.run(sb, experience_cards.get(slot_id, ""), gateway),
+                        timeout=600,
+                    )
+                    regen = dict(result.final_question or {})
+                    regen["slot_id"] = slot_id
+                    regen["pipeline_type"] = result.pipeline_type
+                    regen["review"] = result.review or {}
+                    regen["solver_result"] = result.solver_result or {}
+                    regen["revision_type"] = "regenerate"
+                    regen["regenerate_reason"] = instruction
+                    regen["revision_round"] = round_num + 1
+                    answer_preview = str(regen.get("correct_answer", regen.get("answer", "?")))[:80]
+                    print(f"    [{slot_id}] Unified regen done: answer={answer_preview}")
+                    return q_idx, regen
+                except Exception as e:
+                    print(f"    [{slot_id}] Unified regen failed ({e}), falling back to legacy")
+
+            # Route comprehensive questions through HybridSubjectivePipeline
+            elif _is_comprehensive_slot(sb):
+                print(f"    [{slot_id}] Regenerating via HybridSubjectivePipeline (comprehensive)...")
+                comp_pipeline = HybridSubjectivePipeline(max_revision_rounds=1)
+                try:
+                    result = await asyncio.wait_for(
+                        comp_pipeline.run(sb, experience_cards.get(slot_id, ""), gateway),
+                        timeout=600,
+                    )
+                    regen = dict(result.final_question or {})
+                    regen["review"] = result.review or {}
+                    regen["rubric"] = result.rubric or {}
+                    regen["formatted_solution"] = result.formatted_solution or {}
+                    regen["slot_id"] = slot_id
+                    regen["pipeline_type"] = "hybrid_v2"
+                    regen["correct_answer"] = regen.get("answer", "")
+                    regen["revision_type"] = "regenerate"
+                    regen["regenerate_reason"] = instruction
+                    regen["revision_round"] = round_num + 1
+                    answer_preview = str(regen.get("correct_answer", "?"))[:80]
+                    print(f"    [{slot_id}] Comprehensive regen done: answer={answer_preview}")
+                    return q_idx, regen
+                except Exception as e:
+                    print(f"    [{slot_id}] Comprehensive regen failed ({e}), falling back to legacy")
+
+            # Legacy: single-choice regeneration
+            qbb = Blackboard(
+                task_id=f"regen_{slot_id}",
+                task_type="slot_composition",
+                initial_state={
+                    "current_blueprint": sb,
+                    "reference_questions": experience_cards.get(slot_id, ""),
+                },
+            )
+            record = await writer.execute(qbb)
+            if record.error:
+                return q_idx, current_questions[q_idx]
+            regen = qbb.get("generated_question") or {}
+            regen["slot_id"] = slot_id
+            regen["revision_type"] = "regenerate"
+            regen["regenerate_reason"] = instruction
+            regen["revision_round"] = round_num + 1
+
+            # Verify regenerated single-choice question
+            if gateway:
+                re_verified = await _verify_answer_with_codeact(gateway, regen, slot_id)
+                regen["codeact_verified"] = re_verified
+                re_match = re_verified.get("match", False)
+                if re_verified.get("verified") and not re_match and re_verified.get("solver_confidence") == "high":
+                    print(f"    [{slot_id}] WARNING: Regenerated question STILL fails verification")
+                    regen["codeact_verified"]["fix_status"] = "regen_still_wrong"
+
+            print(f"    [{slot_id}] Regenerated: answer={regen.get('correct_answer','?')}")
+            return q_idx, regen
+
         async def _do_fix(task):
             ftype, q_idx, slot_id, instruction = task
+            orig_q = current_questions[q_idx]
+            orig_pipeline_type = orig_q.get("pipeline_type", "")
+
             if ftype == "fix":
-                fbb = Blackboard(
-                    task_id=f"fix_{slot_id}",
-                    task_type="slot_composition",
-                    initial_state={
-                        "question_to_fix": current_questions[q_idx],
-                        "fix_instructions": instruction,
-                    },
-                )
-                record = await fixer.execute(fbb)
-                if record.error:
-                    return q_idx, current_questions[q_idx]
-                fixed = fbb.get("fixed_question") or {}
-                fixed["slot_id"] = slot_id
-                fixed["revision_type"] = "answer_fix"
-                fixed["fix_instruction"] = instruction
-                fixed["revision_round"] = round_num + 1
-                print(f"    [{slot_id}] Fixed: answer={fixed.get('correct_answer','?')}")
-                return q_idx, fixed
-            else:  # regen
+                # For comprehensive questions, answer_fix should upgrade to regen
+                # because QuestionFixerAgent produces single-choice format
                 sb = None
                 for s in blueprint.get("slots", []):
                     if s.get("slot_id") == slot_id:
                         sb = s
                         break
-                if not sb:
-                    return q_idx, current_questions[q_idx]
 
-                qbb = Blackboard(
-                    task_id=f"regen_{slot_id}",
+                if sb and _is_comprehensive_slot(sb):
+                    print(f"    [{slot_id}] answer_error on comprehensive → upgrading to regen")
+                    return await _do_regen(slot_id, q_idx, instruction)
+
+                fbb = Blackboard(
+                    task_id=f"fix_{slot_id}",
                     task_type="slot_composition",
                     initial_state={
-                        "current_blueprint": sb,
-                        "reference_questions": experience_cards.get(slot_id, ""),
+                        "question_to_fix": orig_q,
+                        "fix_instructions": instruction,
                     },
                 )
-                record = await writer.execute(qbb)
+                record = await fixer.execute(fbb)
                 if record.error:
-                    return q_idx, current_questions[q_idx]
-                regen = qbb.get("generated_question") or {}
-                regen["slot_id"] = slot_id
-                regen["revision_type"] = "regenerate"
-                regen["regenerate_reason"] = instruction
-                regen["revision_round"] = round_num + 1
-                print(f"    [{slot_id}] Regenerated: answer={regen.get('correct_answer','?')}")
-                return q_idx, regen
+                    return q_idx, orig_q
+                fixed = fbb.get("fixed_question") or {}
+                fixed["slot_id"] = slot_id
+                fixed["revision_type"] = "answer_fix"
+                fixed["fix_instruction"] = instruction
+                fixed["revision_round"] = round_num + 1
+                fixed["pipeline_type"] = fixed.get("pipeline_type") or orig_pipeline_type
+                print(f"    [{slot_id}] Fixed: answer={fixed.get('correct_answer','?')}")
+                return q_idx, fixed
+            else:  # regen
+                return await _do_regen(slot_id, q_idx, instruction)
 
         # Snapshot questions before fix for round record
         questions_before_fix = [dict(q) for q in current_questions]
@@ -864,7 +1015,7 @@ async def main():
     parser.add_argument("--requirements", default="出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点")
     parser.add_argument("--max-bp-revisions", type=int, default=1, help="Max blueprint revision rounds")
     parser.add_argument("--max-fix-rounds", type=int, default=2, help="Max question fix rounds")
-    parser.add_argument("--pipeline", default="new", choices=["new", "legacy"], help="Pipeline mode: new (legacy for SC + SubjectivePipeline for comprehensive) or legacy (QuestionWriter for all)")
+    parser.add_argument("--pipeline", default="new", choices=["new", "legacy", "unified"], help="Pipeline mode: unified (UnifiedPipeline for all), new (legacy SC + HybridSubjective for Comp), or legacy (QuestionWriter for all)")
     args = parser.parse_args()
 
     tpl_path = "data/slot_templates.json"

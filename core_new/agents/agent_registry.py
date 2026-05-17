@@ -14,6 +14,7 @@ import logging
 from typing import Any, Dict, Optional, Type
 
 from core_new.blackboard import Blackboard
+from core_new.cards import AgentCard
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class AgentRegistry:
     """Registry for invoking individual agents by name."""
 
     _agent_map: Dict[str, Type] = {}
+    _agent_cards: Dict[str, AgentCard] = {}
 
     @classmethod
     def _ensure_loaded(cls):
@@ -43,10 +45,48 @@ class AgentRegistry:
             "reviewer": IntentBasedReviewer,
         }
 
+        cls._agent_cards = {
+            "designer": AgentCard(
+                name="designer", role="question_design",
+                allowed_tools=[], max_steps=1,
+                module_path="core_new.agents.hybrid_subjective_team:QuestionDesignerAgent",
+            ),
+            "solver": AgentCard(
+                name="solver", role="code_solve",
+                allowed_tools=["code_exec_408"], max_steps=5,
+                module_path="core_new.agents.file_code_solver:FileCodeSolverAgent",
+            ),
+            "formatter": AgentCard(
+                name="formatter", role="format_solution",
+                allowed_tools=[], max_steps=1,
+                module_path="core_new.agents.hybrid_subjective_team:HybridSolutionFormatter",
+            ),
+            "rubric": AgentCard(
+                name="rubric", role="rubric_write",
+                allowed_tools=[], max_steps=1,
+                module_path="core_new.agents.hybrid_subjective_team:HybridRubricWriter",
+            ),
+            "reviewer": AgentCard(
+                name="reviewer", role="intent_review",
+                allowed_tools=[], max_steps=1,
+                module_path="core_new.agents.hybrid_subjective_team:IntentBasedReviewer",
+            ),
+        }
+
     @classmethod
     def available_agents(cls) -> list:
         cls._ensure_loaded()
         return list(cls._agent_map.keys())
+
+    @classmethod
+    def get_card(cls, agent_name: str) -> Optional[AgentCard]:
+        cls._ensure_loaded()
+        return cls._agent_cards.get(agent_name)
+
+    @classmethod
+    def all_cards(cls) -> Dict[str, AgentCard]:
+        cls._ensure_loaded()
+        return dict(cls._agent_cards)
 
     @classmethod
     async def invoke(

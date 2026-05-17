@@ -2,7 +2,7 @@
 
 Unlike the inline CodeActSolver, this agent:
 1. Writes complete, self-contained Python scripts to tmp/solutions/{slot_id}/
-2. Runs them via subprocess
+2. Runs them via code_exec_408 in ToolRegistry
 3. Code is persisted for independent verification
 4. Does NOT format answers — just produces code + raw output
 5. No dependency on pre-built tools_408.py — writes everything from scratch
@@ -10,21 +10,23 @@ Unlike the inline CodeActSolver, this agent:
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import os
 import re
-import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from core_new.agent_runtime import ToolRegistry
+from core_new.edu408_runtime import build_408_tools
 from core_new.llm_gateway import LLMGateway
+from core_new.agents.solver_utils import (
+    extract_python_code, is_final_answer, parse_exec_result,
+    extract_results_from_output, parse_final_json,
+)
 
 logger = logging.getLogger(__name__)
 
-SOLUTIONS_DIR = os.path.join("tmp", "solutions")
 MAX_STEPS = 5
 RUN_TIMEOUT = 10  # seconds per script execution
 
@@ -57,76 +59,6 @@ class CodeSolution:
         return ""
 
 
-def _extract_python_code(text: str) -> Optional[str]:
-    """Extract Python code block from model output."""
-    m = re.search(r"```[Pp]ython\s*\n(.*?)```", text, re.DOTALL)
-    if m:
-        return m.group(1).strip()
-    m = re.search(r"```\s*\n(.*?)```", text, re.DOTALL)
-    if m:
-        content = m.group(1).strip()
-        if any(kw in content for kw in ["print(", "import ", "def ", "=", "for ", "if "]):
-            return content
-    return None
-
-
-def _extract_results_from_output(output: str) -> Dict[str, Any]:
-    """Try to extract structured results from script output."""
-    results: Dict[str, Any] = {}
-
-    # Try JSON output
-    try:
-        # Look for JSON in output
-        m = re.search(r"\{[^{}]+\}", output, re.DOTALL)
-        if m:
-            results = json.loads(m.group())
-    except json.JSONDecodeError:
-        pass
-
-    # Try key=value patterns
-    for m in re.finditer(r"(?:结果|result|answer|答案)[：:]\s*(.+)", output, re.IGNORECASE):
-        key = f"result_{len(results)}"
-        results[key] = m.group(1).strip()
-
-    return results
-
-
-def _is_final_answer(text: str) -> bool:
-    return bool(re.search(r"#\s*final_answer", text, re.IGNORECASE)) or \
-           bool(re.search(r"FINAL_ANSWER:", text, re.IGNORECASE))
-
-
-def _save_script(slot_id: str, step: int, code: str) -> str:
-    """Save a Python script to disk and return the file path."""
-    dir_path = os.path.join(SOLUTIONS_DIR, slot_id)
-    os.makedirs(dir_path, exist_ok=True)
-
-    file_path = os.path.join(dir_path, f"step{step}.py")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(code)
-
-    return file_path
-
-
-def _run_script(file_path: str, timeout: int = RUN_TIMEOUT) -> tuple:
-    """Run a Python script and return (exit_code, stdout, stderr)."""
-    abs_path = os.path.abspath(file_path)
-    work_dir = os.path.dirname(abs_path)
-    try:
-        proc = subprocess.run(
-            ["python", abs_path],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=work_dir,
-        )
-        return proc.returncode, proc.stdout[:5000], proc.stderr[:1000]
-    except subprocess.TimeoutExpired:
-        return -1, "", "TIMEOUT"
-    except Exception as e:
-        return -1, "", str(e)
-
-
 # ── Prompt templates ──
 
 FILE_SOLVER_SYSTEM = """你是一个Python编程解题智能体。你的任务是为408考研题目编写Python求解脚本。
@@ -137,6 +69,12 @@ FILE_SOLVER_SYSTEM = """你是一个Python编程解题智能体。你的任务�
 3. 用 print() 输出所有计算结果
 4. 不要输出最终答案格式（# final_answer），只输出计算过程和结果
 5. 每个脚本解决一个明确的计算目标
+
+**严禁硬编码中间值**：
+- 必须用代码从题目给定的原始数据（如十六进制机器数）中解析出字段，而非凭记忆硬编码解析结果
+- IEEE 754浮点数：必须用 struct.unpack('<I', bytes.fromhex(...)) 解析二进制，再手动提取符号位/阶码/尾数字段
+- Cache地址计算：必须用代码计算 block_addr = addr // block_size, set_index = block_num % num_sets
+- 任何从题目条件推导的中间值都必须通过代码计算，不得手动推算后硬编码
 
 你可以自由使用Python标准库：math, struct, itertools, collections, functools等。
 根据题目需要自己编写计算函数，不要假设有预建的工具函数。"""
@@ -151,6 +89,35 @@ FILE_SOLVER_USER = """请为以下题目编写Python求解脚本：
 - 写出完整的Python脚本
 - 用 print() 输出每个子问的计算过程和结果
 - 脚本必须可以直接运行（python step1.py）"""
+
+FILE_SOLVER_SC_VERIFY = """请为以下单选题编写Python脚本，**逐个验证每个选项**的正确性。
+
+## 题目
+{stem}
+
+## 选项
+A: {option_A}
+B: {option_B}
+C: {option_C}
+D: {option_D}
+
+## 要求
+- 编写Python代码，对每个选项进行独立计算验证
+- 必须从题目原始数据（如十六进制数、地址值等）用代码解析，严禁硬编码中间值
+- IEEE 754浮点数必须用struct模块解析，Cache地址必须用代码计算
+- 对每个选项，计算其对应的结果，判断选项描述是否正确
+- 最后输出一个JSON格式的验证结果
+
+输出格式示例：
+```json
+{{
+  "option_A": {{"computed": "计算得到的值", "is_correct": false, "reason": "为什么不对"}},
+  "option_B": {{"computed": "计算得到的值", "is_correct": true, "reason": "为什么正确"}},
+  "option_C": {{"computed": "计算得到的值", "is_correct": false, "reason": "为什么不对"}},
+  "option_D": {{"computed": "计算得到的值", "is_correct": false, "reason": "为什么不对"}},
+  "computed_correct": "B"
+}}
+```"""
 
 FILE_SOLVER_OBSERVATION = """# observation
 脚本 {file_path} 执行结果：
@@ -191,10 +158,18 @@ solve()
 class FileCodeSolverAgent:
     """Solves questions by writing Python scripts to disk and running them."""
 
-    def __init__(self, gateway: LLMGateway, *, max_tokens: int = 4096, max_steps: int = MAX_STEPS):
+    def __init__(
+        self,
+        gateway: LLMGateway,
+        *,
+        max_tokens: int = 4096,
+        max_steps: int = MAX_STEPS,
+        tool_registry: Optional[ToolRegistry] = None,
+    ):
         self.gateway = gateway
         self.max_tokens = max_tokens
         self.max_steps = max_steps
+        self.tools = tool_registry or build_408_tools(gateway=None, include_llm_tools=False)
 
     async def solve(
         self,
@@ -208,15 +183,24 @@ class FileCodeSolverAgent:
         start_time = time.monotonic()
         solution = CodeSolution(slot_id=slot_id)
 
-        sub_questions_section = ""
-        if sub_questions:
-            lines = [f"- {sq}" for sq in sub_questions]
-            sub_questions_section = "## 子问\n" + "\n".join(lines)
-
-        user_msg = FILE_SOLVER_USER.format(
-            question_draft=question_draft,
-            sub_questions_section=sub_questions_section,
-        )
+        # Choose prompt based on question type
+        if question_type == "single_choice" and options:
+            user_msg = FILE_SOLVER_SC_VERIFY.format(
+                stem=question_draft,
+                option_A=options.get("A", ""),
+                option_B=options.get("B", ""),
+                option_C=options.get("C", ""),
+                option_D=options.get("D", ""),
+            )
+        else:
+            sub_questions_section = ""
+            if sub_questions:
+                lines = [f"- {sq}" for sq in sub_questions]
+                sub_questions_section = "## 子问\n" + "\n".join(lines)
+            user_msg = FILE_SOLVER_USER.format(
+                question_draft=question_draft,
+                sub_questions_section=sub_questions_section,
+            )
 
         messages = [
             {"role": "system", "content": FILE_SOLVER_SYSTEM},
@@ -227,7 +211,7 @@ class FileCodeSolverAgent:
             result = await self.gateway.generate_text(
                 messages,
                 max_tokens=self.max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
             )
 
             if not result.ok:
@@ -243,29 +227,43 @@ class FileCodeSolverAgent:
                 continue
 
             # Check if model gives final answer
-            if _is_final_answer(response_text):
-                parsed = self._parse_final_results(response_text)
+            if is_final_answer(response_text):
+                parsed = parse_final_json(response_text)
                 solution.computed_results.update(parsed)
                 logger.info("[%s] Final answer at step %d: %s", slot_id, step + 1,
                             json.dumps(parsed, ensure_ascii=False)[:200])
                 break
 
             # Extract Python code
-            code = _extract_python_code(response_text)
+            code = extract_python_code(response_text)
             if code:
-                # Save to disk
-                file_path = _save_script(slot_id, step + 1, code)
-                solution.code_files.append(file_path)
+                exec_raw = await self.tools.execute("code_exec_408", {
+                    "code": code,
+                    "slot_id": slot_id,
+                    "step": step + 1,
+                    "timeout": RUN_TIMEOUT,
+                    "max_stdout": 5000,
+                    "execution_mode": "subprocess",
+                    "persist": True,
+                })
+                exec_result = parse_exec_result(exec_raw)
+                file_path = exec_result.get("file_path", "")
+                exit_code = int(exec_result.get("exit_code", -1))
+                stdout = str(exec_result.get("stdout", ""))[:5000]
+                stderr = str(exec_result.get("stderr", ""))[:1000]
+
+                if file_path:
+                    solution.code_files.append(file_path)
                 logger.info("[%s] Saved step %d: %s (%d chars)", slot_id, step + 1, file_path, len(code))
 
-                # Run the script
-                exit_code, stdout, stderr = _run_script(file_path)
                 solution.python_exec_count += 1
 
                 if stdout:
                     solution.outputs.append(stdout)
-                    extracted = _extract_results_from_output(stdout)
+                    extracted = extract_results_from_output(stdout)
                     solution.computed_results.update(extracted)
+                if not exec_result.get("ok") and not solution.error:
+                    solution.error = stderr or str(exec_result.get("error", "execution failed"))
 
                 obs = FILE_SOLVER_OBSERVATION.format(
                     file_path=file_path,
@@ -291,11 +289,11 @@ class FileCodeSolverAgent:
             # Exhausted steps — force final output
             messages.append({"role": "user", "content": FILE_SOLVER_FORCE_FINAL})
             result = await self.gateway.generate_text(
-                messages, max_tokens=self.max_tokens, enable_thinking=False,
+                messages, max_tokens=self.max_tokens, enable_thinking=True,
             )
             if result.ok and result.content:
-                if _is_final_answer(result.content):
-                    parsed = self._parse_final_results(result.content)
+                if is_final_answer(result.content):
+                    parsed = parse_final_json(result.content)
                     solution.computed_results.update(parsed)
                 else:
                     solution.computed_results["raw_text"] = result.content.strip()[:500]
@@ -306,40 +304,12 @@ class FileCodeSolverAgent:
                      solution.total_time_s)
         return solution
 
-    def _parse_final_results(self, text: str) -> Dict[str, Any]:
-        """Parse final answer JSON from model output."""
-        # Try JSON code block
-        m = re.search(r"```json\s*\n(.*?)```", text, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group(1).strip())
-            except json.JSONDecodeError:
-                pass
-
-        # Try inline JSON
-        m = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-        if m:
-            try:
-                return json.loads(m.group())
-            except json.JSONDecodeError:
-                pass
-
-        # Try key-value patterns
-        results = {}
-        for m in re.finditer(r"\*\*(sub_q\d+)\*\*:\s*(.+)", text):
-            results[m.group(1)] = m.group(2).strip()
-
-        return results
-
     async def re_run(self, file_path: str) -> Dict[str, Any]:
         """Re-run a previously saved script (for verification)."""
-        if not os.path.exists(file_path):
-            return {"error": f"File not found: {file_path}"}
-
-        exit_code, stdout, stderr = _run_script(file_path)
-        return {
+        raw = await self.tools.execute("code_exec_408", {
             "file_path": file_path,
-            "exit_code": exit_code,
-            "stdout": stdout,
-            "stderr": stderr,
-        }
+            "timeout": RUN_TIMEOUT,
+            "max_stdout": 5000,
+            "execution_mode": "subprocess",
+        })
+        return parse_exec_result(raw)

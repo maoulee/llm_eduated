@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
+from core_new.agents.agent_registry import AgentRegistry
 from core_new.blackboard import Blackboard
 
 logger = logging.getLogger(__name__)
@@ -101,7 +102,7 @@ class QuestionDesignerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="question_design",
                 max_tokens=max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
                 timeout_s=300.0,
                 max_retries=2,
                 system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。你必须写清设计意图，但不写答案。严格按markdown格式输出。",
@@ -162,7 +163,7 @@ class HybridSolutionFormatter(BaseAgent):
                 output_format="markdown",
                 output_key="formatted_solution",
                 max_tokens=max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
                 system_prompt="你是一位408考研解题专家，擅长根据计算结果整理标准答案。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -208,7 +209,7 @@ class HybridRubricWriter(BaseAgent):
                 output_format="markdown",
                 output_key="rubric",
                 max_tokens=max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
                 system_prompt="你是一位408考研评分标准制定专家。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -252,7 +253,7 @@ class IntentBasedReviewer(BaseAgent):
                 output_format="markdown",
                 output_key="review",
                 max_tokens=max_tokens,
-                enable_thinking=False,
+                enable_thinking=True,
                 system_prompt="你是一位408考研出题审核专家，负责对比出题意图与解题结果，并对照slot蓝图评估。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -398,7 +399,57 @@ class HybridSubjectivePipeline:
                 logger.info("[%s] Revision round %d, fix_target=%s",
                             slot_id, revision_round, review.get("fix_target", ""))
 
-            # ── Step 1: Design question (skip if only answer needs fixing) ──
+                # ── Use AgentRegistry for targeted revision ──
+                fix_target = review.get("fix_target", "answer")
+                revision_bb = Blackboard(
+                    task_id=f"revise_{slot_id}_r{revision_round}",
+                    task_type="hybrid_subjective",
+                    initial_state={
+                        "current_blueprint": slot_blueprint,
+                        "question_design": design,
+                        "formatted_solution": solution,
+                        "rubric": rubric,
+                    },
+                )
+                fix_results = await AgentRegistry.invoke_fix(
+                    fix_target, revision_bb, gateway,
+                )
+
+                if fix_target == "question":
+                    design = revision_bb.get("question_design") or design
+                if fix_target in ("question", "answer"):
+                    code_solution = revision_bb.get("code_solution") or code_solution
+                    solver_dict = code_solution.to_dict() if hasattr(code_solution, "to_dict") else solver_dict
+                    solution = revision_bb.get("formatted_solution") or solution
+                if fix_target == "rubric":
+                    rubric = revision_bb.get("rubric") or rubric
+
+                # Re-run review after fix
+                review_bb = Blackboard(
+                    task_id=f"review_{slot_id}_r{revision_round}",
+                    task_type="hybrid_subjective",
+                    initial_state={
+                        "question_design": design,
+                        "formatted_solution": solution,
+                        "rubric": rubric,
+                        "current_blueprint": slot_blueprint,
+                    },
+                )
+                reviewer = IntentBasedReviewer(gateway)
+                await reviewer.execute(review_bb)
+                review = review_bb.get("review") or {}
+
+                logger.info("[%s] Post-fix review: status=%s score=%s",
+                            slot_id, review.get("status"), review.get("score"))
+                status = str(review.get("status", "")).lower()
+                needs_fix = review.get("needs_fix") == "yes" or status == "revise"
+                if not needs_fix or revision_round >= self.max_revision_rounds:
+                    break
+                continue
+
+            # ── Initial run (revision_round == 0): manual pipeline ──
+
+            # ── Step 1: Design question ──
             need_new_question = (
                 revision_round == 0
                 or review.get("fix_target") == "question"
@@ -523,10 +574,6 @@ class HybridSubjectivePipeline:
             needs_fix = review.get("needs_fix") == "yes" or status == "revise"
             if not needs_fix or revision_round >= self.max_revision_rounds:
                 break
-
-            fix_target = review.get("fix_target", "answer")
-            logger.info("[%s] Revision needed: %s → %s",
-                        slot_id, review.get("issue"), fix_target)
 
         # Build final question
         # Prefer formatted_solution (structured by formatter agent) over raw solver output

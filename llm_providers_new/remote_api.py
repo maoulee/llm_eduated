@@ -156,14 +156,29 @@ class RemoteAPIProvider(BaseLLMProvider):
         if extra_body:
             params["extra_body"] = extra_body
 
-        try:
-            response = await self.client.chat.completions.create(**params)
-            msg = response.choices[0].message
-            reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
-            return {"content": msg.content or "", "reasoning_content": reasoning_content}
-        except Exception as e:
-            logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
-            return {"content": f"Error: API call failed. Details: {e}", "reasoning_content": ""}
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = await self.client.chat.completions.create(**params)
+                msg = response.choices[0].message
+                reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
+                return {"content": msg.content or "", "reasoning_content": reasoning_content}
+            except Exception as e:
+                import asyncio as _asyncio
+                is_retryable = (
+                    "500" in str(e)
+                    or "ConnectionError" in type(e).__name__
+                    or "Connection error" in str(e)
+                    or "TimeoutExpired" in type(e).__name__
+                )
+                if is_retryable and attempt < max_retries - 1:
+                    wait_s = 60
+                    logger.warning("Retryable API error (attempt %d/%d), waiting %ds: %s",
+                                   attempt + 1, max_retries, wait_s, str(e)[:200])
+                    await _asyncio.sleep(wait_s)
+                    continue
+                logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
+                return {"content": f"Error: API call failed. Details: {e}", "reasoning_content": ""}
 
     async def _vllm_chat_batch_call(
         self,

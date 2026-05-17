@@ -93,6 +93,8 @@ SC_SOLUTION_FORMATTER_PROMPT = """你是一位408考研解析编写专家。请�
 - solution_steps应分步清晰，每步一句话
 - explanation应先给出结论，再展开分析
 - 语言简洁规范，符合考研真题解析风格
+- **严禁**在explanation中出现自我修正、犹豫、反复推演（如"等等"、"不对"、"让我们重新审视"、"如果我们将"等表述）
+- explanation必须是干净的最终定稿，不得暴露思考过程
 
 请严格按以下markdown格式输出：
 

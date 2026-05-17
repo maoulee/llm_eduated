@@ -36,7 +36,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Global concurrency control — all gateway instances share this semaphore
-_MAX_CONCURRENCY = int(os.getenv("LLM_MAX_CONCURRENCY", "3"))
+_MAX_CONCURRENCY = int(os.getenv("LLM_MAX_CONCURRENCY", "2"))
 _concurrency_sem: Optional[asyncio.Semaphore] = None
 
 
