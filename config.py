@@ -1,6 +1,8 @@
 # config.py
 
 import os
+from dotenv import load_dotenv
+load_dotenv()
 from typing import Dict, Any, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field, BaseModel

@@ -1,25 +1,39 @@
 """Agent implementations for multi-agent workflows."""
 
-from .extraction_agents import (
-    EXTRACTION_ROUTING,
-    P1StructureAgent,
-    P2KnowledgeAgent,
-    P3TriggerAgent,
-    P4ReasoningAgent,
-    P5ReviewAgent,
-    build_extraction_agents,
-    build_extraction_coordinator,
-    create_extraction_blackboard,
+from .slot_agents import (
+    PaperComposerAgent,
+    BlueprintReviewerAgent,
+    QuestionWriterAgent,
+    QuestionFixerAgent,
+    PaperReviewerAgent,
 )
+from .codeact_solver import CodeActSolverAgent, SolverResult
+from .file_code_solver import FileCodeSolverAgent, CodeSolution
+from .hybrid_subjective_team import (
+    QuestionDesignerAgent,
+    HybridSolutionFormatter,
+    HybridRubricWriter,
+    IntentBasedReviewer,
+    HybridSubjectivePipeline,
+    HybridSubjectiveResult,
+)
+from .agent_registry import AgentRegistry
 
 __all__ = [
-    "EXTRACTION_ROUTING",
-    "P1StructureAgent",
-    "P2KnowledgeAgent",
-    "P3TriggerAgent",
-    "P4ReasoningAgent",
-    "P5ReviewAgent",
-    "build_extraction_agents",
-    "build_extraction_coordinator",
-    "create_extraction_blackboard",
+    "PaperComposerAgent",
+    "BlueprintReviewerAgent",
+    "QuestionWriterAgent",
+    "QuestionFixerAgent",
+    "PaperReviewerAgent",
+    "CodeActSolverAgent",
+    "SolverResult",
+    "FileCodeSolverAgent",
+    "CodeSolution",
+    "QuestionDesignerAgent",
+    "HybridSolutionFormatter",
+    "HybridRubricWriter",
+    "IntentBasedReviewer",
+    "HybridSubjectivePipeline",
+    "HybridSubjectiveResult",
+    "AgentRegistry",
 ]

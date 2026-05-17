@@ -429,3 +429,176 @@ PAPER_REVIEWER_PROMPT = """你是一位408考研试卷质量评审专家。请�
 
 # Legacy prompt (kept for backward compatibility)
 PAPER_QUALITY_REVIEWER = PAPER_REVIEWER_PROMPT
+
+# ═══════════════════════════════════════════════════════════════
+# Hybrid subjective prompts (legacy prompt quality + new pipeline speed)
+# ═══════════════════════════════════════════════════════════════
+
+SUBJECTIVE_DRAFT_ONLY_PROMPT = """你是一位408考研出题专家。请严格按照以下SlotBlueprint设计一道综合应用题。
+
+## 出题蓝图
+{slot_blueprint_json}
+
+## 经验卡参考
+{experience_card_md}
+
+## 参考真题（风格参考，请勿照抄）
+{reference_questions}
+
+## 出题要求
+
+### 题目设计
+- 综合应用题不设计选项，只有题干和子问
+- sub_questions决定子问数量，每个子问要有明确的求解目标
+- **target_difficulty**决定整体难度，各子问应梯度递进
+- **calculation_load**决定计算量，≥3时应包含需多步推演的子问
+- **must_include**中的要素必须在题目中体现
+- **must_avoid**中的要素绝对不能出现
+- 题目必须完全原创，不与任何真题雷同
+- 参数必须自洽，确保题目有唯一确定解
+
+### 设计意图（重要！）
+你必须写清楚：
+1. 每个子问期望考察什么知识点/能力
+2. 预期的解题路径是什么（用什么公式/方法/步骤）
+3. 陷阱设计（如果有的话，学生容易犯什么错）
+4. 各子问之间的逻辑关系
+
+## 输出格式（只出题和解题设计，不写答案）
+
+# question {slot_id}
+
+## 题目
+- **stem**: 题干全文（包含所有已知条件和背景描述）
+- **sub_questions**: 子问列表，JSON数组格式，如 ["子问1内容", "子问2内容", "子问3内容"]
+- **given_conditions**: 题目给出的所有已知条件，JSON数组格式
+- **difficulty_self_assessment**: 1-5自评难度
+- **knowledge_points**: 知识点1, 知识点2
+- **parameter_notes**: 参数设计说明（为什么选这些参数，确保可解性）
+
+## 设计意图
+- **sub_q1_intent**: 第1问期望考察什么，预期解题路径
+- **sub_q2_intent**: 第2问期望考察什么，预期解题路径
+- **sub_q3_intent**: 第3问期望考察什么，预期解题路径（如有更多子问继续列出）
+- **trap_design**: 陷阱设计说明（学生容易犯的错误，无陷阱写"无"）
+- **sub_question_logic**: 各子问之间的逻辑关系（一句话）
+"""
+
+SUBJECTIVE_SOLUTION_FORMATTER_PROMPT = """你是一位408考研解题专家。请根据以下题目和代码执行结果，整理成标准答案格式。
+
+## 题目
+{question_json}
+
+## 代码执行结果（直接从Python脚本输出）
+{solver_result_json}
+
+## 要求
+- 直接阅读 raw_outputs / last_raw_output 中的Python脚本输出
+- 不要重新解题，只整理代码执行得到的结果
+- 每个子问给出清晰的解答步骤，数值和计算结果必须来自代码输出
+- 步骤要简洁，不要冗长的教学式解释
+- 最终结果要醒目标注
+
+请严格按以下markdown格式输出：
+
+# solution {slot_id}
+
+## 标准答案
+- **answers**: 各子问最终答案，JSON格式如 {{"sub_q1": "答案1", "sub_q2": "答案2"}}
+- **total_score**: 题目总分
+
+## 解答过程
+
+### 第1问
+（简洁的解答步骤）
+
+### 第2问
+（简洁的解答步骤）
+
+（每个子问一个 ### 小节）
+"""
+
+SUBJECTIVE_RUBRIC_PROMPT = """你是一位408考研评分标准制定专家。请根据以下题目和标准答案制定评分标准。
+
+## 题目
+{question_json}
+
+## 标准答案
+{solution_json}
+
+## 蓝图要求
+{slot_blueprint_json}
+
+## 要求
+- 评分点要与子问对应
+- 每个评分点标明分值
+- 关键步骤给分，结果也给分
+- 总分应等于蓝图中的typical_score
+
+请严格按以下markdown格式输出：
+
+# rubric {slot_id}
+
+## 评分点
+- **point_1**: 评分点描述（X分）
+- **point_2**: 评分点描述（X分）
+...
+
+## 评分说明
+- 总分：X分
+- 评分要点概述（1-2句话）
+"""
+
+SUBJECTIVE_QUESTION_REVIEW_PROMPT = """你是一位408考研出题审核专家。请审核以下综合应用题。
+
+## 出题设计意图
+{design_intent_json}
+
+## 题目
+{question_json}
+
+## 解题结果
+{solution_json}
+
+## 评分标准
+{rubric_json}
+
+## 蓝图要求（用于对照）
+{slot_blueprint_json}
+
+## 审核核心：对比出题意图与实际结果
+
+你需要对比三个方面：
+
+1. **题目设计 vs 蓝图要求**：考点、难度、计算量是否符合slot
+2. **出题意图 vs 解题结果**：出题者期望考察的知识点，解题者是否正确回答了
+3. **答案正确性**：解题结果是否计算正确
+
+## 修复路由（关键！）
+
+- 如果**题目设计**不符合蓝图（考点偏了、难度不对、计算量不对）→ fix_target=question（重新出题）
+- 如果**题目设计**没问题但**答案错误**→ fix_target=answer（只重新解题）
+- 如果都好 → pass
+
+请严格按以下markdown格式输出：
+
+# review {slot_id}
+
+## 结果
+- **status**: pass 或 revise
+- **score**: 0-100
+- **needs_fix**: yes 或 no
+
+## 检查
+- **design_vs_blueprint**: pass 或 fail（题目设计是否符合蓝图要求）
+- **intent_vs_answer**: pass 或 fail（出题意图与解题结果是否匹配）
+- **answer_correctness**: pass 或 fail（答案计算是否正确）
+- **sub_question_count_match**: pass 或 fail
+- **calculation_load_match**: pass 或 fail
+- **rubric_match**: pass 或 fail
+
+## 修复指令（pass时写"无"）
+- **issue**: 具体问题描述
+- **fix_target**: question（题目设计问题，需重新出题）或 answer（答案问题，只需重新解题）
+- **fix_instruction**: 具体修复指令
+"""

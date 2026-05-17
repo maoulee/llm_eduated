@@ -43,3 +43,10 @@ models/
 # OS
 .DS_Store
 Thumbs.db
+
+# Reference projects (not tracked)
+reference/
+*.zip
+
+# Temp
+tmp/
