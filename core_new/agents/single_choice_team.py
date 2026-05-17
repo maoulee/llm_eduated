@@ -176,6 +176,7 @@ class RuntimeSingleChoiceDraftAgent(SingleChoiceDraftAgent):
                     max_iterations=5,
                     max_tokens=self.config.max_tokens,
                     enable_thinking=self.config.enable_thinking,
+                    execution_policy=self.execution_policy,
                 )
                 result = await asyncio.wait_for(
                     loop.run(
@@ -433,7 +434,7 @@ class SingleChoiceReviewerAgent(BaseAgent):
                 solution_parts.append(f"- **{key}**: {val}")
         solution_md = "\n".join(solution_parts) if solution_parts else "（无解析）"
 
-        return SC_REVIEWER_PROMPT.format(
+        prompt = SC_REVIEWER_PROMPT.format(
             stem=stem,
             option_A=option_A,
             option_B=option_B,
@@ -442,6 +443,10 @@ class SingleChoiceReviewerAgent(BaseAgent):
             solution_md=solution_md,
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
         )
+        checklist = self.get_audit_checklist()
+        if checklist:
+            prompt += "\n\n" + checklist
+        return prompt
 
     def parse_output(self, raw: Any) -> Any:
         data = try_parse_json_object(str(raw))

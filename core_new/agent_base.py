@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -12,6 +13,8 @@ from typing import Any, Optional
 from .agent_roles import AuditMode, ExecutionPolicy, RoleType, resolve_execution_policy
 from .blackboard import AgentRecord, Blackboard
 from .llm_gateway import LLMGateway, LLMResult
+
+logger = logging.getLogger(__name__)
 
 _UNSET = object()
 
@@ -51,6 +54,13 @@ class BaseAgent(ABC):
             config.max_retries = max(0, self.execution_policy.transport_retry.max_attempts - 1)
         if config.repair_max_retries is _UNSET:
             config.repair_max_retries = self.execution_policy.format_repair.max_attempts
+
+    def get_audit_checklist(self) -> str:
+        """Return audit checklist text if this agent has an audit_mode configured."""
+        if not self.config.audit_mode:
+            return ""
+        from core_new.audit_profiles import build_audit_checklist_prompt
+        return build_audit_checklist_prompt(self.config.audit_mode)
 
     @abstractmethod
     def build_input(self, blackboard: Blackboard) -> str:
@@ -129,6 +139,17 @@ class BaseAgent(ABC):
                         latency_s=latency_s,
                     )
                     self._attach_metadata(record, repair_attempts)
+                    if self.execution_policy.fallback.enabled:
+                        record.metadata["fallback"] = {
+                            "enabled": True,
+                            "target": self.execution_policy.fallback.target,
+                            "original_error": last_error,
+                        }
+                        logger.warning(
+                            "[%s] Agent failed, fallback target: %s",
+                            self.config.name,
+                            self.execution_policy.fallback.target,
+                        )
                     return record
                 await asyncio.sleep(min(2 ** attempt, 5))
 
@@ -137,6 +158,8 @@ class BaseAgent(ABC):
             "role_type": self.execution_policy.role_type.value,
             "execution_policy": self.execution_policy.to_dict(),
             "repair_attempts": repair_attempts,
+            "fallback_enabled": self.execution_policy.fallback.enabled,
+            "fallback_target": self.execution_policy.fallback.target if self.execution_policy.fallback.enabled else "",
         }
 
     async def _parse_validate_repair(

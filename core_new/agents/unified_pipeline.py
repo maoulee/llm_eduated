@@ -194,7 +194,7 @@ class UnifiedSCReviewer(BaseAgent):
                 distractor_parts.append(f"  {letter}: {intent}")
         distractor_strategies = "\n".join(distractor_parts) if distractor_parts else "  未提供"
 
-        return UNIFIED_SC_REVIEW_PROMPT.format(
+        prompt = UNIFIED_SC_REVIEW_PROMPT.format(
             stem=design.get("stem", ""),
             option_A=options.get("option_A", ""),
             option_B=options.get("option_B", ""),
@@ -205,6 +205,10 @@ class UnifiedSCReviewer(BaseAgent):
             solver_verification_json=verification_json,
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
         )
+        checklist = self.get_audit_checklist()
+        if checklist:
+            prompt += "\n\n" + checklist
+        return prompt
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)

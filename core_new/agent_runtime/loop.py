@@ -24,6 +24,7 @@ class AgentLoopResult:
     tools_used: list[str]
     messages: list[dict[str, Any]]
     trace: AgentTrace
+    policy_applied: dict | None = None
 
 
 class Edu408AgentLoop:
@@ -44,6 +45,7 @@ class Edu408AgentLoop:
         max_iterations: int = 8,
         max_tokens: int = 4096,
         enable_thinking: bool = False,
+        execution_policy=None,
     ):
         self.gateway = gateway
         self.tools = tools
@@ -51,6 +53,7 @@ class Edu408AgentLoop:
         self.max_iterations = max_iterations
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
+        self.execution_policy = execution_policy
 
     async def run(
         self,
@@ -70,6 +73,8 @@ class Edu408AgentLoop:
             extra_system=extra_system,
         )
         trace = AgentTrace(task=task, messages=messages)
+        if self.execution_policy and not self.execution_policy.trace.enabled:
+            trace = None
         tools_used: list[str] = []
         allowed = set(allowed_tools or self.tools.tool_names)
 
@@ -106,23 +111,36 @@ class Edu408AgentLoop:
                     observation = await self.tools.execute(tool_name, arguments)
                     tools_used.append(tool_name)
 
-                trace.tool_traces.append(
-                    ToolTrace(
-                        iteration=iteration,
-                        tool_name=str(tool_name),
-                        arguments=arguments if isinstance(arguments, dict) else {},
-                        observation=observation,
+                if trace is not None:
+                    trace.tool_traces.append(
+                        ToolTrace(
+                            iteration=iteration,
+                            tool_name=str(tool_name),
+                            arguments=arguments if isinstance(arguments, dict) else {},
+                            observation=(
+                                observation
+                                if not self.execution_policy
+                                or self.execution_policy.trace.include_tool_observations
+                                else ""
+                            ),
+                        )
                     )
-                )
                 self.context.add_tool_observation(messages, str(tool_name), observation[:16000])
         else:
             final = f"Max iterations ({self.max_iterations}) reached without a final answer."
 
-        trace.final = final
-        trace.messages = messages
-        if trace_path:
-            trace.write_jsonl(trace_path)
-        return AgentLoopResult(final=final, tools_used=tools_used, messages=messages, trace=trace)
+        if trace is not None:
+            trace.final = final
+            trace.messages = messages
+            if trace_path:
+                trace.write_jsonl(trace_path)
+        return AgentLoopResult(
+            final=final,
+            tools_used=tools_used,
+            messages=messages,
+            trace=trace if trace is not None else AgentTrace(task=task),
+            policy_applied=self.execution_policy.to_dict() if self.execution_policy else None,
+        )
 
 
 def _extract_tool_calls(content: str) -> list[dict[str, Any]]:

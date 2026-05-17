@@ -345,7 +345,7 @@ class IntentBasedReviewer(BaseAgent):
         if "design_intent" in question:
             design_intent.update(question["design_intent"])
 
-        return SUBJECTIVE_QUESTION_REVIEW_PROMPT.format(
+        prompt = SUBJECTIVE_QUESTION_REVIEW_PROMPT.format(
             design_intent_json=json.dumps(design_intent, ensure_ascii=False, indent=2),
             question_json=json.dumps(question, ensure_ascii=False, indent=2),
             solution_json=json.dumps(solution, ensure_ascii=False, indent=2),
@@ -353,6 +353,10 @@ class IntentBasedReviewer(BaseAgent):
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
             slot_id=question.get("slot_id", "Q43"),
         )
+        checklist = self.get_audit_checklist()
+        if checklist:
+            prompt += "\n\n" + checklist
+        return prompt
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)

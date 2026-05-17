@@ -208,11 +208,15 @@ class BlueprintReviewerAgent(BaseAgent):
             contracts.append(contract)
         slot_contracts_md = "\n\n---\n\n".join(contracts) if contracts else "（无题位契约）"
 
-        return BLUEPRINT_REVIEWER_PROMPT.format(
+        prompt = BLUEPRINT_REVIEWER_PROMPT.format(
             user_requirements=requirements,
             paper_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
             slot_contracts_md=slot_contracts_md,
         )
+        checklist = self.get_audit_checklist()
+        if checklist:
+            prompt += "\n\n" + checklist
+        return prompt
 
     def parse_output(self, raw: Any) -> Any:
         sections = _parse_md_sections(raw)
@@ -376,11 +380,15 @@ class PaperReviewerAgent(BaseAgent):
         questions = blackboard.get("generated_questions", [])
         templates = blackboard.get("slot_templates", {})
 
-        return PAPER_REVIEWER_PROMPT.format(
+        prompt = PAPER_REVIEWER_PROMPT.format(
             paper_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
             generated_questions_json=json.dumps(questions, ensure_ascii=False, indent=2),
             slot_templates_json=json.dumps(templates, ensure_ascii=False, indent=2),
         )
+        checklist = self.get_audit_checklist()
+        if checklist:
+            prompt += "\n\n" + checklist
+        return prompt
 
     def parse_output(self, raw: Any) -> Any:
         sections = _parse_md_sections(raw)
