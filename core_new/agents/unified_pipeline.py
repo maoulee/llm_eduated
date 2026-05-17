@@ -40,6 +40,7 @@ from core_new.agents.single_choice_team import (
     SCSolutionFormatterAgent,
 )
 from core_new.blackboard import Blackboard
+from core_new.fallback_executor import FallbackExecutor, FallbackResult
 from core_new.markdown_parser import try_parse_json_object
 
 logger = logging.getLogger(__name__)
@@ -306,6 +307,10 @@ class UnifiedQuestionPipeline:
         self.use_runtime_sc_design = use_runtime_sc_design
         self.runtime_fallback = runtime_fallback
         self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
+        self.fallback_executor = FallbackExecutor()
+        self.fallback_executor.register("human_review", self._fallback_human_review)
+        self.fallback_executor.register("needs_human_check", self._fallback_human_review)
+        self.fallback_executor.register("legacy_generator", self._fallback_legacy_generator)
 
     @staticmethod
     def _is_single_choice(blueprint: Dict[str, Any]) -> bool:
@@ -333,6 +338,54 @@ class UnifiedQuestionPipeline:
     def _raise_if_failed(step_name: str, record) -> None:
         if record and getattr(record, "error", None):
             raise RuntimeError(f"{step_name} failed: {record.error}")
+
+    # ── Fallback handlers ─────────────────────────────────────
+
+    @staticmethod
+    async def _fallback_human_review(data: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "status": "needs_human_review",
+            "reason": "Agent failed, routed to human review",
+        }
+
+    @staticmethod
+    async def _fallback_legacy_generator(data: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "status": "fallback_used",
+            "fallback_target": "legacy_generator",
+            "note": "Legacy generator fallback — pipeline should re-run design step",
+        }
+
+    async def _execute_with_fallback(
+        self,
+        agent,
+        blackboard: Blackboard,
+    ) -> tuple[Any, Optional[FallbackResult]]:
+        """Execute agent, attempt fallback on failure."""
+        record = await agent.execute(blackboard)
+
+        if record.error is None:
+            return record, None
+
+        metadata = getattr(record, "metadata", None) or {}
+        fallback_info = metadata.get("fallback", {})
+        if fallback_info.get("enabled"):
+            bb_data = blackboard.get_relevant_state(agent.config.name)
+            fallback_result = await self.fallback_executor.try_fallback(record, bb_data)
+            if fallback_result.used_fallback and not fallback_result.error:
+                logger.info(
+                    "[Fallback] succeeded: target=%s, latency=%dms",
+                    fallback_result.fallback_target,
+                    fallback_result.latency_ms,
+                )
+                return record, fallback_result
+            logger.warning(
+                "[Fallback] target=%s failed: %s",
+                fallback_result.fallback_target,
+                fallback_result.error,
+            )
+
+        return record, None
 
     # ── Main run loop ──────────────────────────────────────────
 
@@ -503,6 +556,12 @@ class UnifiedQuestionPipeline:
                 continue
             break
 
+        if record.error:
+            bb_data = bb.get_relevant_state(agent.config.name)
+            fb_result = await self.fallback_executor.try_fallback(record, bb_data)
+            if fb_result.used_fallback and not fb_result.error:
+                logger.info("[SC design] Fallback succeeded: %s", fb_result.fallback_target)
+
         self._raise_if_failed("SC design", record)
 
         result = bb.get("sc_draft_result", {})
@@ -539,6 +598,12 @@ class UnifiedQuestionPipeline:
                 await asyncio.sleep(15)
                 continue
             break
+
+        if record.error:
+            bb_data = bb.get_relevant_state(agent.config.name)
+            fb_result = await self.fallback_executor.try_fallback(record, bb_data)
+            if fb_result.used_fallback and not fb_result.error:
+                logger.info("[Comp design] Fallback succeeded: %s", fb_result.fallback_target)
 
         self._raise_if_failed("Comp design", record)
 
@@ -731,6 +796,11 @@ class UnifiedQuestionPipeline:
             reviewer = IntentBasedReviewer(gateway)
 
         record = await reviewer.execute(bb)
+        if record.error:
+            bb_data = bb.get_relevant_state(reviewer.config.name)
+            fb_result = await self.fallback_executor.try_fallback(record, bb_data)
+            if fb_result.used_fallback and not fb_result.error:
+                logger.info("[Review] Fallback succeeded: %s", fb_result.fallback_target)
         self._raise_if_failed("Review", record)
         result = bb.get("review", {})
         self._require_step_fields("Review", result, ["status"])

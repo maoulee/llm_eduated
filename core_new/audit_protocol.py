@@ -229,15 +229,7 @@ class AuditResultNormalizer:
         checklist = raw.get("checklist_results")
         if isinstance(checklist, dict):
             for key, value in checklist.items():
-                v = str(value).strip().lower()
-                if v in ("pass", "ok", "yes", "true"):
-                    results[key] = "pass"
-                elif v in ("fail", "failed", "no", "false", "wrong"):
-                    results[key] = "fail"
-                elif v in ("warn", "warning", "partial"):
-                    results[key] = "warn"
-                else:
-                    results[key] = str(value)
+                results[key] = _normalize_check_value(value)
         return results
 
 
@@ -321,6 +313,37 @@ class FixRouter:
         if audit.fix_target == RoleType.EXTRACTOR.value:
             return PipelineFixTarget.QUESTION.value
         return PipelineFixTarget.ANSWER.value
+
+
+def _normalize_check_value(value: Any) -> str:
+    """Normalize a checklist item value to pass/fail/warn.
+
+    Handles various formats:
+    - Exact: pass, fail, warn
+    - Prefixed: pass: xxx, fail - xxx, warn(...)
+    - Chinese: 通过→pass, 失败→fail, 警告→warn
+    - Bool: yes/no, true/false
+    """
+    v = str(value).strip().lower()
+    for sep in (":：", " - ", "—", "(", "（", ",，", "\n"):
+        if sep in v:
+            v = v.split(sep)[0].strip()
+
+    if v in ("pass", "ok", "yes", "true", "1", "通过", "合格", "匹配"):
+        return "pass"
+    if v in ("fail", "failed", "no", "false", "0", "失败", "不匹配", "错误", "wrong", "mismatch"):
+        return "fail"
+    if v in ("warn", "warning", "partial", "注意", "部分", "较弱"):
+        return "warn"
+
+    if v.startswith("pass"):
+        return "pass"
+    if v.startswith("fail"):
+        return "fail"
+    if v.startswith("warn"):
+        return "warn"
+
+    return str(value)
 
 
 def _lower(value: Any) -> str:

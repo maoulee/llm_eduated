@@ -27,6 +27,7 @@ from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
 from core_new.agents.agent_registry import AgentRegistry
 from core_new.blackboard import Blackboard
 from core_new.experience_view import build_design_experience_view
+from core_new.fallback_executor import FallbackExecutor
 from core_new.markdown_parser import try_parse_json_object
 
 logger = logging.getLogger(__name__)
@@ -465,6 +466,16 @@ class HybridSubjectivePipeline:
     def __init__(self, *, max_revision_rounds: int = 1):
         self.max_revision_rounds = max_revision_rounds
         self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
+        self.fallback_executor = FallbackExecutor()
+        self.fallback_executor.register("human_review", self._fallback_human_review)
+        self.fallback_executor.register("needs_human_check", self._fallback_human_review)
+
+    @staticmethod
+    async def _fallback_human_review(data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "status": "needs_human_review",
+            "reason": "Agent failed, routed to human review",
+        }
 
     async def run(
         self,
@@ -585,6 +596,10 @@ class HybridSubjectivePipeline:
                     break
 
                 if design_record.error:
+                    bb_data = design_bb.get_relevant_state(designer.config.name)
+                    fb_result = await self.fallback_executor.try_fallback(design_record, bb_data)
+                    if fb_result.used_fallback and not fb_result.error:
+                        logger.info("[%s] Design fallback succeeded: %s", slot_id, fb_result.fallback_target)
                     logger.error("[%s] Design failed after retries: %s", slot_id, design_record.error)
                     return HybridSubjectiveResult(
                         final_question={"error": design_record.error},
@@ -665,7 +680,12 @@ class HybridSubjectivePipeline:
                 },
             )
             reviewer = IntentBasedReviewer(gateway)
-            await reviewer.execute(review_bb)
+            review_record = await reviewer.execute(review_bb)
+            if review_record.error:
+                bb_data = review_bb.get_relevant_state(reviewer.config.name)
+                fb_result = await self.fallback_executor.try_fallback(review_record, bb_data)
+                if fb_result.used_fallback and not fb_result.error:
+                    logger.info("[%s] Review fallback succeeded: %s", slot_id, fb_result.fallback_target)
             review = review_bb.get("review") or {}
             audit = AuditResultNormalizer.normalize(
                 review,
