@@ -24,6 +24,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
+from .agent_roles import RoleType
 from .generation_prompts import (
     PROFILE_INTERPRETER,
     BLUEPRINT_PLANNER,
@@ -118,6 +119,8 @@ def _parse_xml(text: str) -> Optional[Dict[str, Any]]:
 class ProfileInterpreter:
     """Analyzes user error history and mastery info to create a diagnostic profile."""
 
+    role_type = RoleType.EXTRACTOR
+
     def __init__(self, llm_provider, max_tokens: int = 4096):
         self.llm = llm_provider
         self.max_tokens = max_tokens
@@ -151,6 +154,8 @@ class ProfileInterpreter:
 class BlueprintPlanner:
     """Plans a question blueprint based on user profile and available knowledge."""
 
+    role_type = RoleType.PLANNER
+
     def __init__(self, llm_provider, max_tokens: int = 4096):
         self.llm = llm_provider
         self.max_tokens = max_tokens
@@ -181,6 +186,8 @@ class BlueprintPlanner:
 
 class QuestionWriter:
     """Writes a complete 408-style question based on blueprint."""
+
+    role_type = RoleType.GENERATOR
 
     def __init__(self, llm_provider, max_tokens: int = 4096):
         self.llm = llm_provider
@@ -223,6 +230,8 @@ class QuestionWriter:
 class SolverVerifier:
     """Verifies a question by solving it independently."""
 
+    role_type = RoleType.REASONER
+
     def __init__(self, llm_provider, max_tokens: int = 4096):
         self.llm = llm_provider
         self.max_tokens = max_tokens
@@ -254,6 +263,8 @@ class SolverVerifier:
 class UserSimulator:
     """Simulates a user with specific knowledge gaps answering a question."""
 
+    role_type = RoleType.AUDIT
+
     def __init__(self, llm_provider, max_tokens: int = 4096):
         self.llm = llm_provider
         self.max_tokens = max_tokens
@@ -284,6 +295,8 @@ class UserSimulator:
 
 class GenerationAggregator:
     """Aggregates solver and simulator results to make accept/revise/reject decisions."""
+
+    role_type = RoleType.SUMMARIZER
 
     @staticmethod
     def aggregate(

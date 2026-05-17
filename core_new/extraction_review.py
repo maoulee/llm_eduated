@@ -21,6 +21,7 @@ import logging
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional
 
+from .agent_roles import AuditMode, RoleType
 from .extraction_prompts import PASS5_DOMAIN_CRITIC, ORPHAN_RESOLVER, DOMAIN_ISSUE_FIXER
 
 
@@ -96,6 +97,9 @@ def _collect_known_by_type(ku: Dict, pattern: Dict) -> Dict[str, set]:
 
 class RuleChecker:
     """Code-based validation of extraction results. No LLM involved."""
+
+    role_type = RoleType.AUDIT
+    audit_mode = AuditMode.EXTRACTION_REVIEW
 
     @staticmethod
     def validate(result: Dict[str, Any]) -> Dict[str, Any]:
@@ -244,6 +248,9 @@ class RuleChecker:
 class DomainCritic:
     """Adversarial LLM reviewer for domain-level semantic issues."""
 
+    role_type = RoleType.AUDIT
+    audit_mode = AuditMode.EXTRACTION_REVIEW
+
     def __init__(self, llm_provider, max_tokens: int = 10000, enable_thinking: bool = True):
         self.llm = _ensure_gateway(llm_provider)
         self.max_tokens = max_tokens
@@ -343,6 +350,8 @@ class DomainCritic:
 
 class ReadinessAggregator:
     """Rule-based readiness status aggregation. No LLM."""
+
+    role_type = RoleType.SUMMARIZER
 
     @staticmethod
     def aggregate(

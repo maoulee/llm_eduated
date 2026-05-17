@@ -21,6 +21,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
+from core_new.agent_roles import AuditMode, RoleType
+from core_new.audit_protocol import AuditResultNormalizer, FixRouter
 from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
 from core_new.agents.agent_registry import AgentRegistry
 from core_new.blackboard import Blackboard
@@ -109,6 +111,7 @@ class QuestionDesignerAgent(BaseAgent):
                 max_retries=2,
                 required_fields=["stem", "sub_questions"],
                 repair_max_retries=1,
+                role_type=RoleType.GENERATOR,
                 expected_output_format=(
                     "# question Qxx\n\n"
                     "## 题目\n"
@@ -217,6 +220,7 @@ class HybridSolutionFormatter(BaseAgent):
                 enable_thinking=True,
                 required_fields=["answers"],
                 repair_max_retries=1,
+                role_type=RoleType.SUMMARIZER,
                 system_prompt="你是一位408考研解题专家，擅长根据计算结果整理标准答案。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -270,6 +274,7 @@ class HybridRubricWriter(BaseAgent):
                 output_key="rubric",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                role_type=RoleType.SUMMARIZER,
                 system_prompt="你是一位408考研评分标准制定专家。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -316,6 +321,8 @@ class IntentBasedReviewer(BaseAgent):
                 enable_thinking=True,
                 required_fields=["status"],
                 repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.QUESTION_REVIEW,
                 system_prompt="你是一位408考研出题审核专家，负责对比出题意图与解题结果，并对照slot蓝图评估。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -453,6 +460,7 @@ class HybridSubjectivePipeline:
 
     def __init__(self, *, max_revision_rounds: int = 1):
         self.max_revision_rounds = max_revision_rounds
+        self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
 
     async def run(
         self,
@@ -475,7 +483,8 @@ class HybridSubjectivePipeline:
                             slot_id, revision_round, review.get("fix_target", ""))
 
                 # ── Use AgentRegistry for targeted revision ──
-                fix_target = review.get("fix_target", "answer")
+                fix_route = review.get("fix_route", {}) if isinstance(review.get("fix_route"), dict) else {}
+                fix_target = fix_route.get("pipeline_fix_target") or review.get("fix_target", "answer")
                 revision_bb = Blackboard(
                     task_id=f"revise_{slot_id}_r{revision_round}",
                     task_type="hybrid_subjective",
@@ -513,12 +522,26 @@ class HybridSubjectivePipeline:
                 reviewer = IntentBasedReviewer(gateway)
                 await reviewer.execute(review_bb)
                 review = review_bb.get("review") or {}
+                audit = AuditResultNormalizer.normalize(
+                    review,
+                    mode=AuditMode.QUESTION_REVIEW,
+                )
+                route = self.fix_router.route(
+                    audit,
+                    current_round=revision_round,
+                    is_single_choice=False,
+                )
+                review["audit_result"] = audit.to_dict()
+                review["fix_route"] = route.to_dict()
 
-                logger.info("[%s] Post-fix review: status=%s score=%s",
-                            slot_id, review.get("status"), review.get("score"))
-                status = str(review.get("status", "")).lower()
-                needs_fix = review.get("needs_fix") == "yes" or status == "revise"
-                if not needs_fix or revision_round >= self.max_revision_rounds:
+                logger.info(
+                    "[%s] Post-fix review: status=%s issue=%s route=%s",
+                    slot_id,
+                    audit.status,
+                    audit.issue_type,
+                    route.next_action,
+                )
+                if route.next_action != "revise":
                     break
                 continue
 
@@ -639,15 +662,28 @@ class HybridSubjectivePipeline:
             reviewer = IntentBasedReviewer(gateway)
             await reviewer.execute(review_bb)
             review = review_bb.get("review") or {}
+            audit = AuditResultNormalizer.normalize(
+                review,
+                mode=AuditMode.QUESTION_REVIEW,
+            )
+            route = self.fix_router.route(
+                audit,
+                current_round=revision_round,
+                is_single_choice=False,
+            )
+            review["audit_result"] = audit.to_dict()
+            review["fix_route"] = route.to_dict()
 
-            logger.info("[%s] Review: status=%s score=%s fix_target=%s",
-                        slot_id, review.get("status"), review.get("score"),
-                        review.get("fix_target"))
+            logger.info(
+                "[%s] Review: status=%s issue=%s route=%s target=%s",
+                slot_id,
+                audit.status,
+                audit.issue_type,
+                route.next_action,
+                route.pipeline_fix_target,
+            )
 
-            # Check if revision needed
-            status = str(review.get("status", "")).lower()
-            needs_fix = review.get("needs_fix") == "yes" or status == "revise"
-            if not needs_fix or revision_round >= self.max_revision_rounds:
+            if route.next_action != "revise":
                 break
 
         # Build final question

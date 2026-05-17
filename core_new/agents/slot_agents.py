@@ -16,6 +16,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
+from core_new.agent_roles import AuditMode, RoleType
 from core_new.blackboard import Blackboard
 
 
@@ -117,6 +118,7 @@ class PaperComposerAgent(BaseAgent):
                 output_key="paper_blueprint",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                role_type=RoleType.PLANNER,
                 system_prompt="你是一位408考研组卷专家，擅长基于题位模板规划试卷结构。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -183,6 +185,8 @@ class BlueprintReviewerAgent(BaseAgent):
                 output_key="blueprint_review",
                 max_tokens=max_tokens,
                 enable_thinking=True,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.BLUEPRINT_REVIEW,
                 system_prompt="你是一位408考研组卷审核专家，负责审核组卷蓝图的合理性。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -247,6 +251,7 @@ class QuestionWriterAgent(BaseAgent):
                 max_tokens=max_tokens,
                 enable_thinking=True,
                 timeout_s=900.0,
+                role_type=RoleType.GENERATOR,
                 system_prompt="你是一位408考研出题专家，擅长按照蓝图精确出题。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -305,6 +310,7 @@ class QuestionFixerAgent(BaseAgent):
                 max_tokens=max_tokens,
                 enable_thinking=True,
                 timeout_s=900.0,
+                role_type=RoleType.GENERATOR,
                 system_prompt="你是一位408考研出题专家，擅长精确修正题目中的错误。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -356,6 +362,8 @@ class PaperReviewerAgent(BaseAgent):
                 max_tokens=max_tokens,
                 enable_thinking=True,
                 timeout_s=900.0,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.FINAL_PAPER_REVIEW,
                 system_prompt="你是一位408考研试卷质量评审专家，严格区分内容问题和答案问题。严格按markdown格式输出。",
             ),
             llm_backend,

@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
+from core_new.agent_roles import AuditMode, RoleType
+from core_new.audit_protocol import AuditResultNormalizer, FixRouter
 from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
 from core_new.agents.hybrid_subjective_team import (
     QuestionDesignerAgent,
@@ -157,6 +159,8 @@ class UnifiedSCReviewer(BaseAgent):
                 enable_thinking=True,
                 required_fields=["status"],
                 repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.QUESTION_REVIEW,
                 expected_output_format=(
                     "## review\n"
                     "- **status**: pass|needs_fix\n"
@@ -297,6 +301,7 @@ class UnifiedQuestionPipeline:
         self.max_revision_rounds = max_revision_rounds
         self.use_runtime_sc_design = use_runtime_sc_design
         self.runtime_fallback = runtime_fallback
+        self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
 
     @staticmethod
     def _is_single_choice(blueprint: Dict[str, Any]) -> bool:
@@ -399,13 +404,32 @@ class UnifiedQuestionPipeline:
                 slot_blueprint, is_sc, gateway,
             )
 
-            logger.info("[%s] Review round %d: status=%s fix_target=%s",
-                        slot_id, rnd, review.get("status"), review.get("fix_target"))
+            audit = AuditResultNormalizer.normalize(
+                review,
+                mode=AuditMode.QUESTION_REVIEW,
+            )
+            route = self.fix_router.route(
+                audit,
+                current_round=rnd,
+                is_single_choice=is_sc,
+            )
+            review["audit_result"] = audit.to_dict()
+            review["fix_route"] = route.to_dict()
 
-            if review.get("status") != "needs_fix" or rnd >= self.max_revision_rounds:
+            logger.info(
+                "[%s] Review round %d: status=%s issue=%s route=%s target=%s",
+                slot_id,
+                rnd,
+                audit.status,
+                audit.issue_type,
+                route.next_action,
+                route.pipeline_fix_target,
+            )
+
+            if route.next_action != "revise":
                 break
 
-            fix_target = review.get("fix_target", "answer")
+            fix_target = route.pipeline_fix_target
 
         # ── Assemble final result ──
         total_time = time.monotonic() - total_start

@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_runtime import Edu408AgentLoop
+from core_new.agent_roles import AuditMode, RoleType
 from core_new.agents.codeact_solver import CodeActSolverAgent, SolverResult
 from core_new.blackboard import Blackboard
 from core_new.edu408_runtime.tools import DEFAULT_WORKSPACE, build_408_tools
@@ -102,6 +103,7 @@ class SingleChoiceDraftAgent(BaseAgent):
                 max_retries=2,
                 required_fields=["stem"],
                 repair_max_retries=1,
+                role_type=RoleType.GENERATOR,
                 expected_output_format=(
                     "## stem\n"
                     "- **stem**: question stem only, no options, no answer, no code block\n"
@@ -262,6 +264,7 @@ class OptionAndDistractorAgent(BaseAgent):
                 max_retries=2,
                 required_fields=["option_A", "option_B", "option_C", "option_D", "correct_answer"],
                 repair_max_retries=1,
+                role_type=RoleType.GENERATOR,
                 expected_output_format=(
                     "## options\n"
                     "- **option_A**: ...\n"
@@ -345,6 +348,7 @@ class SCSolutionFormatterAgent(BaseAgent):
                 enable_thinking=True,
                 required_fields=["correct_answer", "explanation"],
                 repair_max_retries=1,
+                role_type=RoleType.SUMMARIZER,
                 system_prompt="你是一位408考研解析编写专家，擅长整理和格式化解析。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -401,6 +405,8 @@ class SingleChoiceReviewerAgent(BaseAgent):
                 enable_thinking=True,
                 required_fields=["status"],
                 repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.QUESTION_REVIEW,
                 system_prompt="你是一位408考研出题审核专家，严格审核题目质量。严格按markdown格式输出。",
             ),
             llm_backend,
@@ -473,6 +479,7 @@ class SingleChoiceAssemblerAgent(BaseAgent):
                 max_tokens=0,
                 enable_thinking=True,
                 max_retries=0,
+                role_type=RoleType.SUMMARIZER,
             ),
             _DummyGateway(),
         )

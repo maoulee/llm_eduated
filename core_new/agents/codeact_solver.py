@@ -18,6 +18,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from core_new.agent_roles import RoleType
 from core_new.agent_runtime import ToolRegistry
 from core_new.edu408_runtime import build_408_tools
 from core_new.llm_gateway import LLMGateway
@@ -170,6 +171,8 @@ print(f"答案: {result}")
 
 class CodeActSolverAgent:
     """Solves questions by writing and executing Python code."""
+
+    role_type = RoleType.REASONER
 
     def __init__(
         self,

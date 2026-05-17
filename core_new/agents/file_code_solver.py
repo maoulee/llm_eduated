@@ -17,6 +17,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from core_new.agent_roles import RoleType
 from core_new.agent_runtime import ToolRegistry
 from core_new.edu408_runtime import build_408_tools
 from core_new.llm_gateway import LLMGateway
@@ -157,6 +158,8 @@ solve()
 
 class FileCodeSolverAgent:
     """Solves questions by writing Python scripts to disk and running them."""
+
+    role_type = RoleType.REASONER
 
     def __init__(
         self,

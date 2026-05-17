@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from .agent_roles import AuditMode, ExecutionPolicy, RoleType, resolve_execution_policy
 from .blackboard import AgentRecord, Blackboard
 from .llm_gateway import LLMGateway, LLMResult
 
@@ -29,6 +30,9 @@ class AgentConfig:
     repair_on_parse_failure: bool = True
     repair_max_retries: int = 1
     expected_output_format: str = ""
+    role_type: RoleType | str = RoleType.GENERATOR
+    audit_mode: AuditMode | str | None = None
+    execution_policy: ExecutionPolicy | None = None
 
 
 class BaseAgent(ABC):
@@ -37,6 +41,10 @@ class BaseAgent(ABC):
     def __init__(self, config: AgentConfig, llm_backend):
         self.config = config
         self.llm = _ensure_gateway(llm_backend)
+        self.execution_policy = resolve_execution_policy(
+            config.role_type,
+            config.execution_policy,
+        )
 
     @abstractmethod
     def build_input(self, blackboard: Blackboard) -> str:
