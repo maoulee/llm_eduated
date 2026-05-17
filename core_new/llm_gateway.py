@@ -25,11 +25,13 @@ import asyncio
 import json
 import logging
 import os
+import random
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from config import get_provider_config
+from core_new.agent_roles import TransportRetryPolicy
 from llm_providers_new import get_llm_provider
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -125,22 +127,47 @@ class LLMGateway:
     - "Error:" prefix in provider content is detected and classified correctly
     """
 
-    def __init__(self, provider_name: str):
+    def __init__(self, provider_name: str, *, transport_retry: TransportRetryPolicy | None = None):
         self._provider_name = provider_name
         self._config = get_provider_config(provider_name)
         self._provider = get_llm_provider(self._config)
         self._model_name = self._config.get("model_path", provider_name)
-        logger.info("LLMGateway initialized: provider=%s model=%s", self._provider_name, self._model_name)
+        self._transport_retry = transport_retry or TransportRetryPolicy()
+        logger.info("LLMGateway initialized: provider=%s model=%s max_attempts=%d",
+                     self._provider_name, self._model_name, self._transport_retry.max_attempts)
 
     @classmethod
-    def from_provider(cls, provider, name: str = "wrapped") -> "LLMGateway":
+    def from_provider(cls, provider, name: str = "wrapped", *, transport_retry: TransportRetryPolicy | None = None) -> "LLMGateway":
         """Wrap an existing raw provider instance in a gateway."""
         instance = cls.__new__(cls)
         instance._provider_name = name
         instance._config = {}
         instance._provider = provider
         instance._model_name = name
+        instance._transport_retry = transport_retry or TransportRetryPolicy()
         return instance
+
+    # ── Retry helpers ──────────────────────────────────────
+
+    def _should_retry(self, error_code: str) -> bool:
+        """Check if an error code should be retried per transport policy."""
+        ec = error_code.lower()
+        if ec in self._transport_retry.not_retry_on:
+            return False
+        if ec in self._transport_retry.retry_on:
+            return True
+        # Default: network-adjacent errors retry, parse/validation don't
+        if ec in ("network_error", "timeout", "rate_limit", "server_error", "connection_error"):
+            return True
+        return False
+
+    async def _wait_with_backoff(self, attempt: int) -> None:
+        """Exponential backoff with jitter."""
+        base = min(2 ** attempt, 30)  # cap at 30s
+        jitter = random.uniform(0, base * 0.5)
+        delay = base + jitter
+        logger.info("Transport retry attempt %d, waiting %.1fs", attempt + 1, delay)
+        await asyncio.sleep(delay)
 
     # ── Batch methods ──────────────────────────────────────
 
@@ -151,38 +178,60 @@ class LLMGateway:
         if not messages_batch:
             return []
 
-        async with _get_sem():
-            start_time = time.monotonic()
-            has_raw = hasattr(self._provider, "_generate_raw_batch")
+        last_error_code = None
+        last_error_msg = None
 
-            try:
-                if has_raw:
-                    raw_outputs = await self._provider._generate_raw_batch(
-                        messages_batch=messages_batch, stop_sequences=None,
-                        max_tokens=max_tokens, enable_thinking=enable_thinking, json_mode=True,
-                    )
-                else:
-                    raw_dicts = await self._provider.generate_json_batch(
-                        messages_batch=messages_batch, max_tokens=max_tokens,
-                        enable_thinking=enable_thinking,
-                    )
-                    raw_outputs = None
-            except Exception as e:
-                latency_ms = int((time.monotonic() - start_time) * 1000)
-                logger.error("generate_json_batch failed: %s", e, exc_info=True)
-                return [LLMResult.failure(
-                    error_code=_classify_exception(e), error_message=str(e),
-                    provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
-                ) for _ in messages_batch]
+        for attempt in range(self._transport_retry.max_attempts):
+            async with _get_sem():
+                start_time = time.monotonic()
+                has_raw = hasattr(self._provider, "_generate_raw_batch")
 
-            latency_ms = int((time.monotonic() - start_time) * 1000)
+                try:
+                    if has_raw:
+                        raw_outputs = await self._provider._generate_raw_batch(
+                            messages_batch=messages_batch, stop_sequences=None,
+                            max_tokens=max_tokens, enable_thinking=enable_thinking, json_mode=True,
+                        )
+                    else:
+                        raw_dicts = await self._provider.generate_json_batch(
+                            messages_batch=messages_batch, max_tokens=max_tokens,
+                            enable_thinking=enable_thinking,
+                        )
+                        raw_outputs = None
 
-            if raw_outputs is not None:
-                return _pad([_process_json_raw(out, self._provider_name, self._model_name, latency_ms)
-                             for out in raw_outputs], messages_batch, self._provider_name, self._model_name, latency_ms)
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
 
-            return _pad([_process_json_fallback(d, self._provider_name, self._model_name, latency_ms)
-                         for d in raw_dicts], messages_batch, self._provider_name, self._model_name, latency_ms)
+                    if raw_outputs is not None:
+                        return _pad([_process_json_raw(out, self._provider_name, self._model_name, latency_ms)
+                                     for out in raw_outputs], messages_batch, self._provider_name, self._model_name, latency_ms)
+
+                    return _pad([_process_json_fallback(d, self._provider_name, self._model_name, latency_ms)
+                                 for d in raw_dicts], messages_batch, self._provider_name, self._model_name, latency_ms)
+
+                except Exception as e:
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
+                    error_code = _classify_exception(e)
+                    last_error_code = error_code
+                    last_error_msg = str(e)
+
+                    if not self._should_retry(error_code) or attempt >= self._transport_retry.max_attempts - 1:
+                        logger.error("generate_json_batch failed (attempt %d/%d): [%s] %s",
+                                     attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                        return [LLMResult.failure(
+                            error_code=error_code, error_message=str(e),
+                            provider=self._provider_name, model=self._model_name,
+                            latency_ms=latency_ms, retries=attempt,
+                        ) for _ in messages_batch]
+
+                    logger.warning("generate_json_batch retryable error (attempt %d/%d): [%s] %s",
+                                   attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                    await self._wait_with_backoff(attempt)
+
+        return [LLMResult.failure(
+            error_code=last_error_code or "unknown", error_message=last_error_msg or "",
+            provider=self._provider_name, model=self._model_name, latency_ms=0,
+            retries=self._transport_retry.max_attempts - 1,
+        ) for _ in messages_batch]
 
     async def generate_reasoned_batch(
         self, messages_batch: List[List[Dict]],
@@ -191,41 +240,63 @@ class LLMGateway:
         if not messages_batch:
             return []
 
-        async with _get_sem():
-            start_time = time.monotonic()
+        last_error_code = None
+        last_error_msg = None
 
-            try:
-                raw_results = await self._provider.generate_with_think_and_parse_batch(
-                    messages_batch=messages_batch, stop_sequences=None,
-                    enable_thinking=enable_thinking, max_token=max_tokens,
-                )
-            except Exception as e:
-                latency_ms = int((time.monotonic() - start_time) * 1000)
-                logger.error("generate_reasoned_batch failed: %s", e, exc_info=True)
-                return [LLMResult.failure(
-                    error_code=_classify_exception(e), error_message=str(e),
-                    provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
-                ) for _ in messages_batch]
+        for attempt in range(self._transport_retry.max_attempts):
+            async with _get_sem():
+                start_time = time.monotonic()
 
-            latency_ms = int((time.monotonic() - start_time) * 1000)
+                try:
+                    raw_results = await self._provider.generate_with_think_and_parse_batch(
+                        messages_batch=messages_batch, stop_sequences=None,
+                        enable_thinking=enable_thinking, max_token=max_tokens,
+                    )
 
-            results = []
-            for raw in raw_results:
-                answer = raw.get("answer", "")
-                think = raw.get("think", "")
-                if answer.startswith("Error:"):
-                    results.append(LLMResult.failure(
-                        error_code=_classify_error_content(answer), error_message=answer,
-                        provider=self._provider_name, model=self._model_name,
-                        latency_ms=latency_ms, content=answer, reasoning=think or None,
-                    ))
-                else:
-                    results.append(LLMResult.success(
-                        content=answer, reasoning=think or None,
-                        provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
-                    ))
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
 
-            return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
+                    results = []
+                    for raw in raw_results:
+                        answer = raw.get("answer", "")
+                        think = raw.get("think", "")
+                        if answer.startswith("Error:"):
+                            results.append(LLMResult.failure(
+                                error_code=_classify_error_content(answer), error_message=answer,
+                                provider=self._provider_name, model=self._model_name,
+                                latency_ms=latency_ms, content=answer, reasoning=think or None,
+                            ))
+                        else:
+                            results.append(LLMResult.success(
+                                content=answer, reasoning=think or None,
+                                provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
+                            ))
+
+                    return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
+
+                except Exception as e:
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
+                    error_code = _classify_exception(e)
+                    last_error_code = error_code
+                    last_error_msg = str(e)
+
+                    if not self._should_retry(error_code) or attempt >= self._transport_retry.max_attempts - 1:
+                        logger.error("generate_reasoned_batch failed (attempt %d/%d): [%s] %s",
+                                     attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                        return [LLMResult.failure(
+                            error_code=error_code, error_message=str(e),
+                            provider=self._provider_name, model=self._model_name,
+                            latency_ms=latency_ms, retries=attempt,
+                        ) for _ in messages_batch]
+
+                    logger.warning("generate_reasoned_batch retryable error (attempt %d/%d): [%s] %s",
+                                   attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                    await self._wait_with_backoff(attempt)
+
+        return [LLMResult.failure(
+            error_code=last_error_code or "unknown", error_message=last_error_msg or "",
+            provider=self._provider_name, model=self._model_name, latency_ms=0,
+            retries=self._transport_retry.max_attempts - 1,
+        ) for _ in messages_batch]
 
     async def generate_text_batch(
         self, messages_batch: List[List[Dict]],
@@ -234,41 +305,63 @@ class LLMGateway:
         if not messages_batch:
             return []
 
-        async with _get_sem():
-            start_time = time.monotonic()
+        last_error_code = None
+        last_error_msg = None
 
-            try:
-                raw_results = await self._provider.generate_with_think_and_parse_batch(
-                    messages_batch=messages_batch, enable_thinking=enable_thinking,
-                    max_token=max_tokens,
-                )
-            except Exception as e:
-                latency_ms = int((time.monotonic() - start_time) * 1000)
-                logger.error("generate_text_batch failed: %s", e, exc_info=True)
-                return [LLMResult.failure(
-                    error_code=_classify_exception(e), error_message=str(e),
-                    provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
-                ) for _ in messages_batch]
+        for attempt in range(self._transport_retry.max_attempts):
+            async with _get_sem():
+                start_time = time.monotonic()
 
-            latency_ms = int((time.monotonic() - start_time) * 1000)
+                try:
+                    raw_results = await self._provider.generate_with_think_and_parse_batch(
+                        messages_batch=messages_batch, enable_thinking=enable_thinking,
+                        max_token=max_tokens,
+                    )
 
-            results = []
-            for raw in raw_results:
-                content = raw.get("answer", "")
-                reasoning = raw.get("think", "")
-                if content.startswith("Error:"):
-                    results.append(LLMResult.failure(
-                        error_code=_classify_error_content(content), error_message=content,
-                        provider=self._provider_name, model=self._model_name,
-                        latency_ms=latency_ms, content=content, reasoning=reasoning or None,
-                    ))
-                else:
-                    results.append(LLMResult.success(
-                        content=content, reasoning=reasoning or None,
-                        provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
-                    ))
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
 
-            return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
+                    results = []
+                    for raw in raw_results:
+                        content = raw.get("answer", "")
+                        reasoning = raw.get("think", "")
+                        if content.startswith("Error:"):
+                            results.append(LLMResult.failure(
+                                error_code=_classify_error_content(content), error_message=content,
+                                provider=self._provider_name, model=self._model_name,
+                                latency_ms=latency_ms, content=content, reasoning=reasoning or None,
+                            ))
+                        else:
+                            results.append(LLMResult.success(
+                                content=content, reasoning=reasoning or None,
+                                provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
+                            ))
+
+                    return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
+
+                except Exception as e:
+                    latency_ms = int((time.monotonic() - start_time) * 1000)
+                    error_code = _classify_exception(e)
+                    last_error_code = error_code
+                    last_error_msg = str(e)
+
+                    if not self._should_retry(error_code) or attempt >= self._transport_retry.max_attempts - 1:
+                        logger.error("generate_text_batch failed (attempt %d/%d): [%s] %s",
+                                     attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                        return [LLMResult.failure(
+                            error_code=error_code, error_message=str(e),
+                            provider=self._provider_name, model=self._model_name,
+                            latency_ms=latency_ms, retries=attempt,
+                        ) for _ in messages_batch]
+
+                    logger.warning("generate_text_batch retryable error (attempt %d/%d): [%s] %s",
+                                   attempt + 1, self._transport_retry.max_attempts, error_code, e)
+                    await self._wait_with_backoff(attempt)
+
+        return [LLMResult.failure(
+            error_code=last_error_code or "unknown", error_message=last_error_msg or "",
+            provider=self._provider_name, model=self._model_name, latency_ms=0,
+            retries=self._transport_retry.max_attempts - 1,
+        ) for _ in messages_batch]
 
     # ── Single-item convenience wrappers ──────────────────
 
@@ -321,7 +414,9 @@ def _classify_exception(error: Exception) -> str:
     if "rate limit" in s or "429" in s:
         return "rate_limit"
     if "connection" in s or "network" in s:
-        return "network_error"
+        return "connection_error"
+    if "server" in s or "500" in s or "502" in s or "503" in s:
+        return "server_error"
     return "api_error"
 
 
@@ -333,7 +428,9 @@ def _classify_error_content(content: str) -> str:
     if "rate limit" in s or "429" in s:
         return "rate_limit"
     if "connection" in s or "network" in s:
-        return "network_error"
+        return "connection_error"
+    if "server" in s or "500" in s or "502" in s or "503" in s:
+        return "server_error"
     return "api_error"
 
 
