@@ -426,6 +426,19 @@ class UnifiedQuestionPipeline:
                 if not design:
                     logger.error("[%s] Design produced empty result", slot_id)
                     break
+                if design.get("status") in {"needs_human_review", "needs_human_check"}:
+                    total_time = time.monotonic() - total_start
+                    return UnifiedPipelineResult(
+                        final_question=design,
+                        solver_result={},
+                        review={
+                            "status": design.get("status"),
+                            "reason": design.get("reason", ""),
+                            "fallback_target": design.get("fallback_target", ""),
+                        },
+                        generation_time_s=round(total_time, 1),
+                        pipeline_type="unified_sc" if is_sc else "unified_comp",
+                    )
 
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
