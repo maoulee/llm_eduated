@@ -523,7 +523,7 @@ async def _fix_options_only(gateway, q_data, verified, slot_id):
 
 async def _regenerate_question(gateway, q_data, verified, slot_id):
     """Regenerate the question when solver couldn't compute (question parameters may be wrong)."""
-    from core_new.agents.question_writer import QuestionWriterAgent
+    from core_new.agents.slot_agents import QuestionWriterAgent
 
     # Get the original blueprint
     sb = q_data.get("_blueprint", {})
