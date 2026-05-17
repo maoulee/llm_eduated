@@ -202,11 +202,24 @@ class LLMGateway:
                     latency_ms = int((time.monotonic() - start_time) * 1000)
 
                     if raw_outputs is not None:
-                        return _pad([_process_json_raw(out, self._provider_name, self._model_name, latency_ms)
-                                     for out in raw_outputs], messages_batch, self._provider_name, self._model_name, latency_ms)
+                        results = [_process_json_raw(out, self._provider_name, self._model_name, latency_ms)
+                                   for out in raw_outputs]
+                    else:
+                        results = [_process_json_fallback(d, self._provider_name, self._model_name, latency_ms)
+                                   for d in raw_dicts]
 
-                    return _pad([_process_json_fallback(d, self._provider_name, self._model_name, latency_ms)
-                                 for d in raw_dicts], messages_batch, self._provider_name, self._model_name, latency_ms)
+                    has_retryable = any(
+                        not r.ok and self._should_retry(r.error_code or "")
+                        for r in results
+                    )
+                    if has_retryable and attempt < self._transport_retry.max_attempts - 1:
+                        retry_codes = {r.error_code for r in results if not r.ok and self._should_retry(r.error_code or "")}
+                        logger.warning("generate_json_batch content error retryable (attempt %d/%d): [%s]",
+                                       attempt + 1, self._transport_retry.max_attempts, ",".join(retry_codes))
+                        await self._wait_with_backoff(attempt)
+                        continue
+
+                    return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
 
                 except Exception as e:
                     latency_ms = int((time.monotonic() - start_time) * 1000)
@@ -256,20 +269,32 @@ class LLMGateway:
                     latency_ms = int((time.monotonic() - start_time) * 1000)
 
                     results = []
+                    has_retryable_content_error = False
+                    content_error_code = None
                     for raw in raw_results:
                         answer = raw.get("answer", "")
                         think = raw.get("think", "")
                         if answer.startswith("Error:"):
+                            ec = _classify_error_content(answer)
                             results.append(LLMResult.failure(
-                                error_code=_classify_error_content(answer), error_message=answer,
+                                error_code=ec, error_message=answer,
                                 provider=self._provider_name, model=self._model_name,
                                 latency_ms=latency_ms, content=answer, reasoning=think or None,
                             ))
+                            if self._should_retry(ec):
+                                has_retryable_content_error = True
+                                content_error_code = ec
                         else:
                             results.append(LLMResult.success(
                                 content=answer, reasoning=think or None,
                                 provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
                             ))
+
+                    if has_retryable_content_error and attempt < self._transport_retry.max_attempts - 1:
+                        logger.warning("generate_reasoned_batch content error retryable (attempt %d/%d): [%s]",
+                                       attempt + 1, self._transport_retry.max_attempts, content_error_code)
+                        await self._wait_with_backoff(attempt)
+                        continue
 
                     return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
 
@@ -321,20 +346,32 @@ class LLMGateway:
                     latency_ms = int((time.monotonic() - start_time) * 1000)
 
                     results = []
+                    has_retryable_content_error = False
+                    content_error_code = None
                     for raw in raw_results:
                         content = raw.get("answer", "")
                         reasoning = raw.get("think", "")
                         if content.startswith("Error:"):
+                            ec = _classify_error_content(content)
                             results.append(LLMResult.failure(
-                                error_code=_classify_error_content(content), error_message=content,
+                                error_code=ec, error_message=content,
                                 provider=self._provider_name, model=self._model_name,
                                 latency_ms=latency_ms, content=content, reasoning=reasoning or None,
                             ))
+                            if self._should_retry(ec):
+                                has_retryable_content_error = True
+                                content_error_code = ec
                         else:
                             results.append(LLMResult.success(
                                 content=content, reasoning=reasoning or None,
                                 provider=self._provider_name, model=self._model_name, latency_ms=latency_ms,
                             ))
+
+                    if has_retryable_content_error and attempt < self._transport_retry.max_attempts - 1:
+                        logger.warning("generate_text_batch content error retryable (attempt %d/%d): [%s]",
+                                       attempt + 1, self._transport_retry.max_attempts, content_error_code)
+                        await self._wait_with_backoff(attempt)
+                        continue
 
                     return _pad(results, messages_batch, self._provider_name, self._model_name, latency_ms)
 
