@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core_new.agent_roles import AuditMode, RoleType
+from core_new.agent_roles import AuditMode, ExecutionPolicy, PipelineFixTarget, RoleType
 
 
 AUDIT_STATUS_PASS = "pass"
@@ -42,7 +42,7 @@ class AuditResult:
 class FixRoute:
     next_action: str
     target_role: str = "none"
-    pipeline_fix_target: str = "none"
+    pipeline_fix_target: str = PipelineFixTarget.NONE.value
     instruction: str = ""
     reuse_previous_outputs: bool = True
     reason: str = ""
@@ -229,23 +229,30 @@ class FixRouter:
         current_round: int,
         is_single_choice: bool = True,
         previous_major_failures: int = 0,
+        source_policy: ExecutionPolicy | None = None,
     ) -> FixRoute:
+        max_rounds = self.max_revision_rounds
+        human_threshold = self.human_after_major_failures
+        if source_policy is not None:
+            max_rounds = source_policy.semantic_revision.max_rounds
+            human_threshold = source_policy.human_review_after_major_failures
+
         if audit.status == AUDIT_STATUS_PASS:
             return FixRoute(next_action="complete", reason="audit passed")
         if audit.status == AUDIT_STATUS_REJECT:
             return FixRoute(
                 next_action="reject",
                 target_role="human",
-                pipeline_fix_target="none",
+                pipeline_fix_target=PipelineFixTarget.NONE.value,
                 instruction=audit.fix_instruction,
                 reuse_previous_outputs=False,
                 reason="audit rejected output",
             )
         if audit.status == AUDIT_STATUS_HUMAN:
             return self._human_route(audit, "audit requested human review")
-        if current_round >= self.max_revision_rounds:
+        if current_round >= max_rounds:
             return self._human_route(audit, "revision budget exhausted")
-        if audit.severity == "blocker" or previous_major_failures >= self.human_after_major_failures:
+        if audit.severity == "blocker" or previous_major_failures >= human_threshold:
             return self._human_route(audit, "major failure threshold reached")
 
         target_role = audit.fix_target
@@ -264,7 +271,7 @@ class FixRouter:
         return FixRoute(
             next_action="human_review",
             target_role="human",
-            pipeline_fix_target="none",
+            pipeline_fix_target=PipelineFixTarget.NONE.value,
             instruction=audit.fix_instruction,
             reuse_previous_outputs=False,
             reason=reason,
@@ -274,20 +281,20 @@ class FixRouter:
     def _pipeline_target(audit: AuditResult, *, is_single_choice: bool) -> str:
         raw_target = str(audit.raw.get("fix_target") or "").strip().lower()
         if is_single_choice and raw_target in {"options", "option"}:
-            return "options"
+            return PipelineFixTarget.OPTIONS.value
         if not is_single_choice and raw_target == "rubric":
-            return "rubric"
+            return PipelineFixTarget.RUBRIC.value
         if audit.fix_target == RoleType.GENERATOR.value:
-            return "question"
+            return PipelineFixTarget.QUESTION.value
         if audit.fix_target == RoleType.REASONER.value:
-            return "answer"
+            return PipelineFixTarget.ANSWER.value
         if audit.fix_target == RoleType.SUMMARIZER.value:
-            return "answer"
+            return PipelineFixTarget.ANSWER.value
         if audit.fix_target == RoleType.PLANNER.value:
-            return "question"
+            return PipelineFixTarget.QUESTION.value
         if audit.fix_target == RoleType.EXTRACTOR.value:
-            return "question"
-        return "answer"
+            return PipelineFixTarget.QUESTION.value
+        return PipelineFixTarget.ANSWER.value
 
 
 def _lower(value: Any) -> str:

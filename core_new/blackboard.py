@@ -27,6 +27,7 @@ class AgentRecord:
     tokens_used: int = 0
     latency_s: float = 0.0
     version: int = 0
+    metadata: Optional[Dict[str, Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

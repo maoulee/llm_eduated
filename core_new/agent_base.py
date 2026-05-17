@@ -13,6 +13,8 @@ from .agent_roles import AuditMode, ExecutionPolicy, RoleType, resolve_execution
 from .blackboard import AgentRecord, Blackboard
 from .llm_gateway import LLMGateway, LLMResult
 
+_UNSET = object()
+
 
 @dataclass
 class AgentConfig:
@@ -23,12 +25,12 @@ class AgentConfig:
     output_key: Optional[str] = None
     max_tokens: int = 8192
     enable_thinking: bool = True
-    max_retries: int = 1
+    max_retries: int = _UNSET  # type: ignore[assignment]
     timeout_s: float = 300.0
     required_fields: list[str] = field(default_factory=list)
     allow_empty_parse: bool = False
     repair_on_parse_failure: bool = True
-    repair_max_retries: int = 1
+    repair_max_retries: int = _UNSET  # type: ignore[assignment]
     expected_output_format: str = ""
     role_type: RoleType | str = RoleType.GENERATOR
     audit_mode: AuditMode | str | None = None
@@ -45,6 +47,10 @@ class BaseAgent(ABC):
             config.role_type,
             config.execution_policy,
         )
+        if config.max_retries is _UNSET:
+            config.max_retries = max(0, self.execution_policy.transport_retry.max_attempts - 1)
+        if config.repair_max_retries is _UNSET:
+            config.repair_max_retries = self.execution_policy.format_repair.max_attempts
 
     @abstractmethod
     def build_input(self, blackboard: Blackboard) -> str:
@@ -81,6 +87,7 @@ class BaseAgent(ABC):
         input_snapshot = blackboard.get_relevant_state(self.config.name)
         start = time.monotonic()
         last_error = ""
+        repair_attempts = 0
 
         for attempt in range(self.config.max_retries + 1):
             try:
@@ -91,14 +98,14 @@ class BaseAgent(ABC):
                 )
                 if not result.ok:
                     raise RuntimeError(f"{result.error_code}: {result.error_message}")
-                raw_text, parsed = await self._parse_validate_repair(
+                raw_text, parsed, repair_attempts = await self._parse_validate_repair(
                     prompt=prompt,
                     result=result,
                 )
                 if not raw_text and parsed is not None:
                     raw_text = json.dumps(parsed, ensure_ascii=False, indent=2, default=str)
                 latency_s = time.monotonic() - start
-                return await blackboard.write(
+                record = await blackboard.write(
                     self.config.name,
                     raw_text,
                     self.config.phase,
@@ -108,37 +115,50 @@ class BaseAgent(ABC):
                     tokens_used=result.tokens_used,
                     latency_s=latency_s,
                 )
+                self._attach_metadata(record, repair_attempts)
+                return record
             except Exception as exc:
                 last_error = str(exc)
                 if attempt >= self.config.max_retries:
                     latency_s = time.monotonic() - start
-                    return await blackboard.mark_failed(
+                    record = await blackboard.mark_failed(
                         self.config.name,
                         last_error,
                         phase=self.config.phase,
                         input_snapshot=input_snapshot,
                         latency_s=latency_s,
                     )
+                    self._attach_metadata(record, repair_attempts)
+                    return record
                 await asyncio.sleep(min(2 ** attempt, 5))
+
+    def _attach_metadata(self, record: AgentRecord, repair_attempts: int) -> None:
+        record.metadata = {
+            "role_type": self.execution_policy.role_type.value,
+            "execution_policy": self.execution_policy.to_dict(),
+            "repair_attempts": repair_attempts,
+        }
 
     async def _parse_validate_repair(
         self,
         *,
         prompt: str,
         result: LLMResult,
-    ) -> tuple[str, Any]:
+    ) -> tuple[str, Any, int]:
         raw_text = result.content or ""
         raw_for_parse = result.parsed_json if self.config.output_format == "json" else raw_text
         parsed, validation_error = self._parse_and_validate(raw_for_parse)
         if validation_error is None:
-            return raw_text, parsed
+            return raw_text, parsed, 0
 
         if not self.config.repair_on_parse_failure or self.config.repair_max_retries <= 0:
             raise ValueError(validation_error)
 
         last_raw = raw_text
         last_error = validation_error
+        repair_attempts = 0
         for _ in range(self.config.repair_max_retries):
+            repair_attempts += 1
             repair_prompt = self._build_repair_prompt(
                 original_prompt=prompt,
                 bad_output=last_raw,
@@ -159,7 +179,7 @@ class BaseAgent(ABC):
             )
             repaired, repaired_error = self._parse_and_validate(repaired_for_parse)
             if repaired_error is None:
-                return repaired_raw, repaired
+                return repaired_raw, repaired, repair_attempts
 
             last_raw = repaired_raw
             last_error = repaired_error

@@ -23,6 +23,19 @@ class AuditMode(str, Enum):
     FINAL_PAPER_REVIEW = "final_paper_review"
 
 
+class PipelineFixTarget(str, Enum):
+    NONE = "none"
+    EXTRACTION = "extraction"
+    BLUEPRINT = "blueprint"
+    QUESTION = "question"
+    OPTIONS = "options"
+    ANSWER = "answer"
+    SOLUTION = "solution"
+    RUBRIC = "rubric"
+    FINAL_FORMAT = "final_format"
+    HUMAN = "human"
+
+
 @dataclass(frozen=True)
 class TransportRetryPolicy:
     max_attempts: int = 3
