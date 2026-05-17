@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
-from core_new.agent_roles import AuditMode, RoleType, DEFAULT_EXECUTION_POLICIES
+from core_new.agent_roles import AuditMode, RoleType, source_policy_for_audit_mode
 from core_new.audit_protocol import AuditResultNormalizer, FixRouter
 from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
 from core_new.agents.hybrid_subjective_team import (
@@ -416,7 +416,7 @@ class UnifiedQuestionPipeline:
                 audit,
                 current_round=rnd,
                 is_single_choice=is_sc,
-                source_policy=DEFAULT_EXECUTION_POLICIES[RoleType.GENERATOR],
+                source_policy=source_policy_for_audit_mode(AuditMode.QUESTION_REVIEW),
             )
             review["audit_result"] = audit.to_dict()
             review["fix_route"] = route.to_dict()

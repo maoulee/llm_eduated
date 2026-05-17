@@ -169,3 +169,32 @@ def resolve_execution_policy(
     if override is not None:
         return override
     return DEFAULT_EXECUTION_POLICIES[normalize_role_type(role_type)]
+
+
+_AUDIT_MODE_OWNER: dict[AuditMode, RoleType] = {
+    AuditMode.EXTRACTION_REVIEW: RoleType.EXTRACTOR,
+    AuditMode.BLUEPRINT_REVIEW: RoleType.PLANNER,
+    AuditMode.QUESTION_REVIEW: RoleType.GENERATOR,
+    AuditMode.FINAL_PAPER_REVIEW: RoleType.SUMMARIZER,
+}
+
+
+def source_policy_for_audit_mode(
+    mode: AuditMode | str | None = None,
+) -> ExecutionPolicy:
+    """Return the ExecutionPolicy for the role that owns the artifact being audited.
+
+    This determines the semantic revision budget and human-review threshold
+    based on which role produced the audited output.
+
+    Examples:
+        question_review -> Generator policy (max_rounds=1)
+        blueprint_review -> Planner policy (max_rounds=2)
+        extraction_review -> Extractor policy (max_rounds=1)
+        final_paper_review -> Summarizer policy (max_rounds=0)
+    """
+    mode_enum = normalize_audit_mode(mode)
+    if mode_enum is None:
+        return DEFAULT_EXECUTION_POLICIES[RoleType.GENERATOR]
+    owner_role = _AUDIT_MODE_OWNER.get(mode_enum, RoleType.GENERATOR)
+    return DEFAULT_EXECUTION_POLICIES[owner_role]

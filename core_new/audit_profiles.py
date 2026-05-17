@@ -117,4 +117,8 @@ def build_audit_checklist_prompt(mode: AuditMode | str) -> str:
         marker = "【关键】" if item.key in profile.focus_areas else ""
         lines.append(f"{i}. {marker}{item.description} [{item.severity}]")
     lines.append(f"\n请逐项检查，重点关注: {', '.join(profile.focus_areas)}")
+    lines.append("\n## checklist_results")
+    lines.append("请为每一项检查输出结果，格式如下：")
+    for item in profile.check_items:
+        lines.append(f"- **{item.key}**: pass 或 fail 或 warn（附简要说明）")
     return "\n".join(lines)

@@ -24,6 +24,8 @@ class AuditResult:
     confidence: str = "medium"
     mode: str = AuditMode.QUESTION_REVIEW.value
     raw: dict[str, Any] = field(default_factory=dict)
+    checklist_results: dict[str, str] = field(default_factory=dict)  # key -> pass/fail/warn
+    failed_checks: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -35,6 +37,8 @@ class AuditResult:
             "confidence": self.confidence,
             "mode": self.mode,
             "raw": self.raw,
+            "checklist_results": self.checklist_results,
+            "failed_checks": self.failed_checks,
         }
 
 
@@ -77,6 +81,8 @@ class AuditResultNormalizer:
         severity = cls._normalize_severity(raw, status, issue_type)
         instruction = cls._extract_fix_instruction(raw)
         confidence = cls._normalize_confidence(raw)
+        checklist_results = cls._extract_checklist_results(raw)
+        failed_checks = [k for k, v in checklist_results.items() if v in ("fail", "failed")]
 
         return AuditResult(
             status=status,
@@ -87,6 +93,8 @@ class AuditResultNormalizer:
             confidence=confidence,
             mode=mode_value,
             raw=raw,
+            checklist_results=checklist_results,
+            failed_checks=failed_checks,
         )
 
     @staticmethod
@@ -213,6 +221,24 @@ class AuditResultNormalizer:
         if value in {"high", "medium", "low"}:
             return value
         return "medium"
+
+    @staticmethod
+    def _extract_checklist_results(raw: dict[str, Any]) -> dict[str, str]:
+        """Extract structured checklist results from reviewer output."""
+        results = {}
+        checklist = raw.get("checklist_results")
+        if isinstance(checklist, dict):
+            for key, value in checklist.items():
+                v = str(value).strip().lower()
+                if v in ("pass", "ok", "yes", "true"):
+                    results[key] = "pass"
+                elif v in ("fail", "failed", "no", "false", "wrong"):
+                    results[key] = "fail"
+                elif v in ("warn", "warning", "partial"):
+                    results[key] = "warn"
+                else:
+                    results[key] = str(value)
+        return results
 
 
 class FixRouter:
