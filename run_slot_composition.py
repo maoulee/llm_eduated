@@ -188,25 +188,11 @@ async def generate_questions(gateway, slot_blueprints, experience_cards, pipelin
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行) [pipeline={pipeline_mode}]")
     print("=" * 60)
 
-    if pipeline_mode == "unified":
-        async def _generate_one(sb):
-            slot_id = sb.get("slot_id", "Q12")
-            exp_card = experience_cards.get(slot_id, "")
-            return await _generate_unified(gateway, sb, slot_id, exp_card)
-    else:
-        subj_pipeline = HybridSubjectivePipeline(max_revision_rounds=1) if pipeline_mode == "new" else None
-        legacy_writer = QuestionWriterAgent(gateway)
-        _is_comprehensive = _is_comprehensive_slot
-
-        async def _generate_one(sb):
-            slot_id = sb.get("slot_id", "Q12")
-            exp_card = experience_cards.get(slot_id, "")
-            is_comp = _is_comprehensive(sb)
-
-            if pipeline_mode == "new" and is_comp:
-                return await _generate_subjective(gateway, sb, slot_id, exp_card, subj_pipeline)
-            else:
-                return await _generate_legacy(legacy_writer, sb, slot_id, exp_card, gateway=gateway)
+    # Unified pipeline handles both SC and comprehensive questions
+    async def _generate_one(sb):
+        slot_id = sb.get("slot_id", "Q12")
+        exp_card = experience_cards.get(slot_id, "")
+        return await _generate_unified(gateway, sb, slot_id, exp_card)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
@@ -223,10 +209,7 @@ async def _generate_subjective(gateway, sb, slot_id, exp_card, subj_pipeline):
     t0 = time.monotonic()
 
     try:
-        result = await asyncio.wait_for(
-            subj_pipeline.run(sb, exp_card, gateway),
-            timeout=600,
-        )
+        result = await subj_pipeline.run(sb, exp_card, gateway)
         elapsed = time.monotonic() - t0
 
         q_data = dict(result.final_question or {})
@@ -300,10 +283,7 @@ async def _generate_unified(gateway, sb, slot_id, exp_card):
 
     try:
         pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
-        result = await asyncio.wait_for(
-            pipeline.run(sb, exp_card, gateway),
-            timeout=600,
-        )
+        result = await pipeline.run(sb, exp_card, gateway)
         elapsed = time.monotonic() - t0
 
         q_data = dict(result.final_question or {})
@@ -771,84 +751,26 @@ async def review_and_fix(
                 return q_idx, current_questions[q_idx]
 
             orig_q = current_questions[q_idx]
-            orig_pipeline = orig_q.get("pipeline_type", "")
 
-            # Route through unified pipeline if original was unified
-            if orig_pipeline.startswith("unified"):
-                print(f"    [{slot_id}] Regenerating via UnifiedQuestionPipeline...")
-                try:
-                    pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
-                    result = await asyncio.wait_for(
-                        pipeline.run(sb, experience_cards.get(slot_id, ""), gateway),
-                        timeout=600,
-                    )
-                    regen = dict(result.final_question or {})
-                    regen["slot_id"] = slot_id
-                    regen["pipeline_type"] = result.pipeline_type
-                    regen["review"] = result.review or {}
-                    regen["solver_result"] = result.solver_result or {}
-                    regen["revision_type"] = "regenerate"
-                    regen["regenerate_reason"] = instruction
-                    regen["revision_round"] = round_num + 1
-                    answer_preview = str(regen.get("correct_answer", regen.get("answer", "?")))[:80]
-                    print(f"    [{slot_id}] Unified regen done: answer={answer_preview}")
-                    return q_idx, regen
-                except Exception as e:
-                    print(f"    [{slot_id}] Unified regen failed ({e}), falling back to legacy")
-
-            # Route comprehensive questions through HybridSubjectivePipeline
-            elif _is_comprehensive_slot(sb):
-                print(f"    [{slot_id}] Regenerating via HybridSubjectivePipeline (comprehensive)...")
-                comp_pipeline = HybridSubjectivePipeline(max_revision_rounds=1)
-                try:
-                    result = await asyncio.wait_for(
-                        comp_pipeline.run(sb, experience_cards.get(slot_id, ""), gateway),
-                        timeout=600,
-                    )
-                    regen = dict(result.final_question or {})
-                    regen["review"] = result.review or {}
-                    regen["rubric"] = result.rubric or {}
-                    regen["formatted_solution"] = result.formatted_solution or {}
-                    regen["slot_id"] = slot_id
-                    regen["pipeline_type"] = "hybrid_v2"
-                    regen["correct_answer"] = regen.get("answer", "")
-                    regen["revision_type"] = "regenerate"
-                    regen["regenerate_reason"] = instruction
-                    regen["revision_round"] = round_num + 1
-                    answer_preview = str(regen.get("correct_answer", "?"))[:80]
-                    print(f"    [{slot_id}] Comprehensive regen done: answer={answer_preview}")
-                    return q_idx, regen
-                except Exception as e:
-                    print(f"    [{slot_id}] Comprehensive regen failed ({e}), falling back to legacy")
-
-            # Legacy: single-choice regeneration
-            qbb = Blackboard(
-                task_id=f"regen_{slot_id}",
-                task_type="slot_composition",
-                initial_state={
-                    "current_blueprint": sb,
-                    "reference_questions": experience_cards.get(slot_id, ""),
-                },
-            )
-            record = await writer.execute(qbb)
-            if record.error:
+            # Always use UnifiedQuestionPipeline for regeneration (handles both SC and Comp)
+            print(f"    [{slot_id}] Regenerating via UnifiedQuestionPipeline...")
+            try:
+                pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
+                result = await pipeline.run(sb, experience_cards.get(slot_id, ""), gateway)
+                regen = dict(result.final_question or {})
+                regen["slot_id"] = slot_id
+                regen["pipeline_type"] = result.pipeline_type
+                regen["review"] = result.review or {}
+                regen["solver_result"] = result.solver_result or {}
+                regen["revision_type"] = "regenerate"
+                regen["regenerate_reason"] = instruction
+                regen["revision_round"] = round_num + 1
+                answer_preview = str(regen.get("correct_answer", regen.get("answer", "?")))[:80]
+                print(f"    [{slot_id}] Unified regen done: answer={answer_preview}")
+                return q_idx, regen
+            except Exception as e:
+                print(f"    [{slot_id}] Unified regen failed ({e}), keeping original")
                 return q_idx, current_questions[q_idx]
-            regen = qbb.get("generated_question") or {}
-            regen["slot_id"] = slot_id
-            regen["revision_type"] = "regenerate"
-            regen["regenerate_reason"] = instruction
-            regen["revision_round"] = round_num + 1
-
-            # Verify regenerated single-choice question
-            if gateway:
-                re_verified = await _verify_answer_with_codeact(gateway, regen, slot_id)
-                regen["codeact_verified"] = re_verified
-                re_match = re_verified.get("match", False)
-                if re_verified.get("verified") and not re_match and re_verified.get("solver_confidence") == "high":
-                    print(f"    [{slot_id}] WARNING: Regenerated question STILL fails verification")
-                    regen["codeact_verified"]["fix_status"] = "regen_still_wrong"
-
-            print(f"    [{slot_id}] Regenerated: answer={regen.get('correct_answer','?')}")
             return q_idx, regen
 
         async def _do_fix(task):
