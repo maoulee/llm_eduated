@@ -259,12 +259,7 @@ Return only the corrected final content."""
             messages.append({"role": "system", "content": self.config.system_prompt})
         messages.append({"role": "user", "content": prompt})
 
-        # Thinking models (e.g. GLM-5.1) split output into reasoning + content.
-        # If max_tokens is too small, the model exhausts the budget on reasoning
-        # and produces no content. Floor at 10000 to ensure thinking + answer + code fit.
         max_tokens = self.config.max_tokens
-        if self.config.enable_thinking and max_tokens and max_tokens < 10000:
-            max_tokens = 10000
 
         fmt = self.config.output_format.lower()
         if fmt == "json":

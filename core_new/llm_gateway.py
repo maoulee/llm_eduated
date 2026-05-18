@@ -173,10 +173,6 @@ class LLMGateway:
 
     @staticmethod
     def _floor_max_tokens(max_tokens: Optional[int], enable_thinking: bool) -> Optional[int]:
-        """Thinking models split output into reasoning + content.
-        Small max_tokens causes reasoning to exhaust the budget, leaving content empty."""
-        if enable_thinking and max_tokens and max_tokens < 10000:
-            return 10000
         return max_tokens
 
     async def generate_json_batch(
