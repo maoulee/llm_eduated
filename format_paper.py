@@ -9,18 +9,20 @@ with open("docs/test_composition_result.json", encoding="utf-8") as f:
     full_data = json.load(f)
 review = full_data.get("final_review", {})
 
-# Load Q44
+# Load slot results (Q44, Q45, etc.)
 with open("docs/slot_composition_result.json", encoding="utf-8") as f:
-    q44_data = json.load(f)
-q44_review = q44_data.get("final_review", {})
+    slot_data = json.load(f)
+slot_review = slot_data.get("final_review", {})
 
 questions = list(full_data.get("final_questions", []))
-for q44 in q44_data.get("final_questions", []):
-    if q44.get("slot_id") == "Q44" and q44.get("stem"):
+for sq in slot_data.get("final_questions", []):
+    if sq.get("stem"):
         for i, q in enumerate(questions):
-            if q.get("slot_id") == "Q44":
-                questions[i] = q44
+            if q.get("slot_id") == sq.get("slot_id"):
+                questions[i] = sq
                 break
+        else:
+            questions.append(sq)
 
 sc_qs = sorted(
     [q for q in questions if int(q.get("slot_id", "Q99")[1:]) < 43 and q.get("stem")],
@@ -39,7 +41,6 @@ lines.append("")
 lines.append(
     "> 本试卷涵盖计算机组成原理选择题（第1-11题）和综合应用题（第43-45题），难度对标全国统考408真题。"
 )
-lines.append("> 第45题正在生成中，完成后补充。")
 lines.append("")
 
 # ==================== PART 1: QUESTIONS ====================
@@ -142,7 +143,7 @@ for q in comp_qs:
     for sr in review.get("slot_reviews", []):
         if sr.get("slot_id") == sid:
             score = sr.get("quality_score", "?")
-    for sr in q44_review.get("slot_reviews", []):
+    for sr in slot_review.get("slot_reviews", []):
         if sr.get("slot_id") == sid:
             score = sr.get("quality_score", "?")
 

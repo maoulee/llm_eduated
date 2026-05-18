@@ -355,7 +355,6 @@ class RemoteAPIProvider(BaseLLMProvider):
         return list(await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch]))
 
     @staticmethod
-    @staticmethod
     def _parse_think_answer(output: Dict[str, Any], enable_thinking: bool) -> Dict[str, str]:
         """Parse thinking and answer from API response.
 
@@ -370,26 +369,24 @@ class RemoteAPIProvider(BaseLLMProvider):
         content = output.get("content", "")
 
         if reasoning:
-            # GLM thinking mode may put XML output into reasoning_content
-            # instead of content. Extract XML-tagged tail as answer.
             if not content and enable_thinking:
                 xml_match = re.search(r'(<\w+>.*?</\w+>\s*)+$', reasoning, re.DOTALL)
                 if xml_match:
                     xml_part = xml_match.group(0)
                     think_part = reasoning[:xml_match.start()].strip()
                     return {"think": think_part, "answer": xml_part.strip()}
-                # Fallback: extract code blocks or content after thinking
                 code_match = re.search(r'(```\w*\n.*?```)', reasoning, re.DOTALL)
                 if code_match:
                     code_part = code_match.group(1)
                     think_part = reasoning[:code_match.start()].strip()
                     return {"think": think_part, "answer": code_part.strip()}
-                # Fallback: extract markdown sections (## ...) from reasoning
                 md_match = re.search(r'(^|\n)(#{1,3}\s+.+)', reasoning, re.MULTILINE)
                 if md_match:
                     md_part = reasoning[md_match.start():].strip()
                     think_part = reasoning[:md_match.start()].strip()
                     return {"think": think_part, "answer": md_part}
+                # Final fallback: reasoning contains the actual answer, use it directly
+                return {"think": "", "answer": reasoning.strip()}
             return {"think": reasoning, "answer": content}
 
         # Fallback for legacy responses without reasoning_content field
