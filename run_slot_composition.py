@@ -334,7 +334,7 @@ async def _generate_unified(gateway, sb, slot_id, exp_card):
         elapsed = time.monotonic() - t0
         reason = "timeout" if isinstance(e, asyncio.TimeoutError) else str(e)[:100]
         print(f"  [{slot_id}] Unified pipeline failed ({elapsed:.1f}s): {reason}")
-        return {"slot_id": slot_id, "status": "error", "error": str(e)}
+        return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "unified"}
 
 
 async def _generate_legacy(writer, sb, slot_id, exp_card, gateway=None):
@@ -945,6 +945,19 @@ async def run_composition(
     if not templates:
         print("No templates to compose from!")
         return {}
+
+    # When specific slots are given, append slot-type info to requirements
+    # to avoid mismatch (e.g. user_requirements says 选择题 but slot is 综合题)
+    if slot_ids:
+        slot_types = []
+        for sid, tmpl in templates.items():
+            q_type = tmpl.get("question_type", "")
+            if q_type == "comprehensive" or (sid.startswith("Q") and sid[1:].isdigit() and int(sid[1:]) >= 43):
+                slot_types.append(f"{sid}(综合应用题)")
+            else:
+                slot_types.append(f"{sid}(选择题)")
+        type_hint = "、".join(slot_types)
+        user_requirements = f"{user_requirements}。指定题位：{type_hint}。"
 
     total_start = time.monotonic()
 

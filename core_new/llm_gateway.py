@@ -171,6 +171,14 @@ class LLMGateway:
 
     # ── Batch methods ──────────────────────────────────────
 
+    @staticmethod
+    def _floor_max_tokens(max_tokens: Optional[int], enable_thinking: bool) -> Optional[int]:
+        """Thinking models split output into reasoning + content.
+        Small max_tokens causes reasoning to exhaust the budget, leaving content empty."""
+        if enable_thinking and max_tokens and max_tokens < 10000:
+            return 10000
+        return max_tokens
+
     async def generate_json_batch(
         self, messages_batch: List[List[Dict]],
         max_tokens: Optional[int] = None, enable_thinking: bool = False,
@@ -178,6 +186,7 @@ class LLMGateway:
         if not messages_batch:
             return []
 
+        max_tokens = self._floor_max_tokens(max_tokens, enable_thinking)
         last_error_code = None
         last_error_msg = None
 
@@ -253,6 +262,7 @@ class LLMGateway:
         if not messages_batch:
             return []
 
+        max_tokens = self._floor_max_tokens(max_tokens, enable_thinking)
         last_error_code = None
         last_error_msg = None
 
@@ -330,6 +340,7 @@ class LLMGateway:
         if not messages_batch:
             return []
 
+        max_tokens = self._floor_max_tokens(max_tokens, enable_thinking)
         last_error_code = None
         last_error_msg = None
 

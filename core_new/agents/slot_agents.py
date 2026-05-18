@@ -90,8 +90,11 @@ def _parse_md_sections(text: str) -> Dict[str, Any]:
 
 
 def _is_slot_id(name: str) -> bool:
-    """Check if a section name looks like a slot ID (Q12, Q43, etc.)."""
-    return bool(re.match(r"^Q\d+$", name))
+    """Check if a section name looks like a slot ID (Q12, Q43, etc.).
+
+    Accepts: Q43, Q43综合应用题, Q43（综合应用题）, Q43 综合题示例
+    """
+    return bool(re.match(r"^Q\d+", name.strip()))
 
 
 def _load_experience_card(slot_id: str, exp_dir: str = "data/slot_experiences") -> str:
@@ -163,7 +166,8 @@ class PaperComposerAgent(BaseAgent):
         slots = []
         for name, kv in sections.items():
             if _is_slot_id(name):
-                kv["slot_id"] = name
+                slot_id_match = re.match(r"^(Q\d+)", name)
+                kv["slot_id"] = slot_id_match.group(1)
                 slots.append(kv)
         result["slots"] = slots
 
