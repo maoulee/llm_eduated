@@ -583,9 +583,15 @@ SUBJECTIVE_QUESTION_REVIEW_PROMPT = """你是一位408考研出题审核专家�
 
 ## 修复路由（关键！）
 
-- 如果**题目设计**不符合蓝图（考点偏了、难度不对、计算量不对）→ fix_target=question（重新出题）
-- 如果**题目设计**没问题但**答案错误**→ fix_target=answer（只重新解题）
-- 如果都好 → pass
+请按以下优先级判断 fix_target：
+
+1. **参数矛盾**：题目的给定条件自相矛盾或物理上不可能（如地址位数不够放页帧号、容量参数不匹配等）→ fix_target=question
+2. **设计偏离**：题目设计不符合蓝图（考点偏了、难度不对、计算量不对、子问题数量不对）→ fix_target=question
+3. **结构缺陷**：子问题缺失、编号错误、缺少关键已知条件 → fix_target=question
+4. **答案计算错误**：题目设计合理但解题者计算出错 → fix_target=answer
+5. **如果都好** → pass
+
+注意：不要因为答案错误就盲目路由到 answer。先检查题目条件是否合理，如果题目本身有问题，必须路由到 question。
 
 请严格按以下markdown格式输出：
 

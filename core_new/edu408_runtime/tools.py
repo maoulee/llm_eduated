@@ -321,14 +321,14 @@ class GenerateQuestion408Tool(Tool):
 
         qtype = _infer_question_type(slot_blueprint, question_type)
         if qtype == "single_choice":
-            from core_new.agents.single_choice_team import SingleChoicePipeline
+            from core_new.agents.unified_pipeline import UnifiedQuestionPipeline
 
-            result = await SingleChoicePipeline(self.gateway).run(
+            result = await UnifiedQuestionPipeline().run(
                 slot_blueprint=slot_blueprint,
                 experience_card=experience_card,
                 gateway=self.gateway,
             )
-            return _json({"ok": True, "question_type": qtype, "question": result})
+            return _json({"ok": True, "question_type": qtype, "question": result.final_question})
 
         from core_new.agents.hybrid_subjective_team import HybridSubjectivePipeline
 

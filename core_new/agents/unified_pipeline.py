@@ -126,9 +126,11 @@ UNIFIED_SC_REVIEW_PROMPT = """你是一位408考研出题审核专家。请审�
 
 如果 computed_correct 与 intended_correct 不一致：
 - 仔细分析是求解器计算有误，还是选项设计本身有问题
-- fix_target = "answer" 表示需要重新计算（求解器可能出错）
-- fix_target = "options" 表示需要重新生成选项（选项设计有误）
-- fix_target = "question" 表示题目参数或条件有问题
+- fix_target = "question" 表示题目参数或条件自相矛盾（如地址位数不够、容量参数不匹配），需要重新出题
+- fix_target = "options" 表示需要重新生成选项（选项设计有误但题干合理）
+- fix_target = "answer" 表示题目设计合理但求解器计算出错
+
+注意：不要因为答案错误就盲目路由到 answer。先检查题目条件是否合理，如果题目参数自相矛盾，必须路由到 question。
 
 请严格按以下markdown格式输出：
 
