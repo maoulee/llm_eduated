@@ -539,6 +539,18 @@ async def run_composition(
         json.dump(output, f, ensure_ascii=False, indent=2, default=str)
     print(f"\n结果已保存到: {output_path}")
 
+    # Step 5: Format & Export
+    try:
+        from core_new.agents.paper_formatter import PaperFormatterAgent
+
+        formatter = PaperFormatterAgent(gateway=gateway)
+        md = await formatter.format(final_questions, blueprint, final_review)
+        md_path = Path("docs/exam_paper_clean.md")
+        md_path.write_text(md, encoding="utf-8")
+        print(f"排版完成: {md_path}")
+    except Exception as exc:
+        print(f"排版步骤跳过: {exc}")
+
     return output
 
 

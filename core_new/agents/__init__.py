@@ -16,6 +16,7 @@ from .hybrid_subjective_team import (
     HybridSubjectiveResult,
 )
 from .agent_registry import AgentRegistry
+from .paper_formatter import PaperFormatterAgent
 from . import solver_utils
 
 __all__ = [
@@ -32,5 +33,6 @@ __all__ = [
     "HybridSubjectivePipeline",
     "HybridSubjectiveResult",
     "AgentRegistry",
+    "PaperFormatterAgent",
     "solver_utils",
 ]
