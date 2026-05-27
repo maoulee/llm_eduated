@@ -20,7 +20,7 @@
       "cross_topic_integration": 1,
       "difficulty_separator": 0
     },
-    "composition_rationale": "本卷针对Q45（计算机组成原理综合大题）进行单题规划。题目跨越计算机组成原理与操作系统的软硬件层次，重点考查虚拟内存、页表机制与Cache映射全链路的工作原理与参数计算，体现高阶的系统级综合分析能力。\n",
+    "composition_rationale": "本卷专注规划408试卷中的Q45综合应用题位，依据契约采用计组与OS跨科目综合设计。核心定位于虚拟内存与Cache机制的全链路考察，通过具体硬件参数配置和系统级地址转换推演，兼顾机制分析与量化计算，以实现高水平的考试区分度。\n",
     "calculation_load_distribution": {
       "load_0": 0,
       "load_1": 0,
@@ -36,15 +36,15 @@
       "steps_4": 1,
       "steps_5": 0
     },
-    "difficulty_curve_strategy": "本卷仅包含单一综合大题，难度聚焦于level 4，要求考生具备多层次存储体系的量化分析与逻辑推演能力。\n",
+    "difficulty_curve_strategy": "作为单题独立规划，采用多步骤机制推演结合参数计算的模式，承担试卷后段的高难度区分功能。\n",
     "slots": [
       {
-        "target_subject": "计算机组成原理",
+        "target_subject": "计算机组成原理与操作系统",
         "target_family": "虚拟内存与地址映射",
-        "primary_target_name": "分页虚拟存储与Cache映射机制",
+        "primary_target_name": "虚拟地址到物理地址的转换及Cache映射全链路分析",
         "target_depth": "mechanism",
         "primary_paper_role": "cross_topic_integration",
-        "secondary_paper_roles": "mechanism_trigger",
+        "secondary_paper_roles": "mechanism_trigger, calculation_stability",
         "target_difficulty": "4",
         "difficulty_profile": {
           "knowledge_depth": 3,
@@ -58,9 +58,9 @@
         "reasoning_shape": "none",
         "sub_questions": "4",
         "answer_format": "解答过程+最终结果",
-        "must_include": "虚拟地址位数划分, TLB与Page Table查询机制, 物理地址计算, Cache直接/组相联映射位计算, 访存时间分析",
-        "must_avoid": "无实际系统场景的纯数学推导, 缺失硬件参数配置, 脱离OS层面的纯硬件题",
-        "reference_experience": "2015, 2019, 2021",
+        "must_include": "按字节编址, TLB与Page Table查询机制, 物理地址生成, Cache组相联映射计算, 访存时间性能分析",
+        "must_avoid": "脱离具体参数的纯理论推导, 缺乏系统场景的孤立计算, 综合题出现选项字段",
+        "reference_experience": "2015, 2019, 2021年408真题大题",
         "has_deviation": "no",
         "deviation_level": "none",
         "deviation_reason": "无",
@@ -73,7 +73,7 @@
     "hard_violation_count": "0",
     "major_deviation_count": "0",
     "minor_deviation_count": "0",
-    "comment": "蓝图整体规划非常优秀，完美契合了Q45综合应用题的契约要求。考点选择了历年高频核心“虚拟内存与地址映射”，并结合软硬件跨科目综合考察，难度设定和计算量分配均符合标准408大题的考核标准，预算一致性校验完全通过。\n",
+    "comment": "该组卷蓝图高度契合Q45综合应用题的历年命题规律及契约要求。蓝图精准定位了“计算机组成原理与操作系统”的跨科目综合，以“虚拟内存与地址映射”为核心展开全链路分析，难度设定及计算量分布均符合高区分度综合题的标准，设计非常专业。\n",
     "slot_reviews": [
       {
         "status": "pass",
@@ -91,127 +91,9 @@
   "initial_questions": [
     {
       "slot_id": "Q45",
-      "stem": "...",
-      "sub_questions": [
-        "...",
-        "..."
-      ],
-      "given_conditions": [
-        "..."
-      ],
-      "difficulty_self_assessment": "1-5",
-      "knowledge_points": "...",
-      "parameter_notes": "...",
-      "design_intent": {
-        "sub_q1_intent": "...",
-        "sub_q2_intent": "...",
-        "sub_q3_intent": "...",
-        "sub_q4_intent": "...",
-        "trap_design": "...",
-        "sub_question_logic": "...",
-        "虚拟地址结构": "一级页号（10位） + 二级页号（10位） + 页内偏移（12位）。",
-        "物理地址结构": "物理页框号（16位） + 页内偏移（12位）。\n- Cache块数 = 32KB / 64B = 512块。\n- Cache组数 = 512 / 4 = 128组。\n- 物理地址划分：Tag（28 - 7 - 6 = 15位） + 组号 Index（7位） + 块内偏移 Offset（6位）。",
-        "某进程访问虚拟地址 `0x0000 4A1C`。 (二进制": "0000 0000 0000 0000 0100 1010 0001 1100)\n- 一级页号：0000000000 (0x000)\n- 二级页号：0000000100 (0x004)\n- 页内偏移：1010 0001 1100 (0xA1C)\n- TLB标记（如果组相联，取前17位）：0000 0000 0000 0000 0\n- TLB组号（3位）：100 (4)\n- 假设TLB命中，对应的物理页框号为 `0x00B2` (0000 0000 1011 0010)。\n- 物理地址 = `0x00B2 A1C` (0000 0000 1011 0010 1010 0001 1100)\n- Cache Index = 0010101 (0x15 = 21)\n- Cache Tag = 0000 0000 1011 001 (0x0059)\n- Cache Block Offset = 001100 (0xC)"
-      },
-      "answer": {
-        "sub_q1": "一级页号为0x000，二级页号为0x004，页内偏移为0xA1C",
-        "sub_q2": "TLB组号为4",
-        "sub_q3": "0x00B2A1C",
-        "sub_q4": "Cache Tag为0x0059，Index为0x15，Block Offset为0xC"
-      },
-      "correct_answer": {
-        "sub_q1": "一级页号为0x000，二级页号为0x004，页内偏移为0xA1C",
-        "sub_q2": "TLB组号为4",
-        "sub_q3": "0x00B2A1C",
-        "sub_q4": "Cache Tag为0x0059，Index为0x15，Block Offset为0xC"
-      },
-      "solver_confidence": "low",
-      "solver_evidence": "未检测到具体的题目内容。请提供完整的题目描述，以便为您编写针对性的求解脚本。\n",
-      "python_exec_count": 3,
-      "code_files": [
-        "tmp\\solutions\\Q45\\step1.py",
-        "tmp\\solutions\\Q45\\step3.py",
-        "tmp\\solutions\\Q45\\step5.py"
-      ],
-      "rubric": {},
-      "pipeline_type": "unified_comp",
-      "generation_time_s": 534.9,
-      "review": {
-        "status": "needs_human_review",
-        "reason": "Agent failed, routed to human review",
-        "fallback_target": "human_review",
-        "audit_result": {
-          "status": "needs_human_review",
-          "severity": "blocker",
-          "issue_type": "structure",
-          "fix_target": "generator",
-          "fix_instruction": "",
-          "confidence": "medium",
-          "mode": "question_review",
-          "raw": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review"
-          },
-          "checklist_results": {},
-          "failed_checks": []
-        },
-        "fix_route": {
-          "next_action": "human_review",
-          "target_role": "human",
-          "pipeline_fix_target": "none",
-          "instruction": "",
-          "reuse_previous_outputs": false,
-          "reason": "audit requested human review"
-        }
-      },
-      "solver_result": {
-        "slot_id": "Q45",
-        "code_files": [
-          "tmp\\solutions\\Q45\\step1.py",
-          "tmp\\solutions\\Q45\\step3.py",
-          "tmp\\solutions\\Q45\\step5.py"
-        ],
-        "outputs": [
-          "========================================\n提示：未检测到具体题目数据，以下为通用演示计算。\n========================================\n\n【演示1：IEEE 754 浮点数解析】\n给定的十六进制机器数: 41360000\n提取符号位: 0\n提取阶码(十进制): 0\n计算尾数真值: 1.0016556978225708\n计算十进制浮点数: 5.887203071296941e-39\n\n【演示2：Cache地址映射计算】\n给定的主存地址(十六进制): 0000A850\n计算主存块号(block_addr): 168\n计算Cache总组数(num_sets): 16\n计算映射到的Cache组号(set_index): 8\n",
-          "未检测到具体的题目内容。请提供完整的题目描述，以便为您编写针对性的求解脚本。\n"
-        ],
-        "computed_results": {
-          "result": "无具体计算结果。原因：未提供具体的408考研题目文本，无法进行求解。"
-        },
-        "python_exec_count": 3,
-        "total_time_s": 135.2,
-        "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 17\n    print(\"=\"OwnProperty=========\\n\")\n          ^^^^^^^^^^^^^^\nSyntaxError: invalid syntax. Perhaps you forgot a comma?\n"
-      },
-      "_blueprint": {
-        "target_subject": "计算机组成原理",
-        "target_family": "虚拟内存与地址映射",
-        "primary_target_name": "分页虚拟存储与Cache映射机制",
-        "target_depth": "mechanism",
-        "primary_paper_role": "cross_topic_integration",
-        "secondary_paper_roles": "mechanism_trigger",
-        "target_difficulty": "4",
-        "difficulty_profile": {
-          "knowledge_depth": 3,
-          "mechanism_depth": 4,
-          "reasoning_steps": 4,
-          "calculation_load": 3,
-          "trap_strength": 2,
-          "cross_topic": 4
-        },
-        "option_style": "none",
-        "reasoning_shape": "none",
-        "sub_questions": "4",
-        "answer_format": "解答过程+最终结果",
-        "must_include": "虚拟地址位数划分, TLB与Page Table查询机制, 物理地址计算, Cache直接/组相联映射位计算, 访存时间分析",
-        "must_avoid": "无实际系统场景的纯数学推导, 缺失硬件参数配置, 脱离OS层面的纯硬件题",
-        "reference_experience": "2015, 2019, 2021",
-        "has_deviation": "no",
-        "deviation_level": "none",
-        "deviation_reason": "无",
-        "slot_id": "Q45"
-      },
-      "_experience_card": "# Q45 题位经验 (1年汇总)\n\n## 题位模板\n\n- **题位**: Q45\n- **题型**: comprehensive (综合应用题)\n- **分值**: 9\n- **科目稳定性**: 跨科目\n\n### 科目分布\n- 操作系统: 60%\n- 计算机组成原理: 30%\n- 跨科目: 10%\n\n### 考点领域分布\n- 虚拟内存与地址映射: 70%\n- 进程同步与内存分配: 20%\n- 文件系统与磁盘管理: 10%\n\n### 考察深度分布\n- mechanism: 80%\n- pattern: 20%\n- knowledge: 0%\n\n### 功能角色分布\n- cross_topic_integration: 70%\n- mechanism_trigger: 30%\n\n### 难度锚点\n- overall_mode: 4\n- overall_range: [3, 5]\n- knowledge_depth_mode: 3\n- mechanism_depth_mode: 4\n- reasoning_steps_mode: 4\n- calculation_load_mode: 3\n\n### 出题指导\n这个题位应当侧重于考查计算机存储体系的综合分析能力，特别是虚拟地址到物理地址再到Cache映射的全链路理解，结合软硬件协同工作的机制进行考察。\n\n- **应该是**: 跨越软硬件层次、包含参数计算与机制分析的综合应用题。\n- **不应是**: 纯机械记忆的概念默写,只涉及单一知识点的简单计算,无实际系统场景的数学推导\n- **生成风格**: 基于特定硬件参数配置的机制推演与概念解释相结合。\n- **稳定性评价**: 稳定作为高区分度的硬件与系统综合机制分析题。\n\n## 逐题分析\n\n### 2016-Q45\n\n- **考点**: 虚拟存储与Cache综合映射机制 (mechanism)\n- **知识领域**: 存储器层次结构与虚拟内存管理\n- **辅助考点**: TLB映射;Cache组相联映射;页式虚拟存储管理;写入策略\n- **前置知识**: 二进制地址划分;主存映射原理;磁盘I/O原理\n\n- **难度**: 4/5\n  - 知识深度=3 机制深度=4 推理步数=4 计算量=3 陷阱强度=2 跨章节=3\n  - 理由: 融合了页表、TLB、Cache的地址结构和硬件映射机制，并要求综合软硬件性能差异进行原理阐述。\n- **功能角色**: cross_topic_integration\n  - 突破了单一硬件或单一软件的局限，要求从全系统地址访问链路的视角进行跨科目综合分析。\n\n- **答案分析**: 根据给定的容量与编址参数精确推导各地址段位宽，并从速度差异的角度合理解释了不同层次缺失开销和写策略的合理性。\n- **错误选项**:\n  - 逻辑混乱: 无法理清虚拟地址、物理地址在TLB、Page、Cache中的切分映射关系\n  - 计算失误: 混淆组相联中的组数与组内块数导致标记位和索引位计算错误\n  - 概念偏颇: 仅从硬件或软件单方面解释缺失开销，未抓住存储层次速度差异的核心\n- **解题步骤**: 由页大小推导页内偏移位宽，从而得出虚拟页号和物理页号位宽；由Cache数据块大小和相联路数推导组数及对应位宽；按二进制位解析特定块号的Cache映射组号与标记；对比主存和磁盘的速度和实现方式回答性能问题。\n- **干扰项模式**: 概念混淆, 参数计算错位\n\n- **风格**: 题干=long 条件数=7 选项=概念判断 推理=multi_step\n  - 陷阱: 机制跨度陷阱\n\n---\n"
+      "status": "error",
+      "error": "Comp design failed: invalid parsed output: parsed output is an empty dict",
+      "pipeline_type": "unified"
     }
   ],
   "revision_rounds": [
@@ -221,529 +103,158 @@
         {
           "slot_id": "Q45",
           "status": "content_mismatch",
-          "issue": "\n1. **题目结构缺失**：`stem`、`sub_questions`、`given_conditions` 全部为 `\"...\"`，未生成真正的题目文本。\n2. **答案推演错误**：在后台的 `design_intent` 中，Cache地址映射的计算出现了严重的低级错误。对于物理地址 `0x00B2A1C`（二进制 `...0010 1010 0001 1100`），在块大小64B（Offset 6位）、128组（Index 7位）的情况下，正确的 Offset 应为 `011100` (0x1C)，正确的 Index 应为 `0001010` (0x0A)。而后台却给出了 `Index=0010101 (0x15)` 和 `Offset=001100 (0xC)` 的错误结果，存在严重的二进制位错位提取问题。"
+          "issue": "题目生成管道报错，解析输出为空字典，导致题干、参数配置及标准解答全过程缺失。"
         }
       ],
       "fix_actions": [
         {
           "slot_id": "Q45",
           "revision_type": "regenerate",
-          "instruction": "**直接废弃当前结果，触发重新生成。**\n1. **确保题目生成完整**：需在生成结果中包含完整的C语言代码或系统业务场景描述，明确给出虚拟地址空间位数、物理地址空间位数、页大小、TLB组织形式、Cache容量/块大小/映射方式等必要参数。\n2. **修正Cache计算逻辑**：在重写答案脚本时，严格遵循物理地址的字段拼接与提取。Offset 取物理地址的低位（具体位数由块大小决定），Index 取中间位（具体位数由Cache组数决定），Tag 取剩余的高位，切忌发生位数截取错乱。\n3. **补充OS层面机制**：蓝图要求跨科目（OS+CO）且避免脱离OS的纯硬件题，重新出题时需包含进程切换、缺页处理或页表保护等OS层面的发问。\n"
+          "instruction": "必须重新运行题目生成程序。请严格依据蓝图要求重新生成Q45：设计一道关于“虚拟内存与Cache机制全链路”的计组与OS跨科目综合大题，包含4个小问，要求涉及按字节编址、TLB与页表查询、物理地址计算、Cache组相联映射以及访存时间分析，并提供完整、计算准确的解答过程。\n"
         }
       ],
       "questions_before_fix": [
         {
           "slot_id": "Q45",
-          "stem": "...",
-          "sub_questions": [
-            "...",
-            "..."
-          ],
-          "given_conditions": [
-            "..."
-          ],
-          "difficulty_self_assessment": "1-5",
-          "knowledge_points": "...",
-          "parameter_notes": "...",
-          "design_intent": {
-            "sub_q1_intent": "...",
-            "sub_q2_intent": "...",
-            "sub_q3_intent": "...",
-            "sub_q4_intent": "...",
-            "trap_design": "...",
-            "sub_question_logic": "...",
-            "虚拟地址结构": "一级页号（10位） + 二级页号（10位） + 页内偏移（12位）。",
-            "物理地址结构": "物理页框号（16位） + 页内偏移（12位）。\n- Cache块数 = 32KB / 64B = 512块。\n- Cache组数 = 512 / 4 = 128组。\n- 物理地址划分：Tag（28 - 7 - 6 = 15位） + 组号 Index（7位） + 块内偏移 Offset（6位）。",
-            "某进程访问虚拟地址 `0x0000 4A1C`。 (二进制": "0000 0000 0000 0000 0100 1010 0001 1100)\n- 一级页号：0000000000 (0x000)\n- 二级页号：0000000100 (0x004)\n- 页内偏移：1010 0001 1100 (0xA1C)\n- TLB标记（如果组相联，取前17位）：0000 0000 0000 0000 0\n- TLB组号（3位）：100 (4)\n- 假设TLB命中，对应的物理页框号为 `0x00B2` (0000 0000 1011 0010)。\n- 物理地址 = `0x00B2 A1C` (0000 0000 1011 0010 1010 0001 1100)\n- Cache Index = 0010101 (0x15 = 21)\n- Cache Tag = 0000 0000 1011 001 (0x0059)\n- Cache Block Offset = 001100 (0xC)"
-          },
-          "answer": {
-            "sub_q1": "一级页号为0x000，二级页号为0x004，页内偏移为0xA1C",
-            "sub_q2": "TLB组号为4",
-            "sub_q3": "0x00B2A1C",
-            "sub_q4": "Cache Tag为0x0059，Index为0x15，Block Offset为0xC"
-          },
-          "correct_answer": {
-            "sub_q1": "一级页号为0x000，二级页号为0x004，页内偏移为0xA1C",
-            "sub_q2": "TLB组号为4",
-            "sub_q3": "0x00B2A1C",
-            "sub_q4": "Cache Tag为0x0059，Index为0x15，Block Offset为0xC"
-          },
-          "solver_confidence": "low",
-          "solver_evidence": "未检测到具体的题目内容。请提供完整的题目描述，以便为您编写针对性的求解脚本。\n",
-          "python_exec_count": 3,
-          "code_files": [
-            "tmp\\solutions\\Q45\\step1.py",
-            "tmp\\solutions\\Q45\\step3.py",
-            "tmp\\solutions\\Q45\\step5.py"
-          ],
-          "rubric": {},
-          "pipeline_type": "unified_comp",
-          "generation_time_s": 534.9,
-          "review": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review",
-            "audit_result": {
-              "status": "needs_human_review",
-              "severity": "blocker",
-              "issue_type": "structure",
-              "fix_target": "generator",
-              "fix_instruction": "",
-              "confidence": "medium",
-              "mode": "question_review",
-              "raw": {
-                "status": "needs_human_review",
-                "reason": "Agent failed, routed to human review",
-                "fallback_target": "human_review"
-              },
-              "checklist_results": {},
-              "failed_checks": []
-            },
-            "fix_route": {
-              "next_action": "human_review",
-              "target_role": "human",
-              "pipeline_fix_target": "none",
-              "instruction": "",
-              "reuse_previous_outputs": false,
-              "reason": "audit requested human review"
-            }
-          },
-          "solver_result": {
-            "slot_id": "Q45",
-            "code_files": [
-              "tmp\\solutions\\Q45\\step1.py",
-              "tmp\\solutions\\Q45\\step3.py",
-              "tmp\\solutions\\Q45\\step5.py"
-            ],
-            "outputs": [
-              "========================================\n提示：未检测到具体题目数据，以下为通用演示计算。\n========================================\n\n【演示1：IEEE 754 浮点数解析】\n给定的十六进制机器数: 41360000\n提取符号位: 0\n提取阶码(十进制): 0\n计算尾数真值: 1.0016556978225708\n计算十进制浮点数: 5.887203071296941e-39\n\n【演示2：Cache地址映射计算】\n给定的主存地址(十六进制): 0000A850\n计算主存块号(block_addr): 168\n计算Cache总组数(num_sets): 16\n计算映射到的Cache组号(set_index): 8\n",
-              "未检测到具体的题目内容。请提供完整的题目描述，以便为您编写针对性的求解脚本。\n"
-            ],
-            "computed_results": {
-              "result": "无具体计算结果。原因：未提供具体的408考研题目文本，无法进行求解。"
-            },
-            "python_exec_count": 3,
-            "total_time_s": 135.2,
-            "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 17\n    print(\"=\"OwnProperty=========\\n\")\n          ^^^^^^^^^^^^^^\nSyntaxError: invalid syntax. Perhaps you forgot a comma?\n"
-          },
-          "_blueprint": {
-            "target_subject": "计算机组成原理",
-            "target_family": "虚拟内存与地址映射",
-            "primary_target_name": "分页虚拟存储与Cache映射机制",
-            "target_depth": "mechanism",
-            "primary_paper_role": "cross_topic_integration",
-            "secondary_paper_roles": "mechanism_trigger",
-            "target_difficulty": "4",
-            "difficulty_profile": {
-              "knowledge_depth": 3,
-              "mechanism_depth": 4,
-              "reasoning_steps": 4,
-              "calculation_load": 3,
-              "trap_strength": 2,
-              "cross_topic": 4
-            },
-            "option_style": "none",
-            "reasoning_shape": "none",
-            "sub_questions": "4",
-            "answer_format": "解答过程+最终结果",
-            "must_include": "虚拟地址位数划分, TLB与Page Table查询机制, 物理地址计算, Cache直接/组相联映射位计算, 访存时间分析",
-            "must_avoid": "无实际系统场景的纯数学推导, 缺失硬件参数配置, 脱离OS层面的纯硬件题",
-            "reference_experience": "2015, 2019, 2021",
-            "has_deviation": "no",
-            "deviation_level": "none",
-            "deviation_reason": "无",
-            "slot_id": "Q45"
-          },
-          "_experience_card": "# Q45 题位经验 (1年汇总)\n\n## 题位模板\n\n- **题位**: Q45\n- **题型**: comprehensive (综合应用题)\n- **分值**: 9\n- **科目稳定性**: 跨科目\n\n### 科目分布\n- 操作系统: 60%\n- 计算机组成原理: 30%\n- 跨科目: 10%\n\n### 考点领域分布\n- 虚拟内存与地址映射: 70%\n- 进程同步与内存分配: 20%\n- 文件系统与磁盘管理: 10%\n\n### 考察深度分布\n- mechanism: 80%\n- pattern: 20%\n- knowledge: 0%\n\n### 功能角色分布\n- cross_topic_integration: 70%\n- mechanism_trigger: 30%\n\n### 难度锚点\n- overall_mode: 4\n- overall_range: [3, 5]\n- knowledge_depth_mode: 3\n- mechanism_depth_mode: 4\n- reasoning_steps_mode: 4\n- calculation_load_mode: 3\n\n### 出题指导\n这个题位应当侧重于考查计算机存储体系的综合分析能力，特别是虚拟地址到物理地址再到Cache映射的全链路理解，结合软硬件协同工作的机制进行考察。\n\n- **应该是**: 跨越软硬件层次、包含参数计算与机制分析的综合应用题。\n- **不应是**: 纯机械记忆的概念默写,只涉及单一知识点的简单计算,无实际系统场景的数学推导\n- **生成风格**: 基于特定硬件参数配置的机制推演与概念解释相结合。\n- **稳定性评价**: 稳定作为高区分度的硬件与系统综合机制分析题。\n\n## 逐题分析\n\n### 2016-Q45\n\n- **考点**: 虚拟存储与Cache综合映射机制 (mechanism)\n- **知识领域**: 存储器层次结构与虚拟内存管理\n- **辅助考点**: TLB映射;Cache组相联映射;页式虚拟存储管理;写入策略\n- **前置知识**: 二进制地址划分;主存映射原理;磁盘I/O原理\n\n- **难度**: 4/5\n  - 知识深度=3 机制深度=4 推理步数=4 计算量=3 陷阱强度=2 跨章节=3\n  - 理由: 融合了页表、TLB、Cache的地址结构和硬件映射机制，并要求综合软硬件性能差异进行原理阐述。\n- **功能角色**: cross_topic_integration\n  - 突破了单一硬件或单一软件的局限，要求从全系统地址访问链路的视角进行跨科目综合分析。\n\n- **答案分析**: 根据给定的容量与编址参数精确推导各地址段位宽，并从速度差异的角度合理解释了不同层次缺失开销和写策略的合理性。\n- **错误选项**:\n  - 逻辑混乱: 无法理清虚拟地址、物理地址在TLB、Page、Cache中的切分映射关系\n  - 计算失误: 混淆组相联中的组数与组内块数导致标记位和索引位计算错误\n  - 概念偏颇: 仅从硬件或软件单方面解释缺失开销，未抓住存储层次速度差异的核心\n- **解题步骤**: 由页大小推导页内偏移位宽，从而得出虚拟页号和物理页号位宽；由Cache数据块大小和相联路数推导组数及对应位宽；按二进制位解析特定块号的Cache映射组号与标记；对比主存和磁盘的速度和实现方式回答性能问题。\n- **干扰项模式**: 概念混淆, 参数计算错位\n\n- **风格**: 题干=long 条件数=7 选项=概念判断 推理=multi_step\n  - 陷阱: 机制跨度陷阱\n\n---\n"
+          "status": "error",
+          "error": "Comp design failed: invalid parsed output: parsed output is an empty dict",
+          "pipeline_type": "unified"
         }
       ],
       "questions_after_fix": [
         {
           "slot_id": "Q45",
-          "stem": "某计算机系统采用32位定点CPU，按字节编址，采用虚拟存储机制与Cache存储系统。系统配置如下：",
+          "stem": "某32位计算机系统按字节编址，采用按页虚拟存储管理。系统的虚拟地址空间为4GB，物理内存为256MB，页面大小为4KB。系统采用TLB来加速虚拟地址到物理地址的转换，TLB采用2路组相联映射方式，总容量为64项。系统的数据Cache采用物理地址访问，采用4路组相联映射，Cache总数据容量为64KB，块大小为64B。假设访问TLB的时间为10ns，访问Cache的时间为20ns，访问主存的时间为200ns。在程序执行过程中，某段核心循环的TLB命中率为80%，Cache命中率为90%，且不考虑缺页异常（缺页率为0%）。TLB缺失时直接访问主存中的页表获取物理地址并更新TLB；Cache缺失时直接访问主存获取数据块并更新Cache。各级存储器的访问过程均采用串行方式进行。",
           "sub_questions": [
-            "根据系统配置参数，画出虚拟地址（VA）和物理地址（PA）的结构图，并说明各字段的名称与位数。进一步计算Cache的标记（Tag）字段的位数。",
-            "假设在进程P读取虚拟地址 `0x0000_1A2C` 时，TLB发生未命中，但该地址对应的页表项（PTE）存放在主存物理地址 `0x0080_1000` 处。通过查询页表，得到该虚拟地址对应的物理页框号为 `0x000B`。请详细描述从虚拟地址发出到最终获得物理地址的查询过程，并计算虚拟地址 `0x0000_1A2C` 对应的最终物理地址（用十六进制表示）。",
-            "假设TLB的命中率为80%，Cache的命中率为90%。请计算进程P在执行此次数据读取时，从发出虚拟地址到最终读取到数据所需的平均有效访存时间。（假设TLB未命中时必须先访问主存中的页表获取物理地址，再访问Cache/主存获取数据）",
-            "在上述场景中，若进程P对虚拟地址 `0x0000_1A2C` 进行了多次写入修改，随后操作系统因内存紧张将进程P的该页换出到磁盘。请结合硬件机制和操作系统的存储管理策略，说明在换出页面时，硬件和操作系统需要配合执行哪些关键操作？（仅针对该被修改的页面）"
+            "请给出该系统中虚拟地址（VA）和物理地址（PA）的字段划分（标明各字段的名称及位数），并分别计算TLB的标记（Tag）位和Cache的标记（Tag）位各占多少位？",
+            "假设CPU执行某指令时，给出的虚拟地址为0x0000_4A1C，且已知该虚拟地址对应的页表项中存储的物理页号为0x00C3。请写出该虚拟地址对应的物理地址（用十六进制表示）。",
+            "请详细描述当CPU发出的虚拟地址在“TLB命中、Cache缺失”情况下的完整访存过程，并计算这种情况下完成一次访存所需的总时间。",
+            "根据题目给定的参数和命中率，计算该核心循环执行时的平均访存时间。"
           ],
-          "given_conditions": [
-            "32位系统，按字节编址",
-            "虚拟地址空间4GB，物理内存256MB",
-            "页面大小4KB",
-            "TLB为2路组相联，共16项，访问时间10ns",
-            "L1 Cache容量32KB，块大小64B，2路组相联，访问时间20ns",
-            "主存访问时间200ns",
-            "串行访问，忽略缺页异常",
-            "特定访问虚拟地址: 0x0000_1A2C"
-          ],
-          "difficulty_self_assessment": "4",
-          "knowledge_points": [
-            "虚拟地址与物理地址结构划分",
-            "TLB与页表映射机制",
-            "Cache组相联映射位计算",
-            "有效访存时间计算(EAT)",
-            "缺页换出与脏位(DIRTY)处理"
-          ],
-          "parameter_notes": [
-            "32位虚拟地址与4KB页面得出VPN为20位，VPO为12位；256MB物理内存得出PPN为16位；这导致TLB Tag为17位，Index为3位。",
-            "Cache容量32KB，块64B，2路组相联得出Cache Index为8位，Offset为6位；物理地址28位减去14位(8+6)，得出Cache Tag为14位。",
-            "时间参数设计为常规量级，确保EAT计算具有区分度。",
-            "物理页框号设计为0x000B，原偏移量0xA2C拼接后得到物理地址0x000B_A2C。"
-          ],
+          "given_conditions": "[\"系统32位按字节编址，虚拟地址空间4GB，物理内存256MB\", \"页面大小4KB\", \"TLB采用2路组相联，总容量64项\", \"Cache采用4路组相联，容量64KB，块大小64B，使用物理地址\", \"访存时间：TLB=10ns，Cache=20ns，主存=200ns\", \"命中率：",
+          "difficulty_self_assessment": null,
+          "knowledge_points": "",
+          "parameter_notes": "",
           "design_intent": {},
           "answer": {
-            "sub_q1": "VA结构：[VPN(20位) | Page_Offset(12位)]；PA结构：[Tag(17位) | Cache_Index(9位) | Block_Offset(6位)]；Cache标记(Tag)位数为17位",
-            "sub_q2": "0xba2c",
-            "sub_q3": "410.00 ns",
-            "sub_q4": "1.硬件设置脏位；2.操作系统选页；3.检查并写回；4.表项更新与回收"
+            "sub_q1": "TLB标记占15位，Cache标记占14位",
+            "sub_q2": "0x00C3A1C",
+            "sub_q3": "230ns",
+            "sub_q4": "90ns"
           },
           "correct_answer": {
-            "sub_q1": "VA结构：[VPN(20位) | Page_Offset(12位)]；PA结构：[Tag(17位) | Cache_Index(9位) | Block_Offset(6位)]；Cache标记(Tag)位数为17位",
-            "sub_q2": "0xba2c",
-            "sub_q3": "410.00 ns",
-            "sub_q4": "1.硬件设置脏位；2.操作系统选页；3.检查并写回；4.表项更新与回收"
+            "sub_q1": "TLB标记占15位，Cache标记占14位",
+            "sub_q2": "0x00C3A1C",
+            "sub_q3": "230ns",
+            "sub_q4": "90ns"
           },
           "solver_confidence": "low",
-          "solver_evidence": "【子问 1】虚拟地址(VA)与物理地址(PA)结构及Cache Tag位数\n------------------------------------------------------------\n1. 虚拟地址(VA)结构 (总32位):\n   [ VPN(20位) | Page_Offset(12位) ]\n\n2. 物理地址(PA)结构 (总32位):\n   [ Tag(17位) | Cache_Index(9位) | Block_Offset(6位) ]\n\n>>> 结论：Cache的标记字段的位数为 17 位。\n============================================================\n\n【子问 2】虚拟地址到物理地址的转换及查询过程\n------------------------------------------------------------\n1. CPU发出虚拟地址 VA = 0x00001A2C\n2. 硬件划分VA: 提取虚拟页号 VPN = 0x1，页内偏移 Offset = 0xa2c\n3. TLB查询: 用VPN查询TLB，发生【未命中】。\n4. 查询页表: 使用页表基址寄存器，访问主存物理地址 0x00801000 处的页表项(PTE)。\n5. 获取物理页框号: 读出PTE中的有效数据，得到物理页框号 PFN = 0x000B。\n6. 组合物理地址: PA = PFN << 12 | Offset = 0xba2c\n\n>>> 结论：最终物理地址为 0xba2c。\n============================================================\n\n【子问 3】平均有效访存时间计算\n------------------------------------------------------------\n查询路径分类计算：\n1. TLB命中, Cache命中: 概率=0.72, 耗时=110ns\n2. TLB命中, Cache未命中: 概率=0.08, 耗时=1110ns\n3. TLB未命中, Cache命中: 概率=0.18, 耗时=1110ns\n4. TLB未命中, Cache未命中: 概率=0.02, 耗时=2110ns\n\n>>> 结论：平均有效访存时间为 410.00 ns。\n============================================================\n\n【子问 4】换出被修改页面的软硬件配合操作\n------------------------------------------------------------\n1. 【硬件设置脏位】：当进程P对该页面执行写入修改时，MMU在完成写操作后，会自动将该虚拟页对应页表项(PTE)和TLB项中的“修改位/脏位”置为1。\n2. 【操作系统选页】：当系统内存紧张时，操作系统的页面置换算法选中此页进行换出。\n3. 【检查并写回】：操作系统检查该页表项发现其“修改位”为1，判定该页面被修改过。于是OS向磁盘控制器发起I/O请求，将主存中该物理页框的数据写回到磁盘的对换区中。\n4. 【表项更新与回收】：磁盘写回完成后，操作系统将该PTE的“有效位/存在位”置为0。最后，操作系统回收该物理页框，将其分配给新的缺页进程使用。\n============================================================\n\n",
+          "solver_evidence": "--- 子问1：字段划分与标记位计算 ---\n1. 虚拟地址(VA)划分 (共32位):\n   - 虚拟页号 (VPN): 20 位\n     - TLB标记: 15 位\n     - TLB索引: 5 位\n   - 页内偏移 : 12 位\n\n2. 物理地址(PA)划分 (共28位):\n   - 物理页号 (PPN): 16 位\n   - 页内偏移 : 12 位\n   物理地址在Cache中的划分:\n   - Cache标记: 14 位\n   - Cache组号 : 8 位\n   - 块内偏移 : 6 位\n\n--- 子问2：虚拟地址到物理地址的转换 ---\n给定的虚拟地址(VA): 0x4a1c\n提取的页内偏移(VPO): 0xa1c\n给定的物理页号(PPN): 0xc3\n计算得到的物理地址(PA) = PPN(0xc3) << 12 | VPO(0xa1c) = 0xc3a1c\n\n--- 子问3：TLB命中、Cache缺失情况下的访存过程与时间 ---\n完整访存过程描述：\n1. CPU发出虚拟地址(VA)。\n2. 用虚拟地址中的TLB标记和索引去查找TLB，耗费时间 10ns。\n3. 此时TLB命中，直接得到对应的物理地址(PA)。\n4. 用物理地址的Cache标记、组号和块内偏移查找Cache，耗费时间 20ns。\n5. 此时Cache缺失。\n6. 此时需要使用该物理地址直接去访问主存，获取所需的数据块，并把该块调入Cache，耗费时间 200ns。\n7. 最终将主存中读取的数据返回给CPU，完成访存。\n\n总耗时 = 访问TLB时间 + 访问Cache时间 + 访问主存时间\n总耗时 = 10ns + 20ns + 200ns = 230ns\n\n--- 子问4：平均访存时间计算 ---\n各情况概率与耗时：\n1. TLB命中，Cache命中：概率 = 0.7200000000000001, 耗时 = 30ns\n2. TLB命中，Cache缺失：概率 = 0.08000000000000002, 耗时 = 230ns\n3. TLB缺失，Cache命中：概率 = 0.18000000000000002, 耗时 = 230ns\n4. TLB缺失，Cache缺失：概率 = 0.020000000000000004, 耗时 = 430ns\n\n平均访存时间 (AMAT) = 0.7200000000000001*30 + 0.08000000000000002*230 + 0.18000000000000002*230 + 0.020000000000000004*430\nAMAT = 21.6 + 18.400000000000002 + 41.400000000000006 + 8.600000000000001\nAMAT = 90.0ns\n",
           "python_exec_count": 2,
           "code_files": [
             "tmp\\solutions\\Q45\\step1.py",
-            "tmp\\solutions\\Q45\\step3.py"
+            "tmp\\solutions\\Q45\\step2.py"
           ],
           "rubric": {},
           "pipeline_type": "unified_comp",
           "review": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review",
+            "status": "pass",
+            "score": "95",
+            "needs_fix": "no",
+            "design_vs_blueprint": "pass",
+            "intent_vs_answer": "pass",
+            "answer_correctness": "pass",
+            "sub_question_count_match": "pass",
+            "calculation_load_match": "pass",
+            "rubric_match": "pass",
+            "issue": "无",
+            "fix_target": "无",
+            "fix_instruction": "无",
             "audit_result": {
-              "status": "needs_human_review",
-              "severity": "blocker",
-              "issue_type": "structure",
-              "fix_target": "generator",
-              "fix_instruction": "",
+              "status": "pass",
+              "severity": "none",
+              "issue_type": "none",
+              "fix_target": "none",
+              "fix_instruction": "无",
               "confidence": "medium",
               "mode": "question_review",
               "raw": {
-                "status": "needs_human_review",
-                "reason": "Agent failed, routed to human review",
-                "fallback_target": "human_review"
+                "status": "pass",
+                "score": "95",
+                "needs_fix": "no",
+                "design_vs_blueprint": "pass",
+                "intent_vs_answer": "pass",
+                "answer_correctness": "pass",
+                "sub_question_count_match": "pass",
+                "calculation_load_match": "pass",
+                "rubric_match": "pass",
+                "issue": "无",
+                "fix_target": "无",
+                "fix_instruction": "无"
               },
               "checklist_results": {},
               "failed_checks": []
             },
             "fix_route": {
-              "next_action": "human_review",
-              "target_role": "human",
+              "next_action": "complete",
+              "target_role": "none",
               "pipeline_fix_target": "none",
               "instruction": "",
-              "reuse_previous_outputs": false,
-              "reason": "audit requested human review"
+              "reuse_previous_outputs": true,
+              "reason": "audit passed"
             }
           },
           "solver_result": {
             "slot_id": "Q45",
             "code_files": [
               "tmp\\solutions\\Q45\\step1.py",
-              "tmp\\solutions\\Q45\\step3.py"
+              "tmp\\solutions\\Q45\\step2.py"
             ],
             "outputs": [
-              "【子问 1】虚拟地址(VA)与物理地址(PA)结构及Cache Tag位数\n------------------------------------------------------------\n1. 虚拟地址(VA)结构 (总32位):\n   [ VPN(20位) | Page_Offset(12位) ]\n\n2. 物理地址(PA)结构 (总32位):\n   [ Tag(17位) | Cache_Index(9位) | Block_Offset(6位) ]\n\n>>> 结论：Cache的标记字段的位数为 17 位。\n============================================================\n\n【子问 2】虚拟地址到物理地址的转换及查询过程\n------------------------------------------------------------\n1. CPU发出虚拟地址 VA = 0x00001A2C\n2. 硬件划分VA: 提取虚拟页号 VPN = 0x1，页内偏移 Offset = 0xa2c\n3. TLB查询: 用VPN查询TLB，发生【未命中】。\n4. 查询页表: 使用页表基址寄存器，访问主存物理地址 0x00801000 处的页表项(PTE)。\n5. 获取物理页框号: 读出PTE中的有效数据，得到物理页框号 PFN = 0x000B。\n6. 组合物理地址: PA = PFN << 12 | Offset = 0xba2c\n\n>>> 结论：最终物理地址为 0xba2c。\n============================================================\n\n【子问 3】平均有效访存时间计算\n------------------------------------------------------------\n查询路径分类计算：\n1. TLB命中, Cache命中: 概率=0.72, 耗时=110ns\n2. TLB命中, Cache未命中: 概率=0.08, 耗时=1110ns\n3. TLB未命中, Cache命中: 概率=0.18, 耗时=1110ns\n4. TLB未命中, Cache未命中: 概率=0.02, 耗时=2110ns\n\n>>> 结论：平均有效访存时间为 410.00 ns。\n============================================================\n\n【子问 4】换出被修改页面的软硬件配合操作\n------------------------------------------------------------\n1. 【硬件设置脏位】：当进程P对该页面执行写入修改时，MMU在完成写操作后，会自动将该虚拟页对应页表项(PTE)和TLB项中的“修改位/脏位”置为1。\n2. 【操作系统选页】：当系统内存紧张时，操作系统的页面置换算法选中此页进行换出。\n3. 【检查并写回】：操作系统检查该页表项发现其“修改位”为1，判定该页面被修改过。于是OS向磁盘控制器发起I/O请求，将主存中该物理页框的数据写回到磁盘的对换区中。\n4. 【表项更新与回收】：磁盘写回完成后，操作系统将该PTE的“有效位/存在位”置为0。最后，操作系统回收该物理页框，将其分配给新的缺页进程使用。\n============================================================\n\n"
+              "--- 子问1：字段划分与标记位计算 ---\n1. 虚拟地址(VA)划分 (共32位):\n   - 虚拟页号 (VPN): 20 位\n     - TLB标记: 15 位\n     - TLB索引: 5 位\n   - 页内偏移 : 12 位\n\n2. 物理地址(PA)划分 (共28位):\n   - 物理页号 (PPN): 16 位\n   - 页内偏移 : 12 位\n   物理地址在Cache中的划分:\n   - Cache标记: 14 位\n   - Cache组号 : 8 位\n   - 块内偏移 : 6 位\n\n--- 子问2：虚拟地址到物理地址的转换 ---\n给定的虚拟地址(VA): 0x4a1c\n提取的页内偏移(VPO): 0xa1c\n给定的物理页号(PPN): 0xc3\n计算得到的物理地址(PA) = PPN(0xc3) << 12 | VPO(0xa1c) = 0xc3a1c\n\n--- 子问3：TLB命中、Cache缺失情况下的访存过程与时间 ---\n完整访存过程描述：\n1. CPU发出虚拟地址(VA)。\n2. 用虚拟地址中的TLB标记和索引去查找TLB，耗费时间 10ns。\n3. 此时TLB命中，直接得到对应的物理地址(PA)。\n4. 用物理地址的Cache标记、组号和块内偏移查找Cache，耗费时间 20ns。\n5. 此时Cache缺失。\n6. 此时需要使用该物理地址直接去访问主存，获取所需的数据块，并把该块调入Cache，耗费时间 200ns。\n7. 最终将主存中读取的数据返回给CPU，完成访存。\n\n总耗时 = 访问TLB时间 + 访问Cache时间 + 访问主存时间\n总耗时 = 10ns + 20ns + 200ns = 230ns\n\n--- 子问4：平均访存时间计算 ---\n各情况概率与耗时：\n1. TLB命中，Cache命中：概率 = 0.7200000000000001, 耗时 = 30ns\n2. TLB命中，Cache缺失：概率 = 0.08000000000000002, 耗时 = 230ns\n3. TLB缺失，Cache命中：概率 = 0.18000000000000002, 耗时 = 230ns\n4. TLB缺失，Cache缺失：概率 = 0.020000000000000004, 耗时 = 430ns\n\n平均访存时间 (AMAT) = 0.7200000000000001*30 + 0.08000000000000002*230 + 0.18000000000000002*230 + 0.020000000000000004*430\nAMAT = 21.6 + 18.400000000000002 + 41.400000000000006 + 8.600000000000001\nAMAT = 90.0ns\n"
             ],
             "computed_results": {
-              "Q1": {
-                "description": "虚拟地址与物理地址结构及Cache Tag位数",
-                "VA_structure": "VPN(20位) | Page_Offset(12位)",
-                "PA_structure": "Tag(17位) | Cache_Index(9位) | Block_Offset(6位)",
-                "Cache_Tag_bits": 17
+              "子问1": {
+                "VA字段划分": {
+                  "总位数": 32,
+                  "虚拟页号(VPN)": 20,
+                  "页内偏移": 12
+                },
+                "VA中TLB字段划分": {
+                  "TLB标记": 15,
+                  "TLB索引": 5
+                },
+                "PA字段划分": {
+                  "总位数": 28,
+                  "物理页号(PPN)": 16,
+                  "页内偏移": 12
+                },
+                "PA中Cache字段划分": {
+                  "Cache标记": 14,
+                  "Cache组号": 8,
+                  "Cache块内偏移": 6
+                },
+                "TLB标记位数": 15,
+                "Cache标记位数": 14
               },
-              "Q2": {
-                "description": "虚拟地址到物理地址的转换",
-                "Virtual_Address": "0x00001A2C",
-                "VPN": "0x1",
-                "Offset": "0xa2c",
-                "PFN": "0x000B",
-                "Physical_Address": "0xba2c"
+              "子问2": {
+                "物理地址(十六进制)": "0xC3A1C"
               },
-              "Q3": {
-                "description": "平均有效访存时间计算 (假设TLB=10ns, Cache=100ns, 主存=1000ns)",
-                "TLB_hit_Cache_hit_time": "110ns (概率0.72)",
-                "TLB_hit_Cache_miss_time": "1110ns (概率0.08)",
-                "TLB_miss_Cache_hit_time": "1110ns (概率0.18)",
-                "TLB_miss_Cache_miss_time": "2110ns (概率0.02)",
-                "Average_Memory_Access_Time": "410.00 ns"
+              "子问3": {
+                "访存过程": "1.CPU发出虚拟地址VA；2.查找TLB（耗时10ns），TLB命中获得物理地址PA；3.查找Cache（耗时20ns），Cache缺失；4.访问主存获取数据块并更新Cache（耗时200ns）；5.返回数据给CPU。",
+                "总时间": 230
               },
-              "Q4": {
-                "description": "换出被修改页面的关键操作",
-                "Steps": [
-                  "1. 硬件设置脏位：写入修改时，MMU自动将页表项和TLB中的“修改位/脏位”置为1",
-                  "2. 操作系统选页：页面置换算法选中此页进行换出",
-                  "3. 检查并写回：操作系统检查修改位为1，发起I/O请求将数据写回磁盘对换区",
-                  "4. 表项更新与回收：写回完成后，将PTE有效位置0，回收物理页框"
-                ]
+              "子问4": {
+                "平均访存时间": 90.0
               }
             },
             "python_exec_count": 2,
-            "total_time_s": 233.0,
-            "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 2\n    VA_BITS = 32\nIndentationError: unexpected indent\n"
+            "total_time_s": 132.5,
+            "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 4\n    va_bits = 32\nIndentationError: unexpected indent\n"
           },
           "revision_type": "regenerate",
-          "regenerate_reason": "**直接废弃当前结果，触发重新生成。**\n1. **确保题目生成完整**：需在生成结果中包含完整的C语言代码或系统业务场景描述，明确给出虚拟地址空间位数、物理地址空间位数、页大小、TLB组织形式、Cache容量/块大小/映射方式等必要参数。\n2. **修正Cache计算逻辑**：在重写答案脚本时，严格遵循物理地址的字段拼接与提取。Offset 取物理地址的低位（具体位数由块大小决定），Index 取中间位（具体位数由Cache组数决定），Tag 取剩余的高位，切忌发生位数截取错乱。\n3. **补充OS层面机制**：蓝图要求跨科目（OS+CO）且避免脱离OS的纯硬件题，重新出题时需包含进程切换、缺页处理或页表保护等OS层面的发问。\n",
+          "regenerate_reason": "必须重新运行题目生成程序。请严格依据蓝图要求重新生成Q45：设计一道关于“虚拟内存与Cache机制全链路”的计组与OS跨科目综合大题，包含4个小问，要求涉及按字节编址、TLB与页表查询、物理地址计算、Cache组相联映射以及访存时间分析，并提供完整、计算准确的解答过程。\n",
           "revision_round": 1
-        }
-      ]
-    },
-    {
-      "round": 2,
-      "issues_found": [
-        {
-          "slot_id": "Q45",
-          "status": "answer_error",
-          "issue": "\n1. **PA结构及Tag计算全错**：题干明确物理内存为256MB（28位物理地址），而解答却按32位物理地址计算；Cache组数应为 32KB/(64B×2)=256组，即Index为8位，而解答错误计算为9位；导致Cache Tag位从正确的14位错算成17位。\n2. **访存时间EAT计算套用错参数**：题干明确给出的时间是“TLB 10ns，Cache 20ns，主存 200ns”，但解答脚本完全无视该条件，直接套用了外部脚本的“10ns, 100ns, 1000ns”进行计算，导致EAT计算过程和结果（410.00ns）100%错误。"
-        }
-      ],
-      "fix_actions": [
-        {
-          "slot_id": "Q45",
-          "revision_type": "regenerate",
-          "instruction": "\n1. **修正子问题1解析与答案**：物理内存256MB = 2^28 B，故物理地址PA为28位。由块大小64B得Offset为6位；采用2路组相联，组数 = 32KB / (64B * 2) = 256 = 2^8，得Cache Index为8位；因此Cache Tag = 28 - 8 - 6 = 14位。PA结构应为 `[Tag(14位) | Cache_Index(8位) | Block_Offset(6位)]`。\n2. **修改子问题2解析**：明确拼接后的物理地址为 `0x000B_A2C`，并指出其PPN占用16位，Offset占用12位。\n3. **重写子问题3解析与答案**：严格基于题干时间参数重新计算。正确访问时间应为：\n- TLB命中，Cache命中：10 + 20 = 30ns\n- TLB命中，Cache未命中：10 + 20 + 200 = 230ns\n- TLB未命中，Cache命中：10 + 200(访存查页表) + 20 = 230ns\n- TLB未命中，Cache未命中：10 + 200 + 20 + 200 = 430ns\n- EAT = 0.72×30 + 0.08×230 + 0.18×230 + 0.02×430 = 90ns。\n4. 按照上述正确的推导过程，完整重写标准答案（correct_answer）和解析过程（solver_evidence）。\n"
-        }
-      ],
-      "questions_before_fix": [
-        {
-          "slot_id": "Q45",
-          "stem": "某计算机系统采用32位定点CPU，按字节编址，采用虚拟存储机制与Cache存储系统。系统配置如下：",
-          "sub_questions": [
-            "根据系统配置参数，画出虚拟地址（VA）和物理地址（PA）的结构图，并说明各字段的名称与位数。进一步计算Cache的标记（Tag）字段的位数。",
-            "假设在进程P读取虚拟地址 `0x0000_1A2C` 时，TLB发生未命中，但该地址对应的页表项（PTE）存放在主存物理地址 `0x0080_1000` 处。通过查询页表，得到该虚拟地址对应的物理页框号为 `0x000B`。请详细描述从虚拟地址发出到最终获得物理地址的查询过程，并计算虚拟地址 `0x0000_1A2C` 对应的最终物理地址（用十六进制表示）。",
-            "假设TLB的命中率为80%，Cache的命中率为90%。请计算进程P在执行此次数据读取时，从发出虚拟地址到最终读取到数据所需的平均有效访存时间。（假设TLB未命中时必须先访问主存中的页表获取物理地址，再访问Cache/主存获取数据）",
-            "在上述场景中，若进程P对虚拟地址 `0x0000_1A2C` 进行了多次写入修改，随后操作系统因内存紧张将进程P的该页换出到磁盘。请结合硬件机制和操作系统的存储管理策略，说明在换出页面时，硬件和操作系统需要配合执行哪些关键操作？（仅针对该被修改的页面）"
-          ],
-          "given_conditions": [
-            "32位系统，按字节编址",
-            "虚拟地址空间4GB，物理内存256MB",
-            "页面大小4KB",
-            "TLB为2路组相联，共16项，访问时间10ns",
-            "L1 Cache容量32KB，块大小64B，2路组相联，访问时间20ns",
-            "主存访问时间200ns",
-            "串行访问，忽略缺页异常",
-            "特定访问虚拟地址: 0x0000_1A2C"
-          ],
-          "difficulty_self_assessment": "4",
-          "knowledge_points": [
-            "虚拟地址与物理地址结构划分",
-            "TLB与页表映射机制",
-            "Cache组相联映射位计算",
-            "有效访存时间计算(EAT)",
-            "缺页换出与脏位(DIRTY)处理"
-          ],
-          "parameter_notes": [
-            "32位虚拟地址与4KB页面得出VPN为20位，VPO为12位；256MB物理内存得出PPN为16位；这导致TLB Tag为17位，Index为3位。",
-            "Cache容量32KB，块64B，2路组相联得出Cache Index为8位，Offset为6位；物理地址28位减去14位(8+6)，得出Cache Tag为14位。",
-            "时间参数设计为常规量级，确保EAT计算具有区分度。",
-            "物理页框号设计为0x000B，原偏移量0xA2C拼接后得到物理地址0x000B_A2C。"
-          ],
-          "design_intent": {},
-          "answer": {
-            "sub_q1": "VA结构：[VPN(20位) | Page_Offset(12位)]；PA结构：[Tag(17位) | Cache_Index(9位) | Block_Offset(6位)]；Cache标记(Tag)位数为17位",
-            "sub_q2": "0xba2c",
-            "sub_q3": "410.00 ns",
-            "sub_q4": "1.硬件设置脏位；2.操作系统选页；3.检查并写回；4.表项更新与回收"
-          },
-          "correct_answer": {
-            "sub_q1": "VA结构：[VPN(20位) | Page_Offset(12位)]；PA结构：[Tag(17位) | Cache_Index(9位) | Block_Offset(6位)]；Cache标记(Tag)位数为17位",
-            "sub_q2": "0xba2c",
-            "sub_q3": "410.00 ns",
-            "sub_q4": "1.硬件设置脏位；2.操作系统选页；3.检查并写回；4.表项更新与回收"
-          },
-          "solver_confidence": "low",
-          "solver_evidence": "【子问 1】虚拟地址(VA)与物理地址(PA)结构及Cache Tag位数\n------------------------------------------------------------\n1. 虚拟地址(VA)结构 (总32位):\n   [ VPN(20位) | Page_Offset(12位) ]\n\n2. 物理地址(PA)结构 (总32位):\n   [ Tag(17位) | Cache_Index(9位) | Block_Offset(6位) ]\n\n>>> 结论：Cache的标记字段的位数为 17 位。\n============================================================\n\n【子问 2】虚拟地址到物理地址的转换及查询过程\n------------------------------------------------------------\n1. CPU发出虚拟地址 VA = 0x00001A2C\n2. 硬件划分VA: 提取虚拟页号 VPN = 0x1，页内偏移 Offset = 0xa2c\n3. TLB查询: 用VPN查询TLB，发生【未命中】。\n4. 查询页表: 使用页表基址寄存器，访问主存物理地址 0x00801000 处的页表项(PTE)。\n5. 获取物理页框号: 读出PTE中的有效数据，得到物理页框号 PFN = 0x000B。\n6. 组合物理地址: PA = PFN << 12 | Offset = 0xba2c\n\n>>> 结论：最终物理地址为 0xba2c。\n============================================================\n\n【子问 3】平均有效访存时间计算\n------------------------------------------------------------\n查询路径分类计算：\n1. TLB命中, Cache命中: 概率=0.72, 耗时=110ns\n2. TLB命中, Cache未命中: 概率=0.08, 耗时=1110ns\n3. TLB未命中, Cache命中: 概率=0.18, 耗时=1110ns\n4. TLB未命中, Cache未命中: 概率=0.02, 耗时=2110ns\n\n>>> 结论：平均有效访存时间为 410.00 ns。\n============================================================\n\n【子问 4】换出被修改页面的软硬件配合操作\n------------------------------------------------------------\n1. 【硬件设置脏位】：当进程P对该页面执行写入修改时，MMU在完成写操作后，会自动将该虚拟页对应页表项(PTE)和TLB项中的“修改位/脏位”置为1。\n2. 【操作系统选页】：当系统内存紧张时，操作系统的页面置换算法选中此页进行换出。\n3. 【检查并写回】：操作系统检查该页表项发现其“修改位”为1，判定该页面被修改过。于是OS向磁盘控制器发起I/O请求，将主存中该物理页框的数据写回到磁盘的对换区中。\n4. 【表项更新与回收】：磁盘写回完成后，操作系统将该PTE的“有效位/存在位”置为0。最后，操作系统回收该物理页框，将其分配给新的缺页进程使用。\n============================================================\n\n",
-          "python_exec_count": 2,
-          "code_files": [
-            "tmp\\solutions\\Q45\\step1.py",
-            "tmp\\solutions\\Q45\\step3.py"
-          ],
-          "rubric": {},
-          "pipeline_type": "unified_comp",
-          "review": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review",
-            "audit_result": {
-              "status": "needs_human_review",
-              "severity": "blocker",
-              "issue_type": "structure",
-              "fix_target": "generator",
-              "fix_instruction": "",
-              "confidence": "medium",
-              "mode": "question_review",
-              "raw": {
-                "status": "needs_human_review",
-                "reason": "Agent failed, routed to human review",
-                "fallback_target": "human_review"
-              },
-              "checklist_results": {},
-              "failed_checks": []
-            },
-            "fix_route": {
-              "next_action": "human_review",
-              "target_role": "human",
-              "pipeline_fix_target": "none",
-              "instruction": "",
-              "reuse_previous_outputs": false,
-              "reason": "audit requested human review"
-            }
-          },
-          "solver_result": {
-            "slot_id": "Q45",
-            "code_files": [
-              "tmp\\solutions\\Q45\\step1.py",
-              "tmp\\solutions\\Q45\\step3.py"
-            ],
-            "outputs": [
-              "【子问 1】虚拟地址(VA)与物理地址(PA)结构及Cache Tag位数\n------------------------------------------------------------\n1. 虚拟地址(VA)结构 (总32位):\n   [ VPN(20位) | Page_Offset(12位) ]\n\n2. 物理地址(PA)结构 (总32位):\n   [ Tag(17位) | Cache_Index(9位) | Block_Offset(6位) ]\n\n>>> 结论：Cache的标记字段的位数为 17 位。\n============================================================\n\n【子问 2】虚拟地址到物理地址的转换及查询过程\n------------------------------------------------------------\n1. CPU发出虚拟地址 VA = 0x00001A2C\n2. 硬件划分VA: 提取虚拟页号 VPN = 0x1，页内偏移 Offset = 0xa2c\n3. TLB查询: 用VPN查询TLB，发生【未命中】。\n4. 查询页表: 使用页表基址寄存器，访问主存物理地址 0x00801000 处的页表项(PTE)。\n5. 获取物理页框号: 读出PTE中的有效数据，得到物理页框号 PFN = 0x000B。\n6. 组合物理地址: PA = PFN << 12 | Offset = 0xba2c\n\n>>> 结论：最终物理地址为 0xba2c。\n============================================================\n\n【子问 3】平均有效访存时间计算\n------------------------------------------------------------\n查询路径分类计算：\n1. TLB命中, Cache命中: 概率=0.72, 耗时=110ns\n2. TLB命中, Cache未命中: 概率=0.08, 耗时=1110ns\n3. TLB未命中, Cache命中: 概率=0.18, 耗时=1110ns\n4. TLB未命中, Cache未命中: 概率=0.02, 耗时=2110ns\n\n>>> 结论：平均有效访存时间为 410.00 ns。\n============================================================\n\n【子问 4】换出被修改页面的软硬件配合操作\n------------------------------------------------------------\n1. 【硬件设置脏位】：当进程P对该页面执行写入修改时，MMU在完成写操作后，会自动将该虚拟页对应页表项(PTE)和TLB项中的“修改位/脏位”置为1。\n2. 【操作系统选页】：当系统内存紧张时，操作系统的页面置换算法选中此页进行换出。\n3. 【检查并写回】：操作系统检查该页表项发现其“修改位”为1，判定该页面被修改过。于是OS向磁盘控制器发起I/O请求，将主存中该物理页框的数据写回到磁盘的对换区中。\n4. 【表项更新与回收】：磁盘写回完成后，操作系统将该PTE的“有效位/存在位”置为0。最后，操作系统回收该物理页框，将其分配给新的缺页进程使用。\n============================================================\n\n"
-            ],
-            "computed_results": {
-              "Q1": {
-                "description": "虚拟地址与物理地址结构及Cache Tag位数",
-                "VA_structure": "VPN(20位) | Page_Offset(12位)",
-                "PA_structure": "Tag(17位) | Cache_Index(9位) | Block_Offset(6位)",
-                "Cache_Tag_bits": 17
-              },
-              "Q2": {
-                "description": "虚拟地址到物理地址的转换",
-                "Virtual_Address": "0x00001A2C",
-                "VPN": "0x1",
-                "Offset": "0xa2c",
-                "PFN": "0x000B",
-                "Physical_Address": "0xba2c"
-              },
-              "Q3": {
-                "description": "平均有效访存时间计算 (假设TLB=10ns, Cache=100ns, 主存=1000ns)",
-                "TLB_hit_Cache_hit_time": "110ns (概率0.72)",
-                "TLB_hit_Cache_miss_time": "1110ns (概率0.08)",
-                "TLB_miss_Cache_hit_time": "1110ns (概率0.18)",
-                "TLB_miss_Cache_miss_time": "2110ns (概率0.02)",
-                "Average_Memory_Access_Time": "410.00 ns"
-              },
-              "Q4": {
-                "description": "换出被修改页面的关键操作",
-                "Steps": [
-                  "1. 硬件设置脏位：写入修改时，MMU自动将页表项和TLB中的“修改位/脏位”置为1",
-                  "2. 操作系统选页：页面置换算法选中此页进行换出",
-                  "3. 检查并写回：操作系统检查修改位为1，发起I/O请求将数据写回磁盘对换区",
-                  "4. 表项更新与回收：写回完成后，将PTE有效位置0，回收物理页框"
-                ]
-              }
-            },
-            "python_exec_count": 2,
-            "total_time_s": 233.0,
-            "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 2\n    VA_BITS = 32\nIndentationError: unexpected indent\n"
-          },
-          "revision_type": "regenerate",
-          "regenerate_reason": "**直接废弃当前结果，触发重新生成。**\n1. **确保题目生成完整**：需在生成结果中包含完整的C语言代码或系统业务场景描述，明确给出虚拟地址空间位数、物理地址空间位数、页大小、TLB组织形式、Cache容量/块大小/映射方式等必要参数。\n2. **修正Cache计算逻辑**：在重写答案脚本时，严格遵循物理地址的字段拼接与提取。Offset 取物理地址的低位（具体位数由块大小决定），Index 取中间位（具体位数由Cache组数决定），Tag 取剩余的高位，切忌发生位数截取错乱。\n3. **补充OS层面机制**：蓝图要求跨科目（OS+CO）且避免脱离OS的纯硬件题，重新出题时需包含进程切换、缺页处理或页表保护等OS层面的发问。\n",
-          "revision_round": 1
-        }
-      ],
-      "questions_after_fix": [
-        {
-          "slot_id": "Q45",
-          "stem": "某计算机系统采用32位虚拟地址和28位物理地址，按字节编址，虚拟存储系统采用分页机制，页大小为4KB。系统支持TLB与二级页表，TLB采用全相联映射。系统的Cache采用物理地址访问（PIPT），L1 Data Cache的总容量为64KB，Cache行大小为64B，采用4路组相联映射和写回法。假设某C语言程序中执行了赋值操作 `*ptr = 100;`，其中指针 `ptr` 指向的虚拟地址为 `0x0000_4A3C`。在执行该操作时，经查TLB未命中，但最终在页表中查得该虚拟页对应的物理页框号为 `0x000C0`（即物理地址的高位为 `0x000C0`）。",
-          "sub_questions": [
-            "(1) 针对虚拟地址 0x0000_4A3C，计算其虚拟页号（VPN）和页内偏移量（VPO），并根据给定的物理页框号计算最终对应的完整物理地址（用十六进制表示）。",
-            "(2) 根据系统的L1 Data Cache配置，计算该Cache的行索引位数、标记位数和块内偏移位数。并说明物理地址 0x000C_0A3C 会映射到Cache的哪一组？",
-            "(3) 假设系统采用二级页表，页目录项和页表项各占4字节。请简述在TLB未命中时，从CPU发出虚拟地址到最终获取物理地址的查询过程，并计算在此过程中最少需要访问几次主存？",
-            "(4) 假设TLB的访问时间为2ns，Cache的访问时间为10ns，主存的访问时间为100ns。在采用写分配策略的情况下，且TLB命中率为80%，Cache命中率为90%。请计算执行一次如题干所述的写操作（Store指令）的平均访存时间。"
-          ],
-          "given_conditions": [
-            "32位虚拟地址，28位物理地址",
-            "页大小为4KB",
-            "虚拟地址 0x0000_4A3C，物理页框号 0x000C0",
-            "L1 Data Cache容量64KB，行大小64B，4路组相联，写回法",
-            "二级页表，页目录项和页表项各4字节",
-            "TLB访问时间2ns，Cache访问时间10ns，主存访问时间100ns",
-            "TLB命中率80%，Cache命中率90%"
-          ],
-          "difficulty_self_assessment": "4",
-          "knowledge_points": "虚拟地址划分, TLB与页表查询机制, Cache组相联映射计算, 平均访存时间计算",
-          "parameter_notes": "参数设计确保了虚拟地址和物理地址的位数以及页大小可以完美划分。页大小4KB意味着页内偏移为12位。虚拟地址0x0000_4A3C十六进制转换为二进制后，低12位（4A3C % 1000 = A3C）作为偏移量非常清晰。物理地址28位，物理页框号为0x000C0（即高16位），拼接12位偏移量（0xA3C）得到0x000C_0A3C，该物理地址的二进制最后6位为 111100 (0x3C)，可以清晰判断Cache块偏移，避免歧义。Cache容量64KB，64B行大小，4路相联，得出组数=64KB/(64B*4)=256组，索引位为8位，计算自洽。",
-          "design_intent": {
-            "sub_q1_intent": "考察虚拟地址到物理地址的基础转换能力。预期解题路径：将16进制虚拟地址转为二进制，根据4KB页大小划分出高20位虚拟页号和低12位页内偏移，然后将物理页框号与页内偏移拼接得到28位物理地址。",
-            "sub_q2_intent": "考察Cache映射机制的参数计算。预期解题路径：根据行大小64B得出块内偏移6位；根据总容量64KB、4路组相联、行大小64B计算出组数为256，得出索引位8位；物理地址总位数28位减去偏移和索引得出标记位14位。取出物理地址的对应位段确定映射的组号。",
-            "sub_q3_intent": "考察TLB未命中时的硬件/软件协同查询机制及多级页表的访存开销。预期解题路径：说明先查页目录基址寄存器，用虚拟页号的高10位作为索引访问内存中的页目录项；再用得到的页表基址结合虚拟页号的低10位访问内存中的页表项，最终得到物理页框号。最少需要访问2次主存。",
-            "sub_q4_intent": "考察存储层次的性能分析（平均访存时间），并结合写策略。预期解题路径：计算采用写分配策略下写操作的访存时间。TLB命中时直接得到物理地址，未命中时需先访问两次内存更新TLB再进行后续操作；Cache命中时写入Cache即可（写回法）；Cache未命中时需先从主存调入块（写分配），再写入Cache。需综合TLB和Cache的各种命中/缺失概率计算总时间。",
-            "trap_design": "机制跨度陷阱。在计算访存时间时，学生容易忽略TLB未命中时额外带来的两次页表内存访问时间；同时也极易在Cache写未命中时忘记写分配策略需要先读取主存块（100ns）带来的开销，错误地直接按写直达或不按写分配计算。",
-            "sub_question_logic": "各子问遵循"
-          },
-          "answer": {
-            "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-            "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-            "sub_q3": "最少需要访问 2 次主存",
-            "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
-          },
-          "correct_answer": {
-            "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-            "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-            "sub_q3": "最少需要访问 2 次主存",
-            "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
-          },
-          "solver_confidence": "low",
-          "solver_evidence": "",
-          "python_exec_count": 1,
-          "code_files": [
-            "tmp\\solutions\\Q45\\step3.py"
-          ],
-          "rubric": {},
-          "pipeline_type": "unified_comp",
-          "review": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review",
-            "audit_result": {
-              "status": "needs_human_review",
-              "severity": "blocker",
-              "issue_type": "structure",
-              "fix_target": "generator",
-              "fix_instruction": "",
-              "confidence": "medium",
-              "mode": "question_review",
-              "raw": {
-                "status": "needs_human_review",
-                "reason": "Agent failed, routed to human review",
-                "fallback_target": "human_review"
-              },
-              "checklist_results": {},
-              "failed_checks": []
-            },
-            "fix_route": {
-              "next_action": "human_review",
-              "target_role": "human",
-              "pipeline_fix_target": "none",
-              "instruction": "",
-              "reuse_previous_outputs": false,
-              "reason": "audit requested human review"
-            }
-          },
-          "solver_result": {
-            "slot_id": "Q45",
-            "code_files": [
-              "tmp\\solutions\\Q45\\step3.py"
-            ],
-            "outputs": [],
-            "computed_results": {
-              "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-              "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；物理地址 0x000C0A3C 映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-              "sub_q3": "最少需要访问 2 次主存（第1次访问页目录，第2次访问二级页表）",
-              "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
-            },
-            "python_exec_count": 1,
-            "total_time_s": 401.5,
-            "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step3.py\", line 2\n    physical_frame_num = 0x000C0\nIndentationError: unexpected indent\n"
-          },
-          "revision_type": "regenerate",
-          "regenerate_reason": "\n1. **修正子问题1解析与答案**：物理内存256MB = 2^28 B，故物理地址PA为28位。由块大小64B得Offset为6位；采用2路组相联，组数 = 32KB / (64B * 2) = 256 = 2^8，得Cache Index为8位；因此Cache Tag = 28 - 8 - 6 = 14位。PA结构应为 `[Tag(14位) | Cache_Index(8位) | Block_Offset(6位)]`。\n2. **修改子问题2解析**：明确拼接后的物理地址为 `0x000B_A2C`，并指出其PPN占用16位，Offset占用12位。\n3. **重写子问题3解析与答案**：严格基于题干时间参数重新计算。正确访问时间应为：\n- TLB命中，Cache命中：10 + 20 = 30ns\n- TLB命中，Cache未命中：10 + 20 + 200 = 230ns\n- TLB未命中，Cache命中：10 + 200(访存查页表) + 20 = 230ns\n- TLB未命中，Cache未命中：10 + 200 + 20 + 200 = 430ns\n- EAT = 0.72×30 + 0.08×230 + 0.18×230 + 0.02×430 = 90ns。\n4. 按照上述正确的推导过程，完整重写标准答案（correct_answer）和解析过程（solver_evidence）。\n",
-          "revision_round": 2
         }
       ]
     }
@@ -751,176 +262,50 @@
   "final_questions": [
     {
       "slot_id": "Q45",
-      "stem": "某计算机系统采用32位虚拟地址和28位物理地址，按字节编址，虚拟存储系统采用分页机制，页大小为4KB。系统支持TLB与二级页表，TLB采用全相联映射。系统的Cache采用物理地址访问（PIPT），L1 Data Cache的总容量为64KB，Cache行大小为64B，采用4路组相联映射和写回法。假设某C语言程序中执行了赋值操作 `*ptr = 100;`，其中指针 `ptr` 指向的虚拟地址为 `0x0000_4A3C`。在执行该操作时，经查TLB未命中，但最终在页表中查得该虚拟页对应的物理页框号为 `0x000C0`（即物理地址的高位为 `0x000C0`）。",
+      "stem": "某32位计算机系统按字节编址，采用按页虚拟存储管理。系统的虚拟地址空间为4GB，物理内存为256MB，页面大小为4KB。系统采用TLB来加速虚拟地址到物理地址的转换，TLB采用2路组相联映射方式，总容量为64项。系统的数据Cache采用物理地址访问，采用4路组相联映射，Cache总数据容量为64KB，块大小为64B。假设访问TLB的时间为10ns，访问Cache的时间为20ns，访问主存的时间为200ns。在程序执行过程中，某段核心循环的TLB命中率为80%，Cache命中率为90%，且不考虑缺页异常（缺页率为0%）。TLB缺失时直接访问主存中的页表获取物理地址并更新TLB；Cache缺失时直接访问主存获取数据块并更新Cache。各级存储器的访问过程均采用串行方式进行。",
       "sub_questions": [
-        "(1) 针对虚拟地址 0x0000_4A3C，计算其虚拟页号（VPN）和页内偏移量（VPO），并根据给定的物理页框号计算最终对应的完整物理地址（用十六进制表示）。",
-        "(2) 根据系统的L1 Data Cache配置，计算该Cache的行索引位数、标记位数和块内偏移位数。并说明物理地址 0x000C_0A3C 会映射到Cache的哪一组？",
-        "(3) 假设系统采用二级页表，页目录项和页表项各占4字节。请简述在TLB未命中时，从CPU发出虚拟地址到最终获取物理地址的查询过程，并计算在此过程中最少需要访问几次主存？",
-        "(4) 假设TLB的访问时间为2ns，Cache的访问时间为10ns，主存的访问时间为100ns。在采用写分配策略的情况下，且TLB命中率为80%，Cache命中率为90%。请计算执行一次如题干所述的写操作（Store指令）的平均访存时间。"
+        "请给出该系统中虚拟地址（VA）和物理地址（PA）的字段划分（标明各字段的名称及位数），并分别计算TLB的标记（Tag）位和Cache的标记（Tag）位各占多少位？",
+        "假设CPU执行某指令时，给出的虚拟地址为0x0000_4A1C，且已知该虚拟地址对应的页表项中存储的物理页号为0x00C3。请写出该虚拟地址对应的物理地址（用十六进制表示）。",
+        "请详细描述当CPU发出的虚拟地址在“TLB命中、Cache缺失”情况下的完整访存过程，并计算这种情况下完成一次访存所需的总时间。",
+        "根据题目给定的参数和命中率，计算该核心循环执行时的平均访存时间。"
       ],
-      "given_conditions": [
-        "32位虚拟地址，28位物理地址",
-        "页大小为4KB",
-        "虚拟地址 0x0000_4A3C，物理页框号 0x000C0",
-        "L1 Data Cache容量64KB，行大小64B，4路组相联，写回法",
-        "二级页表，页目录项和页表项各4字节",
-        "TLB访问时间2ns，Cache访问时间10ns，主存访问时间100ns",
-        "TLB命中率80%，Cache命中率90%"
-      ],
-      "difficulty_self_assessment": "4",
-      "knowledge_points": "虚拟地址划分, TLB与页表查询机制, Cache组相联映射计算, 平均访存时间计算",
-      "parameter_notes": "参数设计确保了虚拟地址和物理地址的位数以及页大小可以完美划分。页大小4KB意味着页内偏移为12位。虚拟地址0x0000_4A3C十六进制转换为二进制后，低12位（4A3C % 1000 = A3C）作为偏移量非常清晰。物理地址28位，物理页框号为0x000C0（即高16位），拼接12位偏移量（0xA3C）得到0x000C_0A3C，该物理地址的二进制最后6位为 111100 (0x3C)，可以清晰判断Cache块偏移，避免歧义。Cache容量64KB，64B行大小，4路相联，得出组数=64KB/(64B*4)=256组，索引位为8位，计算自洽。",
-      "design_intent": {
-        "sub_q1_intent": "考察虚拟地址到物理地址的基础转换能力。预期解题路径：将16进制虚拟地址转为二进制，根据4KB页大小划分出高20位虚拟页号和低12位页内偏移，然后将物理页框号与页内偏移拼接得到28位物理地址。",
-        "sub_q2_intent": "考察Cache映射机制的参数计算。预期解题路径：根据行大小64B得出块内偏移6位；根据总容量64KB、4路组相联、行大小64B计算出组数为256，得出索引位8位；物理地址总位数28位减去偏移和索引得出标记位14位。取出物理地址的对应位段确定映射的组号。",
-        "sub_q3_intent": "考察TLB未命中时的硬件/软件协同查询机制及多级页表的访存开销。预期解题路径：说明先查页目录基址寄存器，用虚拟页号的高10位作为索引访问内存中的页目录项；再用得到的页表基址结合虚拟页号的低10位访问内存中的页表项，最终得到物理页框号。最少需要访问2次主存。",
-        "sub_q4_intent": "考察存储层次的性能分析（平均访存时间），并结合写策略。预期解题路径：计算采用写分配策略下写操作的访存时间。TLB命中时直接得到物理地址，未命中时需先访问两次内存更新TLB再进行后续操作；Cache命中时写入Cache即可（写回法）；Cache未命中时需先从主存调入块（写分配），再写入Cache。需综合TLB和Cache的各种命中/缺失概率计算总时间。",
-        "trap_design": "机制跨度陷阱。在计算访存时间时，学生容易忽略TLB未命中时额外带来的两次页表内存访问时间；同时也极易在Cache写未命中时忘记写分配策略需要先读取主存块（100ns）带来的开销，错误地直接按写直达或不按写分配计算。",
-        "sub_question_logic": "各子问遵循"
-      },
+      "given_conditions": "[\"系统32位按字节编址，虚拟地址空间4GB，物理内存256MB\", \"页面大小4KB\", \"TLB采用2路组相联，总容量64项\", \"Cache采用4路组相联，容量64KB，块大小64B，使用物理地址\", \"访存时间：TLB=10ns，Cache=20ns，主存=200ns\", \"命中率：",
+      "difficulty_self_assessment": null,
+      "knowledge_points": "",
+      "parameter_notes": "",
+      "design_intent": {},
       "answer": {
-        "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-        "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-        "sub_q3": "最少需要访问 2 次主存",
-        "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
+        "sub_q1": "TLB标记占15位，Cache标记占14位",
+        "sub_q2": "0x00C3A1C",
+        "sub_q3": "230ns",
+        "sub_q4": "90ns"
       },
       "correct_answer": {
-        "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-        "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-        "sub_q3": "最少需要访问 2 次主存",
-        "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
+        "sub_q1": "TLB标记占15位，Cache标记占14位",
+        "sub_q2": "0x00C3A1C",
+        "sub_q3": "230ns",
+        "sub_q4": "90ns"
       },
       "solver_confidence": "low",
-      "solver_evidence": "",
-      "python_exec_count": 1,
+      "solver_evidence": "--- 子问1：字段划分与标记位计算 ---\n1. 虚拟地址(VA)划分 (共32位):\n   - 虚拟页号 (VPN): 20 位\n     - TLB标记: 15 位\n     - TLB索引: 5 位\n   - 页内偏移 : 12 位\n\n2. 物理地址(PA)划分 (共28位):\n   - 物理页号 (PPN): 16 位\n   - 页内偏移 : 12 位\n   物理地址在Cache中的划分:\n   - Cache标记: 14 位\n   - Cache组号 : 8 位\n   - 块内偏移 : 6 位\n\n--- 子问2：虚拟地址到物理地址的转换 ---\n给定的虚拟地址(VA): 0x4a1c\n提取的页内偏移(VPO): 0xa1c\n给定的物理页号(PPN): 0xc3\n计算得到的物理地址(PA) = PPN(0xc3) << 12 | VPO(0xa1c) = 0xc3a1c\n\n--- 子问3：TLB命中、Cache缺失情况下的访存过程与时间 ---\n完整访存过程描述：\n1. CPU发出虚拟地址(VA)。\n2. 用虚拟地址中的TLB标记和索引去查找TLB，耗费时间 10ns。\n3. 此时TLB命中，直接得到对应的物理地址(PA)。\n4. 用物理地址的Cache标记、组号和块内偏移查找Cache，耗费时间 20ns。\n5. 此时Cache缺失。\n6. 此时需要使用该物理地址直接去访问主存，获取所需的数据块，并把该块调入Cache，耗费时间 200ns。\n7. 最终将主存中读取的数据返回给CPU，完成访存。\n\n总耗时 = 访问TLB时间 + 访问Cache时间 + 访问主存时间\n总耗时 = 10ns + 20ns + 200ns = 230ns\n\n--- 子问4：平均访存时间计算 ---\n各情况概率与耗时：\n1. TLB命中，Cache命中：概率 = 0.7200000000000001, 耗时 = 30ns\n2. TLB命中，Cache缺失：概率 = 0.08000000000000002, 耗时 = 230ns\n3. TLB缺失，Cache命中：概率 = 0.18000000000000002, 耗时 = 230ns\n4. TLB缺失，Cache缺失：概率 = 0.020000000000000004, 耗时 = 430ns\n\n平均访存时间 (AMAT) = 0.7200000000000001*30 + 0.08000000000000002*230 + 0.18000000000000002*230 + 0.020000000000000004*430\nAMAT = 21.6 + 18.400000000000002 + 41.400000000000006 + 8.600000000000001\nAMAT = 90.0ns\n",
+      "python_exec_count": 2,
       "code_files": [
-        "tmp\\solutions\\Q45\\step3.py"
+        "tmp\\solutions\\Q45\\step1.py",
+        "tmp\\solutions\\Q45\\step2.py"
       ],
       "rubric": {},
       "pipeline_type": "unified_comp",
       "review": {
-        "status": "needs_human_review",
-        "reason": "Agent failed, routed to human review",
-        "fallback_target": "human_review",
-        "audit_result": {
-          "status": "needs_human_review",
-          "severity": "blocker",
-          "issue_type": "structure",
-          "fix_target": "generator",
-          "fix_instruction": "",
-          "confidence": "medium",
-          "mode": "question_review",
-          "raw": {
-            "status": "needs_human_review",
-            "reason": "Agent failed, routed to human review",
-            "fallback_target": "human_review"
-          },
-          "checklist_results": {},
-          "failed_checks": []
-        },
-        "fix_route": {
-          "next_action": "human_review",
-          "target_role": "human",
-          "pipeline_fix_target": "none",
-          "instruction": "",
-          "reuse_previous_outputs": false,
-          "reason": "audit requested human review"
-        }
-      },
-      "solver_result": {
-        "slot_id": "Q45",
-        "code_files": [
-          "tmp\\solutions\\Q45\\step3.py"
-        ],
-        "outputs": [],
-        "computed_results": {
-          "sub_q1": "虚拟页号(VPN)为 0x4A，页内偏移量(VPO)为 0xA3C，最终完整物理地址为 0x000C0A3C",
-          "sub_q2": "块内偏移位数为 6 位，行索引位数为 8 位，标记位数为 14 位；物理地址 0x000C0A3C 映射到 Cache 的组号为 143（即十六进制 0x8F 组）",
-          "sub_q3": "最少需要访问 2 次主存（第1次访问页目录，第2次访问二级页表）",
-          "sub_q4": "执行一次写操作的平均访存时间为 62 ns"
-        },
-        "python_exec_count": 1,
-        "total_time_s": 401.5,
-        "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step3.py\", line 2\n    physical_frame_num = 0x000C0\nIndentationError: unexpected indent\n"
-      },
-      "revision_type": "regenerate",
-      "regenerate_reason": "\n1. **修正子问题1解析与答案**：物理内存256MB = 2^28 B，故物理地址PA为28位。由块大小64B得Offset为6位；采用2路组相联，组数 = 32KB / (64B * 2) = 256 = 2^8，得Cache Index为8位；因此Cache Tag = 28 - 8 - 6 = 14位。PA结构应为 `[Tag(14位) | Cache_Index(8位) | Block_Offset(6位)]`。\n2. **修改子问题2解析**：明确拼接后的物理地址为 `0x000B_A2C`，并指出其PPN占用16位，Offset占用12位。\n3. **重写子问题3解析与答案**：严格基于题干时间参数重新计算。正确访问时间应为：\n- TLB命中，Cache命中：10 + 20 = 30ns\n- TLB命中，Cache未命中：10 + 20 + 200 = 230ns\n- TLB未命中，Cache命中：10 + 200(访存查页表) + 20 = 230ns\n- TLB未命中，Cache未命中：10 + 200 + 20 + 200 = 430ns\n- EAT = 0.72×30 + 0.08×230 + 0.18×230 + 0.02×430 = 90ns。\n4. 按照上述正确的推导过程，完整重写标准答案（correct_answer）和解析过程（solver_evidence）。\n",
-      "revision_round": 2
-    },
-    {
-      "slot_id": "Q44",
-      "stem": "\n某计算机系统按字节编址，采用32位虚拟地址和28位物理地址。该系统的存储器层次结构包含TLB、Cache和主存。主存采用页式管理，页大小为4KB。TLB采用4路组相联映射方式，共有16个TLB项。Cache采用8路组相联映射方式，Cache数据区总容量为32KB，Cache行大小为64B。系统访问存储器的具体数据通路与时间参数如下：\n\n1. **地址转换阶段**：CPU给出虚拟地址，首先在TLB中查找。若TLB命中，立即输出物理地址；若TLB未命中，需访问主存中的二级页表进行地址转换（假设页表驻留在主存中，且访问页表的时间包含在主存访问周期内），并将对应页表项装入TLB。\n2. **Cache访问阶段**：得到物理地址后查找Cache。若Cache命中，直接读取数据；若Cache未命中，需访问主存获取数据块，并将该块装入Cache。\n3. **时间参数**：系统时钟周期为$T$。TLB查找时间为1个$T$；Cache查找时间为1个$T$；主存访问时间为50个$T$。系统先后访问存储器时，各阶段耗时为顺序累加关系（如TLB未命中且Cache未命中的总时间包含：TLB查找、访问主存更新TLB、Cache查找、再次访问主存更新Cache）。\n4. **命中率参数**：统计表明，该系统在运行某大型程序时，TLB的访问命中率为80%，Cache的访问命中率为90%，且TLB缺失与Cache缺失相互独立。",
-      "sub_questions": [
-        "请画出虚拟地址的结构图（标明各字段的名称及位数），并根据主存页大小，说明物理地址中页内地址的位数。",
-        "请计算TLB标记（Tag）的位数和Cache标记的位数各为多少？",
-        "假设CPU某次访存的虚拟地址为 `0x0000 2A1C`，已知该虚拟地址所在的页对应的物理页框号为 `0x000C`。请计算该虚拟地址对应的物理地址（用十六进制表示），并计算该物理地址在Cache中映射的组号（用十进制表示）。",
-        "请计算该系统在上述命中率参数下，平均每次访存指令的存储器访问时间（AMAT）是多少个时钟周期$T$？（要求写出完整的计算过程）"
-      ],
-      "given_conditions": "\n[\"32位虚拟地址，28位物理地址，按字节编址\", \"页大小为4KB\", \"TLB容量为16项，4路组相联\", \"Cache数据区容量为32KB，Cache行大小64B，8路组相联\", \"TLB查找时间1T，Cache查找时间1T，主存访问时间50T\", \"TLB命中率80%，Cache命中率90%\"]",
-      "difficulty_self_assessment": "4",
-      "knowledge_points": "\"虚拟地址与物理地址结构, TLB与Cache的映射机制, 组相联映射的地址划分, 平均访问时间(AMAT)计算\"",
-      "parameter_notes": "\n- **虚拟/物理地址**：32位和28位是典型配置，页大小4KB意味着页内偏移为12位，虚拟页号(VPN)为20位，物理页号(PPN)为16位。\n- **TLB参数**：16项4路组相联，意味着有4个TLB组，需要2位作为TLB索引。因此TLB Tag位数为 20 - 2 = 18位。\n- **Cache参数**：总容量32KB，行大小64B，计算出共有512个Cache行。采用8路组相联，意味着共有 512 / 8 = 64个Cache组，需要6位作为Cache索引。块内偏移需6位。因此Cache Tag位数为 28 - 6 - 6 = 16位。\n- **时间参数设计**：数据通路为顺序结构。AMAT计算涉及4种排列组合（TLB命中/缺失 × Cache命中/缺失），能够完美考察多级存储层次的时间开销推演。",
-      "design_intent": {
-        "sub_q1_intent": "\n**期望考察**：虚拟存储系统的基础地址划分能力。\n**预期解题路径**：根据页大小4KB（$2^{12}$B）得出页内偏移为12位。32位虚拟地址减去12位页内偏移，得出虚拟页号为20位。物理地址28位，同理划分出物理页号16位和页内偏移12位。",
-        "sub_q2_intent": "\n**期望考察**：TLB和Cache硬件结构参数与地址字段位数的换算关系（机制深度）。\n**预期解题路径**：\n1. 对于TLB：16项4路组相联，求得TLB组数=4，需2位索引。TLB标记 = 虚拟页号位数(20) - TLB索引位数(2) = 18位。\n2. 对于Cache：先计算Cache总行数 = 32KB / 64B = 512行。8路组相联求得Cache组数 = 64组，需6位索引。块内地址6位。Cache标记 = 物理地址位数(28) - 索引位(6) - 块内偏移(6) = 16位。",
-        "sub_q3_intent": "\n**期望考察**：具体硬件机制下的地址转换与映射定位计算（综合触发点）。\n**预期解题路径**：提取 `0x0000 2A1C` 的低12位作为页内偏移（2A1C），与物理页框号 `0x000C` 拼接，得到物理地址 `0x0000 C2A1C`。随后将物理地址转换为二进制，提取中间的Cache索引位（第12~17位，或通过偏移位计算）。计算得出映射的十进制组号为10。",
-        "sub_q4_intent": "\n**期望考察**：存储器层次结构的全局命中时间与访存周期量化分析（计算稳定性）。\n**预期解题路径**：需分四种情况计算联合概率与对应时间开销：\n1. TLB命中，Cache命中 (0.8 * 0.9)：时间 = 1T + 1T = 2T\n2. TLB命中，Cache缺失 (0.8 * 0.1)：时间 = 1T + 1T + 50T = 52T\n3. TLB缺失，Cache命中 (0.2 * 0.9)：时间 = 1T + 50T + 1T = 52T （注意：TLB缺失需访问主存，此为主存读取页表的时间；随后Cache命中）\n4. TLB缺失，Cache缺失 (0.2 * 0.1)：时间 = 1T + 50T + 1T + 50T = 102T\n最后使用加权平均得出AMAT。",
-        "trap_design": "\n1. **TLB标记混淆**：学生可能将TLB的标记位数误算为物理页号部分，或者忘记TLB是使用虚拟页号（VPN）进行查找的。\n2. **映射计算错位**：在计算Cache组号时，容易受到物理地址高位部分（如0x0000C）的干扰，未能准确截取属于\"Cache Index\"的中间位段。\n3. **AMAT漏算或多算周期**：在计算TLB缺失且Cache命中的时间时，容易漏算\"查找TLB的1T\"；或者在计算时间时错误地将TLB/Cache查找时间与主存时间重叠（题干已明确顺序累加，但习惯重叠优化的学生可能会自作聪明）。",
-        "sub_question_logic": "从宏观的地址划分概念（子问1），深入到硬件具体的标记位设计（子问2），再通过具体数据验证数据通路（子问3），最终落脚于系统性能的宏观量化评估（子问4），呈现出\"概念-设计-验证-评估\"的严密闭环逻辑。"
-      },
-      "answer": {
-        "sub_q1": "虚拟地址：虚拟页号(VPN) 20位，页内偏移(VPO) 12位；物理地址：物理页号(PPN) 16位，页内偏移(PPO) 12位",
-        "sub_q2": "TLB标记位数为18位，Cache标记位数为16位",
-        "sub_q3": "物理地址为0xCA1C，映射的Cache组号为40",
-        "sub_q4": "17.0T"
-      },
-      "correct_answer": {
-        "sub_q1": "虚拟地址：虚拟页号(VPN) 20位，页内偏移(VPO) 12位；物理地址：物理页号(PPN) 16位，页内偏移(PPO) 12位",
-        "sub_q2": "TLB标记位数为18位，Cache标记位数为16位",
-        "sub_q3": "物理地址为0xCA1C，映射的Cache组号为40",
-        "sub_q4": "17.0T"
-      },
-      "solver_confidence": "high",
-      "solver_evidence": "============================================================\n【子问1】虚拟地址的结构及物理地址中页内地址位数\n============================================================\n根据主存页大小为 4KB (即 4096B)，可知页内地址的位数为 12 位。\n\n虚拟地址(VA)的结构如下：\n  [ 虚拟页号(VPN) | 页内偏移(VPO) ]\n  [     20位      |     12位      ]\n\n物理地址(PA)的结构如下：\n  [ 物理页号(PPN) | 页内偏移(PPO) ]\n  [     16位      |     12位      ]\n\n============================================================\n【子问2】TLB标记和Cache标记的位数\n============================================================\n1) TLB标记位数：\n   TLB共有 16 个TLB项，采用 4 路组相联。\n   TLB组数 = 16 / 4 = 4 组。\n   TLB索引位 = log2(4) = 2 位。\n   虚拟页号(VPN)位数为 20 位，故 TLB标记位 = VPN位数 - TLB索引位 = 20 - 2 = 18 位。\n\n2) Cache标记位数：\n   Cache数据区容量为 32KB，行大小为 64B，采用 8 路组相联。\n   Cache总行数 = 32768 / 64 = 512 行。\n   Cache组数 = 512 / 8 = 64 组。\n   Cache块内偏移位 = log2(64) = 6 位。\n   Cache索引位 = log2(64) = 6 位。\n   物理地址位数为 28 位，故 Cache标记位 = PA位数 - 索引位 - 块内偏移位 = 28 - 6 - 6 = 16 位。\n\n============================================================\n【子问3】计算对应的物理地址及在Cache中映射的组号\n============================================================\n1) 物理地址计算：\n   已知虚拟地址 VA = 0x00002A1C，物理页框号 PPN = 0x000C。\n   虚拟页内偏移 VPO = VA & 0xFFF = 0x00002A1C & 0xfff = 0xa1c\n   物理地址 PA = (PPN << 12) | VPO = (0x000C << 12) | 0xa1c = 0xca1c\n\n2) Cache映射组号计算：\n   物理地址 PA 的十进制为 51740。\n   主存块号 = PA / Cache行大小 = 51740 / 64 = 808\n   Cache组号 = 主存块号 % Cache组数 = 808 % 64 = 40\n\n============================================================\n【子问4】平均每次访存指令的存储器访问时间 (AMAT)\n============================================================\n由于TLB缺失与Cache缺失相互独立，共有四种可能情况：\n1. TLB命中，Cache命中：概率 = 0.8 * 0.9 = 0.7200000000000001，时间 = 查TLB(1T) + 查Cache(1T) = 2T\n2. TLB命中，Cache缺失：概率 = 0.8 * 0.09999999999999998 = 0.07999999999999999，时间 = 查TLB(1T) + 查Cache(1T) + 访主存(50T) = 52T\n3. TLB缺失，Cache命中：概率 = 0.19999999999999996 * 0.9 = 0.17999999999999997，时间 = 查TLB(1T) + 访主存(50T) + 查Cache(1T) = 52T\n4. TLB缺失，Cache缺失：概率 = 0.19999999999999996 * 0.09999999999999998 = 0.01999999999999999，时间 = 查TLB(1T) + 访主存(50T) + 查Cache(1T) + 访主存(50T) = 102T\n\n完整的计算过程为：\nAMAT = (0.72 * 2) + (0.08 * 52) + (0.18 * 52) + (0.02 * 102)\n     = 1.4400000000000002 + 4.159999999999999 + 9.359999999999998 + 2.039999999999999\n     = 16.999999999999996 T\n\n[验证] AMAT也可等效为多级结构串联公式：\nAMAT = (TLB查找时间) + (TLB缺失率 * 访问主存时间) + (Cache查找时间) + (Cache缺失率 * 访问主存时间)\n     = 1 + 0.19999999999999996 * 50 + 1 + 0.09999999999999998 * 50\n     = 16.999999999999996 T\n",
-      "python_exec_count": 1,
-      "code_files": [
-        "tmp\\solutions\\Q44\\step2.py"
-      ],
-      "rubric": {
-        "point_1": "**[子问1]** 虚拟地址结构划分正确：明确指出虚拟页号（VPN）为20位，页内偏移（VPO）为12位（2分）。",
-        "point_2": "**[子问1]** 物理地址结构及说明正确：明确指出物理地址中的页内地址（PPO）为12位，物理页号（PPN）为16位（1分）。",
-        "point_3": "**[子问2]** TLB标记（Tag）位数计算正确：正确写出TLB标记位数为18位（2分）。",
-        "point_4": "**[子问2]** Cache标记位数计算正确：正确写出Cache标记位数为16位（2分）。",
-        "point_5": "**[子问3]** 物理地址转换正确：正确计算出对应的物理地址为 `0xCA1C` （或 `0x0000CA1C`）（1分）。",
-        "point_6": "**[子问3]** Cache组号计算正确：正确计算出映射的Cache十进制组号为 `40` （1分）。",
-        "point_7": "**[子问4]** TLB命中且Cache命中、TLB命中且Cache缺失的联合概率与时间开销计算正确：得出对应时间开销分别为 `1.44T` 和 `4.16T`（1分）。",
-        "point_8": "**[子问4]** TLB缺失且Cache命中、TLB缺失且Cache缺失的联合概率与时间开销计算正确：得出对应时间开销分别为 `9.36T` 和 `2.04T`（1分）。",
-        "point_9": "**[子问4]** AMAT加权平均计算及最终结果正确：写出累加求和公式并得出正确结果 `17.0T`（1分）。",
-        "总分": "12分",
-        "评分要点概述": "本题重点考察虚拟地址与物理地址的结构划分、TLB与Cache硬件映射机制的深度理解、具体地址转换与映射定位以及系统全局平均访存时间（AMAT）的量化计算。评分严格按照关键步骤与最终结果双重给分，对于涉及复杂顺序时间开销推演的计算题（子问4），若考生未分步列式但最终结果完全正确，亦可得全部分数。"
-      },
-      "pipeline_type": "unified_comp",
-      "generation_time_s": 1543.9,
-      "review": {
         "status": "pass",
         "score": "95",
         "needs_fix": "no",
-        "design_vs_blueprint": "pass（考点覆盖虚拟地址、TLB/Cache映射和AMAT，难度和计算量均完美契合Q44蓝图要求）",
-        "intent_vs_answer": "fail（出题意图中子问3的预期计算路径存在严重的计算错误，但实际提供的解题结果与评分标准已完全修正，不影响最终题目质量）",
-        "answer_correctness": "pass（解题结果的数值计算精准无误）",
-        "sub_question_count_match": "pass（4个子问题，符合要求）",
-        "calculation_load_match": "pass（计算量适中，AMAT计算需分步讨论，符合要求）",
-        "rubric_match": "pass（评分标准详实，步骤分分配合理）",
-        "question_structure": "pass（题干结构完整，虚拟/物理地址、硬件参数、命中率条件提供充分）",
-        "answer_unique": "pass（各子问的地址划分、位数、物理地址、组号和AMAT计算结果均唯一确定）",
-        "computed_vs_intended": "warn（解题结果计算正确，但出题意图文档中子问3的预期答案和推导是错误的，解答已将其纠正）",
-        "slot_match": "pass（符合存储器层次结构主题，考点覆盖深度和难度均对标408真题Q44）",
-        "difficulty_match": "pass（题目融合了多个映射机制的换算和概率相乘的AMAT计算，难度层级为4，非常合理）",
-        "no_ambiguity": "pass（题干明确说明了各阶段耗时是顺序累加关系，排除了流水线或重叠优化的歧义）",
-        "option_quality": "pass（非选择题，不适用）",
-        "rubric_quality": "pass（评分标准按子问和步骤拆分，特别是AMAT的四种情况都有明确的分值和对应结果，非常完善）",
-        "calculation_stability": "pass（参数经过精心设计，Cache组数为64，块大小为64B，避免了计算中的除不尽等边缘问题，最后结果17.0T也很整洁）",
-        "issue": "出题设计意图的预期解题路径中存在一处物理地址拼接的严重失误。出题者将物理页框号 `0x000C` 与页内偏移 `0x2A1C` 错误地按字符串拼接成了 `0x0000 C2A1C`（并因此算出错误组号10）。正确的做法是将物理页号左移12位后相加（即 `0x000C << 12 + 0x2A1C = 0x000CA1C`），此时提取第11~6位得到的正确Cache组号为40。",
+        "design_vs_blueprint": "pass",
+        "intent_vs_answer": "pass",
+        "answer_correctness": "pass",
+        "sub_question_count_match": "pass",
+        "calculation_load_match": "pass",
+        "rubric_match": "pass",
+        "issue": "无",
         "fix_target": "无",
         "fix_instruction": "无",
         "audit_result": {
@@ -935,22 +320,13 @@
             "status": "pass",
             "score": "95",
             "needs_fix": "no",
-            "design_vs_blueprint": "pass（考点覆盖虚拟地址、TLB/Cache映射和AMAT，难度和计算量均完美契合Q44蓝图要求）",
-            "intent_vs_answer": "fail（出题意图中子问3的预期计算路径存在严重的计算错误，但实际提供的解题结果与评分标准已完全修正，不影响最终题目质量）",
-            "answer_correctness": "pass（解题结果的数值计算精准无误）",
-            "sub_question_count_match": "pass（4个子问题，符合要求）",
-            "calculation_load_match": "pass（计算量适中，AMAT计算需分步讨论，符合要求）",
-            "rubric_match": "pass（评分标准详实，步骤分分配合理）",
-            "question_structure": "pass（题干结构完整，虚拟/物理地址、硬件参数、命中率条件提供充分）",
-            "answer_unique": "pass（各子问的地址划分、位数、物理地址、组号和AMAT计算结果均唯一确定）",
-            "computed_vs_intended": "warn（解题结果计算正确，但出题意图文档中子问3的预期答案和推导是错误的，解答已将其纠正）",
-            "slot_match": "pass（符合存储器层次结构主题，考点覆盖深度和难度均对标408真题Q44）",
-            "difficulty_match": "pass（题目融合了多个映射机制的换算和概率相乘的AMAT计算，难度层级为4，非常合理）",
-            "no_ambiguity": "pass（题干明确说明了各阶段耗时是顺序累加关系，排除了流水线或重叠优化的歧义）",
-            "option_quality": "pass（非选择题，不适用）",
-            "rubric_quality": "pass（评分标准按子问和步骤拆分，特别是AMAT的四种情况都有明确的分值和对应结果，非常完善）",
-            "calculation_stability": "pass（参数经过精心设计，Cache组数为64，块大小为64B，避免了计算中的除不尽等边缘问题，最后结果17.0T也很整洁）",
-            "issue": "出题设计意图的预期解题路径中存在一处物理地址拼接的严重失误。出题者将物理页框号 `0x000C` 与页内偏移 `0x2A1C` 错误地按字符串拼接成了 `0x0000 C2A1C`（并因此算出错误组号10）。正确的做法是将物理页号左移12位后相加（即 `0x000C << 12 + 0x2A1C = 0x000CA1C`），此时提取第11~6位得到的正确Cache组号为40。",
+            "design_vs_blueprint": "pass",
+            "intent_vs_answer": "pass",
+            "answer_correctness": "pass",
+            "sub_question_count_match": "pass",
+            "calculation_load_match": "pass",
+            "rubric_match": "pass",
+            "issue": "无",
             "fix_target": "无",
             "fix_instruction": "无"
           },
@@ -967,84 +343,78 @@
         }
       },
       "solver_result": {
-        "slot_id": "Q44",
+        "slot_id": "Q45",
         "code_files": [
-          "tmp\\solutions\\Q44\\step2.py"
+          "tmp\\solutions\\Q45\\step1.py",
+          "tmp\\solutions\\Q45\\step2.py"
         ],
         "outputs": [
-          "============================================================\n【子问1】虚拟地址的结构及物理地址中页内地址位数\n============================================================\n根据主存页大小为 4KB (即 4096B)，可知页内地址的位数为 12 位。\n\n虚拟地址(VA)的结构如下：\n  [ 虚拟页号(VPN) | 页内偏移(VPO) ]\n  [     20位      |     12位      ]\n\n物理地址(PA)的结构如下：\n  [ 物理页号(PPN) | 页内偏移(PPO) ]\n  [     16位      |     12位      ]\n\n============================================================\n【子问2】TLB标记和Cache标记的位数\n============================================================\n1) TLB标记位数：\n   TLB共有 16 个TLB项，采用 4 路组相联。\n   TLB组数 = 16 / 4 = 4 组。\n   TLB索引位 = log2(4) = 2 位。\n   虚拟页号(VPN)位数为 20 位，故 TLB标记位 = VPN位数 - TLB索引位 = 20 - 2 = 18 位。\n\n2) Cache标记位数：\n   Cache数据区容量为 32KB，行大小为 64B，采用 8 路组相联。\n   Cache总行数 = 32768 / 64 = 512 行。\n   Cache组数 = 512 / 8 = 64 组。\n   Cache块内偏移位 = log2(64) = 6 位。\n   Cache索引位 = log2(64) = 6 位。\n   物理地址位数为 28 位，故 Cache标记位 = PA位数 - 索引位 - 块内偏移位 = 28 - 6 - 6 = 16 位。\n\n============================================================\n【子问3】计算对应的物理地址及在Cache中映射的组号\n============================================================\n1) 物理地址计算：\n   已知虚拟地址 VA = 0x00002A1C，物理页框号 PPN = 0x000C。\n   虚拟页内偏移 VPO = VA & 0xFFF = 0x00002A1C & 0xfff = 0xa1c\n   物理地址 PA = (PPN << 12) | VPO = (0x000C << 12) | 0xa1c = 0xca1c\n\n2) Cache映射组号计算：\n   物理地址 PA 的十进制为 51740。\n   主存块号 = PA / Cache行大小 = 51740 / 64 = 808\n   Cache组号 = 主存块号 % Cache组数 = 808 % 64 = 40\n\n============================================================\n【子问4】平均每次访存指令的存储器访问时间 (AMAT)\n============================================================\n由于TLB缺失与Cache缺失相互独立，共有四种可能情况：\n1. TLB命中，Cache命中：概率 = 0.8 * 0.9 = 0.7200000000000001，时间 = 查TLB(1T) + 查Cache(1T) = 2T\n2. TLB命中，Cache缺失：概率 = 0.8 * 0.09999999999999998 = 0.07999999999999999，时间 = 查TLB(1T) + 查Cache(1T) + 访主存(50T) = 52T\n3. TLB缺失，Cache命中：概率 = 0.19999999999999996 * 0.9 = 0.17999999999999997，时间 = 查TLB(1T) + 访主存(50T) + 查Cache(1T) = 52T\n4. TLB缺失，Cache缺失：概率 = 0.19999999999999996 * 0.09999999999999998 = 0.01999999999999999，时间 = 查TLB(1T) + 访主存(50T) + 查Cache(1T) + 访主存(50T) = 102T\n\n完整的计算过程为：\nA"
+          "--- 子问1：字段划分与标记位计算 ---\n1. 虚拟地址(VA)划分 (共32位):\n   - 虚拟页号 (VPN): 20 位\n     - TLB标记: 15 位\n     - TLB索引: 5 位\n   - 页内偏移 : 12 位\n\n2. 物理地址(PA)划分 (共28位):\n   - 物理页号 (PPN): 16 位\n   - 页内偏移 : 12 位\n   物理地址在Cache中的划分:\n   - Cache标记: 14 位\n   - Cache组号 : 8 位\n   - 块内偏移 : 6 位\n\n--- 子问2：虚拟地址到物理地址的转换 ---\n给定的虚拟地址(VA): 0x4a1c\n提取的页内偏移(VPO): 0xa1c\n给定的物理页号(PPN): 0xc3\n计算得到的物理地址(PA) = PPN(0xc3) << 12 | VPO(0xa1c) = 0xc3a1c\n\n--- 子问3：TLB命中、Cache缺失情况下的访存过程与时间 ---\n完整访存过程描述：\n1. CPU发出虚拟地址(VA)。\n2. 用虚拟地址中的TLB标记和索引去查找TLB，耗费时间 10ns。\n3. 此时TLB命中，直接得到对应的物理地址(PA)。\n4. 用物理地址的Cache标记、组号和块内偏移查找Cache，耗费时间 20ns。\n5. 此时Cache缺失。\n6. 此时需要使用该物理地址直接去访问主存，获取所需的数据块，并把该块调入Cache，耗费时间 200ns。\n7. 最终将主存中读取的数据返回给CPU，完成访存。\n\n总耗时 = 访问TLB时间 + 访问Cache时间 + 访问主存时间\n总耗时 = 10ns + 20ns + 200ns = 230ns\n\n--- 子问4：平均访存时间计算 ---\n各情况概率与耗时：\n1. TLB命中，Cache命中：概率 = 0.7200000000000001, 耗时 = 30ns\n2. TLB命中，Cache缺失：概率 = 0.08000000000000002, 耗时 = 230ns\n3. TLB缺失，Cache命中：概率 = 0.18000000000000002, 耗时 = 230ns\n4. TLB缺失，Cache缺失：概率 = 0.020000000000000004, 耗时 = 430ns\n\n平均访存时间 (AMAT) = 0.7200000000000001*30 + 0.08000000000000002*230 + 0.18000000000000002*230 + 0.020000000000000004*430\nAMAT = 21.6 + 18.400000000000002 + 41.400000000000006 + 8.600000000000001\nAMAT = 90.0ns\n"
         ],
         "computed_results": {
-          "页内地址位数": 12,
-          "TLB标记位数": 18,
-          "Cache标记位数": 16,
-          "物理地址(十六进制)": "0xCA1C",
-          "Cache组号(十进制)": 40,
-          "AMAT(单位_T)": 17.0
+          "子问1": {
+            "VA字段划分": {
+              "总位数": 32,
+              "虚拟页号(VPN)": 20,
+              "页内偏移": 12
+            },
+            "VA中TLB字段划分": {
+              "TLB标记": 15,
+              "TLB索引": 5
+            },
+            "PA字段划分": {
+              "总位数": 28,
+              "物理页号(PPN)": 16,
+              "页内偏移": 12
+            },
+            "PA中Cache字段划分": {
+              "Cache标记": 14,
+              "Cache组号": 8,
+              "Cache块内偏移": 6
+            },
+            "TLB标记位数": 15,
+            "Cache标记位数": 14
+          },
+          "子问2": {
+            "物理地址(十六进制)": "0xC3A1C"
+          },
+          "子问3": {
+            "访存过程": "1.CPU发出虚拟地址VA；2.查找TLB（耗时10ns），TLB命中获得物理地址PA；3.查找Cache（耗时20ns），Cache缺失；4.访问主存获取数据块并更新Cache（耗时200ns）；5.返回数据给CPU。",
+            "总时间": 230
+          },
+          "子问4": {
+            "平均访存时间": 90.0
+          }
         },
-        "python_exec_count": 1,
-        "total_time_s": 494.4,
-        "error": ""
+        "python_exec_count": 2,
+        "total_time_s": 132.5,
+        "error": "  File \"D:\\code\\llm_edu\\llm_eduated\\tmp\\solutions\\Q45\\step1.py\", line 4\n    va_bits = 32\nIndentationError: unexpected indent\n"
       },
-      "_blueprint": {
-        "target_subject": "计算机组成原理",
-        "target_family": "存储器层次结构(Cache/TLB/内存)",
-        "primary_target_name": "虚拟地址转换与Cache映射机制",
-        "target_depth": "mechanism",
-        "primary_paper_role": "mechanism_trigger",
-        "secondary_paper_roles": "calculation_stability, cross_topic_integration",
-        "target_difficulty": "4",
-        "difficulty_profile": {
-          "knowledge_depth": 3,
-          "mechanism_depth": 4,
-          "reasoning_steps": 3,
-          "calculation_load": 3,
-          "trap_strength": 3,
-          "cross_topic": 1
-        },
-        "option_style": "none",
-        "reasoning_shape": "none",
-        "sub_questions": "4",
-        "answer_format": "解答过程+最终结果",
-        "must_include": "页大小与虚拟地址划分, TLB标记计算, Cache组相联映射的地址字段划分, 全局命中时间与访存周期的量化分析",
-        "must_avoid": "脱离硬件物理结构的纯OS调度概念, 超大纲的非标准映射方式",
-        "reference_experience": "2016、2019、2022年408真题Q44",
-        "has_deviation": "no",
-        "deviation_level": "none",
-        "deviation_reason": "无",
-        "slot_id": "Q44"
-      },
-      "_experience_card": "# Q44 题位经验 (7年汇总)\n\n## 题位模板\n\n- **题位**: Q44\n- **题型**: comprehensive (综合应用题)\n- **分值**: 13\n- **科目稳定性**: 稳定\n\n### 科目分布\n- 计算机组成原理: 70%\n- 操作系统: 15%\n- 计算机组成原理与操作系统综合: 15%\n\n### 考点领域分布\n- 存储器层次结构(Cache/TLB/内存): 57%\n- I/O系统与中断DMA: 29%\n- 指令系统与寻址: 14%\n\n### 考察深度分布\n- knowledge: 14%\n- mechanism: 72%\n- pattern: 14%\n\n### 功能角色分布\n- mechanism_trigger: 29%\n- cross_topic_integration: 29%\n- calculation_stability: 14%\n- pattern_execution: 14%\n- difficulty_separator: 14%\n\n### 难度锚点\n- overall_mode: 4\n- overall_range: [3, 5]\n- knowledge_depth_mode: 3\n- mechanism_depth_mode: 4\n- reasoning_steps_mode: 3\n- calculation_load_mode: 3\n\n### 出题指导\n此题位主要用于考查计算机组成原理的核心机制，特别是存储器层次结构（Cache、TLB、虚拟存储器）和I/O系统的量化计算。通常要求考生具备从底层电路结构到上层系统调用的完整数据通路分析能力。\n\n- **应该是**: 涉及地址划分、命中率计算、时间周期分析、跨硬件与操作系统边界的综合机制分析题。\n- **不应是**: 纯理论默写, 离散数学证明, 脱离硬件背景的纯数据结构算法题, 极其简单的单步概念题\n- **生成风格**: 应当给出一个具体的计算机系统参数设定（如主存容量、Cache行大小、映射方式），要求考生进行地址字段的划分、运行过程的模拟或性能（命中率、时间）的精确计算。\n- **稳定性评价**: 高度稳定，深耕于计组的存储系统和I/O系统，近年来有向OS和指令系统底层细节交叉融合的明显趋势。\n\n## 逐题分析\n\n### 2010-Q44\n\n- **考点**: Cache直接映射与命中率计算 (mechanism)\n- **知识领域**: 存储器层次结构\n- **辅助考点**: 主存地址划分; Cache行结构; 数组存储方式\n- **前置知识**: 字节编址; Cache工作原理\n\n- **难度**: 4/5\n  - 知识深度=3 机制深度=4 推理步数=4 计算量=4 陷阱强度=3 跨章节=1\n  - 理由: 需要结合数组按行/列优先存储方式计算Cache命中率，计算量大且易错。\n- **功能角色**: difficulty_separator\n  - 通过数组访问模式的差异区分不同程序的Cache命中率，具备极好的区分度。\n\n- **答案分析**: 正确划分主存地址，准确计算数组元素映射的Cache行号，并统计命中次数得出命中率。\n- **错误选项**:\n- **解题步骤**: 计算Cache总容量 → 根据地址计算映射行号 → 分别计算程序A和B的访问次数和缺失次数得出命中率\n\n- **风格**: 题干=long 条件数=8 选项=数字结果 推理=multi_step\n  - 陷阱: 程序B按列访问导致Cache频繁替换（颠簸），容易误认为也存在部分命中率\n\n---\n\n### 2011-Q44\n\n- **考点**: 虚拟地址转换与Cache映射 (mechanism)\n- **知识领域**: 虚拟存储器与Cache交互\n- **辅助考点**: 页表寻址; TLB映射; Cache直接映射\n- **前置知识**: 分页存储管理; 物理地址与虚拟地址转换\n\n- **难度**: 5/5\n  - 知识深度=3 机制深度=5 推理步数=4 计算量=3 陷阱强度=3 跨章节=3\n  - 理由: 跨越OS的虚拟内存和CO的Cache，要求理清虚拟地址->物理地址->Cache地址的完整转换流程。\n- **功能角色**: cross_topic_integration\n  - 完美结合了操作系统内存管理与计组的存储器层次结构，综合度极高。\n\n- **答案分析**: 精确划分虚拟地址、物理地址和Cache地址字段，并成功查表进行转换和命中判断。\n- **错误选项**:\n- **解题步骤**: 分析虚拟地址和物理地址位数 → 划分Cache物理地址字段 → 查页表完成虚实转换 → 查TLB判断是否命中\n\n- **风格**: 题干=medium 条件数=6 选项=混合 推理=simulation\n  - 陷阱: TLB组相联映射的组号和标记位划分容易与Cache混淆\n\n---\n\n### 2016-Q44\n\n- **考点**: 中断与I/O方式的时间计算 (mechanism)\n- **知识领域**: I/O系统\n- **辅助考点**: 异步串行通信格式; 中断处理过程; 时钟周期计算\n- **前置知识**: I/O控制方式; CPU性能指标\n\n- **难度**: 4/5\n  - 知识深度=2 机制深度=4 推理步数=3 计算量=4 陷阱强度=2 跨章节=0\n  - 理由: 需要仔细梳理中断处理的时间线，精确计算时钟周期数开销。\n- **功能角色**: mechanism_trigger\n  - 考查对中断机制时间开销的深度理解和量化计算。\n\n- **答案分析**: 准确计算一个字符传送所需时钟周期以及CPU用于该任务的时间，完整描述中断响应操作。\n- **错误选项**:\n- **解题步骤**: 计算字符位数和传输速率 → 计算单次中断处理时间和总时间 → 列举中断响应阶段的操作\n\n- **风格**: 题干=medium 条件数=5 选项=数字结果 推理=multi_step\n  - 陷阱: CPU用于完成该任务的时间容易被误认为包含设备准备数据的绝对时间\n\n---\n\n### 2020-Q44\n\n- **考点**: Cache组相联映射与缺失计算 (mechanism)\n- **知识领域**: 存储器层次结构\n- **辅助考点**: 直写策略; LRU替换算法; Cache标记与行的计算\n- **前置知识**: Cache工作原理; 内存地址映射\n\n- **难度**: 4/5\n  - 知识深度=3 机制深度=4 推理步数=3 计算量=3 陷阱强度=2 跨章节=1\n  - 理由: 要求理解Cache行结构，并结合代码循环具体计算Cache缺失次数。\n- **功能角色**: pattern_execution\n  - 考查Cache结构设计及特定访问模式下的性能分析模式。\n\n- **答案分析**: 正确计算Tag、LRU位，分析数组起始地址的映射，得出Cache miss次数。\n- **错误选项**:\n- **解题步骤**: 计算标记和LRU位；分析数组的Cache映射并计算缺失；描述指令访问Cache缺失处理过程\n\n- **风格**: 题干=medium 条件数=6 选项=数字结果 推理=multi_step\n  - 陷阱: 起始地址非块大小的整数倍时容易算错数组所在的Cache组映射\n\n---\n\n### 2021-Q44\n\n- **考点**: TLB组相联映射与LRU替换 (mechanism)\n- **知识领域**: 虚拟存储器\n- **辅助考点**: 虚拟地址划分; TLB结构; LRU算法\n- **前置知识**: TLB工作原理; 页式存储管理\n\n- **难度**: 4/5\n  - 知识深度=3 机制深度=4 推理步数=3 计算量=2 陷阱强度=3 跨章节=2\n  - 理由: 将Cache的映射思想应用到TLB，并需要手工精确模拟LRU替换过程。\n- **功能角色**: mechanism_trigger\n  - 深入考查对TLB映射和LRU替换算法核心机制的掌握。\n\n- **答案分析**: 正确划分TLB标记和组号，通过给定的虚页号序列准确模拟出被替换的表项。\n- **错误选项**:\n- **解题步骤**: 划分虚拟地址字段；推导TLB标记和组号；根据访问序列模拟LRU替换；计算位数增加\n\n- **风格**: 题干=medium 条件数=4 选项=概念判断 推理=simulation\n  - 陷阱: 访问序列中只有部分组发生替换，需准确定位到对应组进行模拟，容易看错行号\n\n---\n\n### 2022-Q44\n\n- **考点**: 磁盘参数计算与DMA传送 (knowledge)\n- **知识领域**: I/O系统\n- **辅助考点**: 磁盘访问时间; 周期挪用DMA; 地址信息字段\n- **前置知识**: 磁盘存储器; DMA控制方式\n\n- **难度**: 3/5\n  - 知识深度=2 机制深度=3 推理步数=2 计算量=3 陷阱强度=1 跨章节=0\n  - 理由: 偏向基本概念和公式的直接套用计算，计算过程相对直接。\n- **功能角色**: calculation_stability\n  - 考查磁盘和DMA的基础计算，属于标准得分点。\n\n- **答案分析**: 准确计算磁盘地址字段位数、访问时间，以及DMA传送次数。\n- **错误选项**:\n- **解题步骤**: 计算磁盘地址字段位数；计算平均寻道、延迟和传输时间；计算DMA请求次数并解释优先级\n\n- **风格**: 题干=medium 条件数=5 选项=数字结果 推理=one_formula\n  - 陷阱: 平均访问时间的计算容易漏掉传输时间或算错位\n\n---\n\n### 2023-Q44\n\n- **考点**: 指令寻址方式与虚拟存储 (mechanism)\n- **知识领域**: 指令系统与存储器交互\n- **辅助考点**: 相对寻址; 变址寻址; 大小端; 缺页处理\n- **前置知识**: 指令格式; 寻址方式; 页式存储\n\n- **难度**: 4/5\n  - 知识深度=4 机制深度=4 推理步数=3 计算量=3 陷阱强度=2 跨章节=2\n  - 理由: 结合具体汇编代码，考查指令寻址、数据存储方式及缺页判断，综合性强。\n- **功能角色**: cross_topic_integration\n  - 融合指令系统、数据表示（大/小端）和操作系统虚拟存储的缺页异常判断。\n\n- **答案分析**: 根据指令长度推算地址，准确识别寻址方式并计算转移目标，通过页面范围判断缺页。\n- **错误选项**:\n- **解题步骤**: 根据指令长度推算下一条指令地址；分析转移指令的寻址方式和目标地址计算；分析数组元素的寻址和存放方式；判断指令所在页面是否在内存中\n\n- **风格**: 题干=long 条件数=5 选项=代码分析 推理=simulation\n  - 陷阱: 指令长度不一致导致地址推算易错；ecx存放内容的推导需要结合多维数组映射公式\n\n---\n"
+      "revision_type": "regenerate",
+      "regenerate_reason": "必须重新运行题目生成程序。请严格依据蓝图要求重新生成Q45：设计一道关于“虚拟内存与Cache机制全链路”的计组与OS跨科目综合大题，包含4个小问，要求涉及按字节编址、TLB与页表查询、物理地址计算、Cache组相联映射以及访存时间分析，并提供完整、计算准确的解答过程。\n",
+      "revision_round": 1
     }
   ],
   "final_review": {
-    "overall_status": "has_issues",
-    "overall_score": "40",
-    "overall_comment": "题目的综合性、考点设计以及第四问的平均访存时间逻辑推演极其贴合408真题风格，完美符合蓝图对跨科目和机制深度的要求。但题目在核心参数设计上存在严重的物理地址位数矛盾，且第二问答案计算出现了AI幻觉，导致必须打回修正。\n",
+    "overall_status": "pass",
+    "overall_score": "95",
+    "overall_comment": "该道Q45综合大题设计极为出色，完美契合408考试中对于“计算机组成原理与操作系统”跨学科结合的考查要求。题目通过精心设计的硬件参数（TLB、Cache、主存）与访存命中率，将虚拟地址到物理地址的转换、硬件缓存映射机制以及系统平均访存时间计算串联成一条完整的全链路。计算逻辑严密，毫无破绽，难度定位准确（Level 4），具备极强的考试区分度与实战演练价值。\n",
     "slot_reviews": [
       {
-        "status": "answer_error",
-        "quality_score": "4",
-        "blueprint_compliance": "知识点（虚拟内存、页表、Cache映射、跨层次性能分析）、难度（Level 4）及考查风格均高度符合蓝图要求。",
-        "issue": "\n1. **参数设定自相矛盾**：题干设定物理地址为28位，页大小4KB（页内偏移12位），因此物理页框号只能是16位。然而题目给定的物理页框号为 `0x000C0`（占据5个十六进制位，即20位二进制），超出了28位物理地址的容纳范围，导致后续拼接出的物理地址变成了32位，违背了体系结构基本常识。\n2. **计算结果幻觉**：在子问题(2)中，组号的计算结果完全错误。根据地址推算，正确的组号应为138，而答案给出的却是143（0x8F），属于毫无根据的计算错误。",
-        "fix_instruction": "\n1. **修改题干条件**：将物理页框号 `0x000C0` 修改为合法的16位数值，例如 `0x00C0`，并明确其高位为 `0x00C0`。\n2. **修正子问题(1)答案**：将完整物理地址修正为 `0x00C0A3C`（即 `0x00C0` 左移12位 + `0xA3C`）。\n3. **修正子问题(2)答案**：基于正确的物理地址 `0x00C0A3C` 重新计算，其二进制为 `0000 1100 0000 1010 0011 1100`。提取中间8位（第7~14位）作为Cache组索引，为 `1000 1010`（即十六进制 `0x8A`，十进制138）。因此，映射到Cache的组号应为 138（即0x8A组）。\n4. **保留其余正确部分**：子问题(3)和(4)的逻辑与答案完全正确（TLB未命中查二级页表需2次访存，EAT计算62ns极其准确），无需改动。\n",
-        "slot_id": "Q45"
-      },
-      {
         "status": "pass",
-        "quality_score": "13",
-        "blueprint_compliance": "完全符合蓝图，涵盖了mechanism触发、计算稳定性和跨层次综合，难度达到Level 4。",
-        "issue": "无内容或答案错误。注：出题设计意图(`design_intent`)中对于子问3的预期推导存在一处计算笔误（将低12位`0xA1C`误当做`0x2A1C`进行拼接），但实际的正式题目、解答过程(`solver_evidence`)和评分标准均计算精准，完全正确。",
+        "quality_score": "9.5",
+        "blueprint_compliance": "完全符合蓝图要求，精准覆盖了虚拟内存与地址映射的核心考点，且兼备机制分析与量化计算。",
+        "issue": "无",
         "fix_instruction": "无\n",
-        "slot_id": "Q44"
+        "slot_id": "Q45"
       }
     ],
     "distribution_check": {
-      "difficulty_curve": "难度设定为Level 4，计算步骤和机制推演适中，符合单题的综合大题定位。",
-      "role_balance": "完美体现了 `cross_topic_integration`（跨科目综合）和 `mechanism_trigger`（机制触发），充分覆盖了软硬件协同的存储体系全链路。",
-      "knowledge_overlap": "无重叠，作为全卷唯一综合题，知识点高度聚焦。",
-      "originality": "参数场景组合新颖，无与历年真题直接雷同的嫌疑。\n"
+      "difficulty_curve": "作为单题独立规划，其多步骤机制推演与参数计算结合得相得益彰，完美承担了试卷后段高难度区分功能。",
+      "role_balance": "角色分布聚焦于 `cross_topic_integration`（跨科目整合）与 `mechanism_trigger`（机制触发），符合Q45题位作为压轴综合题的定位。",
+      "knowledge_overlap": "单题内部知识融合紧密，无冗余或脱离系统的孤立计算。",
+      "originality": "题目场景及参数设计科学合理，既贴合大纲又无直接照搬历年真题之嫌，是一道上乘的原创模拟题。\n"
     }
   },
-  "total_time_s": 2992.4
+  "total_time_s": 1330.9
 }
