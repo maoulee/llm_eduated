@@ -4,8 +4,10 @@ Gate 1: Knowledge/Slot Gate — validates knowledge points before stem generatio
 Gate 2: Stem Gate (3 lenses) — validates stem before options/solver
 Gate 3: (uses existing reviewer prompts, restricted to options/answers)
 
-All prompts activate adversarial review posture to counter the model's
-default "benevolent interpretation" tendency.
+All prompts share two design principles:
+1. Adversarial posture — counter the model's default "benevolent interpretation"
+2. Adaptive analysis — the model decides WHAT to check based on the stem content,
+   not a fixed checklist from specific past issues
 """
 
 # ── Gate 1: Knowledge/Slot Gate ──────────────────────────────────────
@@ -15,7 +17,7 @@ KNOWLEDGE_SLOT_GATE_PROMPT = """\
 
 你的任务是判断：当前题目规划是否符合大纲范围、slot 意图和题位经验。
 
-请注意：
+审核原则：
 1. 不要替出题规划圆场。
 2. 不要只判断知识点本身是否正确。
 3. 要判断这些知识点是否适合当前 slot、当前题型、当前难度和当前出题意图。
@@ -34,7 +36,7 @@ KNOWLEDGE_SLOT_GATE_PROMPT = """\
 【题位经验】
 {slot_experience}
 
-请输出 markdown 格式，包含以下字段：
+**输出要求（严格遵守）：先输出结构化结论，再写分析。每个 ## 标题必须单独一行。**
 
 ## overall_decision
 （pass / warning / blocked 之一）
@@ -43,24 +45,19 @@ KNOWLEDGE_SLOT_GATE_PROMPT = """\
 （pass / warning / blocking 之一）
 
 ## issue_types
-列出所有发现的问题类型（可能包含以下类型）：
-- slot_mismatch
-- outline_scope_violation
-- terminology_imprecision
-- knowledge_combination_instability
-- slot_intent_mismatch
+（自行从以下类型中选择，也可自行命名新类型：slot_mismatch / outline_scope_violation / terminology_imprecision / knowledge_combination_instability / slot_intent_mismatch）
 
 ## evidence
-详细说明发现的问题及依据
+（详细说明发现的问题及依据）
 
 ## required_fix
-（如果需要修改，给出具体修改建议；如通过则为空）
+（如果需要修改，给出具体修改建议；如通过则为"无"）
 
 ## approved_knowledge_terms
-列出审核通过的知识点术语
+（列出审核通过的知识点术语）
 
 ## rejected_or_risky_terms
-列出有问题或风险的知识点术语及原因
+（列出有问题或风险的知识点术语及原因）
 """
 
 # ── Gate 2a: Stem Semantic Frame Review ──────────────────────────────
@@ -70,19 +67,22 @@ STEM_SEMANTIC_FRAME_PROMPT = """\
 
 你的任务不是证明题干在某种解释下可以成立，而是判断题干是否已经用清晰、唯一、不会误导考生的方式规定了后续问题所依赖的基础模型。
 
-请特别注意：
-某些题干中的单个前提单独看是正确的，但作为开头总设定放入题目后，可能会把后续问题带入错误的语义框架。此时即使你能通过"善意解释"把题目算通，也不能直接判定题干合格。你必须判断：这种解释是否由题干明确给出，还是由你替题目补全出来的。
+核心审核原则：
+- 不要替题干圆场。某些题干中单个前提单独看正确，但组合后可能把后续问题带入错误的语义框架。
+- 即使你能通过"善意解释"把题目算通，也不能直接判定题干合格。
+- 你必须判断：这种解释是否由题干明确给出，还是由你替题目补全出来的。
+- 你需要根据题干涉及的具体知识领域，自行决定需要审查哪些维度。
 
-**输出要求（严格遵守）：先输出下面的结构化结论，然后再写详细分析。每个 ## 标题必须单独一行。**
+**输出要求（严格遵守）：先输出结构化结论，再写分析。每个 ## 标题必须单独一行。**
 
 ## stem_pass
 （true 或 false）
 
 ## severity
-（pass 或 warning 或 blocking）
+（pass / warning / blocking）
 
 ## issue_types
-（列出发现的问题类型，每行一个，用 - 开头。可选：internal_contradiction / stem_semantic_frame_instability / premise_combination_inconsistency / missing_assumption / insufficient_information / no_stem_issue）
+（根据你的分析自行归类，例如：internal_contradiction / stem_semantic_frame_instability / premise_combination_inconsistency / missing_assumption / insufficient_information / no_stem_issue。也可自行命名）
 
 ## evidence
 （详细说明你的审核发现，可以多行）
@@ -103,25 +103,19 @@ STEM_SEMANTIC_FRAME_PROMPT = """\
 （列出题干中属于局部对象属性的条件）
 
 ## ambiguous_scope_terms
-（列出作用域不明确的关键术语及其可能的作用域）
+（列出作用域不明确的关键术语及其可能的作用域，如无则写"无"）
 
 ---
 
-以上为结论部分。以下为详细分析步骤。
+以上为结论部分。以下为详细分析。
 
-第一步：识别总设定和局部设定
-- 哪些条件是题干开头的全局系统设定？
-- 哪些条件只是某个局部对象的属性？
-- 全局设定是否可能统领或影响后续所有对象、容量、地址、运算或过程的理解？
+请根据题干的具体内容，自行组织分析步骤。以下分析框架供参考，但你可以根据题干特点自由调整：
 
-第二步：识别关键术语的作用域
-逐项判断题干中的关键术语和数值分别修饰什么对象（数据宽度/地址宽度/虚拟地址/物理地址/主存容量/Cache映射对象/页面大小等）。题干是否明确说明了这一点？
-
-第三步：进行反善意解释检查
-不要只给出最有利于题干成立的解释。主动寻找是否存在另一种自然读法：
-- 是否可能有读者把全局设定套用到后续局部对象？
-- 是否需要审题者替题干补全关键作用域？
-- 是否只需最小修改一个前提，题目就会显著更稳定？
+1. 识别题干中的总设定（全局系统设定）和局部设定（个别对象属性）
+2. 识别关键术语和数值各自修饰的对象，判断作用域是否明确
+3. 检查是否存在需要审题者善意补全才能成立的隐含前提
+4. 检查全局设定是否可能意外统领或影响局部对象的理解
+5. 检查是否存在另一种自然读法会导致不同的解题路径
 
 待审核题干：
 {stem}
@@ -135,23 +129,26 @@ STEM_SEMANTIC_FRAME_PROMPT = """\
 STEM_CONDITION_PARTICIPATION_PROMPT = """\
 你是一位非常严格的 408 考试命题审稿人。现在只审核题干前置条件，不看小问、选项、标准答案和解析。
 
-请注意：你的任务不是判断题干中的知识点是否"本身正确"，而是判断这些前置条件是否都对当前题目有命题价值。
+你的任务不是判断题干中的知识点是否"本身正确"，而是判断这些前置条件是否都对当前题目有命题价值。
 
-有些题干会加入一个本身正确的高级技术条件，但当前题目的数据、运算过程或任务并不会触发该条件。此时该条件虽然不一定造成答案错误，但可能构成无效干扰、考点错配或误导性前提。
+核心审核原则：
+- 题干中可能存在本身正确但对当前题目无用的条件，它们可能构成无效干扰、考点错配或误导性前提。
+- 你需要根据题干涉及的具体知识领域和给出的数据，自行判断哪些条件真正参与解题，哪些是冗余或误导的。
+- 不要只说某个条件"本身正确"——必须判断它在当前题目的具体数据和上下文中是否真正被触发。
 
-**输出要求（严格遵守）：先输出下面的结构化结论，然后再写详细分析。每个 ## 标题必须单独一行。**
+**输出要求（严格遵守）：先输出结构化结论，再写分析。每个 ## 标题必须单独一行。**
 
 ## stem_condition_pass
 （true 或 false）
 
 ## severity
-（pass 或 warning 或 blocking）
+（pass / warning / blocking）
 
 ## condition_usage
-（逐行列出每个条件：条件名 | 参与解题(是/否) | 影响答案(是/否) | 可删除(是/否) | 风险等级）
+（逐行列出你识别到的每个条件：条件名 | 参与解题(是/否/视后文而定) | 影响答案(是/否) | 可删除(是/否) | 风险等级(none / harmless_redundancy / misleading / concept_instance_mismatch)）
 
 ## issue_types
-（列出问题类型，每行一个，用 - 开头：concept_instance_mismatch / misleading_high_salience_condition）
+（根据分析自行归类，例如：concept_instance_mismatch / misleading_high_salience_condition。也可自行命名新类型）
 
 ## minimal_fix
 （最小修改建议，如通过则为"无"）
@@ -163,19 +160,12 @@ STEM_CONDITION_PARTICIPATION_PROMPT = """\
 
 以上为结论部分。以下为详细分析。
 
-第一步：列出题干中的所有显性技术条件
-包括但不限于：字长、编址方式、数据格式、运算规则、舍入方式、存储/地址相关设定、访问方式、缺失/阻塞/溢出/异常等边界条件。
+请根据题干的具体内容自行组织分析。以下框架供参考：
 
-第二步：判断每个条件是否会参与当前题目的解题
-对每个条件回答：
-1. 它是否会影响当前题目的计算过程？
-2. 它是否会影响最终答案？
-3. 如果删除该条件，题目是否仍然可以唯一求解？
-4. 它是否暗示了某个高级考点，但当前实例并没有真正触发该考点？
-
-第三步：特别检查高级技术条件
-警惕：舍入模式、溢出/下溢规则、缺页/Cache缺失/流水线阻塞、中断/DMA等。
-不能只说"它本身正确"。必须判断：当前数据是否真的触发它？当前题目是否真的考查它？它是否只是装饰性或误导性信息？
+1. 列出题干中你识别到的所有显性技术条件（根据题干内容自行判断哪些是"条件"）
+2. 对每个条件，判断它是否会影响当前题目的计算过程和最终答案
+3. 判断如果删除该条件，题目是否仍然可以唯一求解
+4. 特别关注：是否存在看起来暗示了高级考点、但当前实例数据并不真正触发的条件
 
 待审核题干：
 {stem}
@@ -186,23 +176,24 @@ STEM_CONDITION_PARTICIPATION_PROMPT = """\
 STEM_TERMINOLOGY_PRECISION_PROMPT = """\
 你是一位严格的 408 考试命题术语审稿人。现在只审核题干中的专业术语是否准确、标准、完整，不审核答案和解题过程。
 
-请检查：
+核心审核原则：
 1. 题干中的专业术语是否符合大纲、教材或标准常用表达；
 2. 是否存在口语化简写；
 3. 简写是否会省略关键限定条件；
 4. 是否可能把一个条件性概念误写成无条件概念；
 5. 是否可能让考生误解该术语的作用范围。
+6. 你需要根据题干涉及的具体知识领域，自行判断需要审查哪些术语。
 
-**输出要求（严格遵守）：先输出下面的结构化结论，然后再写详细分析。每个 ## 标题必须单独一行。**
+**输出要求（严格遵守）：先输出结构化结论，再写分析。每个 ## 标题必须单独一行。**
 
 ## terminology_pass
 （true 或 false）
 
 ## severity
-（pass 或 warning 或 blocking）
+（pass / warning / blocking）
 
 ## issues
-（对每个有问题的术语逐一列出：术语名、问题类型(terminology_imprecision/concept_description_error/ambiguous_term)、详细说明、建议标准表达。如无问题则写"无"）
+（对每个有问题的术语逐一列出：术语名、问题类型(terminology_imprecision / concept_description_error / ambiguous_term)、详细说明、建议标准表达。如无问题则写"无"）
 
 ## can_continue_to_later_review
 （true 或 false）
@@ -211,16 +202,7 @@ STEM_TERMINOLOGY_PRECISION_PROMPT = """\
 
 以上为结论部分。以下为详细分析。
 
-请特别注意以下术语的精确使用：
-- IEEE 754 舍入模式（就近舍入、向零舍入、向正无穷舍入、向负无穷舍入）；
-- 补码、移码、原码、反码；
-- 机器字长、指令字长、存储字长；
-- 虚拟地址、物理地址、逻辑地址；
-- Cache 命中、TLB 命中、缺页；
-- 中断、异常、系统调用；
-- 同步、互斥、阻塞、死锁；
-- 码距、纠错、检错；
-- 网络中的帧、分组、报文段、报文。
+请根据题干涉及的具体知识领域，自行识别需要审查的专业术语，并判断其精确性。你不需要检查与题干无关的术语。
 
 待审核题干：
 {stem}
@@ -243,7 +225,7 @@ STEM_CONTRACT_GENERATION_PROMPT = """\
   "participating_conditions": ["列出所有真正参与解题的条件"],
   "non_participating_conditions": ["列出所有不参与解题但出现在题干中的条件"],
   "defined_terms": {{"术语": "该术语在本题干中的精确含义和作用域"}},
-  "semantic_frame": "一句话概括题干的语义框架（如：32位VA/28位PA系统中的TLB和Cache地址映射分析）",
+  "semantic_frame": "一句话概括题干的语义框架",
   "constraint_summary": "列出所有数值和逻辑约束"
 }}
 ```
@@ -275,7 +257,7 @@ GATE3_RESTRICTION_INSTRUCTION = """
    - 标准答案是否指向正确项
    - 解析是否能从 stem_contract 推出（而非重新解释题干）
    - 评分标准是否覆盖所有子问（综合题）
-5. 可报告的问题类型：
+5. 可报告的问题类型（也可自行命名）：
    - option_domain_mismatch
    - no_valid_correct_option
    - multiple_correct_options
