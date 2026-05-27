@@ -17,6 +17,7 @@ Usage:
 import asyncio
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import time
@@ -146,6 +147,49 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
     return blueprint, review
 
 
+# ── Step 2b: Knowledge/Slot Gate ────────────────────────────────
+
+
+async def knowledge_slot_gate(gateway, blueprint, templates, user_requirements):
+    """Step 2b: Gate 1 — validate knowledge points before generation."""
+    from core_new.agents.gate_agents import KnowledgeSlotGateAgent
+    from core_new.gate_protocol import GateDecision
+
+    print("\n" + "=" * 60)
+    print("Step 2b: Knowledge/Slot Gate — 知识点审核")
+    print("=" * 60)
+
+    bb = Blackboard(
+        task_id="knowledge_slot_gate",
+        task_type="gate",
+        initial_state={
+            "paper_blueprint": blueprint,
+            "slot_templates": templates,
+            "user_requirements": user_requirements,
+        },
+    )
+
+    agent = KnowledgeSlotGateAgent(gateway)
+    record = await agent.execute(bb)
+
+    if record.error:
+        print(f"  Gate agent error: {record.error}")
+        return None
+
+    result = record.parsed or {}
+    decision = result.get("decision", "pass")
+    print(f"  Gate decision: {decision}")
+    if result.get("issue_types"):
+        for it in result["issue_types"]:
+            print(f"    - {it}")
+    if result.get("evidence"):
+        print(f"  Evidence: {str(result['evidence'])[:300]}")
+    if result.get("required_fix"):
+        print(f"  Required fix: {str(result['required_fix'])[:300]}")
+
+    return result
+
+
 # ── Step 3: Generate Questions (parallel) ─────────────────────
 
 
@@ -166,7 +210,7 @@ def _is_comprehensive_slot(sb: dict) -> bool:
     return False
 
 
-async def generate_questions(gateway, slot_blueprints, experience_cards) -> list:
+async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False) -> list:
     """Step 3: Generate questions per slot via UnifiedQuestionPipeline."""
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行)")
@@ -175,14 +219,15 @@ async def generate_questions(gateway, slot_blueprints, experience_cards) -> list
     async def _generate_one(sb):
         slot_id = sb.get("slot_id", "Q12")
         exp_card = experience_cards.get(slot_id, "")
-        return await _generate_unified(gateway, sb, slot_id, exp_card)
+        return await _generate_unified(gateway, sb, slot_id, exp_card,
+                                       enable_stem_gate=enable_stem_gate)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
     return list(questions)
 
 
-async def _generate_unified(gateway, sb, slot_id, exp_card):
+async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False):
     """Generate a question using the unified pipeline (both SC and Comp).
 
     UnifiedQuestionPipeline:
@@ -195,7 +240,10 @@ async def _generate_unified(gateway, sb, slot_id, exp_card):
     t0 = time.monotonic()
 
     try:
-        pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
+        pipeline = UnifiedQuestionPipeline(
+            max_revision_rounds=1,
+            enable_stem_gate=enable_stem_gate,
+        )
         result = await pipeline.run(sb, exp_card, gateway)
         elapsed = time.monotonic() - t0
 
@@ -207,6 +255,10 @@ async def _generate_unified(gateway, sb, slot_id, exp_card):
         q_data["slot_id"] = slot_id
         q_data["_blueprint"] = sb
         q_data["_experience_card"] = exp_card
+        if result.stem_contract:
+            q_data["stem_contract"] = result.stem_contract
+        if result.stem_gate_result:
+            q_data["stem_gate_result"] = result.stem_gate_result
 
         if is_sc:
             answer = q_data.get("correct_answer", "?")
@@ -457,6 +509,7 @@ async def run_composition(
     slot_ids: list = None,
     max_bp_revisions: int = 1,
     max_fix_rounds: int = 2,
+    gate_config: dict = None,
 ) -> dict:
     """Run the full composition pipeline."""
     if slot_ids:
@@ -510,8 +563,27 @@ async def run_composition(
         print("  ERROR: No slot blueprints generated")
         return {"status": "error", "step": "compose", "error": "empty slots"}
 
+    # Step 2b: Knowledge/Slot Gate (optional)
+    gate_config = gate_config or {}
+    knowledge_gate_result = None
+    if gate_config.get("enable_knowledge_gate"):
+        knowledge_gate_result = await knowledge_slot_gate(
+            gateway, blueprint, templates, user_requirements,
+        )
+        if knowledge_gate_result and knowledge_gate_result.get("decision") == "blocked":
+            print("  Knowledge gate BLOCKED — returning to compose")
+            return {
+                "status": "error",
+                "step": "knowledge_gate",
+                "gate_result": knowledge_gate_result,
+            }
+
     # Step 3: Generate questions (parallel, routed by question_type)
-    initial_questions = await generate_questions(gateway, slot_blueprints, experience_cards)
+    enable_stem_gate = gate_config.get("enable_stem_gate", False)
+    initial_questions = await generate_questions(
+        gateway, slot_blueprints, experience_cards,
+        enable_stem_gate=enable_stem_gate,
+    )
 
     # Step 4-5: Review + fix loop
     final_questions, final_review, revision_rounds = await review_and_fix(
@@ -526,6 +598,7 @@ async def run_composition(
         "paper_blueprint": blueprint,
         "blueprint_review": blueprint_review,
         "skeleton_violations": skeleton_violations,
+        "knowledge_gate_result": knowledge_gate_result,
         "initial_questions": initial_questions,
         "revision_rounds": revision_rounds,
         "final_questions": final_questions,
@@ -562,6 +635,10 @@ async def main():
     parser.add_argument("--requirements", default="出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点")
     parser.add_argument("--max-bp-revisions", type=int, default=1, help="Max blueprint revision rounds")
     parser.add_argument("--max-fix-rounds", type=int, default=2, help="Max question fix rounds")
+    parser.add_argument("--enable-knowledge-gate", action="store_true", default=False,
+                        help="Enable Gate 1: knowledge/slot review before generation")
+    parser.add_argument("--enable-stem-gate", action="store_true", default=False,
+                        help="Enable Gate 2: stem review before options/solver")
     args = parser.parse_args()
 
     tpl_path = "data/slot_templates.json"
@@ -586,6 +663,10 @@ async def main():
     print(f"Loaded {len(templates)} templates, {len(exp_cards)} experience cards")
 
     gateway = get_gateway("glm5.1")
+    gate_config = {
+        "enable_knowledge_gate": args.enable_knowledge_gate,
+        "enable_stem_gate": args.enable_stem_gate,
+    }
     await run_composition(
         gateway,
         slot_templates=templates,
@@ -594,6 +675,7 @@ async def main():
         slot_ids=args.slots,
         max_bp_revisions=args.max_bp_revisions,
         max_fix_rounds=args.max_fix_rounds,
+        gate_config=gate_config,
     )
 
 

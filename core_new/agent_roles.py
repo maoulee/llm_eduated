@@ -19,6 +19,11 @@ class RoleType(str, Enum):
 class AuditMode(str, Enum):
     EXTRACTION_REVIEW = "extraction_review"
     BLUEPRINT_REVIEW = "blueprint_review"
+    KNOWLEDGE_SLOT_GATE = "knowledge_slot_gate"
+    STEM_GATE = "stem_gate"
+    STEM_SEMANTIC_FRAME = "stem_semantic_frame"
+    STEM_CONDITION_PARTICIPATION = "stem_condition_participation"
+    STEM_TERMINOLOGY_PRECISION = "stem_terminology_precision"
     QUESTION_REVIEW = "question_review"
     FINAL_PAPER_REVIEW = "final_paper_review"
 
@@ -34,6 +39,7 @@ class PipelineFixTarget(str, Enum):
     RUBRIC = "rubric"
     FINAL_FORMAT = "final_format"
     HUMAN = "human"
+    STEM = "stem"
 
 
 @dataclass(frozen=True)
@@ -174,6 +180,11 @@ def resolve_execution_policy(
 _AUDIT_MODE_OWNER: dict[AuditMode, RoleType] = {
     AuditMode.EXTRACTION_REVIEW: RoleType.EXTRACTOR,
     AuditMode.BLUEPRINT_REVIEW: RoleType.PLANNER,
+    AuditMode.KNOWLEDGE_SLOT_GATE: RoleType.PLANNER,
+    AuditMode.STEM_GATE: RoleType.GENERATOR,
+    AuditMode.STEM_SEMANTIC_FRAME: RoleType.AUDIT,
+    AuditMode.STEM_CONDITION_PARTICIPATION: RoleType.AUDIT,
+    AuditMode.STEM_TERMINOLOGY_PRECISION: RoleType.AUDIT,
     AuditMode.QUESTION_REVIEW: RoleType.GENERATOR,
     AuditMode.FINAL_PAPER_REVIEW: RoleType.SUMMARIZER,
 }

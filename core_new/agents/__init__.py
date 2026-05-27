@@ -17,6 +17,13 @@ from .hybrid_subjective_team import (
 )
 from .agent_registry import AgentRegistry
 from .paper_formatter import PaperFormatterAgent
+from .gate_agents import (
+    KnowledgeSlotGateAgent,
+    StemGateCoordinator,
+    StemSemanticFrameReviewer,
+    StemConditionParticipationReviewer,
+    StemTerminologyPrecisionReviewer,
+)
 from . import solver_utils
 
 __all__ = [
@@ -34,5 +41,10 @@ __all__ = [
     "HybridSubjectiveResult",
     "AgentRegistry",
     "PaperFormatterAgent",
+    "KnowledgeSlotGateAgent",
+    "StemGateCoordinator",
+    "StemSemanticFrameReviewer",
+    "StemConditionParticipationReviewer",
+    "StemTerminologyPrecisionReviewer",
     "solver_utils",
 ]

@@ -77,6 +77,36 @@ QUESTION_REVIEW_PROFILE = AuditProfile(
 
 
 # ── Final Paper Review ──
+
+
+# ── Knowledge/Slot Gate ──
+KNOWLEDGE_SLOT_GATE_PROFILE = AuditProfile(
+    mode=AuditMode.KNOWLEDGE_SLOT_GATE,
+    description="Pre-generation gate: validate knowledge points and slot fit before stem generation",
+    check_items=(
+        AuditCheckItem("slot_match", "Slot blueprint matches template scope, role and historical experience", "blocker"),
+        AuditCheckItem("knowledge_combination_stability", "Knowledge points are well-defined and combinable without forcing", "major"),
+        AuditCheckItem("terminology_standards", "Terminology aligns with exam outline and standard textbooks", "major"),
+        AuditCheckItem("outline_scope", "Content falls within 408 exam outline scope, no cross-domain overreach", "blocker"),
+        AuditCheckItem("slot_intent_clarity", "Slot intent is clear: the declared exam objective is achievable with planned instance", "major"),
+    ),
+    focus_areas=("slot_match", "knowledge_combination_stability"),
+)
+
+
+# ── Stem Gate ──
+STEM_GATE_PROFILE = AuditProfile(
+    mode=AuditMode.STEM_GATE,
+    description="Post-design gate: validate stem quality before option/solver generation",
+    check_items=(
+        AuditCheckItem("semantic_frame_stability", "Stem has a stable semantic frame with no internal contradictions", "blocker"),
+        AuditCheckItem("no_benevolent_interpretation", "Stem does not require benevolent/generous interpretation to be solvable", "blocker"),
+        AuditCheckItem("condition_participation", "Every condition in stem actually participates in the solution", "major"),
+        AuditCheckItem("terminology_precision", "Professional terms used precisely without ambiguity or colloquial shorthand", "major"),
+        AuditCheckItem("sufficient_information", "All information needed to uniquely solve is explicitly stated", "blocker"),
+    ),
+    focus_areas=("semantic_frame_stability", "no_benevolent_interpretation"),
+)
 FINAL_PAPER_REVIEW_PROFILE = AuditProfile(
     mode=AuditMode.FINAL_PAPER_REVIEW,
     description="Validate full exam paper coherence and quality",
@@ -96,6 +126,8 @@ FINAL_PAPER_REVIEW_PROFILE = AuditProfile(
 AUDIT_PROFILES: dict[AuditMode, AuditProfile] = {
     AuditMode.EXTRACTION_REVIEW: EXTRACTION_REVIEW_PROFILE,
     AuditMode.BLUEPRINT_REVIEW: BLUEPRINT_REVIEW_PROFILE,
+    AuditMode.KNOWLEDGE_SLOT_GATE: KNOWLEDGE_SLOT_GATE_PROFILE,
+    AuditMode.STEM_GATE: STEM_GATE_PROFILE,
     AuditMode.QUESTION_REVIEW: QUESTION_REVIEW_PROFILE,
     AuditMode.FINAL_PAPER_REVIEW: FINAL_PAPER_REVIEW_PROFILE,
 }

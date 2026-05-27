@@ -283,6 +283,8 @@ class UnifiedPipelineResult:
     review: Dict[str, Any]
     generation_time_s: float
     pipeline_type: str = "unified"
+    stem_contract: Optional[Dict[str, Any]] = None
+    stem_gate_result: Optional[Dict[str, Any]] = None
 
 
 # ── Pipeline ──────────────────────────────────────────────────
@@ -304,10 +306,14 @@ class UnifiedQuestionPipeline:
         max_revision_rounds: int = MAX_REVISION_ROUNDS,
         use_runtime_sc_design: bool = True,
         runtime_fallback: bool = True,
+        enable_stem_gate: bool = False,
     ):
         self.max_revision_rounds = max_revision_rounds
         self.use_runtime_sc_design = use_runtime_sc_design
         self.runtime_fallback = runtime_fallback
+        self.enable_stem_gate = enable_stem_gate
+        self._stem_contract = None
+        self._stem_gate_coordinator = None
         self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
         self.fallback_executor = FallbackExecutor()
         self.fallback_executor.register("human_review", self._fallback_human_review)
@@ -415,7 +421,7 @@ class UnifiedQuestionPipeline:
                             slot_id, rnd, fix_target)
 
             # ── Step 1: Design ──
-            need_design = rnd == 0 or fix_target in ("question",)
+            need_design = rnd == 0 or fix_target in ("question", "stem")
             if need_design:
                 if is_sc:
                     design = await self._design_sc(
@@ -441,6 +447,27 @@ class UnifiedQuestionPipeline:
                         generation_time_s=round(total_time, 1),
                         pipeline_type="unified_sc" if is_sc else "unified_comp",
                     )
+
+            # ── Step 1.5: Stem Gate (if enabled) ──
+            stem_gate_result = None
+            if self.enable_stem_gate and need_design:
+                stem_gate_result = await self._run_stem_gate(
+                    design, slot_blueprint, slot_id, gateway,
+                )
+                if not stem_gate_result.passed:
+                    logger.warning(
+                        "[%s] Stem gate BLOCKED: %s — %s",
+                        slot_id,
+                        stem_gate_result.error_types,
+                        stem_gate_result.fix_instruction[:200],
+                    )
+                    fix_target = "stem"
+                    if rnd >= self.max_revision_rounds:
+                        logger.warning("[%s] Stem gate blocked, revision budget exhausted", slot_id)
+                        break
+                    continue
+                self._stem_contract = stem_gate_result.stem_contract
+                logger.info("[%s] Stem gate PASSED", slot_id)
 
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
@@ -514,13 +541,45 @@ class UnifiedQuestionPipeline:
         logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s)",
                      slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp")
 
+        sc_dict = self._stem_contract.to_dict() if self._stem_contract else None
+        sgr_dict = stem_gate_result.to_dict() if stem_gate_result else None
+
         return UnifiedPipelineResult(
             final_question=final_question,
             solver_result=solver_dict,
             review=review,
             generation_time_s=round(total_time, 1),
             pipeline_type="unified_sc" if is_sc else "unified_comp",
+            stem_contract=sc_dict,
+            stem_gate_result=sgr_dict,
         )
+
+    # ── Stem Gate ──────────────────────────────────────────────
+
+    async def _run_stem_gate(
+        self,
+        design: Dict[str, Any],
+        slot_blueprint: Dict[str, Any],
+        slot_id: str,
+        gateway,
+    ):
+        """Run stem gate (3 lenses in parallel) and return GateResult."""
+        from core_new.agents.gate_agents import StemGateCoordinator
+
+        if self._stem_gate_coordinator is None:
+            self._stem_gate_coordinator = StemGateCoordinator(gateway)
+
+        stem = design.get("stem", "")
+        if not stem:
+            logger.warning("[%s] No stem to review, skipping stem gate", slot_id)
+            from core_new.gate_protocol import GateDecision, GateResult
+            return GateResult(
+                gate_name="stem",
+                decision=GateDecision.PASS,
+                fix_target="none",
+            )
+
+        return await self._stem_gate_coordinator.review(stem, slot_blueprint, slot_id)
 
     # ── Step methods ───────────────────────────────────────────
 
@@ -675,6 +734,11 @@ class UnifiedQuestionPipeline:
         """Step 3: FileCodeSolver — pure computation engine."""
         solver = FileCodeSolverAgent(gateway, max_tokens=4096, max_steps=5)
 
+        # Use canonical interpretation from stem_contract if available
+        question_text = design.get("stem", "")
+        if self._stem_contract and self._stem_contract.canonical_interpretation:
+            question_text = self._stem_contract.canonical_interpretation
+
         if is_sc and options:
             options_dict = {
                 "A": options.get("option_A", ""),
@@ -683,7 +747,7 @@ class UnifiedQuestionPipeline:
                 "D": options.get("option_D", ""),
             }
             result = await solver.solve(
-                question_draft=design.get("stem", ""),
+                question_draft=question_text,
                 options=options_dict,
                 question_type="single_choice",
                 slot_id=slot_id,
@@ -697,7 +761,7 @@ class UnifiedQuestionPipeline:
                     sub_questions = [sub_questions]
 
             result = await solver.solve(
-                question_draft=design.get("stem", ""),
+                question_draft=question_text,
                 sub_questions=sub_questions if sub_questions else None,
                 question_type="comprehensive",
                 slot_id=slot_id,
@@ -795,30 +859,47 @@ class UnifiedQuestionPipeline:
         """Step 6: review — compare computation vs intent."""
         solver_dict = code_solution.to_dict() if code_solution else {}
 
+        # Inject stem_contract into reviewer blackboard when available
+        stem_contract_dict = self._stem_contract.to_dict() if self._stem_contract else None
+
         if is_sc:
+            initial_state = {
+                "sc_design": design,
+                "sc_options": options,
+                "solver_result": solver_dict,
+                "current_blueprint": blueprint,
+            }
+            if stem_contract_dict:
+                initial_state["stem_contract"] = stem_contract_dict
             bb = Blackboard(
                 task_id=f"sc_review_{blueprint.get('slot_id', 'Q1')}",
                 task_type="unified_sc",
-                initial_state={
-                    "sc_design": design,
-                    "sc_options": options,
-                    "solver_result": solver_dict,
-                    "current_blueprint": blueprint,
-                },
+                initial_state=initial_state,
             )
             reviewer = UnifiedSCReviewer(gateway)
         else:
+            initial_state = {
+                "question_design": design,
+                "formatted_solution": solution,
+                "rubric": rubric,
+                "current_blueprint": blueprint,
+            }
+            if stem_contract_dict:
+                initial_state["stem_contract"] = stem_contract_dict
             bb = Blackboard(
                 task_id=f"comp_review_{blueprint.get('slot_id', 'Q43')}",
                 task_type="unified_comp",
-                initial_state={
-                    "question_design": design,
-                    "formatted_solution": solution,
-                    "rubric": rubric,
-                    "current_blueprint": blueprint,
-                },
+                initial_state=initial_state,
             )
             reviewer = IntentBasedReviewer(gateway)
+
+        # Append Gate 3 restriction instruction when stem gate was used
+        if stem_contract_dict:
+            from core_new.prompts.gate_prompts import GATE3_RESTRICTION_INSTRUCTION
+            gate3_suffix = GATE3_RESTRICTION_INSTRUCTION.format(
+                stem_contract=json.dumps(stem_contract_dict, ensure_ascii=False, indent=2),
+            )
+            reviewer.config.system_prompt = reviewer.config.system_prompt + "\n\n" + gate3_suffix
 
         record = await reviewer.execute(bb)
         if record.error:

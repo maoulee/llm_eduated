@@ -154,4 +154,24 @@ def build_slot_contract(
             if in_guide:
                 lines.append(line)
 
+    # ── Knowledge base retrieval ────────────────────────────────
+    kb_text = _retrieve_kb_for_slot(slot_id, template)
+    if kb_text:
+        lines.append("## 大纲知识点参考（来自知识库）")
+        lines.append("")
+        lines.append("> 以下是从知识点库中检索到的与本题位相关的考点，供出题时参考。")
+        lines.append("> 这些是大纲覆盖的考点名词，不是定义或公式。")
+        lines.append("")
+        lines.append(kb_text)
+        lines.append("")
+
     return "\n".join(lines)
+
+
+def _retrieve_kb_for_slot(slot_id: str, template: Dict) -> str:
+    """Retrieve relevant knowledge base sections for a slot."""
+    try:
+        from core_new.knowledge_retrieval import retrieve_for_slot
+        return retrieve_for_slot(slot_id, template)
+    except Exception:
+        return ""
