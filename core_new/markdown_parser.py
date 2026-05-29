@@ -256,6 +256,129 @@ def _try_json_parse(text: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def parse_md_kv(lines: List[str]) -> Dict[str, Any]:
+    """Parse '- **key**: value' or '- key: value' lines into a dict.
+
+    Handles both English (:) and Chinese (：) colons, and keys with or
+    without bold markers (**).
+    """
+    result: Dict[str, Any] = {}
+    current_key = None
+
+    for line in lines:
+        m = re.match(r"^-\s+\*\*(.+?)\*\*[:：]\s*(.*)", line)
+        if not m:
+            m = re.match(r"^-\s+([^*:：]+?)[:：]\s*(.*)", line)
+        if m:
+            key = m.group(1).strip()
+            value = m.group(2).strip()
+            if value and (value.startswith("{") or value.startswith("[")):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    pass
+            result[key] = value
+            current_key = key
+        elif line.startswith("  ") and current_key and current_key in result:
+            existing = result[current_key]
+            if isinstance(existing, str):
+                result[current_key] = existing + "\n" + line.strip()
+        elif current_key and current_key in result and isinstance(result[current_key], str):
+            result[current_key] = result[current_key] + "\n" + line
+
+    return result
+
+
+def parse_md_sections(text: str) -> Dict[str, Any]:
+    """Split markdown by ## headers, parse each section's key-value pairs."""
+    sections: Dict[str, Any] = {}
+    current_name = None
+    current_lines: List[str] = []
+
+    for line in text.split("\n"):
+        m = re.match(r"^##\s+(.+)", line)
+        if m:
+            if current_name:
+                sections[current_name] = parse_md_kv(current_lines)
+            current_name = m.group(1).strip()
+            current_lines = []
+        elif current_name:
+            current_lines.append(line)
+
+    if current_name:
+        sections[current_name] = parse_md_kv(current_lines)
+
+    return sections
+
+
+# ---------------------------------------------------------------------------
+# Unified structured output parser for LLM agents
+# ---------------------------------------------------------------------------
+
+def parse_structured_output(
+    raw: str,
+    *,
+    md_sections: tuple[str, ...] = (),
+    json_nested_key: str | None = None,
+) -> Dict[str, Any]:
+    """Unified LLM output parser with automatic fallback chain.
+
+    Strategy:
+    1. Try JSON: if json_nested_key, extract that sub-dict; else use flat.
+    2. Try markdown ## sections: merge all specified section dicts.
+    3. Try any ## section that contains a requested key.
+    4. Return empty dict.
+
+    Args:
+        raw: Raw LLM output text.
+        md_sections: Ordered section names to merge (e.g. ``("stem",)`` or
+            ``("options", "distractors", "answer")``).
+        json_nested_key: If the JSON output has a nested dict under this key,
+            return that instead of the top-level dict.
+
+    Returns:
+        Merged dict from whichever parsing strategy succeeded.
+    """
+    text = str(raw).strip()
+    if not text:
+        return {}
+
+    # Strip code fences (GLM-5.1 sometimes wraps markdown in ```...```)
+    text = re.sub(r"^```(?:\w+)?\s*\n?", "", text)
+    text = re.sub(r"\n?```\s*$", "", text)
+    text = text.strip()
+
+    # ── Strategy 1: JSON ──
+    data = try_parse_json_object(text)
+    if data:
+        if json_nested_key:
+            nested = data.get(json_nested_key)
+            if isinstance(nested, dict):
+                return nested
+        # Use flat if it has any useful keys
+        if any(not k.startswith("_") for k in data):
+            return data
+
+    # ── Strategy 2: Markdown ## sections ──
+    sections = parse_md_sections(text)
+    if md_sections:
+        merged: Dict[str, Any] = {}
+        for sec_name in md_sections:
+            sec = sections.get(sec_name)
+            if isinstance(sec, dict):
+                merged.update(sec)
+        if merged:
+            return merged
+
+    # ── Strategy 3: Any section with requested keys ──
+    if md_sections:
+        for _name, sec in sections.items():
+            if isinstance(sec, dict) and any(sec.get(k) for k in md_sections):
+                return sec
+
+    return {}
+
+
 def try_parse_json_object(text: str) -> Optional[Dict[str, Any]]:
     """Public helper: parse a dict from fenced JSON or whole-text JSON."""
     return _try_json_parse(text)

@@ -38,6 +38,9 @@ class AgentConfig:
     role_type: RoleType | str = RoleType.GENERATOR
     audit_mode: AuditMode | str | None = None
     execution_policy: ExecutionPolicy | None = None
+    # Tool-calling support
+    tools: list = field(default_factory=list)      # List[ToolDef]
+    max_tool_rounds: int = 10
 
 
 class BaseAgent(ABC):
@@ -259,6 +262,10 @@ Return only the corrected final content."""
             messages.append({"role": "system", "content": self.config.system_prompt})
         messages.append({"role": "user", "content": prompt})
 
+        # If tools are registered, use tool-calling loop
+        if self.config.tools:
+            return await self._call_llm_with_tools(messages)
+
         max_tokens = self.config.max_tokens
 
         fmt = self.config.output_format.lower()
@@ -278,6 +285,23 @@ Return only the corrected final content."""
             messages,
             max_tokens=max_tokens,
             enable_thinking=self.config.enable_thinking,
+        )
+
+    async def _call_llm_with_tools(self, messages: list) -> LLMResult:
+        """Call LLM with tool-calling support. Runs a multi-turn loop."""
+        from .agent_tools import ToolExecutor
+
+        tools_list = self.config.tools
+        executor = ToolExecutor(tools_list)
+        openai_tools = executor.get_openai_tools()
+
+        return await self.llm.generate_with_tools(
+            messages,
+            tools=openai_tools,
+            tool_executor=executor,
+            max_tokens=self.config.max_tokens,
+            enable_thinking=self.config.enable_thinking,
+            max_rounds=self.config.max_tool_rounds,
         )
 
 

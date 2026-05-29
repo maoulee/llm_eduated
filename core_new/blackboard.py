@@ -381,6 +381,9 @@ class Blackboard:
             "paper_review_decision",
             "route",
             "consistent",
+            "verdict",
+            "can_continue",
+            "can_send_to_solver",
         ):
             if decision_key in output:
                 self._state[decision_key] = output[decision_key]

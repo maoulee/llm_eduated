@@ -418,6 +418,97 @@ class LLMGateway:
     async def generate_text(self, messages: List[Dict], **kw) -> LLMResult:
         return (await self.generate_text_batch([messages], **kw))[0]
 
+    async def generate_with_tools(
+        self,
+        messages: List[Dict],
+        *,
+        tools: List[Dict[str, Any]],
+        tool_executor: Any,
+        max_tokens: Optional[int] = None,
+        enable_thinking: bool = True,
+        max_rounds: int = 10,
+    ) -> LLMResult:
+        """Generate with tool-calling loop.
+
+        The LLM can call tools multiple rounds. Each round:
+        1. Send messages + tools to LLM
+        2. If response has tool_calls, execute them and append results
+        3. If response has content, return as final result
+        """
+        max_tokens = self._floor_max_tokens(max_tokens, enable_thinking)
+        conversation = list(messages)
+        total_latency = 0
+
+        for round_idx in range(max_rounds):
+            start_time = time.monotonic()
+            try:
+                raw = await self._provider._chat_call(
+                    conversation,
+                    stop_sequences=None,
+                    max_tokens=max_tokens,
+                    enable_thinking=enable_thinking,
+                    json_mode=False,
+                    tools=tools,
+                )
+            except Exception as e:
+                latency_ms = int((time.monotonic() - start_time) * 1000)
+                return LLMResult.failure(
+                    error_code="api_error",
+                    error_message=str(e),
+                    provider=self._provider_name,
+                    model=self._model_name,
+                    latency_ms=latency_ms,
+                )
+
+            latency_ms = int((time.monotonic() - start_time) * 1000)
+            total_latency += latency_ms
+
+            tool_calls = raw.get("tool_calls")
+            content = raw.get("content", "")
+
+            if tool_calls:
+                # Build assistant message with tool_calls
+                assistant_msg = {"role": "assistant", "content": content or None}
+                assistant_msg["tool_calls"] = tool_calls
+                conversation.append(assistant_msg)
+
+                # Execute each tool call and append results
+                for tc in tool_calls:
+                    fn_name = tc["function"]["name"]
+                    fn_args_str = tc["function"]["arguments"]
+                    try:
+                        fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
+                    except json.JSONDecodeError:
+                        fn_args = {}
+                    result_str = tool_executor.execute(fn_name, fn_args)
+                    conversation.append({
+                        "role": "tool",
+                        "tool_call_id": tc["id"],
+                        "content": result_str,
+                    })
+                # Continue loop — LLM will see tool results and respond
+                continue
+
+            # No tool calls — this is the final content
+            reasoning = raw.get("reasoning_content", "")
+            return LLMResult.success(
+                content=content,
+                reasoning=reasoning or None,
+                provider=self._provider_name,
+                model=self._model_name,
+                latency_ms=total_latency,
+            )
+
+        # Exhausted max rounds — return last content
+        return LLMResult.failure(
+            error_code="max_tool_rounds",
+            error_message=f"Exceeded {max_rounds} tool-call rounds",
+            provider=self._provider_name,
+            model=self._model_name,
+            latency_ms=total_latency,
+            content=content,
+        )
+
     # ── Properties ────────────────────────────────────────
 
     @property

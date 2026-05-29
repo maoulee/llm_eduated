@@ -152,40 +152,55 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
 
 async def knowledge_slot_gate(gateway, blueprint, templates, user_requirements):
     """Step 2b: Gate 1 — validate knowledge points before generation."""
-    from core_new.agents.gate_agents import KnowledgeSlotGateAgent
+    from core_new.agents.gate_agents import KnowledgeGateAgent
     from core_new.gate_protocol import GateDecision
 
     print("\n" + "=" * 60)
-    print("Step 2b: Knowledge/Slot Gate — 知识点审核")
+    print("Step 2b: Knowledge Gate — 知识点审核")
     print("=" * 60)
 
+    # Build slot intent and outline scope from templates
+    slot_parts = []
+    outline_parts = []
+    for sid, tmpl in templates.items():
+        guidance = tmpl.get("slot_guidance", "")
+        subject = tmpl.get("subject_stability", "")
+        if guidance:
+            slot_parts.append(f"{sid}: {guidance}")
+        if subject:
+            outline_parts.append(f"{sid}: {subject}")
+
     bb = Blackboard(
-        task_id="knowledge_slot_gate",
+        task_id="knowledge_gate",
         task_type="gate",
         initial_state={
-            "paper_blueprint": blueprint,
+            "slot_intent": "\n".join(slot_parts) if slot_parts else "（暂无 slot 意图）",
+            "outline_scope": "\n".join(outline_parts) if outline_parts else user_requirements or "（暂无大纲范围）",
+            "knowledge_terms_or_stem": str(blueprint),
             "slot_templates": templates,
-            "user_requirements": user_requirements,
         },
     )
 
-    agent = KnowledgeSlotGateAgent(gateway)
+    agent = KnowledgeGateAgent(gateway)
     record = await agent.execute(bb)
 
     if record.error:
         print(f"  Gate agent error: {record.error}")
         return None
 
-    result = record.parsed or {}
-    decision = result.get("decision", "pass")
-    print(f"  Gate decision: {decision}")
+    result = bb.get("knowledge_gate_result", {})
+    if not isinstance(result, dict):
+        result = {}
+
+    decision = result.get("verdict", "pass")
+    print(f"  Gate verdict: {decision}")
     if result.get("issue_types"):
         for it in result["issue_types"]:
             print(f"    - {it}")
-    if result.get("evidence"):
-        print(f"  Evidence: {str(result['evidence'])[:300]}")
-    if result.get("required_fix"):
-        print(f"  Required fix: {str(result['required_fix'])[:300]}")
+    if result.get("summary"):
+        print(f"  Summary: {str(result['summary'])[:300]}")
+    if result.get("fix_instruction"):
+        print(f"  Fix: {str(result['fix_instruction'])[:300]}")
 
     return result
 
@@ -255,10 +270,10 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
         q_data["slot_id"] = slot_id
         q_data["_blueprint"] = sb
         q_data["_experience_card"] = exp_card
-        if result.stem_contract:
-            q_data["stem_contract"] = result.stem_contract
-        if result.stem_gate_result:
-            q_data["stem_gate_result"] = result.stem_gate_result
+        if result.knowledge_gate_result:
+            q_data["knowledge_gate_result"] = result.knowledge_gate_result
+        if result.environment_gate_result:
+            q_data["environment_gate_result"] = result.environment_gate_result
 
         if is_sc:
             answer = q_data.get("correct_answer", "?")
@@ -570,7 +585,7 @@ async def run_composition(
         knowledge_gate_result = await knowledge_slot_gate(
             gateway, blueprint, templates, user_requirements,
         )
-        if knowledge_gate_result and knowledge_gate_result.get("decision") == "blocked":
+        if knowledge_gate_result and knowledge_gate_result.get("verdict") == "blocked":
             print("  Knowledge gate BLOCKED — returning to compose")
             return {
                 "status": "error",

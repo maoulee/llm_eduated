@@ -136,6 +136,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         max_tokens: Optional[int],
         enable_thinking: bool,
         json_mode: bool,
+        tools: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         processed_messages = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
         # OpenAI client doesn't accept top_k; pass it via extra_body for vLLM
@@ -151,18 +152,38 @@ class RemoteAPIProvider(BaseLLMProvider):
             params["stop"] = stop_sequences
         if json_mode and self.supports_response_format:
             params["response_format"] = {"type": "json_object"}
+        if tools:
+            params["tools"] = tools
 
         extra_body = self._extra_body_for_thinking(enable_thinking)
         if extra_body:
             params["extra_body"] = extra_body
 
-        max_retries = 3
+        max_retries = 5
         for attempt in range(max_retries):
             try:
                 response = await self.client.chat.completions.create(**params)
                 msg = response.choices[0].message
                 reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
-                return {"content": msg.content or "", "reasoning_content": reasoning_content}
+                # Extract tool calls if present
+                tool_calls = None
+                raw_tool_calls = getattr(msg, "tool_calls", None)
+                if raw_tool_calls:
+                    tool_calls = []
+                    for tc in raw_tool_calls:
+                        tool_calls.append({
+                            "id": tc.id,
+                            "type": tc.type,
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments,
+                            },
+                        })
+                return {
+                    "content": msg.content or "",
+                    "reasoning_content": reasoning_content,
+                    "tool_calls": tool_calls,
+                }
             except Exception as e:
                 import asyncio as _asyncio
                 is_retryable = (
@@ -170,9 +191,11 @@ class RemoteAPIProvider(BaseLLMProvider):
                     or "ConnectionError" in type(e).__name__
                     or "Connection error" in str(e)
                     or "TimeoutExpired" in type(e).__name__
+                    or "429" in str(e)
+                    or "rate_limit" in str(e).lower()
                 )
                 if is_retryable and attempt < max_retries - 1:
-                    wait_s = 60
+                    wait_s = min(2 ** attempt * 3, 30)
                     logger.warning("Retryable API error (attempt %d/%d), waiting %ds: %s",
                                    attempt + 1, max_retries, wait_s, str(e)[:200])
                     await _asyncio.sleep(wait_s)

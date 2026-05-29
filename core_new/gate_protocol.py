@@ -1,8 +1,11 @@
-"""Gate protocol: shared data types for the multi-gate review system.
+"""Gate protocol: shared data types for the 2-gate review system.
 
-Three gates: Knowledge/Slot Gate → Stem Gate → Question/Option/Answer Gate.
-Each gate produces a GateResult. The Stem Gate additionally produces a
-StemContract on pass, which all downstream agents must respect.
+Gate 1: Knowledge Gate — validates knowledge points before stem generation
+Gate 2: Environment Closure Gate — validates stem environment before solving
+
+Each gate produces a GateResult with:
+- Control fields (verdict, severity, can_continue) — parsed from YAML front matter
+- Natural language report (report_md) — stored but not structurally parsed
 """
 
 from __future__ import annotations
@@ -19,103 +22,61 @@ class GateDecision(str, Enum):
 
 
 @dataclass
-class StemContract:
-    """Canonical interpretation of a passed stem.
+class GateResult:
+    """Result from any gate review.
 
-    Produced by StemGateCoordinator after all three lenses pass.
-    All downstream agents (solver, option generator, reviewer) must use
-    this instead of re-interpreting the raw stem text.
+    Control fields are for pipeline routing.
+    report_md is the full natural language review — for humans and downstream agents.
     """
 
-    slot_id: str
-    stem_text: str
-    canonical_interpretation: str
-    participating_conditions: list[str] = field(default_factory=list)
-    non_participating_conditions: list[str] = field(default_factory=list)
-    defined_terms: dict[str, str] = field(default_factory=dict)
-    semantic_frame: str = ""
-    constraint_summary: str = ""
-    caveats: list[str] = field(default_factory=list)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "slot_id": self.slot_id,
-            "stem_text": self.stem_text,
-            "canonical_interpretation": self.canonical_interpretation,
-            "participating_conditions": self.participating_conditions,
-            "non_participating_conditions": self.non_participating_conditions,
-            "defined_terms": self.defined_terms,
-            "semantic_frame": self.semantic_frame,
-            "constraint_summary": self.constraint_summary,
-            "caveats": self.caveats,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> StemContract:
-        return cls(
-            slot_id=data.get("slot_id", ""),
-            stem_text=data.get("stem_text", ""),
-            canonical_interpretation=data.get("canonical_interpretation", ""),
-            participating_conditions=data.get("participating_conditions", []),
-            non_participating_conditions=data.get("non_participating_conditions", []),
-            defined_terms=data.get("defined_terms", {}),
-            semantic_frame=data.get("semantic_frame", ""),
-            constraint_summary=data.get("constraint_summary", ""),
-            caveats=data.get("caveats", []),
-        )
-
-
-@dataclass
-class GateResult:
-    """Result from any gate review."""
-
-    gate_name: str  # "knowledge_slot" | "stem" | "question"
-    decision: GateDecision = GateDecision.PASS
-    error_types: list[str] = field(default_factory=list)
+    gate_name: str  # "knowledge" | "environment_closure"
+    verdict: GateDecision = GateDecision.PASS
+    severity: str = "pass"  # pass / info / warning / blocking
+    issue_types: list[str] = field(default_factory=list)
+    can_continue: bool = True
+    can_send_to_solver: bool = True
     fix_instruction: str = ""
-    fix_target: str = "none"  # "blueprint" | "stem" | "question" | "options" | "answer" | "none"
-    stem_contract: Optional[StemContract] = None
+    fix_target: str = "none"  # "blueprint" | "stem" | "none"
     confidence: str = "medium"
-    evidence: str = ""
-    lens_results: dict[str, dict] = field(default_factory=dict)
+    summary: str = ""
+    report_md: str = ""
+    raw_response: str = ""
 
     @property
     def passed(self) -> bool:
-        return self.decision in (GateDecision.PASS, GateDecision.WARNING)
+        return self.verdict in (GateDecision.PASS, GateDecision.WARNING)
 
     @property
     def blocked(self) -> bool:
-        return self.decision == GateDecision.BLOCKED
+        return self.verdict == GateDecision.BLOCKED
 
     def to_dict(self) -> dict[str, Any]:
-        d = {
+        return {
             "gate_name": self.gate_name,
-            "decision": self.decision.value,
-            "error_types": self.error_types,
+            "verdict": self.verdict.value,
+            "severity": self.severity,
+            "issue_types": self.issue_types,
+            "can_continue": self.can_continue,
+            "can_send_to_solver": self.can_send_to_solver,
             "fix_instruction": self.fix_instruction,
             "fix_target": self.fix_target,
             "confidence": self.confidence,
-            "evidence": self.evidence,
+            "summary": self.summary,
+            "report_md": self.report_md[:2000],
         }
-        if self.stem_contract:
-            d["stem_contract"] = self.stem_contract.to_dict()
-        if self.lens_results:
-            d["lens_results"] = self.lens_results
-        return d
 
     @classmethod
     def from_dict(cls, data: dict) -> GateResult:
-        sc = None
-        if "stem_contract" in data and data["stem_contract"]:
-            sc = StemContract.from_dict(data["stem_contract"])
         return cls(
             gate_name=data.get("gate_name", "unknown"),
-            decision=GateDecision(data.get("decision", "pass")),
-            error_types=data.get("error_types", []),
+            verdict=GateDecision(data.get("verdict", "pass")),
+            severity=data.get("severity", "pass"),
+            issue_types=data.get("issue_types", []),
+            can_continue=data.get("can_continue", True),
+            can_send_to_solver=data.get("can_send_to_solver", True),
             fix_instruction=data.get("fix_instruction", ""),
             fix_target=data.get("fix_target", "none"),
-            stem_contract=sc,
             confidence=data.get("confidence", "medium"),
-            evidence=data.get("evidence", ""),
-            lens_results=data.get("lens_results", {}),
+            summary=data.get("summary", ""),
+            report_md=data.get("report_md", ""),
         )

@@ -28,53 +28,9 @@ from core_new.agents.agent_registry import AgentRegistry
 from core_new.blackboard import Blackboard
 from core_new.experience_view import build_design_experience_view
 from core_new.fallback_executor import FallbackExecutor
-from core_new.markdown_parser import try_parse_json_object
+from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
 
 logger = logging.getLogger(__name__)
-
-
-# ── Markdown parsing ──────────────────────────────────────────
-
-
-def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
-    current_key = None
-    for line in lines:
-        # Match: - **key**: value  or  - **key**：value  or  - key: value
-        m = re.match(r"^-\s+\*\*(.+?)\*\*[:：]\s*(.*)", line)
-        if not m:
-            m = re.match(r"^-\s+([^*:：]+?)[:：]\s*(.*)", line)
-        if m:
-            key, value = m.group(1).strip(), m.group(2).strip()
-            if value and (value.startswith("{") or value.startswith("[")):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass
-            result[key] = value
-            current_key = key
-        elif line.startswith("  ") and current_key and current_key in result:
-            if isinstance(result[current_key], str):
-                result[current_key] += "\n" + line.strip()
-    return result
-
-
-def _parse_md_sections(text: str) -> Dict[str, Any]:
-    sections: Dict[str, Any] = {}
-    name = None
-    lines: List[str] = []
-    for line in text.split("\n"):
-        m = re.match(r"^##\s+(.+)", line)
-        if m:
-            if name:
-                sections[name] = _parse_md_kv(lines)
-            name = m.group(1).strip()
-            lines = []
-        elif name:
-            lines.append(line)
-    if name:
-        sections[name] = _parse_md_kv(lines)
-    return sections
 
 
 def _fuzzy_get(d: Dict[str, Any], *keys) -> Any:
@@ -99,7 +55,7 @@ class QuestionDesignerAgent(BaseAgent):
     """Design question with explicit intent — what each sub-question tests,
     expected solving path, trap design, sub-question logic."""
 
-    def __init__(self, llm_backend, *, max_tokens: int = 2048):
+    def __init__(self, llm_backend, *, max_tokens: int = 32768):
         super().__init__(
             AgentConfig(
                 name="question_designer",
@@ -107,7 +63,7 @@ class QuestionDesignerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="question_design",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 timeout_s=300.0,
                 max_retries=2,
                 required_fields=["stem", "sub_questions"],
@@ -116,18 +72,18 @@ class QuestionDesignerAgent(BaseAgent):
                 expected_output_format=(
                     "# question Qxx\n\n"
                     "## 题目\n"
-                    "- **stem**: ...\n"
-                    "- **sub_questions**: [\"...\", \"...\"]\n"
-                    "- **given_conditions**: [\"...\"]\n"
+                    "- **stem**: 题干全文\n"
+                    "- **sub_questions**: [\"(1) 子问1\", \"(2) 子问2\"]\n"
+                    "- **given_conditions**: [\"条件1\"]\n"
                     "- **difficulty_self_assessment**: 1-5\n"
-                    "- **knowledge_points**: ...\n"
-                    "- **parameter_notes**: ...\n\n"
+                    "- **knowledge_points**: 知识点\n"
+                    "- **parameter_notes**: 参数说明\n\n"
                     "## 设计意图\n"
-                    "- **sub_q1_intent**: ...\n"
-                    "- **trap_design**: ...\n"
-                    "- **sub_question_logic**: ..."
+                    "- **sub_q1_intent**: 考察内容和解题路径\n"
+                    "- **trap_design**: 陷阱设计\n"
+                    "- **sub_question_logic**: 子问逻辑关系"
                 ),
-                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。你必须写清设计意图，但不写答案。严格按markdown格式输出。",
+                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。你必须写清设计意图，但不写答案。",
             ),
             llm_backend,
         )
@@ -135,55 +91,67 @@ class QuestionDesignerAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import SUBJECTIVE_DRAFT_ONLY_PROMPT
 
+        question_design = blackboard.get("question_design", {})
+        design_md = question_design.get("raw_design_md", "")
+        if not design_md:
+            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
+
         blueprint = blackboard.get("current_blueprint", {})
         slot_id = blueprint.get("slot_id", "Q43")
-        exp_card = build_design_experience_view(blackboard.read("experience_card", ""))
-        ref_questions = build_design_experience_view(blackboard.read("reference_questions", ""))
 
-        return SUBJECTIVE_DRAFT_ONLY_PROMPT.format(
-            slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            experience_card_md=exp_card,
-            reference_questions=ref_questions,
+        prompt = SUBJECTIVE_DRAFT_ONLY_PROMPT.format(
+            question_design_md=design_md,
             slot_id=slot_id,
         )
 
+        fix_instruction = blackboard.get("stem_fix_instruction", "")
+        if fix_instruction:
+            prompt += (
+                f"\n\n## 前一轮审核反馈（必须修正以下问题）\n"
+                f"{fix_instruction}\n\n"
+                "请在重新生成题干时，确保修正上述问题。"
+            )
+        return prompt
+
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
-        data = try_parse_json_object(text)
-        if data:
-            result = {}
-            question = data.get("question")
-            if isinstance(question, dict):
-                result.update(question)
-            else:
-                result.update(data)
-            intent = data.get("design_intent")
-            if isinstance(intent, dict):
-                result["design_intent"] = intent
-                for key in ("sub_q1_intent", "sub_q2_intent", "sub_q3_intent",
-                            "trap_design", "sub_question_logic"):
-                    if key in intent:
-                        result[key] = intent[key]
-            return result
-        sections = _parse_md_sections(text)
-        result: Dict[str, Any] = {}
+        # Strip code fences that GLM-5.1 sometimes wraps around output
+        stripped = re.sub(r"^```(?:\w+)?\s*\n?", "", text)
+        stripped = re.sub(r"\n?```\s*$", "", stripped)
+        if len(stripped.strip()) > 50:
+            text = stripped
 
-        if "题目" in sections:
-            result.update(sections["题目"])
-
-        if "设计意图" in sections:
-            result["design_intent"] = sections["设计意图"]
-
+        result = parse_structured_output(text, md_sections=("题目", "设计意图"))
+        if not result:
+            # Fallback: search all sections for stem/sub_questions
+            from core_new.markdown_parser import parse_md_sections as _pms
+            all_sections = _pms(text)
+            logger.warning("[question_designer] Primary parse empty, sections found: %s",
+                           list(all_sections.keys()))
+            for _name, sec in all_sections.items():
+                if isinstance(sec, dict) and sec.get("stem"):
+                    result.update(sec)
+                    logger.info("[question_designer] Found stem in section '%s'", _name)
+                    break
+        if not result:
+            # Fallback: try JSON with common keys
+            data = try_parse_json_object(text)
+            if data and isinstance(data, dict):
+                result = data
+                logger.info("[question_designer] Fallback to JSON parse succeeded")
+        if not result:
+            logger.warning("[question_designer] All parse strategies failed. Raw (first 500 chars): %s",
+                           text[:500])
+        # Flatten design intent sub-keys
         intent = result.get("design_intent", {})
         for key in ("sub_q1_intent", "sub_q2_intent", "sub_q3_intent",
                      "trap_design", "sub_question_logic"):
             if key in intent:
                 result[key] = intent[key]
-
+        # Extract slot_id from heading
         m = re.match(r"#\s+question\s+(Q\d+)", text)
         if m:
             result["slot_id"] = m.group(1)
-
         return result
 
     def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
@@ -210,7 +178,7 @@ class QuestionDesignerAgent(BaseAgent):
 class HybridSolutionFormatter(BaseAgent):
     """Format solution from solver output — no re-solving."""
 
-    def __init__(self, llm_backend, *, max_tokens: int = 2048):
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
         super().__init__(
             AgentConfig(
                 name="subjective_solution_formatter",
@@ -247,7 +215,7 @@ class HybridSolutionFormatter(BaseAgent):
                 return data
             if isinstance(data.get("solution"), dict):
                 return data["solution"]
-        sections = _parse_md_sections(str(raw))
+        sections = parse_md_sections(str(raw))
         result: Dict[str, Any] = {}
         if "标准答案" in sections:
             result.update(sections["标准答案"])
@@ -266,7 +234,7 @@ class HybridSolutionFormatter(BaseAgent):
 class HybridRubricWriter(BaseAgent):
     """Write grading rubric."""
 
-    def __init__(self, llm_backend, *, max_tokens: int = 1024):
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
         super().__init__(
             AgentConfig(
                 name="subjective_rubric_writer",
@@ -296,7 +264,7 @@ class HybridRubricWriter(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(str(raw))
+        sections = parse_md_sections(str(raw))
         result: Dict[str, Any] = {}
         if "评分点" in sections:
             result.update(sections["评分点"])
@@ -311,7 +279,7 @@ class HybridRubricWriter(BaseAgent):
 class IntentBasedReviewer(BaseAgent):
     """Review: compare design intent + slot blueprint vs solver results, route fixes."""
 
-    def __init__(self, llm_backend, *, max_tokens: int = 1500):
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
         super().__init__(
             AgentConfig(
                 name="intent_reviewer",
@@ -319,7 +287,7 @@ class IntentBasedReviewer(BaseAgent):
                 output_format="markdown",
                 output_key="review",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 required_fields=["status"],
                 repair_max_retries=1,
                 role_type=RoleType.AUDIT,
@@ -361,9 +329,10 @@ class IntentBasedReviewer(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
+        # Try JSON first for nested key extraction and fix_instruction handling
         data = try_parse_json_object(text)
         if data:
-            result = {}
+            result: Dict[str, Any] = {}
             nested_review = data.get("review")
             if isinstance(nested_review, dict):
                 result.update(nested_review)
@@ -374,14 +343,18 @@ class IntentBasedReviewer(BaseAgent):
             if result.get("status"):
                 result["status"] = str(result["status"]).lower()
             return result
-        sections = _parse_md_sections(text)
-        result: Dict[str, Any] = {}
 
-        # Collect from all known section name variants
-        for section_key in ("结果", "检查", "修复指令", "修复"):
-            for name, kv in sections.items():
-                if section_key in name:
-                    result.update(kv)
+        # Shared markdown parser
+        result = parse_structured_output(text, md_sections=("review", "fix_instruction"))
+
+        # Also check Chinese section name variants
+        if not result:
+            sections = parse_md_sections(text)
+            result = {}
+            for section_key in ("结果", "检查", "修复指令", "修复"):
+                for name, kv in sections.items():
+                    if section_key in name:
+                        result.update(kv)
 
         # Fallback: regex extraction for critical fields if missing
         if "status" not in result:
@@ -630,7 +603,7 @@ class HybridSubjectivePipeline:
                 except json.JSONDecodeError:
                     sub_questions = [sub_questions]
 
-            solver = FileCodeSolverAgent(gateway, max_tokens=4096, max_steps=5)
+            solver = FileCodeSolverAgent(gateway, max_tokens=16384, max_steps=5)
             code_solution = await solver.solve(
                 question_draft=design.get("stem", ""),
                 sub_questions=sub_questions if sub_questions else None,

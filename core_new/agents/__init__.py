@@ -6,7 +6,7 @@ from .slot_agents import (
     QuestionFixerAgent,
     PaperReviewerAgent,
 )
-from .file_code_solver import FileCodeSolverAgent, CodeSolution
+from .file_code_solver import FileCodeSolverAgent, RuntimeFileCodeSolver, CodeSolution
 from .hybrid_subjective_team import (
     QuestionDesignerAgent,
     HybridSolutionFormatter,
@@ -18,11 +18,16 @@ from .hybrid_subjective_team import (
 from .agent_registry import AgentRegistry
 from .paper_formatter import PaperFormatterAgent
 from .gate_agents import (
-    KnowledgeSlotGateAgent,
-    StemGateCoordinator,
-    StemSemanticFrameReviewer,
-    StemConditionParticipationReviewer,
-    StemTerminologyPrecisionReviewer,
+    KnowledgeGateAgent,
+    EnvironmentClosureGateAgent,
+)
+from .single_choice_team import (
+    SingleChoiceDraftAgent,
+    OptionAndDistractorAgent,
+    SCSolutionFormatterAgent,
+    StemVerifierAgent,
+    PostReviewAgent,
+    QuestionSummaryAgent,
 )
 from . import solver_utils
 
@@ -32,6 +37,7 @@ __all__ = [
     "QuestionFixerAgent",
     "PaperReviewerAgent",
     "FileCodeSolverAgent",
+    "RuntimeFileCodeSolver",
     "CodeSolution",
     "QuestionDesignerAgent",
     "HybridSolutionFormatter",
@@ -41,10 +47,13 @@ __all__ = [
     "HybridSubjectiveResult",
     "AgentRegistry",
     "PaperFormatterAgent",
-    "KnowledgeSlotGateAgent",
-    "StemGateCoordinator",
-    "StemSemanticFrameReviewer",
-    "StemConditionParticipationReviewer",
-    "StemTerminologyPrecisionReviewer",
+    "KnowledgeGateAgent",
+    "EnvironmentClosureGateAgent",
+    "SingleChoiceDraftAgent",
+    "OptionAndDistractorAgent",
+    "SCSolutionFormatterAgent",
+    "StemVerifierAgent",
+    "PostReviewAgent",
+    "QuestionSummaryAgent",
     "solver_utils",
 ]

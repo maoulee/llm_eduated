@@ -27,61 +27,9 @@ from core_new.blackboard import Blackboard
 from core_new.edu408_runtime.tools import DEFAULT_WORKSPACE, build_408_tools
 from core_new.experience_view import build_design_experience_view
 from core_new.llm_gateway import LLMGateway, LLMResult
-from core_new.markdown_parser import try_parse_json_object
+from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
 
 logger = logging.getLogger(__name__)
-
-
-# ── Markdown parsing helpers (local copy) ──────────────────────
-
-
-def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
-    """Parse '- **key**: value' lines into a dict."""
-    result: Dict[str, Any] = {}
-    current_key = None
-
-    for line in lines:
-        m = re.match(r"^- \*\*(.+?)\*\*:\s*(.*)", line)
-        if m:
-            key = m.group(1).strip()
-            value = m.group(2).strip()
-            if value and (value.startswith("{") or value.startswith("[")):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass
-            result[key] = value
-            current_key = key
-        elif line.startswith("  ") and current_key and current_key in result:
-            existing = result[current_key]
-            if isinstance(existing, str):
-                result[current_key] = existing + "\n" + line.strip()
-        elif current_key and current_key in result and isinstance(result[current_key], str):
-            result[current_key] = result[current_key] + "\n" + line
-
-    return result
-
-
-def _parse_md_sections(text: str) -> Dict[str, Any]:
-    """Split markdown by ## headers, parse each section's key-value pairs."""
-    sections: Dict[str, Any] = {}
-    current_name = None
-    current_lines: List[str] = []
-
-    for line in text.split("\n"):
-        m = re.match(r"^##\s+(.+)", line)
-        if m:
-            if current_name:
-                sections[current_name] = _parse_md_kv(current_lines)
-            current_name = m.group(1).strip()
-            current_lines = []
-        elif current_name:
-            current_lines.append(line)
-
-    if current_name:
-        sections[current_name] = _parse_md_kv(current_lines)
-
-    return sections
 
 
 # ── SingleChoiceDraftAgent ─────────────────────────────────────
@@ -97,8 +45,8 @@ class SingleChoiceDraftAgent(BaseAgent):
                 phase="sc_draft",
                 output_format="markdown",
                 output_key="sc_draft_result",
-                max_tokens=800,
-                enable_thinking=True,
+                max_tokens=16384,
+                enable_thinking=False,
                 max_retries=2,
                 required_fields=["stem"],
                 repair_max_retries=1,
@@ -106,8 +54,6 @@ class SingleChoiceDraftAgent(BaseAgent):
                 expected_output_format=(
                     "## stem\n"
                     "- **stem**: question stem only, no options, no answer, no code block\n"
-                    "- **stem_length**: short|medium|long\n"
-                    "- **condition_count**: integer\n"
                     "- **reasoning_hint**: one sentence"
                 ),
                 system_prompt="你是一位408考研出题专家，擅长根据蓝图精确生成题干。严格按markdown格式输出。",
@@ -118,26 +64,36 @@ class SingleChoiceDraftAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import SC_DRAFT_PROMPT
 
-        blueprint = blackboard.get("current_blueprint", {})
-        slot_id = blueprint.get("slot_id", "Q1")
-        experience_card = build_design_experience_view(blackboard.read("experience_card", ""))
+        question_design = blackboard.get("question_design", {})
+        design_md = question_design.get("raw_design_md", "")
+        if not design_md:
+            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
 
-        return SC_DRAFT_PROMPT.format(
-            slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            experience_card_md=experience_card,
+        prompt = SC_DRAFT_PROMPT.format(
+            question_design_md=design_md,
         )
 
+        fix_instruction = blackboard.get("stem_fix_instruction", "")
+        if fix_instruction:
+            prompt += (
+                f"\n\n## 前一轮审核反馈（必须修正以下问题）\n"
+                f"{fix_instruction}\n\n"
+                "请在重新生成题干时，确保修正上述问题。"
+            )
+        return prompt
+
     def parse_output(self, raw: Any) -> Any:
-        data = try_parse_json_object(str(raw))
-        if data:
-            nested = data.get("stem")
-            if isinstance(nested, dict):
-                return nested
-            if "stem" in data:
-                return data
-        sections = _parse_md_sections(str(raw))
-        result = sections.get("stem", {})
-        return result
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("stem",), json_nested_key="stem")
+        if result:
+            return result
+        # Fallback: extract **stem** anywhere
+        m = re.search(r"\*\*stem\*\*\s*[:：]\s*(.+?)(?=\*\*|\n##|\Z)", text, re.DOTALL)
+        if m:
+            return {"stem": m.group(1).strip(), "reasoning_hint": ""}
+        if len(text.strip()) > 20 and not text.strip().startswith("##"):
+            return {"stem": text.strip(), "reasoning_hint": ""}
+        return {}
 
     def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
         ok, detail = super().validate_parsed(parsed)
@@ -259,8 +215,8 @@ class OptionAndDistractorAgent(BaseAgent):
                 phase="sc_options",
                 output_format="markdown",
                 output_key="sc_options_result",
-                max_tokens=800,
-                enable_thinking=True,
+                max_tokens=16384,
+                enable_thinking=False,
                 max_retries=2,
                 required_fields=["option_A", "option_B", "option_C", "option_D", "correct_answer"],
                 repair_max_retries=1,
@@ -289,16 +245,21 @@ class OptionAndDistractorAgent(BaseAgent):
         from core_new.prompts.single_choice_prompts import SC_OPTIONS_PROMPT
 
         draft_result = blackboard.get("sc_draft_result", {})
-        blueprint = blackboard.get("current_blueprint", {})
+        question_design = blackboard.get("question_design", {})
+        design_md = question_design.get("raw_design_md", "")
+        if not design_md:
+            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
         stem = draft_result.get("stem", "")
 
         return SC_OPTIONS_PROMPT.format(
             stem=stem,
-            slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
+            question_design_md=design_md,
         )
 
     def parse_output(self, raw: Any) -> Any:
-        data = try_parse_json_object(str(raw))
+        text = str(raw)
+        # Try JSON first for nested key extraction
+        data = try_parse_json_object(text)
         if data:
             result = {}
             for key in ("options", "distractors", "answer"):
@@ -308,14 +269,19 @@ class OptionAndDistractorAgent(BaseAgent):
                 result.update(data)
             if result:
                 return result
-        sections = _parse_md_sections(str(raw))
+        # Shared markdown parser
+        result = parse_structured_output(text, md_sections=("options", "distractors", "answer"))
+        if result:
+            return result
+        # Last resort: regex
         result = {}
-        if "options" in sections:
-            result.update(sections["options"])
-        if "distractors" in sections:
-            result.update(sections["distractors"])
-        if "answer" in sections:
-            result.update(sections["answer"])
+        for letter in "ABCD":
+            m = re.search(rf"\*\*option_{letter}\*\*\s*[:：]\s*(.+?)(?=\*\*|\n##|\Z)", text, re.DOTALL)
+            if m:
+                result[f"option_{letter}"] = m.group(1).strip()
+        m = re.search(r"\*\*correct_answer\*\*\s*[:：]\s*([A-D])", text)
+        if m:
+            result["correct_answer"] = m.group(1)
         return result
 
     def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
@@ -328,6 +294,95 @@ class OptionAndDistractorAgent(BaseAgent):
         options = [str(parsed.get(f"option_{letter}", "")).strip() for letter in "ABCD"]
         if len(set(options)) < 4:
             return False, "options must be distinct"
+        return True, ""
+
+
+# ── StemVerifierAgent ─────────────────────────────────────────
+
+
+class StemVerifierAgent(BaseAgent):
+    """Pre-solve stem verification: check parameters, naming, conditions WITHOUT solving."""
+
+    def __init__(self, llm_backend):
+        super().__init__(
+            AgentConfig(
+                name="stem_verifier",
+                phase="stem_verification",
+                output_format="markdown",
+                output_key="stem_verification_result",
+                max_tokens=8192,
+                enable_thinking=False,
+                max_retries=1,
+                required_fields=["status"],
+                repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.STEM_VERIFICATION,
+                expected_output_format=(
+                    "## verification\n"
+                    "- **status**: pass|needs_fix\n"
+                    "- **parameter_consistency**: pass|fail\n"
+                    "- **naming_accuracy**: pass|fail\n"
+                    "- **condition_completeness**: pass|fail\n"
+                    "- **condition_sufficiency**: pass|fail\n"
+                    "- **no_self_contradiction**: pass|fail\n"
+                    "- **information_direction**: pass|fail\n\n"
+                    "## fix_instruction\n"
+                    "- **fix_target**: stem|none\n"
+                    "- **fix_detail**: ...\n"
+                    "- **contradiction_detail**: ..."
+                ),
+                system_prompt="你是一位408考研出题审核专家，专门在解题前审查题干条件的一致性和充分性。你不解题，只审查题干本身。严格按markdown格式输出。",
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.prompts.single_choice_prompts import STEM_VERIFICATION_PROMPT
+
+        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
+        question_design = blackboard.get("question_design", {})
+        design_md = question_design.get("raw_design_md", "")
+        if not design_md:
+            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
+
+        stem = draft_result.get("stem", "")
+
+        # Build options section if available
+        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
+        if options_result:
+            options_md = (
+                f"- A: {options_result.get('option_A', '')}\n"
+                f"- B: {options_result.get('option_B', '')}\n"
+                f"- C: {options_result.get('option_C', '')}\n"
+                f"- D: {options_result.get('option_D', '')}"
+            )
+        else:
+            options_md = "（非选择题，无选项）"
+
+        return STEM_VERIFICATION_PROMPT.format(
+            stem=stem,
+            options_md=options_md,
+            question_design_md=design_md,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("verification", "fix_instruction"))
+        if result:
+            # Handle fix_instruction as dict
+            data = try_parse_json_object(text)
+            if data and isinstance(data.get("fix_instruction"), dict):
+                result["fix_instruction"] = data["fix_instruction"]
+            return result
+        return {}
+
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        status = str(parsed.get("status", "")).strip().lower()
+        if status not in {"pass", "needs_fix"}:
+            return False, "status must be pass or needs_fix"
         return True, ""
 
 
@@ -344,8 +399,8 @@ class SCSolutionFormatterAgent(BaseAgent):
                 phase="sc_solution_format",
                 output_format="markdown",
                 output_key="sc_solution_result",
-                max_tokens=1200,
-                enable_thinking=True,
+                max_tokens=8192,
+                enable_thinking=False,
                 required_fields=["correct_answer", "explanation"],
                 repair_max_retries=1,
                 role_type=RoleType.SUMMARIZER,
@@ -376,16 +431,15 @@ class SCSolutionFormatterAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        data = try_parse_json_object(str(raw))
-        if data:
-            nested = data.get("solution")
-            if isinstance(nested, dict):
-                return nested
-            if "correct_answer" in data or "explanation" in data:
-                return data
-        sections = _parse_md_sections(str(raw))
-        result = sections.get("solution", {})
-        return result
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("solution",), json_nested_key="solution")
+        if result:
+            return result
+        # Fallback: check for top-level keys in JSON
+        data = try_parse_json_object(text)
+        if data and ("correct_answer" in data or "explanation" in data):
+            return data
+        return {}
 
 
 # ── SingleChoiceReviewerAgent ──────────────────────────────────
@@ -401,8 +455,8 @@ class SingleChoiceReviewerAgent(BaseAgent):
                 phase="sc_review",
                 output_format="markdown",
                 output_key="sc_review_result",
-                max_tokens=1200,
-                enable_thinking=True,
+                max_tokens=8192,
+                enable_thinking=False,
                 required_fields=["status"],
                 repair_max_retries=1,
                 role_type=RoleType.AUDIT,
@@ -448,25 +502,201 @@ class SingleChoiceReviewerAgent(BaseAgent):
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
-        data = try_parse_json_object(str(raw))
-        if data:
-            result = {}
-            nested_review = data.get("review")
-            if isinstance(nested_review, dict):
-                result.update(nested_review)
-            else:
-                result.update(data)
-            if isinstance(data.get("fix_instruction"), dict):
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("review", "fix_instruction"))
+        if result:
+            # Handle fix_instruction as dict from JSON
+            data = try_parse_json_object(text)
+            if data and isinstance(data.get("fix_instruction"), dict):
                 result["fix_instruction"] = data["fix_instruction"]
             return result
-        sections = _parse_md_sections(str(raw))
-        result = sections.get("review", {})
-        fix = sections.get("fix_instruction", {})
-        result["fix_instruction"] = fix
-        return result
+        return {}
 
 
 # ── SingleChoiceAssemblerAgent ─────────────────────────────────
+
+
+# ── PostReviewAgent ──────────────────────────────────────────
+
+
+class PostReviewAgent(BaseAgent):
+    """Final quality review after answer is built — checks clarity, consistency, terminology."""
+
+    def __init__(self, llm_backend):
+        super().__init__(
+            AgentConfig(
+                name="post_reviewer",
+                phase="post_review",
+                output_format="markdown",
+                output_key="post_review_result",
+                max_tokens=8192,
+                enable_thinking=False,
+                max_retries=1,
+                required_fields=["status"],
+                repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                audit_mode=AuditMode.QUESTION_REVIEW,
+                expected_output_format=(
+                    "## post_review\n"
+                    "- **status**: pass|needs_fix\n"
+                    "- **clarity**: pass|fail\n"
+                    "- **option_consistency**: pass|fail\n"
+                    "- **solution_quality**: pass|fail\n"
+                    "- **difficulty_match**: pass|fail\n"
+                    "- **terminology**: pass|fail\n"
+                    "- **overall_quality**: 1-10\n\n"
+                    "## fix_instruction\n"
+                    "- **fix_target**: stem|options|solution|none\n"
+                    "- **fix_detail**: ..."
+                ),
+                system_prompt="你是一位408考研出题终审专家，负责在技术审核通过后做最终质量审核。严格按markdown格式输出。",
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.prompts.single_choice_prompts import POST_REVIEW_PROMPT
+
+        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
+        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
+        solution_result = blackboard.get("sc_solution_result", {})
+        review_result = blackboard.get("review", {})
+        question_design = blackboard.get("question_design", {})
+        solver_result = blackboard.get("solver_result", {})
+
+        stem = draft_result.get("stem", "")
+        solution_md = solution_result.get("explanation", "")
+        if solution_result.get("solution_steps"):
+            solution_md += "\n步骤: " + solution_result["solution_steps"]
+
+        design_md = question_design.get("raw_design_md", "")
+        if not design_md:
+            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
+
+        solver_output = "（无求解输出）"
+        outputs = solver_result.get("outputs", [])
+        if outputs:
+            solver_output = outputs[-1][:3000] if isinstance(outputs[-1], str) else str(outputs[-1])[:3000]
+
+        review_summary = json.dumps({
+            "status": review_result.get("status", "unknown"),
+            "computed_vs_intended": review_result.get("computed_vs_intended", ""),
+            "comment": review_result.get("comment", ""),
+        }, ensure_ascii=False, indent=2)
+
+        return POST_REVIEW_PROMPT.format(
+            question_design_md=design_md or "（无设计方案）",
+            stem=stem,
+            option_A=options_result.get("option_A", ""),
+            option_B=options_result.get("option_B", ""),
+            option_C=options_result.get("option_C", ""),
+            option_D=options_result.get("option_D", ""),
+            solution_md=solution_md or "（无解析）",
+            solver_output=solver_output,
+            review_summary=review_summary,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("post_review", "fix_instruction"))
+        if result:
+            # Handle fix_instruction as dict from JSON
+            data = try_parse_json_object(text)
+            if data and isinstance(data.get("fix_instruction"), dict):
+                result["fix_instruction"] = data["fix_instruction"]
+            return result
+        return {}
+
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        status = str(parsed.get("status", "")).strip().lower()
+        if status not in {"pass", "needs_fix"}:
+            return False, "status must be pass or needs_fix"
+        return True, ""
+
+
+# ── QuestionSummaryAgent ─────────────────────────────────────
+
+
+class QuestionSummaryAgent(BaseAgent):
+    """Consolidate all pipeline outputs into a clean, structured final summary."""
+
+    def __init__(self, llm_backend):
+        super().__init__(
+            AgentConfig(
+                name="question_summary",
+                phase="summary",
+                output_format="markdown",
+                output_key="question_summary",
+                max_tokens=8192,
+                enable_thinking=False,
+                max_retries=1,
+                required_fields=["final_stem", "correct_answer"],
+                repair_max_retries=1,
+                role_type=RoleType.SUMMARIZER,
+                expected_output_format=(
+                    "## summary\n"
+                    "- **final_stem**: ...\n"
+                    "- **final_option_A**: ...\n"
+                    "- **final_option_B**: ...\n"
+                    "- **final_option_C**: ...\n"
+                    "- **final_option_D**: ...\n"
+                    "- **final_explanation**: ...\n"
+                    "- **final_solution_steps**: ...\n"
+                    "- **correct_answer**: A|B|C|D\n"
+                    "- **knowledge_tags**: ...\n"
+                    "- **difficulty_summary**: ...\n"
+                    "- **quality_notes**: ..."
+                ),
+                system_prompt="你是一位408考研题目整理专家，负责将题目各部分汇总为规范的最终输出。严格按markdown格式输出。",
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.prompts.single_choice_prompts import QUESTION_SUMMARY_PROMPT
+
+        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
+        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
+        solution_result = blackboard.get("sc_solution_result", {})
+        solver_result = blackboard.get("solver_result", {})
+        review_result = blackboard.get("review", {})
+
+        stem = draft_result.get("stem", "")
+        solution_md = solution_result.get("explanation", "")
+        if solution_result.get("solution_steps"):
+            solution_md += "\n步骤: " + solution_result["solution_steps"]
+
+        solver_process = "（无求解过程）"
+        if solver_result:
+            outputs = solver_result.get("outputs", [])
+            if outputs:
+                solver_process = outputs[-1][:2000] if isinstance(outputs[-1], str) else str(outputs[-1])[:2000]
+
+        review_summary = f"技术审核: {review_result.get('status', 'unknown')}"
+        post_review = blackboard.get("post_review_result", {})
+        if post_review:
+            review_summary += f" | 终审: {post_review.get('status', 'unknown')} | 质量: {post_review.get('overall_quality', '?')}/10"
+
+        return QUESTION_SUMMARY_PROMPT.format(
+            stem=stem,
+            option_A=options_result.get("option_A", ""),
+            option_B=options_result.get("option_B", ""),
+            option_C=options_result.get("option_C", ""),
+            option_D=options_result.get("option_D", ""),
+            solution_md=solution_md or "（无解析）",
+            solver_process=solver_process,
+            review_summary=review_summary,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        result = parse_structured_output(text, md_sections=("summary",))
+        if result:
+            return result
+        return {}
 
 
 class SingleChoiceAssemblerAgent(BaseAgent):
@@ -481,7 +711,7 @@ class SingleChoiceAssemblerAgent(BaseAgent):
                 output_format="text",
                 output_key="sc_final_question",
                 max_tokens=0,
-                enable_thinking=True,
+                enable_thinking=False,
                 max_retries=0,
                 role_type=RoleType.SUMMARIZER,
             ),

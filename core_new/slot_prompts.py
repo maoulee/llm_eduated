@@ -44,11 +44,8 @@ SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试
   <target_depth>knowledge 或 mechanism 或 pattern</target_depth>
   <difficulty_overall>1-5整数</difficulty_overall>
   <difficulty_knowledge_depth>1-5整数</difficulty_knowledge_depth>
-  <difficulty_mechanism_depth>1-5整数</difficulty_mechanism_depth>
   <difficulty_reasoning_steps>1-5整数</difficulty_reasoning_steps>
   <difficulty_calculation_load>1-5整数</difficulty_calculation_load>
-  <difficulty_trap_strength>1-5整数</difficulty_trap_strength>
-  <difficulty_cross_topic>0-3整数，0=单知识点，3=跨多个章节</difficulty_cross_topic>
   <difficulty_reason>一句话说明难度判定理由</difficulty_reason>
   <paper_role>以下枚举之一：foundation_check(基础覆盖)、mechanism_trigger(机制触发)、pattern_execution(推理模式执行)、trap_diagnosis(易错陷阱诊断)、calculation_stability(计算稳定性)、cross_topic_integration(综合整合)、difficulty_separator(区分度题)</paper_role>
   <paper_role_reason>一句话说明为什么是这个角色</paper_role_reason>
@@ -104,7 +101,7 @@ SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试
   <target_depth>knowledge 或 mechanism 或 pattern</target_depth>
   <difficulty>典型难度等级</difficulty>
   <paper_role>典型功能角色</paper_role>
-  <expected_shape>该类型题目的预期形态，JSON格式，包含reasoning_steps、stem_length、condition_count、calculation_load、trap_strength、option_style</expected_shape>
+  <expected_shape>该类型题目的预期形态，JSON格式，包含reasoning_steps、stem_length、condition_count、calculation_load、option_style</expected_shape>
   <suitable_targets>适合的知识点列表，JSON数组</suitable_targets>
   <distractor_style>干扰项设计风格，JSON数组</distractor_style>
   <bad_examples>不应该出现的特征，JSON数组</bad_examples>
@@ -187,7 +184,7 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **primary_paper_role**: 主功能角色（单个，从foundation_check/mechanism_trigger/pattern_execution/trap_diagnosis/calculation_stability/cross_topic_integration/difficulty_separator中选择）
 - **secondary_paper_roles**: 辅助功能标签（逗号分隔，可为空）
 - **target_difficulty**: 目标难度1-5
-- **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
+- **difficulty_profile**: {{"knowledge_depth": N, "reasoning_steps": N, "calculation_load": N}}
 - **option_style**: 数字结果 或 概念判断 或 代码分析
 - **reasoning_shape**: one_formula 或 multi_step 或 elimination 或 simulation
 - **stem_length**: short 或 medium 或 long
@@ -208,7 +205,7 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 - **primary_paper_role**: 主功能角色（单个）
 - **secondary_paper_roles**: 辅助功能标签（逗号分隔，可为空）
 - **target_difficulty**: 目标难度1-5
-- **difficulty_profile**: {{"knowledge_depth": N, "mechanism_depth": N, "reasoning_steps": N, "calculation_load": N, "trap_strength": N, "cross_topic": N}}
+- **difficulty_profile**: {{"knowledge_depth": N, "reasoning_steps": N, "calculation_load": N}}
 - **option_style**: none
 - **reasoning_shape**: none
 - **sub_questions**: 子问题数量（整数）
@@ -441,37 +438,26 @@ PAPER_QUALITY_REVIEWER = PAPER_REVIEWER_PROMPT
 # Hybrid subjective prompts (legacy prompt quality + new pipeline speed)
 # ═══════════════════════════════════════════════════════════════
 
-SUBJECTIVE_DRAFT_ONLY_PROMPT = """你是一位408考研出题专家。请严格按照以下SlotBlueprint设计一道综合应用题。
+SUBJECTIVE_DRAFT_ONLY_PROMPT = """你是一位408考研出题专家。请根据以下设计方案，出一道综合应用题。
 
-## 出题蓝图
-{slot_blueprint_json}
-
-## 经验卡参考
-{experience_card_md}
-
-## 参考真题（风格参考，请勿照抄）
-{reference_questions}
+## 题目设计方案
+{question_design_md}
 
 ## 出题要求
-
-### 题目设计
 - 综合应用题不设计选项，只有题干和子问
-- sub_questions决定子问数量，每个子问要有明确的求解目标
-- **target_difficulty**决定整体难度，各子问应梯度递进
-- **calculation_load**决定计算量，≥3时应包含需多步推演的子问
-- **must_include**中的要素必须在题目中体现
-- **must_avoid**中的要素绝对不能出现
-- 题目必须完全原创，不与任何真题雷同
+- 严格按照设计方案中的子问设计出题，每个子问对应方案的考察内容
 - 参数必须自洽，确保题目有唯一确定解
+- 题目必须完全原创
+- 只出题和写设计意图，不写答案
 
-### 设计意图（重要！）
+## 设计意图（重要！）
 你必须写清楚：
 1. 每个子问期望考察什么知识点/能力
 2. 预期的解题路径是什么（用什么公式/方法/步骤）
 3. 陷阱设计（如果有的话，学生容易犯什么错）
 4. 各子问之间的逻辑关系
 
-## 输出格式（只出题和解题设计，不写答案）
+请严格按以下markdown格式输出：
 
 # question {slot_id}
 

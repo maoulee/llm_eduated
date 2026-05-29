@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import AuditMode, RoleType
 from core_new.blackboard import Blackboard
+from core_new.markdown_parser import parse_md_kv, parse_md_sections
 
 
 # ── Markdown parsing helpers ─────────────────────────────────
@@ -35,57 +36,20 @@ _FIELD_ALIASES = {
 }
 
 
-def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
-    """Parse '- **key**: value' lines into a dict."""
-    result = {}
-    current_key = None
-
-    for line in lines:
-        m = re.match(r"^- \*\*(.+?)\*\*:\s*(.*)", line)
-        if m:
-            key = m.group(1).strip()
-            value = m.group(2).strip()
-            if value and (value.startswith("{") or value.startswith("[")):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass
-            result[key] = value
-            current_key = key
-        elif line.startswith("  ") and current_key and current_key in result:
-            existing = result[current_key]
-            if isinstance(existing, str):
-                result[current_key] = existing + "\n" + line.strip()
-        elif current_key and current_key in result and isinstance(result[current_key], str):
-            result[current_key] = result[current_key] + "\n" + line
-
-    # Normalize known misspellings
+def _normalize_aliases(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply _FIELD_ALIASES normalization to a parsed dict."""
     for wrong, correct in _FIELD_ALIASES.items():
         if wrong in result and correct not in result:
             result[correct] = result.pop(wrong)
-
     return result
 
 
-def _parse_md_sections(text: str) -> Dict[str, Any]:
-    """Split markdown by ## headers, parse each section's key-value pairs."""
-    sections = {}
-    current_name = None
-    current_lines: List[str] = []
-
-    for line in text.split("\n"):
-        m = re.match(r"^##\s+(.+)", line)
-        if m:
-            if current_name:
-                sections[current_name] = _parse_md_kv(current_lines)
-            current_name = m.group(1).strip()
-            current_lines = []
-        elif current_name:
-            current_lines.append(line)
-
-    if current_name:
-        sections[current_name] = _parse_md_kv(current_lines)
-
+def _parse_md_sections_with_aliases(text: str) -> Dict[str, Any]:
+    """Split markdown by ## headers, parse each section's key-value pairs with alias normalization."""
+    sections = parse_md_sections(text)
+    for name, kv in sections.items():
+        if isinstance(kv, dict):
+            _normalize_aliases(kv)
     return sections
 
 
@@ -120,7 +84,7 @@ class PaperComposerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="paper_blueprint",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 role_type=RoleType.PLANNER,
                 system_prompt="你是一位408考研组卷专家，擅长基于题位模板规划试卷结构。严格按markdown格式输出。",
             ),
@@ -150,7 +114,7 @@ class PaperComposerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(raw)
+        sections = _parse_md_sections_with_aliases(raw)
 
         # Extract overall section
         overall = sections.get("整体", {})
@@ -188,7 +152,7 @@ class BlueprintReviewerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="blueprint_review",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 role_type=RoleType.AUDIT,
                 audit_mode=AuditMode.BLUEPRINT_REVIEW,
                 system_prompt="你是一位408考研组卷审核专家，负责审核组卷蓝图的合理性。严格按markdown格式输出。",
@@ -223,7 +187,7 @@ class BlueprintReviewerAgent(BaseAgent):
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(raw)
+        sections = _parse_md_sections_with_aliases(raw)
 
         overall = sections.get("总体", {})
         result = dict(overall)
@@ -257,7 +221,7 @@ class QuestionWriterAgent(BaseAgent):
                 output_format="markdown",
                 output_key="generated_question",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 timeout_s=900.0,
                 role_type=RoleType.GENERATOR,
                 system_prompt="你是一位408考研出题专家，擅长按照蓝图精确出题。严格按markdown格式输出。",
@@ -282,7 +246,7 @@ class QuestionWriterAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(raw)
+        sections = _parse_md_sections_with_aliases(raw)
 
         result = {}
 
@@ -316,7 +280,7 @@ class QuestionFixerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="fixed_question",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 timeout_s=900.0,
                 role_type=RoleType.GENERATOR,
                 system_prompt="你是一位408考研出题专家，擅长精确修正题目中的错误。严格按markdown格式输出。",
@@ -339,7 +303,7 @@ class QuestionFixerAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         # Same format as QuestionWriter
-        sections = _parse_md_sections(raw)
+        sections = _parse_md_sections_with_aliases(raw)
 
         result = {}
         if "题目" in sections:
@@ -368,7 +332,7 @@ class PaperReviewerAgent(BaseAgent):
                 output_format="markdown",
                 output_key="paper_review",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 timeout_s=900.0,
                 role_type=RoleType.AUDIT,
                 audit_mode=AuditMode.FINAL_PAPER_REVIEW,
@@ -395,7 +359,7 @@ class PaperReviewerAgent(BaseAgent):
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections(raw)
+        sections = _parse_md_sections_with_aliases(raw)
 
         overall = sections.get("总体", {})
         result = dict(overall)

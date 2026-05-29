@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import AuditMode, RoleType, source_policy_for_audit_mode
 from core_new.audit_protocol import AuditResultNormalizer, FixRouter
-from core_new.agents.file_code_solver import FileCodeSolverAgent, CodeSolution
+from core_new.agents.file_code_solver import FileCodeSolverAgent, RuntimeFileCodeSolver, CodeSolution
 from core_new.agents.hybrid_subjective_team import (
     QuestionDesignerAgent,
     HybridSolutionFormatter,
@@ -38,57 +38,17 @@ from core_new.agents.single_choice_team import (
     RuntimeSingleChoiceDraftAgent,
     OptionAndDistractorAgent,
     SCSolutionFormatterAgent,
+    StemVerifierAgent,
+    PostReviewAgent,
+    QuestionSummaryAgent,
 )
 from core_new.blackboard import Blackboard
 from core_new.fallback_executor import FallbackExecutor, FallbackResult
-from core_new.markdown_parser import try_parse_json_object
+from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
 
 logger = logging.getLogger(__name__)
 
 MAX_REVISION_ROUNDS = 1
-
-
-# ── Markdown parsing (local) ──────────────────────────────────
-
-
-def _parse_md_kv(lines: List[str]) -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
-    current_key: Optional[str] = None
-    for line in lines:
-        m = re.match(r"^-\s+\*\*(.+?)\*\*[:：]\s*(.*)", line)
-        if not m:
-            m = re.match(r"^-\s+([^*:：]+?)[:：]\s*(.*)", line)
-        if m:
-            key, value = m.group(1).strip(), m.group(2).strip()
-            if value and (value.startswith("{") or value.startswith("[")):
-                try:
-                    value = json.loads(value)
-                except json.JSONDecodeError:
-                    pass
-            result[key] = value
-            current_key = key
-        elif line.startswith("  ") and current_key and current_key in result:
-            if isinstance(result[current_key], str):
-                result[current_key] += "\n" + line.strip()
-    return result
-
-
-def _parse_md_sections(text: str) -> Dict[str, Any]:
-    sections: Dict[str, Any] = {}
-    name: Optional[str] = None
-    lines: List[str] = []
-    for line in text.split("\n"):
-        m = re.match(r"^##\s+(.+)", line)
-        if m:
-            if name:
-                sections[name] = _parse_md_kv(lines)
-            name = m.group(1).strip()
-            lines = []
-        elif name:
-            lines.append(line)
-    if name:
-        sections[name] = _parse_md_kv(lines)
-    return sections
 
 
 # ── Unified SC Reviewer ───────────────────────────────────────
@@ -159,7 +119,7 @@ class UnifiedSCReviewer(BaseAgent):
                 output_format="markdown",
                 output_key="review",
                 max_tokens=max_tokens,
-                enable_thinking=True,
+                enable_thinking=False,
                 required_fields=["status"],
                 repair_max_retries=1,
                 role_type=RoleType.AUDIT,
@@ -215,6 +175,7 @@ class UnifiedSCReviewer(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
+        # Try JSON first for nested key + fix_instruction handling
         data = try_parse_json_object(text)
         if data:
             result: Dict[str, Any] = {}
@@ -231,16 +192,20 @@ class UnifiedSCReviewer(BaseAgent):
                     result["status"] = "needs_fix"
             return result
 
-        sections = _parse_md_sections(text)
-        result: Dict[str, Any] = {}
+        # Shared markdown parser
+        result = parse_structured_output(text, md_sections=("review", "fix_instruction"))
 
-        for key in ("review", "结果", "检查"):
-            if key in sections:
-                result.update(sections[key])
+        # Also check Chinese section name variants
+        if not result:
+            sections = parse_md_sections(text)
+            result = {}
+            for key in ("review", "结果", "检查"):
+                if key in sections:
+                    result.update(sections[key])
+            if "fix_instruction" in sections:
+                result["fix_instruction"] = sections["fix_instruction"]
 
-        if "fix_instruction" in sections:
-            result["fix_instruction"] = sections["fix_instruction"]
-
+        # Fallback: regex extraction for critical fields
         if "status" not in result:
             m = re.search(r"\*\*status\*\*[:：]\s*(\w+)", text)
             if m:
@@ -283,8 +248,8 @@ class UnifiedPipelineResult:
     review: Dict[str, Any]
     generation_time_s: float
     pipeline_type: str = "unified"
-    stem_contract: Optional[Dict[str, Any]] = None
-    stem_gate_result: Optional[Dict[str, Any]] = None
+    knowledge_gate_result: Optional[Dict[str, Any]] = None
+    environment_gate_result: Optional[Dict[str, Any]] = None
 
 
 # ── Pipeline ──────────────────────────────────────────────────
@@ -307,13 +272,19 @@ class UnifiedQuestionPipeline:
         use_runtime_sc_design: bool = True,
         runtime_fallback: bool = True,
         enable_stem_gate: bool = False,
+        use_runtime_solver: bool = True,
+        enable_architecture: bool = True,
+        enable_post_review: bool = True,
+        enable_summary: bool = True,
     ):
         self.max_revision_rounds = max_revision_rounds
         self.use_runtime_sc_design = use_runtime_sc_design
         self.runtime_fallback = runtime_fallback
+        self.enable_architecture = enable_architecture
+        self.enable_post_review = enable_post_review
+        self.enable_summary = enable_summary
         self.enable_stem_gate = enable_stem_gate
-        self._stem_contract = None
-        self._stem_gate_coordinator = None
+        self.use_runtime_solver = use_runtime_solver
         self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
         self.fallback_executor = FallbackExecutor()
         self.fallback_executor.register("human_review", self._fallback_human_review)
@@ -414,6 +385,14 @@ class UnifiedQuestionPipeline:
         rubric: Dict[str, Any] = {}
         review: Dict[str, Any] = {}
         fix_target: Optional[str] = None
+        stem_fix_instruction: Optional[str] = None
+
+        # Step 0: Architecture — design question structure from slot philosophy
+        question_design = None
+        if self.enable_architecture:
+            question_design = await self._run_architecture(
+                slot_blueprint, experience_card, gateway,
+            )
 
         for rnd in range(self.max_revision_rounds + 1):
             if rnd > 0:
@@ -426,10 +405,14 @@ class UnifiedQuestionPipeline:
                 if is_sc:
                     design = await self._design_sc(
                         slot_blueprint, experience_card, gateway,
+                        question_design=question_design,
+                        stem_fix_instruction=stem_fix_instruction,
                     )
                 else:
                     design = await self._design_comp(
                         slot_blueprint, experience_card, gateway,
+                        question_design=question_design,
+                        stem_fix_instruction=stem_fix_instruction,
                     )
                 if not design:
                     logger.error("[%s] Design produced empty result", slot_id)
@@ -448,31 +431,58 @@ class UnifiedQuestionPipeline:
                         pipeline_type="unified_sc" if is_sc else "unified_comp",
                     )
 
-            # ── Step 1.5: Stem Gate (if enabled) ──
-            stem_gate_result = None
+            # ── Step 1.5: Gates (Knowledge + Environment Closure, if enabled) ──
+            knowledge_gate_result = None
+            environment_gate_result = None
             if self.enable_stem_gate and need_design:
-                stem_gate_result = await self._run_stem_gate(
+                knowledge_gate_result, environment_gate_result = await self._run_gates(
                     design, slot_blueprint, slot_id, gateway,
                 )
-                if not stem_gate_result.passed:
+                blocked_gate = None
+                if knowledge_gate_result and knowledge_gate_result.blocked:
+                    blocked_gate = knowledge_gate_result
+                elif environment_gate_result and environment_gate_result.blocked:
+                    blocked_gate = environment_gate_result
+
+                if blocked_gate:
                     logger.warning(
-                        "[%s] Stem gate BLOCKED: %s — %s",
+                        "[%s] Gate BLOCKED (%s): %s",
                         slot_id,
-                        stem_gate_result.error_types,
-                        stem_gate_result.fix_instruction[:200],
+                        blocked_gate.gate_name,
+                        blocked_gate.summary[:200],
                     )
                     fix_target = "stem"
                     if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] Stem gate blocked, revision budget exhausted", slot_id)
+                        logger.warning("[%s] Gate blocked, revision budget exhausted", slot_id)
                         break
                     continue
-                self._stem_contract = stem_gate_result.stem_contract
-                logger.info("[%s] Stem gate PASSED", slot_id)
+                logger.info("[%s] Gates PASSED", slot_id)
 
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
             if need_options:
-                options = await self._generate_options(design, slot_blueprint, gateway)
+                options = await self._generate_options(design, slot_blueprint, gateway,
+                                                        question_design=question_design)
+
+            # ── Step 2.5: Stem verification (before solving) ──
+            need_stem_verify = (rnd == 0 or fix_target in ("question", "stem"))
+            if need_stem_verify:
+                stem_verification = await self._verify_stem(
+                    design, options if is_sc else None,
+                    question_design, is_sc, slot_id, gateway,
+                )
+                if stem_verification.get("status") == "needs_fix":
+                    fix_target = "stem"
+                    fix_detail = stem_verification.get("fix_detail", "")
+                    contradiction = stem_verification.get("contradiction_detail", "")
+                    parts = [p for p in [fix_detail, contradiction] if p and p != "无"]
+                    stem_fix_instruction = "；".join(parts)
+                    logger.info("[%s] Stem verification failed, routing to stem redesign: %s",
+                                slot_id, stem_fix_instruction[:200])
+                    if rnd >= self.max_revision_rounds:
+                        logger.warning("[%s] Stem verification failed, revision budget exhausted", slot_id)
+                        break
+                    continue
 
             # ── Step 3: Solve (unified computation) ──
             need_solve = rnd == 0 or fix_target in ("question", "options", "answer")
@@ -480,16 +490,17 @@ class UnifiedQuestionPipeline:
                 code_solution = await self._solve(
                     design, options if is_sc else None, is_sc, slot_id, gateway,
                 )
+                solver_dict = code_solution.to_dict() if code_solution else {}
 
             # ── Step 4: Format solution ──
             need_format = rnd == 0 or fix_target in ("question", "options", "answer")
             if need_format:
                 if is_sc:
                     solution = await self._format_sc(
-                        design, options, code_solution, gateway,
+                        design, options, solver_dict, gateway,
                     )
                 else:
-                    solution = await self._format_comp(design, code_solution, gateway)
+                    solution = await self._format_comp(design, solver_dict, gateway)
 
             # ── Step 5: Rubric (Comp only) ──
             if not is_sc and need_format:
@@ -499,7 +510,7 @@ class UnifiedQuestionPipeline:
 
             # ── Step 6: Review ──
             review = await self._review(
-                design, options, code_solution, solution, rubric,
+                design, options, solver_dict, solution, rubric,
                 slot_blueprint, is_sc, gateway,
             )
 
@@ -531,18 +542,38 @@ class UnifiedQuestionPipeline:
 
             fix_target = route.pipeline_fix_target
 
+        # ── Step 7: Post-review (final quality check) ──
+        post_review = {}
+        if self.enable_post_review:
+            post_review = await self._post_review(
+                design, options, solution, solver_dict, review, question_design,
+                is_sc, slot_id, gateway,
+            )
+
+        # ── Step 8: Summary (consolidate all outputs) ──
+        summary = {}
+        if self.enable_summary:
+            summary = await self._summarize(
+                design, options, solution, solver_dict, review, post_review,
+                is_sc, slot_id, gateway,
+            )
+
         # ── Assemble final result ──
         total_time = time.monotonic() - total_start
         final_question = self._assemble(
             slot_id, design, options, code_solution, solution, rubric, is_sc,
+            summary=summary,
         )
-        solver_dict = code_solution.to_dict() if code_solution else {}
+
+        final_question["post_review"] = post_review
+        if summary:
+            final_question["summary"] = summary
 
         logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s)",
                      slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp")
 
-        sc_dict = self._stem_contract.to_dict() if self._stem_contract else None
-        sgr_dict = stem_gate_result.to_dict() if stem_gate_result else None
+        kgr_dict = knowledge_gate_result.to_dict() if knowledge_gate_result else None
+        egr_dict = environment_gate_result.to_dict() if environment_gate_result else None
 
         return UnifiedPipelineResult(
             final_question=final_question,
@@ -550,54 +581,104 @@ class UnifiedQuestionPipeline:
             review=review,
             generation_time_s=round(total_time, 1),
             pipeline_type="unified_sc" if is_sc else "unified_comp",
-            stem_contract=sc_dict,
-            stem_gate_result=sgr_dict,
+            knowledge_gate_result=kgr_dict,
+            environment_gate_result=egr_dict,
         )
 
-    # ── Stem Gate ──────────────────────────────────────────────
+    # ── Gates ───────────────────────────────────────────────────
 
-    async def _run_stem_gate(
+    async def _run_gates(
         self,
         design: Dict[str, Any],
         slot_blueprint: Dict[str, Any],
         slot_id: str,
         gateway,
     ):
-        """Run stem gate (3 lenses in parallel) and return GateResult."""
-        from core_new.agents.gate_agents import StemGateCoordinator
-
-        if self._stem_gate_coordinator is None:
-            self._stem_gate_coordinator = StemGateCoordinator(gateway)
+        """Run Knowledge Gate then Environment Closure Gate."""
+        from core_new.agents.gate_agents import run_gates
 
         stem = design.get("stem", "")
         if not stem:
-            logger.warning("[%s] No stem to review, skipping stem gate", slot_id)
-            from core_new.gate_protocol import GateDecision, GateResult
-            return GateResult(
-                gate_name="stem",
-                decision=GateDecision.PASS,
-                fix_target="none",
-            )
+            logger.warning("[%s] No stem to review, skipping gates", slot_id)
+            from core_new.gate_protocol import GateResult
+            return None, GateResult(gate_name="environment_closure")
 
-        return await self._stem_gate_coordinator.review(stem, slot_blueprint, slot_id)
+        slot_intent = json.dumps(slot_blueprint.get("primary_knowledge", []), ensure_ascii=False)
+        outline_scope = slot_blueprint.get("slot_guidance", "")
+        question_prompt = design.get("question_prompt", "")
+
+        return await run_gates(
+            gateway,
+            slot_intent=slot_intent,
+            outline_scope=outline_scope,
+            knowledge_terms_or_stem=stem,
+            stem=stem,
+            question_prompt=question_prompt,
+            slot_id=slot_id,
+        )
 
     # ── Step methods ───────────────────────────────────────────
+
+    async def _run_architecture(
+        self,
+        blueprint: Dict[str, Any],
+        experience_card: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Step 0: ArchitectureAgent — design question structure from slot philosophy."""
+        from core_new.agents.architecture_agent import ArchitectureAgent
+        from core_new.pattern_cards import SlotMeta
+
+        slot_id = blueprint.get("slot_id", "Q1")
+        slot = SlotMeta.load(slot_id)
+        if not slot:
+            logger.warning("[%s] No slot content found, skipping architecture step", slot_id)
+            return {}
+
+        agent = ArchitectureAgent(gateway)
+        bb = Blackboard(
+            task_id=f"arch_{slot_id}",
+            task_type="architecture",
+            initial_state={
+                "slot_id": slot_id,
+                "slot_meta": slot,
+                "blueprint": blueprint,
+                "knowledge_point": blueprint.get("primary_target_name", ""),
+            },
+        )
+
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] Architecture step failed: %s", slot_id, record.error)
+            return {}
+
+        question_design = bb.get("question_design", {})
+        logger.info("[%s] Architecture done: %d chars", slot_id,
+                    len(question_design.get("raw_design_md", "")))
+        return question_design
 
     async def _design_sc(
         self,
         blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
+        question_design: Optional[Dict[str, Any]] = None,
+        stem_fix_instruction: Optional[str] = None,
     ) -> Dict[str, Any]:
         """SC Step 1: generate question stem."""
         def make_blackboard() -> Blackboard:
+            initial = {
+                "current_blueprint": blueprint,
+                "experience_card": experience_card,
+            }
+            if question_design:
+                initial["question_design"] = question_design
+            if stem_fix_instruction:
+                initial["stem_fix_instruction"] = stem_fix_instruction
             return Blackboard(
                 task_id=f"sc_design_{blueprint.get('slot_id', 'Q1')}",
                 task_type="unified_sc",
-                initial_state={
-                    "current_blueprint": blueprint,
-                    "experience_card": experience_card,
-                },
+                initial_state=initial,
             )
 
         bb = make_blackboard()
@@ -639,10 +720,10 @@ class UnifiedQuestionPipeline:
                     return {"status": "needs_human_review",
                             "reason": fb_result.result_data.get("reason", "SC design failed, routed to human review"),
                             "fallback_target": fb_result.fallback_target}
-                # For non-human fallbacks (legacy_generator), continue with original error
-                # — pipeline-specific handler should have produced usable output
-
-        self._raise_if_failed("SC design", record)
+            raise RuntimeError(
+                f"SC design failed (agent error: {record.error}). "
+                f"Fallback={fb_result.fallback_target} did not produce usable output."
+            )
 
         result = bb.get("sc_draft_result", {})
         self._require_step_fields("SC design", result, ["stem"])
@@ -654,16 +735,23 @@ class UnifiedQuestionPipeline:
         blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
+        question_design: Optional[Dict[str, Any]] = None,
+        stem_fix_instruction: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Comp Step 1: generate question design with sub-questions and intent."""
+        initial = {
+            "current_blueprint": blueprint,
+            "experience_card": experience_card,
+            "reference_questions": experience_card,
+        }
+        if question_design:
+            initial["question_design"] = question_design
+        if stem_fix_instruction:
+            initial["stem_fix_instruction"] = stem_fix_instruction
         bb = Blackboard(
             task_id=f"comp_design_{blueprint.get('slot_id', 'Q43')}",
             task_type="unified_comp",
-            initial_state={
-                "current_blueprint": blueprint,
-                "experience_card": experience_card,
-                "reference_questions": experience_card,
-            },
+            initial_state=initial,
         )
         agent = QuestionDesignerAgent(gateway)
         record = None
@@ -688,8 +776,10 @@ class UnifiedQuestionPipeline:
                     return {"status": "needs_human_review",
                             "reason": fb_result.result_data.get("reason", "Comp design failed, routed to human review"),
                             "fallback_target": fb_result.fallback_target}
-
-        self._raise_if_failed("Comp design", record)
+            raise RuntimeError(
+                f"Comp design failed (agent error: {record.error}). "
+                f"Fallback={fb_result.fallback_target} did not produce usable output."
+            )
 
         result = bb.get("question_design", {})
         self._require_step_fields("Comp design", result, ["stem", "sub_questions"])
@@ -701,15 +791,19 @@ class UnifiedQuestionPipeline:
         design: Dict[str, Any],
         blueprint: Dict[str, Any],
         gateway,
+        question_design: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """SC Step 2: generate 4 options with distractor intent."""
+        initial = {
+            "sc_draft_result": design,
+            "current_blueprint": blueprint,
+        }
+        if question_design:
+            initial["question_design"] = question_design
         bb = Blackboard(
             task_id=f"sc_opts_{blueprint.get('slot_id', 'Q1')}",
             task_type="unified_sc",
-            initial_state={
-                "sc_draft_result": design,
-                "current_blueprint": blueprint,
-            },
+            initial_state=initial,
         )
         agent = OptionAndDistractorAgent(gateway)
         record = await agent.execute(bb)
@@ -723,6 +817,38 @@ class UnifiedQuestionPipeline:
         logger.info("[SC options] correct=%s", result.get("correct_answer", "?"))
         return result
 
+    async def _verify_stem(
+        self,
+        design: Dict[str, Any],
+        options: Optional[Dict[str, Any]],
+        question_design: Optional[Dict[str, Any]],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Step 2.5: Stem verification — check conditions before solving."""
+        initial = {
+            "sc_draft_result": design,
+            "question_design": question_design or {},
+        }
+        if is_sc and options:
+            initial["sc_options_result"] = options
+
+        bb = Blackboard(
+            task_id=f"stem_verify_{slot_id}",
+            task_type="stem_verification",
+            initial_state=initial,
+        )
+        agent = StemVerifierAgent(gateway)
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] Stem verification failed: %s, proceeding anyway",
+                           slot_id, record.error)
+            return {"status": "pass", "note": "verification_skipped"}
+        result = bb.get("stem_verification_result", {})
+        logger.info("[%s] Stem verification: status=%s", slot_id, result.get("status"))
+        return result
+
     async def _solve(
         self,
         design: Dict[str, Any],
@@ -731,13 +857,13 @@ class UnifiedQuestionPipeline:
         slot_id: str,
         gateway,
     ) -> CodeSolution:
-        """Step 3: FileCodeSolver — pure computation engine."""
-        solver = FileCodeSolverAgent(gateway, max_tokens=4096, max_steps=5)
+        """Step 3: Solve — pure computation engine (runtime or text-parsing)."""
+        if self.use_runtime_solver:
+            solver = RuntimeFileCodeSolver(gateway, max_tokens=4096, max_iterations=8)
+        else:
+            solver = FileCodeSolverAgent(gateway, max_tokens=16384, max_steps=5)
 
-        # Use canonical interpretation from stem_contract if available
         question_text = design.get("stem", "")
-        if self._stem_contract and self._stem_contract.canonical_interpretation:
-            question_text = self._stem_contract.canonical_interpretation
 
         if is_sc and options:
             options_dict = {
@@ -776,11 +902,10 @@ class UnifiedQuestionPipeline:
         self,
         design: Dict[str, Any],
         options: Dict[str, Any],
-        code_solution: Optional[CodeSolution],
+        solver_dict: Dict[str, Any],
         gateway,
     ) -> Dict[str, Any]:
         """SC Step 4: format solution from solver verification result."""
-        solver_dict = code_solution.to_dict() if code_solution else {}
         bb = Blackboard(
             task_id=f"sc_format_{design.get('slot_id', 'Q1')}",
             task_type="unified_sc",
@@ -800,15 +925,10 @@ class UnifiedQuestionPipeline:
     async def _format_comp(
         self,
         design: Dict[str, Any],
-        code_solution: Optional[CodeSolution],
+        solver_dict: Dict[str, Any],
         gateway,
     ) -> Dict[str, Any]:
         """Comp Step 4: format solution from solver output."""
-        solver_dict = code_solution.to_dict() if code_solution else {}
-        if code_solution:
-            solver_dict["raw_outputs"] = [o[:2000] for o in (code_solution.outputs or [])]
-            solver_dict["last_raw_output"] = code_solution.get_last_output()[:3000]
-
         bb = Blackboard(
             task_id=f"comp_format_{design.get('slot_id', 'Q43')}",
             task_type="unified_comp",
@@ -845,11 +965,87 @@ class UnifiedQuestionPipeline:
         await agent.execute(bb)
         return bb.get("rubric", {})
 
+    async def _post_review(
+        self,
+        design: Dict[str, Any],
+        options: Dict[str, Any],
+        solution: Dict[str, Any],
+        solver_dict: Dict[str, Any],
+        review: Dict[str, Any],
+        question_design: Optional[Dict[str, Any]],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Step 7: Post-review — final quality check on complete question."""
+        initial = {
+            "sc_draft_result": design,
+            "sc_solution_result": solution,
+            "review": review,
+            "solver_result": solver_dict,
+        }
+        if question_design:
+            initial["question_design"] = question_design
+        if is_sc:
+            initial["sc_options_result"] = options
+
+        bb = Blackboard(
+            task_id=f"post_review_{slot_id}",
+            task_type="post_review",
+            initial_state=initial,
+        )
+        agent = PostReviewAgent(gateway)
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] Post-review failed: %s, proceeding", slot_id, record.error)
+            return {"status": "pass", "note": "post_review_skipped"}
+        result = bb.get("post_review_result", {})
+        logger.info("[%s] Post-review: status=%s quality=%s",
+                    slot_id, result.get("status"), result.get("overall_quality"))
+        return result
+
+    async def _summarize(
+        self,
+        design: Dict[str, Any],
+        options: Dict[str, Any],
+        solution: Dict[str, Any],
+        solver_dict: Dict[str, Any],
+        review: Dict[str, Any],
+        post_review: Dict[str, Any],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Step 8: Summary — consolidate all outputs into final structured result."""
+        initial = {
+            "sc_draft_result": design,
+            "sc_solution_result": solution,
+            "solver_result": solver_dict,
+            "review": review,
+            "post_review_result": post_review,
+        }
+        if is_sc:
+            initial["sc_options_result"] = options
+
+        bb = Blackboard(
+            task_id=f"summary_{slot_id}",
+            task_type="summary",
+            initial_state=initial,
+        )
+        agent = QuestionSummaryAgent(gateway)
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] Summary failed: %s, using assemble fallback", slot_id, record.error)
+            return None
+        result = bb.get("question_summary", {})
+        logger.info("[%s] Summary done: %d fields", slot_id, len(result))
+        return result
+
     async def _review(
         self,
         design: Dict[str, Any],
         options: Dict[str, Any],
-        code_solution: Optional[CodeSolution],
+        solver_dict: Dict[str, Any],
         solution: Dict[str, Any],
         rubric: Dict[str, Any],
         blueprint: Dict[str, Any],
@@ -857,11 +1053,6 @@ class UnifiedQuestionPipeline:
         gateway,
     ) -> Dict[str, Any]:
         """Step 6: review — compare computation vs intent."""
-        solver_dict = code_solution.to_dict() if code_solution else {}
-
-        # Inject stem_contract into reviewer blackboard when available
-        stem_contract_dict = self._stem_contract.to_dict() if self._stem_contract else None
-
         if is_sc:
             initial_state = {
                 "sc_design": design,
@@ -869,8 +1060,6 @@ class UnifiedQuestionPipeline:
                 "solver_result": solver_dict,
                 "current_blueprint": blueprint,
             }
-            if stem_contract_dict:
-                initial_state["stem_contract"] = stem_contract_dict
             bb = Blackboard(
                 task_id=f"sc_review_{blueprint.get('slot_id', 'Q1')}",
                 task_type="unified_sc",
@@ -884,8 +1073,6 @@ class UnifiedQuestionPipeline:
                 "rubric": rubric,
                 "current_blueprint": blueprint,
             }
-            if stem_contract_dict:
-                initial_state["stem_contract"] = stem_contract_dict
             bb = Blackboard(
                 task_id=f"comp_review_{blueprint.get('slot_id', 'Q43')}",
                 task_type="unified_comp",
@@ -893,13 +1080,10 @@ class UnifiedQuestionPipeline:
             )
             reviewer = IntentBasedReviewer(gateway)
 
-        # Append Gate 3 restriction instruction when stem gate was used
-        if stem_contract_dict:
+        # Append Gate 3 restriction instruction when gates were used
+        if self.enable_stem_gate:
             from core_new.prompts.gate_prompts import GATE3_RESTRICTION_INSTRUCTION
-            gate3_suffix = GATE3_RESTRICTION_INSTRUCTION.format(
-                stem_contract=json.dumps(stem_contract_dict, ensure_ascii=False, indent=2),
-            )
-            reviewer.config.system_prompt = reviewer.config.system_prompt + "\n\n" + gate3_suffix
+            reviewer.config.system_prompt = reviewer.config.system_prompt + "\n\n" + GATE3_RESTRICTION_INSTRUCTION
 
         record = await reviewer.execute(bb)
         if record.error:
@@ -927,11 +1111,34 @@ class UnifiedQuestionPipeline:
         solution: Dict[str, Any],
         rubric: Dict[str, Any],
         is_sc: bool,
+        summary: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Assemble final question dict from pipeline outputs."""
         solver_confidence = "high"
         if code_solution and (not code_solution.computed_results or code_solution.error):
             solver_confidence = "low"
+
+        # If summary agent produced cleaned output, prefer its fields
+        if summary and is_sc:
+            return {
+                "slot_id": slot_id,
+                "stem": summary.get("final_stem", design.get("stem", "")),
+                "option_A": summary.get("final_option_A", options.get("option_A", "")),
+                "option_B": summary.get("final_option_B", options.get("option_B", "")),
+                "option_C": summary.get("final_option_C", options.get("option_C", "")),
+                "option_D": summary.get("final_option_D", options.get("option_D", "")),
+                "correct_answer": summary.get("correct_answer",
+                    solution.get("correct_answer", options.get("correct_answer", ""))),
+                "explanation": summary.get("final_explanation", solution.get("explanation", "")),
+                "solution_steps": summary.get("final_solution_steps", solution.get("solution_steps", "")),
+                "knowledge_tags": summary.get("knowledge_tags", solution.get("knowledge_points", "")),
+                "difficulty_summary": summary.get("difficulty_summary", ""),
+                "quality_notes": summary.get("quality_notes", ""),
+                "solver_confidence": solver_confidence,
+                "python_exec_count": code_solution.python_exec_count if code_solution else 0,
+                "code_files": code_solution.code_files if code_solution else [],
+                "pipeline_type": "unified_sc",
+            }
 
         if is_sc:
             return {

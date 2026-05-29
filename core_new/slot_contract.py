@@ -55,13 +55,17 @@ def build_slot_contract(
     subj = template.get("subject_stability", "未知")
     lines.append(f"- **preferred_subject**: {subj}")
 
-    # Difficulty
+    # Difficulty (3 dimensions: knowledge_depth, calculation_load, reasoning_steps)
     da = template.get("difficulty_anchor", {})
     if isinstance(da, dict):
         lines.append(f"- **difficulty_mode**: {da.get('overall_mode', '?')}")
         r = da.get("overall_range", [])
         if isinstance(r, list) and len(r) == 2:
             lines.append(f"- **difficulty_reasonable_range**: {r[0]}-{r[1]}")
+        lines.append(f"- **knowledge_depth_mode**: {da.get('knowledge_depth_mode', da.get('mechanism_depth_mode', '?'))}")
+        kdr = da.get("knowledge_depth_range", da.get("mechanism_depth_range", []))
+        if isinstance(kdr, list) and len(kdr) == 2:
+            lines.append(f"- **knowledge_depth_soft_max**: {kdr[1]}")
         lines.append(f"- **reasoning_steps_mode**: {da.get('reasoning_steps_mode', '?')}")
         rsr = da.get("reasoning_steps_range", [])
         if isinstance(rsr, list) and len(rsr) == 2:
@@ -70,9 +74,6 @@ def build_slot_contract(
         clr = da.get("calculation_load_range", [])
         if isinstance(clr, list) and len(clr) == 2:
             lines.append(f"- **calculation_load_soft_max**: {clr[1]}")
-        ctm = da.get("cross_topic_mode", 0)
-        ctr = da.get("cross_topic_range", [0, 0])
-        lines.append(f"- **cross_topic_soft_max**: {ctr[1] if isinstance(ctr, list) and len(ctr) == 2 else ctm}")
     lines.append("")
 
     # ── L2: Preference constraints ─────────────────────────────

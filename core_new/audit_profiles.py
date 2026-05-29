@@ -76,36 +76,45 @@ QUESTION_REVIEW_PROFILE = AuditProfile(
 )
 
 
-# ── Final Paper Review ──
-
-
-# ── Knowledge/Slot Gate ──
-KNOWLEDGE_SLOT_GATE_PROFILE = AuditProfile(
-    mode=AuditMode.KNOWLEDGE_SLOT_GATE,
-    description="Pre-generation gate: validate knowledge points and slot fit before stem generation",
+# ── Stem Verification ──
+STEM_VERIFICATION_PROFILE = AuditProfile(
+    mode=AuditMode.STEM_VERIFICATION,
+    description="Pre-solve stem verification: check parameter consistency, naming, condition completeness",
     check_items=(
-        AuditCheckItem("slot_match", "Slot blueprint matches template scope, role and historical experience", "blocker"),
-        AuditCheckItem("knowledge_combination_stability", "Knowledge points are well-defined and combinable without forcing", "major"),
-        AuditCheckItem("terminology_standards", "Terminology aligns with exam outline and standard textbooks", "major"),
-        AuditCheckItem("outline_scope", "Content falls within 408 exam outline scope, no cross-domain overreach", "blocker"),
-        AuditCheckItem("slot_intent_clarity", "Slot intent is clear: the declared exam objective is achievable with planned instance", "major"),
+        AuditCheckItem("parameter_consistency", "Numerical parameters are mutually consistent (no contradictions)", "blocker"),
+        AuditCheckItem("naming_accuracy", "Technical terms, variable names, and concepts are correctly used", "blocker"),
+        AuditCheckItem("condition_completeness", "All conditions needed to solve are explicitly stated, no missing info", "blocker"),
+        AuditCheckItem("condition_sufficiency", "Conditions are sufficient to uniquely determine the answer", "blocker"),
+        AuditCheckItem("no_self_contradiction", "No logical contradictions between any two conditions in the stem", "blocker"),
+        AuditCheckItem("terminology_precision", "Terminology matches standard 408 exam conventions", "major"),
     ),
-    focus_areas=("slot_match", "knowledge_combination_stability"),
+    focus_areas=("parameter_consistency", "condition_completeness", "no_self_contradiction"),
 )
 
 
-# ── Stem Gate ──
-STEM_GATE_PROFILE = AuditProfile(
-    mode=AuditMode.STEM_GATE,
-    description="Post-design gate: validate stem quality before option/solver generation",
+# ── Knowledge Gate ──
+KNOWLEDGE_GATE_PROFILE = AuditProfile(
+    mode=AuditMode.KNOWLEDGE_GATE,
+    description="Gate 1: validate knowledge points match slot intent and won't mislead solvers",
     check_items=(
-        AuditCheckItem("semantic_frame_stability", "Stem has a stable semantic frame with no internal contradictions", "blocker"),
-        AuditCheckItem("no_benevolent_interpretation", "Stem does not require benevolent/generous interpretation to be solvable", "blocker"),
-        AuditCheckItem("condition_participation", "Every condition in stem actually participates in the solution", "major"),
-        AuditCheckItem("terminology_precision", "Professional terms used precisely without ambiguity or colloquial shorthand", "major"),
-        AuditCheckItem("sufficient_information", "All information needed to uniquely solve is explicitly stated", "blocker"),
+        AuditCheckItem("knowledge_relevance", "Knowledge points belong to the current slot and outline scope", "blocker"),
+        AuditCheckItem("knowledge_description_accuracy", "Knowledge descriptions won't mislead solvers into wrong models", "major"),
     ),
-    focus_areas=("semantic_frame_stability", "no_benevolent_interpretation"),
+    focus_areas=("knowledge_relevance", "knowledge_description_accuracy"),
+)
+
+
+# ── Environment Closure Gate ──
+ENVIRONMENT_CLOSURE_GATE_PROFILE = AuditProfile(
+    mode=AuditMode.ENVIRONMENT_CLOSURE_GATE,
+    description="Gate 2: validate stem environment is closed enough for solving",
+    check_items=(
+        AuditCheckItem("object_clarity", "Objects in the stem are clearly identified", "major"),
+        AuditCheckItem("condition_compatibility", "Conditions are mutually compatible and non-contradictory", "blocker"),
+        AuditCheckItem("sufficient_information", "All information needed to uniquely solve is explicitly stated", "blocker"),
+        AuditCheckItem("no_implicit_premises", "Solver does not need to supply missing critical premises", "blocker"),
+    ),
+    focus_areas=("condition_compatibility", "sufficient_information"),
 )
 FINAL_PAPER_REVIEW_PROFILE = AuditProfile(
     mode=AuditMode.FINAL_PAPER_REVIEW,
@@ -126,8 +135,9 @@ FINAL_PAPER_REVIEW_PROFILE = AuditProfile(
 AUDIT_PROFILES: dict[AuditMode, AuditProfile] = {
     AuditMode.EXTRACTION_REVIEW: EXTRACTION_REVIEW_PROFILE,
     AuditMode.BLUEPRINT_REVIEW: BLUEPRINT_REVIEW_PROFILE,
-    AuditMode.KNOWLEDGE_SLOT_GATE: KNOWLEDGE_SLOT_GATE_PROFILE,
-    AuditMode.STEM_GATE: STEM_GATE_PROFILE,
+    AuditMode.KNOWLEDGE_GATE: KNOWLEDGE_GATE_PROFILE,
+    AuditMode.ENVIRONMENT_CLOSURE_GATE: ENVIRONMENT_CLOSURE_GATE_PROFILE,
+    AuditMode.STEM_VERIFICATION: STEM_VERIFICATION_PROFILE,
     AuditMode.QUESTION_REVIEW: QUESTION_REVIEW_PROFILE,
     AuditMode.FINAL_PAPER_REVIEW: FINAL_PAPER_REVIEW_PROFILE,
 }
