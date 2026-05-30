@@ -66,6 +66,20 @@ class SolverVerifyAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw).strip()
+        if not text or len(text) < 20:
+            return {
+                "status": "needs_fix",
+                "next_action": "rerun_solver",
+                "fix_target": "solver",
+                "checks": {},
+                "trusted": "false",
+                "computed_answer": "",
+                "evidence": "（审核输出为空，无法验证）",
+                "fix_detail": "审核智能体未返回有效内容，默认判定需要重跑 solver",
+                "comment": "审核输出为空",
+                "_raw_text": text,
+                "overall_quality": 3,
+            }
         sections = _parse_verify_sections(text)
 
         verdict = sections.get("verdict", {})

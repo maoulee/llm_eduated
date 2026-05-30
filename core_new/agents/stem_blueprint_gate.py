@@ -95,6 +95,19 @@ class StemBlueprintGateAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw).strip()
+        if not text or len(text) < 20:
+            return {
+                "status": "needs_fix",
+                "severity": "critical",
+                "next_action": "revise_stem",
+                "fix_target": "stem",
+                "checks": {},
+                "evidence": "（审核输出为空，无法验证）",
+                "code_verification": "",
+                "fix_detail": "审核智能体未返回有效内容，默认判定需要修改题干",
+                "comment": "审核输出为空",
+                "_raw_text": text,
+            }
         sections = _parse_gate_sections(text)
 
         verdict = sections.get("verdict", {})
