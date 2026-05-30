@@ -3,9 +3,12 @@
 Gate 1: KnowledgeGateAgent — reviews knowledge points before stem generation
 Gate 2: EnvironmentClosureGateAgent — reviews stem environment closure before solving
 
-Both agents output YAML front matter + Markdown body.
-The YAML front matter is the only strongly-parsed part (control fields).
-The Markdown body is stored as natural language report.
+Both agents output Markdown sections format:
+  ## verdict
+  - **field**: value
+  ...
+  ## 审核分析
+  (free-form analysis)
 """
 
 from __future__ import annotations
@@ -13,8 +16,6 @@ from __future__ import annotations
 import logging
 import re
 from typing import Any, Optional
-
-import yaml
 
 from core_new.agent_base import BaseAgent, AgentConfig
 from core_new.agent_roles import AuditMode, RoleType
@@ -27,28 +28,47 @@ from core_new.prompts.gate_prompts import (
 
 logger = logging.getLogger(__name__)
 
-# ── YAML Front Matter Parser ────────────────────────────────────
+# ── Markdown Section Parser ────────────────────────────────────
 
 
-def parse_yaml_front_matter(text: str) -> tuple[dict[str, Any], str]:
-    """Split text into (yaml_control_fields, markdown_body).
+def _parse_verdict_section(text: str) -> tuple[dict[str, str], str]:
+    """Parse `## verdict` section into key-value dict + remaining body.
 
-    Returns ({}, full_text) if no YAML front matter found.
+    Expected format:
+        ## verdict
+        - **key**: value
+        ...
+        ## 审核分析
+        ...
     """
-    m = re.match(r"^---\s*\n(.*?)\n---\s*\n?(.*)", text.strip(), re.DOTALL)
-    if not m:
-        return {}, text
+    fields: dict[str, str] = {}
 
-    yaml_str = m.group(1)
-    body = m.group(2).strip()
+    # Extract the ## verdict section content
+    verdict_match = re.search(
+        r"^##\s*verdict\s*\n(.*?)(?=^##\s|\Z)",
+        text.strip(),
+        re.DOTALL | re.MULTILINE,
+    )
+    if not verdict_match:
+        return fields, text
 
-    try:
-        fields = yaml.safe_load(yaml_str)
-        if not isinstance(fields, dict):
-            return {}, text
-        return fields, body
-    except yaml.YAMLError:
-        return {}, text
+    section_body = verdict_match.group(1)
+
+    # Parse `- **key**: value` lines
+    for line in section_body.splitlines():
+        m = re.match(r"-\s*\*\*(.+?)\*\*\s*:\s*(.+)", line.strip())
+        if m:
+            fields[m.group(1).strip()] = m.group(2).strip()
+
+    # Extract everything after ## 审核分析 as the report
+    report_match = re.search(
+        r"^##\s*审核分析\s*\n(.*)",
+        text.strip(),
+        re.DOTALL | re.MULTILINE,
+    )
+    report_md = report_match.group(1).strip() if report_match else ""
+
+    return fields, report_md
 
 
 def _extract_verdict(fields: dict, key: str = "verdict") -> GateDecision:
@@ -68,21 +88,24 @@ def _extract_bool(fields: dict, key: str, default: bool = True) -> bool:
 
 
 def _extract_list(fields: dict, key: str) -> list[str]:
-    raw = fields.get(key, [])
+    raw = fields.get(key, "")
     if isinstance(raw, list):
         return [str(x) for x in raw]
     if isinstance(raw, str):
-        return [s.strip() for s in raw.split(",") if s.strip()]
+        raw = raw.strip()
+        if raw in ("无", "", "none"):
+            return []
+        return [s.strip() for s in re.split(r"[,，、\s]+", raw) if s.strip()]
     return []
 
 
 def _build_gate_result(
     gate_name: str,
-    fields: dict,
+    fields: dict[str, str],
     report_md: str,
     raw_response: str,
 ) -> GateResult:
-    """Build GateResult from parsed YAML fields + Markdown report."""
+    """Build GateResult from parsed Markdown fields + report section."""
     verdict = _extract_verdict(fields)
 
     return GateResult(
@@ -119,7 +142,7 @@ class KnowledgeGateAgent(BaseAgent):
                 required_fields=[],
                 role_type=RoleType.AUDIT,
                 audit_mode=AuditMode.KNOWLEDGE_GATE,
-                system_prompt="你是一位严格的408考试命题审核员，只审核知识点是否命中且不误导。严格按 YAML front matter + Markdown 格式输出。",
+                system_prompt="你是一位严格的408考试命题审核员，只审核知识点是否命中且不误导。严格按 Markdown 格式输出。",
             ),
             llm_backend,
         )
@@ -146,7 +169,7 @@ class KnowledgeGateAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
-        fields, report_md = parse_yaml_front_matter(text)
+        fields, report_md = _parse_verdict_section(text)
         result = _build_gate_result("knowledge", fields, report_md, text)
 
         output = result.to_dict()
@@ -173,7 +196,7 @@ class EnvironmentClosureGateAgent(BaseAgent):
                 required_fields=[],
                 role_type=RoleType.AUDIT,
                 audit_mode=AuditMode.ENVIRONMENT_CLOSURE_GATE,
-                system_prompt="你是一位严格的408考试命题审核员，只审核题目环境是否闭环可解。严格按 YAML front matter + Markdown 格式输出。",
+                system_prompt="你是一位严格的408考试命题审核员，只审核题目环境是否闭环可解。严格按 Markdown 格式输出。",
             ),
             llm_backend,
         )
@@ -191,7 +214,7 @@ class EnvironmentClosureGateAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         text = str(raw)
-        fields, report_md = parse_yaml_front_matter(text)
+        fields, report_md = _parse_verdict_section(text)
         result = _build_gate_result("environment_closure", fields, report_md, text)
 
         output = result.to_dict()

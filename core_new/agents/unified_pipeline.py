@@ -1,5 +1,8 @@
 """Unified Question Pipeline — one workflow for both single-choice and comprehensive questions.
 
+Provider routing: review/gate/format agents use local Qwen when available,
+generation agents always use remote GLM.
+
 Architecture:
   Step 1: Design (SC: stem; Comp: stem + sub_questions + intent)
   Step 2: Options (SC only — 4 options with distractor strategies)
@@ -44,6 +47,7 @@ from core_new.agents.single_choice_team import (
 )
 from core_new.blackboard import Blackboard
 from core_new.fallback_executor import FallbackExecutor, FallbackResult
+from core_new.provider_router import get_routed_gateway as _rgw
 from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
 
 logger = logging.getLogger(__name__)
@@ -318,6 +322,66 @@ class UnifiedQuestionPipeline:
         if record and getattr(record, "error", None):
             raise RuntimeError(f"{step_name} failed: {record.error}")
 
+    @staticmethod
+    def _build_round_snapshot(
+        rnd: int,
+        design: Dict[str, Any],
+        options: Dict[str, Any],
+        solution: Dict[str, Any],
+        review: Dict[str, Any],
+        is_sc: bool,
+        design_intent: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Build message-list entries for one round's output.
+
+        Returns a list of message dicts (no truncation):
+          [{role: "assistant", content: question_output, round: N},
+           {role: "review", content: review_feedback, round: N}]
+        """
+        messages: List[Dict[str, Any]] = []
+
+        # Build question output text (no truncation)
+        parts = []
+        stem = design.get("stem", "")
+        if stem:
+            parts.append(f"题干: {stem}")
+        if is_sc:
+            for k in ("option_A", "option_B", "option_C", "option_D"):
+                if options.get(k):
+                    parts.append(f"{k}: {options[k]}")
+            if options.get("correct_answer"):
+                parts.append(f"正确答案: {options['correct_answer']}")
+            if solution.get("explanation"):
+                parts.append(f"解析: {solution['explanation']}")
+        else:
+            subs = design.get("sub_questions", [])
+            if subs:
+                parts.append(f"子问题({len(subs)}问): {json.dumps(subs, ensure_ascii=False, indent=2)}")
+        if parts:
+            messages.append({"role": "assistant", "content": "\n".join(parts), "round": rnd})
+
+        # Build review feedback text (no truncation)
+        review_parts = []
+        status = review.get("status", review.get("audit_result", {}).get("status", ""))
+        if status:
+            review_parts.append(f"审查状态: {status}")
+        quality = review.get("overall_quality", review.get("quality", ""))
+        if quality:
+            review_parts.append(f"质量评分: {quality}")
+        comment = review.get("comment", "")
+        if comment:
+            review_parts.append(f"审查意见: {comment}")
+        fix_detail = review.get("fix_detail", review.get("audit_result", {}).get("fix_detail", ""))
+        if fix_detail:
+            review_parts.append(f"修复建议: {fix_detail}")
+        issue_type = review.get("audit_result", {}).get("issue_type", "")
+        if issue_type:
+            review_parts.append(f"问题类型: {issue_type}")
+        if review_parts:
+            messages.append({"role": "review", "content": "\n".join(review_parts), "round": rnd})
+
+        return messages
+
     # ── Fallback handlers ─────────────────────────────────────
 
     @staticmethod
@@ -373,6 +437,10 @@ class UnifiedQuestionPipeline:
         slot_blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
+        *,
+        previous_question: Optional[Dict[str, Any]] = None,
+        fix_instruction: str = "",
+        is_regen: bool = False,
     ) -> UnifiedPipelineResult:
         is_sc = self._is_single_choice(slot_blueprint)
         slot_id = slot_blueprint.get("slot_id", "Q1")
@@ -381,17 +449,22 @@ class UnifiedQuestionPipeline:
         design: Dict[str, Any] = {}
         options: Dict[str, Any] = {}
         code_solution: Optional[CodeSolution] = None
+        solver_dict: Dict[str, Any] = {}
         solution: Dict[str, Any] = {}
         rubric: Dict[str, Any] = {}
         review: Dict[str, Any] = {}
         fix_target: Optional[str] = None
         stem_fix_instruction: Optional[str] = None
+        round_history: List[Dict[str, Any]] = []
+        stem_minor_issues: str = ""
 
         # Step 0: Architecture — design question structure from slot philosophy
         question_design = None
         if self.enable_architecture:
             question_design = await self._run_architecture(
                 slot_blueprint, experience_card, gateway,
+                previous_question=previous_question,
+                fix_instruction=fix_instruction,
             )
 
         for rnd in range(self.max_revision_rounds + 1):
@@ -407,12 +480,14 @@ class UnifiedQuestionPipeline:
                         slot_blueprint, experience_card, gateway,
                         question_design=question_design,
                         stem_fix_instruction=stem_fix_instruction,
+                        round_history=round_history,
                     )
                 else:
                     design = await self._design_comp(
                         slot_blueprint, experience_card, gateway,
                         question_design=question_design,
                         stem_fix_instruction=stem_fix_instruction,
+                        round_history=round_history,
                     )
                 if not design:
                     logger.error("[%s] Design produced empty result", slot_id)
@@ -452,6 +527,11 @@ class UnifiedQuestionPipeline:
                         blocked_gate.summary[:200],
                     )
                     fix_target = "stem"
+                    round_history.append({
+                        "role": "review",
+                        "content": f"门禁 [{blocked_gate.gate_name}] 阻止：{blocked_gate.summary}",
+                        "round": rnd,
+                    })
                     if rnd >= self.max_revision_rounds:
                         logger.warning("[%s] Gate blocked, revision budget exhausted", slot_id)
                         break
@@ -461,8 +541,11 @@ class UnifiedQuestionPipeline:
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
             if need_options:
-                options = await self._generate_options(design, slot_blueprint, gateway,
-                                                        question_design=question_design)
+                options = await self._generate_options(
+                    design, slot_blueprint, gateway,
+                    question_design=question_design,
+                    round_history=round_history,
+                )
 
             # ── Step 2.5: Stem verification (before solving) ──
             need_stem_verify = (rnd == 0 or fix_target in ("question", "stem"))
@@ -471,18 +554,49 @@ class UnifiedQuestionPipeline:
                     design, options if is_sc else None,
                     question_design, is_sc, slot_id, gateway,
                 )
-                if stem_verification.get("status") == "needs_fix":
+                severity = stem_verification.get("severity", "critical")
+                status = stem_verification.get("status", "")
+
+                # Minor issues: capture for inline polish, don't block
+                minor_issues = stem_verification.get("minor_issues", "")
+                if status == "pass_with_notes" and minor_issues and minor_issues != "无":
+                    stem_minor_issues = minor_issues
+                    logger.info("[%s] Stem verification: minor issues (non-blocking): %s",
+                                slot_id, minor_issues[:200])
+
+                # Only block on critical severity
+                if status == "needs_fix" and severity == "critical":
                     fix_target = "stem"
-                    fix_detail = stem_verification.get("fix_detail", "")
-                    contradiction = stem_verification.get("contradiction_detail", "")
-                    parts = [p for p in [fix_detail, contradiction] if p and p != "无"]
-                    stem_fix_instruction = "；".join(parts)
-                    logger.info("[%s] Stem verification failed, routing to stem redesign: %s",
-                                slot_id, stem_fix_instruction[:200])
+                    # Conversation-style: pass raw review as message to next agent
+                    raw_review = stem_verification.get("_raw_text", "")
+                    if raw_review:
+                        round_history.append({
+                            "role": "review",
+                            "content": raw_review,
+                            "round": rnd,
+                        })
+                    else:
+                        # Fallback: use parsed fields if raw text unavailable
+                        fix_detail = stem_verification.get("fix_detail", "")
+                        contradiction = stem_verification.get("contradiction_detail", "")
+                        parts = [p for p in [fix_detail, contradiction] if p and p != "无"]
+                        if parts:
+                            round_history.append({
+                                "role": "review",
+                                "content": "\n".join(parts),
+                                "round": rnd,
+                            })
+                    logger.info("[%s] Stem verification failed (critical), routing to stem redesign",
+                                slot_id)
                     if rnd >= self.max_revision_rounds:
                         logger.warning("[%s] Stem verification failed, revision budget exhausted", slot_id)
                         break
                     continue
+
+            # ── Step 2.6: Apply minor stem polish (non-blocking) ──
+            if stem_minor_issues and (rnd == 0 or fix_target in ("question", "stem")):
+                design = await self._polish_stem_minor(design, stem_minor_issues)
+                stem_minor_issues = ""  # consumed
 
             # ── Step 3: Solve (unified computation) ──
             need_solve = rnd == 0 or fix_target in ("question", "options", "answer")
@@ -512,6 +626,7 @@ class UnifiedQuestionPipeline:
             review = await self._review(
                 design, options, solver_dict, solution, rubric,
                 slot_blueprint, is_sc, gateway,
+                round_history=round_history,
             )
 
             audit = AuditResultNormalizer.normalize(
@@ -537,17 +652,27 @@ class UnifiedQuestionPipeline:
                 route.pipeline_fix_target,
             )
 
+            # ── Save round snapshot for context continuity ──
+            snapshot = self._build_round_snapshot(
+                rnd, design, options if is_sc else {}, solution, review, is_sc,
+                design_intent=question_design,
+            )
+            round_history.extend(snapshot)
+
             if route.next_action != "revise":
                 break
 
             fix_target = route.pipeline_fix_target
 
         # ── Step 7: Post-review (final quality check) ──
+        # Skip post-review during regen — outer paper review loop handles quality
         post_review = {}
-        if self.enable_post_review:
-            post_review = await self._post_review(
+        if self.enable_post_review and not is_regen:
+                post_review = await self._post_review(
                 design, options, solution, solver_dict, review, question_design,
                 is_sc, slot_id, gateway,
+                slot_blueprint=slot_blueprint,
+                experience_card=experience_card,
             )
 
         # ── Step 8: Summary (consolidate all outputs) ──
@@ -624,6 +749,9 @@ class UnifiedQuestionPipeline:
         blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
+        *,
+        previous_question: Optional[Dict[str, Any]] = None,
+        fix_instruction: str = "",
     ) -> Dict[str, Any]:
         """Step 0: ArchitectureAgent — design question structure from slot philosophy."""
         from core_new.agents.architecture_agent import ArchitectureAgent
@@ -635,16 +763,22 @@ class UnifiedQuestionPipeline:
             logger.warning("[%s] No slot content found, skipping architecture step", slot_id)
             return {}
 
-        agent = ArchitectureAgent(gateway)
+        agent = ArchitectureAgent(_rgw("architecture"))
+        initial = {
+            "slot_id": slot_id,
+            "slot_meta": slot,
+            "blueprint": blueprint,
+            "knowledge_point": blueprint.get("primary_target_name", ""),
+        }
+        if previous_question:
+            initial["previous_question"] = previous_question
+        if fix_instruction:
+            initial["fix_instruction"] = fix_instruction
+
         bb = Blackboard(
             task_id=f"arch_{slot_id}",
             task_type="architecture",
-            initial_state={
-                "slot_id": slot_id,
-                "slot_meta": slot,
-                "blueprint": blueprint,
-                "knowledge_point": blueprint.get("primary_target_name", ""),
-            },
+            initial_state=initial,
         )
 
         record = await agent.execute(bb)
@@ -664,6 +798,7 @@ class UnifiedQuestionPipeline:
         gateway,
         question_design: Optional[Dict[str, Any]] = None,
         stem_fix_instruction: Optional[str] = None,
+        round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """SC Step 1: generate question stem."""
         def make_blackboard() -> Blackboard:
@@ -683,7 +818,9 @@ class UnifiedQuestionPipeline:
 
         bb = make_blackboard()
         if self.use_runtime_sc_design:
-            runtime_agent = RuntimeSingleChoiceDraftAgent(gateway)
+            runtime_agent = RuntimeSingleChoiceDraftAgent(_rgw("sc_draft"))
+            if round_history:
+                runtime_agent.set_memory(round_history)
             runtime_record = await runtime_agent.execute(bb)
             if not runtime_record.error:
                 result = bb.get("sc_draft_result", {})
@@ -697,16 +834,17 @@ class UnifiedQuestionPipeline:
 
             bb = make_blackboard()
 
-        agent = SingleChoiceDraftAgent(gateway)
+        agent = SingleChoiceDraftAgent(_rgw("sc_draft"))
+        if round_history:
+            agent.set_memory(round_history)
         record = None
-        for attempt in range(3):
+        for attempt in range(5):
             record = await agent.execute(bb)
             if not record.error:
                 break
-            is_net = "network" in str(record.error).lower() or "connection" in str(record.error).lower()
-            if is_net and attempt < 2:
-                logger.warning("[SC design] Network error (attempt %d), retrying in 15s",
-                               attempt + 1)
+            logger.warning("[SC design] Error (attempt %d/5): %s",
+                           attempt + 1, str(record.error)[:200])
+            if attempt < 4:
                 await asyncio.sleep(15)
                 continue
             break
@@ -737,6 +875,7 @@ class UnifiedQuestionPipeline:
         gateway,
         question_design: Optional[Dict[str, Any]] = None,
         stem_fix_instruction: Optional[str] = None,
+        round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Comp Step 1: generate question design with sub-questions and intent."""
         initial = {
@@ -753,21 +892,32 @@ class UnifiedQuestionPipeline:
             task_type="unified_comp",
             initial_state=initial,
         )
-        agent = QuestionDesignerAgent(gateway)
+        agent = QuestionDesignerAgent(_rgw("design_comp"))
+        if round_history:
+            agent.set_memory(round_history)
         record = None
-        for attempt in range(3):
+        result = {}
+        for attempt in range(5):
             record = await agent.execute(bb)
             if not record.error:
-                break
-            is_net = "network" in str(record.error).lower() or "connection" in str(record.error).lower()
-            if is_net and attempt < 2:
-                logger.warning("[Comp design] Network error (attempt %d), retrying in 15s",
-                               attempt + 1)
-                await asyncio.sleep(15)
-                continue
+                result = bb.get("question_design", {})
+                missing = [f for f in ("stem", "sub_questions") if not result.get(f)]
+                if not missing:
+                    break
+                logger.warning("[Comp design] Incomplete output (attempt %d/5), missing: %s",
+                               attempt + 1, ", ".join(missing))
+                if attempt < 4:
+                    await asyncio.sleep(15)
+                    continue
+            else:
+                logger.warning("[Comp design] Error (attempt %d/5): %s",
+                               attempt + 1, str(record.error)[:200])
+                if attempt < 4:
+                    await asyncio.sleep(15)
+                    continue
             break
 
-        if record.error:
+        if record and record.error:
             bb_data = bb.get_relevant_state(agent.config.name)
             fb_result = await self.fallback_executor.try_fallback(record, bb_data)
             if fb_result.used_fallback and not fb_result.error:
@@ -781,7 +931,6 @@ class UnifiedQuestionPipeline:
                 f"Fallback={fb_result.fallback_target} did not produce usable output."
             )
 
-        result = bb.get("question_design", {})
         self._require_step_fields("Comp design", result, ["stem", "sub_questions"])
         logger.info("[Comp design] stem=%s", str(result.get("stem", ""))[:80])
         return result
@@ -792,6 +941,7 @@ class UnifiedQuestionPipeline:
         blueprint: Dict[str, Any],
         gateway,
         question_design: Optional[Dict[str, Any]] = None,
+        round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """SC Step 2: generate 4 options with distractor intent."""
         initial = {
@@ -805,7 +955,9 @@ class UnifiedQuestionPipeline:
             task_type="unified_sc",
             initial_state=initial,
         )
-        agent = OptionAndDistractorAgent(gateway)
+        agent = OptionAndDistractorAgent(_rgw("options"))
+        if round_history:
+            agent.set_memory(round_history)
         record = await agent.execute(bb)
         self._raise_if_failed("SC options", record)
         result = bb.get("sc_options_result", {})
@@ -839,15 +991,50 @@ class UnifiedQuestionPipeline:
             task_type="stem_verification",
             initial_state=initial,
         )
-        agent = StemVerifierAgent(gateway)
+        agent = StemVerifierAgent(_rgw("stem_verify"))
         record = await agent.execute(bb)
         if record.error:
             logger.warning("[%s] Stem verification failed: %s, proceeding anyway",
                            slot_id, record.error)
             return {"status": "pass", "note": "verification_skipped"}
         result = bb.get("stem_verification_result", {})
+        # Attach raw review text for conversation-style fix
+        if hasattr(record, 'raw_text') and record.raw_text:
+            result["_raw_text"] = record.raw_text
         logger.info("[%s] Stem verification: status=%s", slot_id, result.get("status"))
         return result
+
+    async def _polish_stem_minor(
+        self,
+        design: Dict[str, Any],
+        minor_issues: str,
+    ) -> Dict[str, Any]:
+        """Polish stem wording for minor issues — single LLM call."""
+        if not minor_issues or minor_issues == "无":
+            return design
+
+        stem = design.get("stem", "")
+        prompt = (
+            "以下是一道408考研题的题干。审核发现了一些措辞/术语小问题，请修正。\n"
+            "重要约束：只修改措辞和术语，不得改变任何数值、条件或数学内容。\n\n"
+            f"## 题干\n{stem}\n\n"
+            f"## 需要修正的问题\n{minor_issues}\n\n"
+            "请直接输出修正后的题干全文（不输出其他内容）。"
+        )
+
+        result = await _rgw("formatter").generate_text(
+            [{"role": "user", "content": prompt}],
+            max_tokens=4096,
+            enable_thinking=False,
+        )
+
+        if result.ok and result.content and len(result.content.strip()) > 20:
+            design = dict(design)
+            design["stem"] = result.content.strip()
+            design["stem_polished_for_minor"] = True
+            logger.info("[Stem polish] Applied minor fixes: %d -> %d chars",
+                        len(stem), len(design["stem"]))
+        return design
 
     async def _solve(
         self,
@@ -859,9 +1046,9 @@ class UnifiedQuestionPipeline:
     ) -> CodeSolution:
         """Step 3: Solve — pure computation engine (runtime or text-parsing)."""
         if self.use_runtime_solver:
-            solver = RuntimeFileCodeSolver(gateway, max_tokens=4096, max_iterations=8)
+            solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=4096, max_iterations=8)
         else:
-            solver = FileCodeSolverAgent(gateway, max_tokens=16384, max_steps=5)
+            solver = FileCodeSolverAgent(_rgw("solver"), max_tokens=16384, max_steps=5)
 
         question_text = design.get("stem", "")
 
@@ -915,7 +1102,7 @@ class UnifiedQuestionPipeline:
                 "sc_solver_result": solver_dict,
             },
         )
-        agent = SCSolutionFormatterAgent(gateway)
+        agent = SCSolutionFormatterAgent(_rgw("formatter"))
         record = await agent.execute(bb)
         self._raise_if_failed("SC format", record)
         result = bb.get("sc_solution_result", {})
@@ -937,7 +1124,7 @@ class UnifiedQuestionPipeline:
                 "solver_result": solver_dict,
             },
         )
-        agent = HybridSolutionFormatter(gateway)
+        agent = HybridSolutionFormatter(_rgw("formatter"))
         record = await agent.execute(bb)
         self._raise_if_failed("Comp format", record)
         result = bb.get("formatted_solution", {})
@@ -961,7 +1148,7 @@ class UnifiedQuestionPipeline:
                 "current_blueprint": blueprint,
             },
         )
-        agent = HybridRubricWriter(gateway)
+        agent = HybridRubricWriter(_rgw("rubric"))
         await agent.execute(bb)
         return bb.get("rubric", {})
 
@@ -976,25 +1163,33 @@ class UnifiedQuestionPipeline:
         is_sc: bool,
         slot_id: str,
         gateway,
+        *,
+        slot_blueprint: Optional[Dict[str, Any]] = None,
+        experience_card: str = "",
     ) -> Dict[str, Any]:
-        """Step 7: Post-review — final quality check on complete question."""
+        """Step 7: Post-review — blueprint-driven compliance check."""
         initial = {
             "sc_draft_result": design,
             "sc_solution_result": solution,
             "review": review,
             "solver_result": solver_dict,
+            "is_sc": is_sc,
         }
         if question_design:
             initial["question_design"] = question_design
         if is_sc:
             initial["sc_options_result"] = options
+        if slot_blueprint:
+            initial["slot_blueprint"] = slot_blueprint
+        if experience_card:
+            initial["experience_card"] = experience_card
 
         bb = Blackboard(
             task_id=f"post_review_{slot_id}",
             task_type="post_review",
             initial_state=initial,
         )
-        agent = PostReviewAgent(gateway)
+        agent = PostReviewAgent(_rgw("post_review"))
         record = await agent.execute(bb)
         if record.error:
             logger.warning("[%s] Post-review failed: %s, proceeding", slot_id, record.error)
@@ -1023,6 +1218,7 @@ class UnifiedQuestionPipeline:
             "solver_result": solver_dict,
             "review": review,
             "post_review_result": post_review,
+            "is_sc": is_sc,
         }
         if is_sc:
             initial["sc_options_result"] = options
@@ -1032,7 +1228,7 @@ class UnifiedQuestionPipeline:
             task_type="summary",
             initial_state=initial,
         )
-        agent = QuestionSummaryAgent(gateway)
+        agent = QuestionSummaryAgent(_rgw("summary"))
         record = await agent.execute(bb)
         if record.error:
             logger.warning("[%s] Summary failed: %s, using assemble fallback", slot_id, record.error)
@@ -1051,6 +1247,7 @@ class UnifiedQuestionPipeline:
         blueprint: Dict[str, Any],
         is_sc: bool,
         gateway,
+        round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """Step 6: review — compare computation vs intent."""
         if is_sc:
@@ -1065,7 +1262,7 @@ class UnifiedQuestionPipeline:
                 task_type="unified_sc",
                 initial_state=initial_state,
             )
-            reviewer = UnifiedSCReviewer(gateway)
+            reviewer = UnifiedSCReviewer(_rgw("review"))
         else:
             initial_state = {
                 "question_design": design,
@@ -1078,7 +1275,9 @@ class UnifiedQuestionPipeline:
                 task_type="unified_comp",
                 initial_state=initial_state,
             )
-            reviewer = IntentBasedReviewer(gateway)
+            reviewer = IntentBasedReviewer(_rgw("review"))
+        if round_history:
+            reviewer.set_memory(round_history)
 
         # Append Gate 3 restriction instruction when gates were used
         if self.enable_stem_gate:

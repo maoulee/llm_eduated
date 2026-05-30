@@ -55,25 +55,27 @@ def build_slot_contract(
     subj = template.get("subject_stability", "未知")
     lines.append(f"- **preferred_subject**: {subj}")
 
-    # Difficulty (3 dimensions: knowledge_depth, calculation_load, reasoning_steps)
+    # Difficulty — K1-K5 cognitive radar anchors
     da = template.get("difficulty_anchor", {})
     if isinstance(da, dict):
-        lines.append(f"- **difficulty_mode**: {da.get('overall_mode', '?')}")
-        r = da.get("overall_range", [])
-        if isinstance(r, list) and len(r) == 2:
-            lines.append(f"- **difficulty_reasonable_range**: {r[0]}-{r[1]}")
-        lines.append(f"- **knowledge_depth_mode**: {da.get('knowledge_depth_mode', da.get('mechanism_depth_mode', '?'))}")
-        kdr = da.get("knowledge_depth_range", da.get("mechanism_depth_range", []))
-        if isinstance(kdr, list) and len(kdr) == 2:
-            lines.append(f"- **knowledge_depth_soft_max**: {kdr[1]}")
-        lines.append(f"- **reasoning_steps_mode**: {da.get('reasoning_steps_mode', '?')}")
-        rsr = da.get("reasoning_steps_range", [])
-        if isinstance(rsr, list) and len(rsr) == 2:
-            lines.append(f"- **reasoning_steps_soft_max**: {rsr[1]}")
-        lines.append(f"- **calculation_load_mode**: {da.get('calculation_load_mode', '?')}")
-        clr = da.get("calculation_load_range", [])
-        if isinstance(clr, list) and len(clr) == 2:
-            lines.append(f"- **calculation_load_soft_max**: {clr[1]}")
+        for k_dim in ("K1", "K2", "K3", "K4", "K5"):
+            mode_key = f"{k_dim}_mode"
+            range_key = f"{k_dim}_range"
+            mode_val = da.get(mode_key)
+            range_val = da.get(range_key)
+            if mode_val is not None:
+                lines.append(f"- **{k_dim}_mode**: {mode_val}")
+            if isinstance(range_val, list) and len(range_val) == 2:
+                lines.append(f"- **{k_dim}_range**: {range_val[0]}-{range_val[1]}")
+        # Fallback: if old-style difficulty_anchor present but no K1-K5, emit legacy
+        if not any(f"{k}_mode" in da for k in ("K1", "K2", "K3", "K4", "K5")):
+            lines.append(f"- **difficulty_mode**: {da.get('overall_mode', '?')}")
+            r = da.get("overall_range", [])
+            if isinstance(r, list) and len(r) == 2:
+                lines.append(f"- **difficulty_reasonable_range**: {r[0]}-{r[1]}")
+            lines.append(f"- **knowledge_depth_mode**: {da.get('knowledge_depth_mode', '?')}")
+            lines.append(f"- **calculation_load_mode**: {da.get('calculation_load_mode', '?')}")
+            lines.append(f"- **reasoning_steps_mode**: {da.get('reasoning_steps_mode', '?')}")
     lines.append("")
 
     # ── L2: Preference constraints ─────────────────────────────

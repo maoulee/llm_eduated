@@ -44,7 +44,12 @@ class AgentConfig:
 
 
 class BaseAgent(ABC):
-    """Base class for LLM-backed agents."""
+    """Base class for LLM-backed agents.
+
+    Memory is a message-list: each entry is {role, content, round?}.
+    Agents auto-save their own I/O in execute(); the pipeline appends
+    review/feedback context via receive_context().
+    """
 
     def __init__(self, config: AgentConfig, llm_backend):
         self.config = config
@@ -57,6 +62,65 @@ class BaseAgent(ABC):
             config.max_retries = max(0, self.execution_policy.transport_retry.max_attempts - 1)
         if config.repair_max_retries is _UNSET:
             config.repair_max_retries = self.execution_policy.format_repair.max_attempts
+        self._memory: list[dict[str, Any]] = []
+
+    def receive_context(self, context: dict[str, Any]) -> None:
+        """Receive a context message from the pipeline or another agent."""
+        self._memory.append(context)
+
+    def set_memory(self, history: list[dict[str, Any]]) -> None:
+        """Replace the full memory (e.g. when reusing an agent across rounds)."""
+        self._memory = list(history)
+
+    def clear_memory(self) -> None:
+        """Clear all accumulated memory."""
+        self._memory = []
+
+    def get_memory_text(self, max_rounds: int = 3) -> str:
+        """Render memory as conversation-style text for prompt inclusion.
+
+        Memory entries are message-list style:
+          {role: "user", content: "..."}       — input to the agent
+          {role: "assistant", content: "..."}   — agent's output
+          {role: "review", content: "..."}      — review/feedback from pipeline
+
+        No truncation — thinking is already stripped, remaining text is kept intact.
+        Only the most recent max_rounds rounds are included (by round number).
+        """
+        if not self._memory:
+            return ""
+        # Find which rounds to include (messages with round=None are always included)
+        rounds_seen: set = set()
+        for msg in reversed(self._memory):
+            rnd = msg.get("round")
+            if rnd is not None:
+                rounds_seen.add(rnd)
+            if len(rounds_seen) >= max_rounds:
+                break
+        # Filter to recent rounds + round-less messages
+        if rounds_seen:
+            recent = [m for m in self._memory
+                      if m.get("round") is None or m.get("round") in rounds_seen]
+        else:
+            recent = self._memory[-(max_rounds * 3):]
+
+        parts = []
+        for msg in recent:
+            role = msg.get("role", "system")
+            content = msg.get("content", "")
+            rnd = msg.get("round")
+            if not content:
+                continue
+            prefix = f"[第{rnd}轮] " if rnd is not None else ""
+            if role == "user":
+                parts.append(f"{prefix}## 输入\n{content}")
+            elif role == "assistant":
+                parts.append(f"{prefix}## 生成结果\n{content}")
+            elif role == "review":
+                parts.append(f"{prefix}## 审查反馈\n{content}")
+            else:
+                parts.append(f"{prefix}## {role}\n{content}")
+        return "\n\n".join(parts)
 
     def get_audit_checklist(self) -> str:
         """Return audit checklist text if this agent has an audit_mode configured."""
@@ -105,6 +169,12 @@ class BaseAgent(ABC):
         for attempt in range(self.config.max_retries + 1):
             try:
                 prompt = self.build_input(blackboard)
+                memory_text = self.get_memory_text()
+                if memory_text:
+                    prompt += (
+                        "\n\n## 历史尝试记录（请参考，避免重复相同错误）\n"
+                        + memory_text
+                    )
                 result = await asyncio.wait_for(
                     self._call_llm(prompt),
                     timeout=self.config.timeout_s,
@@ -117,6 +187,15 @@ class BaseAgent(ABC):
                 )
                 if not raw_text and parsed is not None:
                     raw_text = json.dumps(parsed, ensure_ascii=False, indent=2, default=str)
+                # Auto-save this exchange to memory
+                self._memory.append({
+                    "role": "user",
+                    "content": prompt,
+                })
+                self._memory.append({
+                    "role": "assistant",
+                    "content": raw_text,
+                })
                 latency_s = time.monotonic() - start
                 record = await blackboard.write(
                     self.config.name,

@@ -1,801 +1,162 @@
 {
-  "total": 14,
+  "version": "2.0",
+  "generated_at": "2026-05-29T14:05:57",
   "templates": {
-    "Q12": {
-      "slot_id": "Q12",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "计算机系统概述": 0.77,
-        "数据表示与运算": 0.23
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.46,
-        "mechanism": 0.08,
-        "pattern": 0.46
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.31,
-        "calculation_stability": 0.31,
-        "trap_diagnosis": 0.31,
-        "mechanism_trigger": 0.07
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
-          1,
-          3
-        ],
-        "knowledge_depth_mode": 1,
-        "knowledge_depth_range": [
-          1,
-          2
-        ],
-        "mechanism_depth_mode": 1,
-        "mechanism_depth_range": [
-          1,
-          3
-        ],
-        "reasoning_steps_mode": 2,
-        "reasoning_steps_range": [
-          1,
-          3
-        ],
-        "calculation_load_mode": 2,
-        "calculation_load_range": [
-          1,
-          3
-        ],
-        "trap_strength_mode": 2,
-        "trap_strength_range": [
-          1,
-          4
-        ],
-        "cross_topic_mode": 0,
-        "cross_topic_range": [
-          0,
-          2
-        ]
-      },
-      "style_mode": {
-        "stem_length": "short",
-        "condition_count": 1,
-        "option_style": "概念判断",
-        "reasoning_shape": "elimination"
-      },
-      "slot_guidance": "该题位主要用于考查计算机组成原理（特别是计算机系统概述部分）的基础概念和性能指标计算。题目设计应侧重于基本概念的辨析、性能公式（如CPI、执行时间、MIPS、MFLOPS）的应用与计算，同时可以包含适当的单位换算或概念混淆陷阱。",
-      "should_be": "计算机系统概述中的概念辨析题或基础性能公式计算题。",
-      "should_not_be": "跨度较大的综合题, 复杂的硬件机制分析题, 纯记忆无理解的死记硬背题",
-      "generation_style": "题干简洁明了，选项设置应包含常见的计算错误（特别是单位换算）或易混淆概念。",
-      "stability_assessment": "该题位高度稳定，绝大部分年份考查计算机组成原理的“计算机系统概述”章节，以概念和基本公式计算为主。"
-    },
-    "Q13": {
-      "slot_id": "Q13",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "稳定",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "数据表示与运算": 0.93,
-        "存储器层次结构": 0.07
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.43,
-        "mechanism": 0.57
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.43,
-        "calculation_stability": 0.21,
-        "difficulty_separator": 0.14,
-        "mechanism_trigger": 0.14,
-        "cross_topic_integration": 0.07
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
-          1,
-          4
-        ],
-        "knowledge_depth_mode": 1,
-        "reasoning_steps_mode": 2,
-        "calculation_load_mode": 2,
-        "trap_strength_mode": 2
-      },
-      "style_mode": {
-        "stem_length": "short",
-        "condition_count": "2",
-        "option_style": "数字结果",
-        "reasoning_shape": "multi_step"
-      },
-      "slot_guidance": "该题位是极其稳定的“计算机组成原理-数据表示与运算”专属题位，主要考察定点数（补码）或浮点数（IEEE 754）的格式、范围、转换及基础运算。出题应侧重于基础概念和中等计算量，避免过长的题干。",
-      "should_be": "考察数据表示（补码/IEEE754）的基本转换、范围判断或简单运算（溢出判断）的常规单选题。",
-      "should_not_be": "跨科目综合题, 极其复杂的逻辑推理题, 代码阅读题",
-      "generation_style": "给出具体的数值或位模式，要求考生进行某种编码的解释、转换或运算。",
-      "stability_assessment": "极高，连续15年几乎全部指向计算机组成原理的数据表示与运算章节。"
-    },
     "Q14": {
       "slot_id": "Q14",
       "section": "选择题",
       "question_type": "single_choice",
       "typical_score": 2,
-      "subject_stability": "稳定",
+      "subject_stability": "数据表示与运算",
       "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "数据表示与运算": 0.78,
-        "存储器层次结构": 0.21
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.21,
-        "mechanism": 0.5,
-        "pattern": 0.29
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.14,
-        "mechanism_trigger": 0.43,
-        "pattern_execution": 0.14,
-        "trap_diagnosis": 0.14,
-        "cross_topic_integration": 0.07,
-        "calculation_stability": 0.07
-      },
-      "difficulty_anchor": {
-        "overall_mode": 3,
-        "overall_range": [
-          1,
-          4
-        ],
-        "knowledge_depth_mode": 2,
-        "mechanism_depth_mode": 3,
-        "reasoning_steps_mode": 3,
-        "calculation_load_mode": 2,
-        "trap_strength_mode": 3
-      },
-      "style_mode": {
-        "stem_length": "medium",
-        "condition_count": "1-2",
-        "option_style": "数字结果",
-        "reasoning_shape": "multi_step"
-      },
-      "slot_guidance": "该题位应重点锁定计算机组成原理中的数据表示与运算章节，尤其侧重于IEEE 754浮点数底层机制及各类边界条件转换。可融合C语言数据类型、大小端及边界对齐等跨知识点进行命题，避免纯概念的简单背诵。",
-      "should_be": "考查IEEE 754标准深度机制（如非规格化数、边界极值、精度转换）或底层内存排布映射的计算机制题。",
-      "should_not_be": "纯背诵的送分题, 脱离底层实现纯考C语言语法的题, 跨度超过数据表示与存储结构的题",
-      "generation_style": "设置具体的数据场景（十六进制或C类型），考查考生按规则进行数值推演或内存映射的硬核计算能力。",
-      "stability_assessment": "极其稳定，近15年来几乎完全被“计算机组成原理”的数据表示与运算（特别是浮点数机制和内存映射）所垄断。"
-    },
-    "Q15": {
-      "slot_id": "Q15",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "主存储器与芯片连接": 0.5,
-        "数据表示与运算": 0.25,
-        "Cache映射与性能计算": 0.17,
-        "指令系统设计": 0.08
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.25,
-        "mechanism": 0.33,
-        "pattern": 0.42
-      },
-      "paper_role_distribution": {
-        "mechanism_trigger": 0.25,
-        "difficulty_separator": 0.17,
-        "foundation_check": 0.17,
-        "trap_diagnosis": 0.17,
-        "pattern_execution": 0.08,
-        "calculation_stability": 0.08,
-        "cross_topic_integration": 0.08
-      },
-      "difficulty_anchor": {
-        "overall_mode": 3,
-        "overall_range": [
-          1,
-          4
-        ],
-        "reasoning_steps_mode": 3,
-        "reasoning_steps_range": [
-          1,
-          5
-        ],
-        "calculation_load_mode": 3,
-        "calculation_load_range": [
-          1,
-          4
-        ]
-      },
-      "style_mode": {
-        "option_style": "数字结果",
-        "reasoning_shape": "multi_step",
-        "stem_length": "medium"
-      },
-      "slot_guidance": "本题位固定考察计算机组成原理，绝大多数围绕存储器系统（主存扩展设计、编址计算）与数据表示（边界对齐、大小端、校验码）展开。题目形式通常是给出具体的硬件参数条件或代码片段，要求利用机制规则进行多步推导和数值计算。",
-      "should_be": "包含具体参数条件的机制计算与定量推导题",
-      "should_not_be": "纯概念记忆题, 跨科目非计组题, 脱离数值计算的抽象理论题",
-      "generation_style": "提供明确的硬件参数或代码环境，设置包含常见易错点（如单位换算、位扩展遗漏、大小端）的多步计算题。",
-      "stability_assessment": "极为稳定，常年固定在计算机组成原理的存储器与数据表示章节，属于典型的计算型中等难度题位。"
-    },
-    "Q16": {
-      "slot_id": "Q16",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "稳定",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "存储器分类与扩展设计": 0.31,
-        "指令系统设计与寻址方式": 0.31,
-        "Cache映射与性能计算": 0.23,
-        "数据表示与运算": 0.15
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.31,
-        "mechanism": 0.38,
-        "pattern": 0.31
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.31,
-        "mechanism_trigger": 0.23,
-        "calculation_stability": 0.15,
-        "trap_diagnosis": 0.08,
-        "cross_topic_integration": 0.08,
-        "pattern_execution": 0.08,
-        "difficulty_separator": 0.08
-      },
-      "difficulty_anchor": {
-        "overall_mode": 3,
-        "overall_range": [
-          1,
-          4
-        ],
-        "knowledge_depth_mode": 2,
-        "knowledge_depth_range": [
-          1,
-          3
-        ],
-        "mechanism_depth_mode": 3,
-        "mechanism_depth_range": [
-          1,
-          4
-        ],
-        "reasoning_steps_mode": 3,
-        "reasoning_steps_range": [
-          1,
-          3
-        ],
-        "calculation_load_mode": 2,
-        "calculation_load_range": [
-          1,
-          4
-        ],
-        "trap_strength_mode": 2,
-        "trap_strength_range": [
-          1,
-          4
-        ]
-      },
-      "style_mode": {
-        "reasoning_shape": "multi_step",
-        "stem_length": "medium",
-        "condition_count": "3-4",
-        "option_style": "数字结果或概念判断"
-      },
-      "slot_guidance": "该题位固定考查《计算机组成原理》的核心概念与中等难度计算。重点设计涉及存储器扩展、指令系统设计、Cache地址映射与硬件计算等内容的题目，要求考生具备机制推演能力和准确的计算能力。",
-      "should_be": "基于具体体系结构参数（容量、字长、编址）进行定量计算或机制辨析的单选题。",
-      "should_not_be": "跨科目的综合应用题, 耗时极长的复杂算术计算题, 过于偏僻的硬件物理常识题",
-      "generation_style": "给出明确的结构参数或运算场景，通过机制原理推导数字结果或判断概念正误，并设置常见的思维盲区作为干扰项。",
-      "stability_assessment": "极其稳定，15年来固定考查《计算机组成原理》的局部核心机制，难度适中，区分度良好。"
-    },
-    "Q17": {
-      "slot_id": "Q17",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "指令系统设计": 0.36,
-        "主存储器与ROM": 0.28,
-        "中央处理器CPU": 0.21,
+        "数据表示与运算": 0.79,
         "存储器层次结构": 0.14,
-        "数据表示与运算": 0.07
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.43,
-        "mechanism": 0.29,
-        "pattern": 0.29
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.29,
-        "trap_diagnosis": 0.29,
-        "pattern_execution": 0.14,
-        "mechanism_trigger": 0.14,
-        "difficulty_separator": 0.14
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
-          1,
-          4
-        ],
-        "knowledge_depth_mode": 2,
-        "mechanism_depth_mode": 2,
-        "reasoning_steps_mode": 2,
-        "calculation_load_mode": 1,
-        "trap_strength_mode": 2
-      },
-      "style_mode": {
-        "stem_length": "medium",
-        "option_style": "概念判断",
-        "reasoning_shape": "elimination",
-        "condition_count": 3
-      },
-      "slot_guidance": "该题位为计算机组成原理的必考题位，重点集中在指令系统、存储器层次和CPU架构的基础概念辨析。应以概念判断题为主，辅以简单的原理推导或地址运算。选项设计应注重对易混淆概念（如透明性、寻址方式组合、流水线性能指标）的考察。",
-      "should_be": "考查计组核心机制辨析与中等深度概念记忆的单选题",
-      "should_not_be": "跨科目的综合题, 耗时较长的复杂大数运算题, 偏门超纲知识点",
-      "generation_style": "通过列举特性、机制或层次关系，设计多个相关概念选项，利用反转或包含关系设置陷阱",
-      "stability_assessment": "高度稳定，15年来100%属于计算机组成原理，是试卷中用于稳定区分考生硬件基础的核心锚点题"
-    },
-    "Q18": {
-      "slot_id": "Q18",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
+        "Cache映射与性能计算": 0.07
       },
       "target_family_distribution": {
-        "CPU结构与数据通路": 0.36,
-        "控制器设计": 0.21,
-        "指令流水线": 0.21,
-        "存储器系统": 0.14,
-        "指令系统设计": 0.14
+        "数据表示与运算": 0.79,
+        "存储器层次结构": 0.14,
+        "Cache映射与性能计算": 0.07
       },
       "target_depth_distribution": {
-        "knowledge": 0.5,
-        "mechanism": 0.29,
+        "mechanism": 0.57,
+        "knowledge": 0.21,
         "pattern": 0.21
       },
       "paper_role_distribution": {
-        "foundation_check": 0.36,
-        "calculation_stability": 0.21,
-        "trap_diagnosis": 0.29,
-        "pattern_execution": 0.07,
-        "mechanism_trigger": 0.07
+        "mechanism_trigger": 0.36,
+        "foundation_check": 0.21,
+        "trap_diagnosis": 0.14,
+        "pattern_execution": 0.14,
+        "calculation_stability": 0.07,
+        "cross_topic_integration": 0.07
       },
       "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
-          1,
-          3
-        ],
-        "knowledge_depth_mode": 2,
-        "knowledge_depth_range": [
-          1,
-          2
-        ],
-        "mechanism_depth_mode": 2,
-        "mechanism_depth_range": [
-          1,
-          3
-        ],
-        "reasoning_steps_mode": 2,
-        "reasoning_steps_range": [
-          1,
+        "K1_mode": 3,
+        "K1_range": [
+          3,
           4
         ],
-        "calculation_load_mode": 1,
-        "calculation_load_range": [
-          1,
-          4
-        ],
-        "trap_strength_mode": 2,
-        "trap_strength_range": [
-          1,
-          3
-        ]
-      },
-      "style_mode": {
-        "stem_length": "medium",
-        "condition_count": 2,
-        "option_style": "概念判断",
-        "reasoning_shape": "elimination"
-      },
-      "slot_guidance": "该题位定位于计算机组成原理中的核心概念与机制辨析，属于中等难度题。应聚焦于CPU结构、指令流水线、控制器设计中的特定原理，既可出纯概念判断，也可结合简单寻址计算。重点考查考生对底层硬件机制的精准把握，而非复杂计算。",
-      "should_be": "计算机组成原理中关于CPU、控制器、流水线的基础概念与机制原理题。",
-      "should_not_be": "纯记忆型无逻辑推断的死记硬背题, 需要大量繁杂算术计算的应用题, 跨越多个科目的综合题",
-      "generation_style": "结合具体场景（如指令流、数据通路、编址模式）下的机制判断或公式应用。",
-      "stability_assessment": "极其稳定，15年来100%考查计算机组成原理科目，且始终围绕数据通路、控制器和指令流水线三大核心模块展开。"
-    },
-    "Q19": {
-      "slot_id": "Q19",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "稳定，计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "总线性能与定时": 0.38,
-        "流水线数据通路与冒险": 0.23,
-        "CPU执行与中断机制": 0.15,
-        "数据表示与运算": 0.08,
-        "指令系统设计": 0.08,
-        "I/O系统与接口": 0.08
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.38,
-        "mechanism": 0.23,
-        "pattern": 0.38
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.38,
-        "calculation_stability": 0.23,
-        "difficulty_separator": 0.15,
-        "mechanism_trigger": 0.15,
-        "pattern_execution": 0.08,
-        "trap_diagnosis": 0.08
-      },
-      "difficulty_anchor": {
-        "overall_mode": 3,
-        "overall_range": [
-          1,
-          4
-        ],
-        "knowledge_depth_mode": 2,
-        "mechanism_depth_mode": 3,
-        "reasoning_steps_mode": 3,
-        "calculation_load_mode": 3,
-        "trap_strength_mode": 2
-      },
-      "style_mode": {
-        "stem_length": "medium",
-        "option_style": "数字结果与概念判断均衡",
-        "reasoning_shape": "one_formula与multi_step混合"
-      },
-      "slot_guidance": "本题位几乎固定考查计算机组成原理，主要分为“总线性能计算/概念”与“CPU流水线/运算机制”两大派系。出题时应注重微观机制的辨析或带有定量计算的模式执行，题目应具有一定的区分度，干扰项常利用考生对底层细节（如时序、编码空间）的模糊认知进行设计。",
-      "should_be": "计算机组成原理中涉及总线传输计算、流水线时空推演或指令格式计算的微观机制与定量分析题。",
-      "should_not_be": "纯背诵无理解的送分题, 跨科目的综合应用题, 抽象脱离具体硬件的纯软件题",
-      "generation_style": "设置明确的硬件参数或流水线指令序列，要求考生利用机制原理进行推演计算或概念纠错。",
-      "stability_assessment": "极其稳定，历年来完全隶属于计算机组成原理科目，且高频考点高度集中在总线与CPU两大硬件模块。"
-    },
-    "Q20": {
-      "slot_id": "Q20",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "稳定",
-      "subject_distribution": {
-        "计算机组成原理": 0.93,
-        "操作系统": 0.07
-      },
-      "target_family_distribution": {
-        "总线原理与计算": 0.43,
-        "输入输出系统与接口": 0.36,
-        "存储系统与磁盘": 0.14,
-        "处理器架构与编译概述": 0.07
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.64,
-        "mechanism": 0.36,
-        "pattern": 0.0
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.36,
-        "calculation_stability": 0.29,
-        "trap_diagnosis": 0.29,
-        "mechanism_trigger": 0.06
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
+        "K2_mode": 2,
+        "K2_range": [
           1,
           3
         ],
-        "knowledge_depth_mode": 2,
-        "knowledge_depth_range": [
-          1,
-          3
-        ],
-        "mechanism_depth_mode": 2,
-        "mechanism_depth_range": [
-          1,
-          3
-        ],
-        "reasoning_steps_mode": 2,
-        "reasoning_steps_range": [
-          1,
-          4
-        ],
-        "calculation_load_mode": 1,
-        "calculation_load_range": [
-          1,
-          3
-        ],
-        "trap_strength_mode": 2,
-        "trap_strength_range": [
-          1,
-          4
-        ]
-      },
-      "style_mode": {
-        "stem_length": "short",
-        "condition_count": 1,
-        "option_style": "概念判断",
-        "reasoning_shape": "elimination"
-      },
-      "slot_guidance": "Q20题位高度集中于计算机组成原理中的“总线”、“I/O系统”及“存储器外设”板块。主要考察基本概念辨析（如串并行、总线分类、中断分类）和简单的系统性能指标计算（如带宽、存取时间、流水线周期）。应保持适中偏易的难度，避免过度复杂的逻辑推演。",
-      "should_be": "考察计算机硬件系统外围模块的基础概念或常规参数计算题。",
-      "should_not_be": "复杂的指令集微结构设计，需大量状态推导的操作系统并发题，数据结构算法分析题",
-      "generation_style": "给出一段硬件参数描述或技术特征，要求计算关键性能指标，或辨析总线/接口/中断等基本概念的归属。",
-      "stability_assessment": "极为稳定，绝大多数年份均考查计算机组成原理中的总线与输入输出(I/O)系统相关知识。"
-    },
-    "Q22": {
-      "slot_id": "Q22",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "I/O控制与中断系统": 0.62,
-        "I/O控制方式": 0.23,
-        "处理器体系结构": 0.08,
-        "I/O设备与接口": 0.07
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.46,
-        "mechanism": 0.31,
-        "pattern": 0.23
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.38,
-        "calculation_stability": 0.23,
-        "mechanism_trigger": 0.23,
-        "trap_diagnosis": 0.16
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
+        "K3_mode": 2,
+        "K3_range": [
           2,
-          3
+          4
         ],
-        "knowledge_depth_mode": 2,
-        "reasoning_steps_mode": 1,
-        "calculation_load_mode": 1,
-        "trap_strength_mode": 3
+        "K4_mode": 3,
+        "K4_range": [
+          3,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
       },
       "style_mode": {
+        "option_style": "数字结果",
         "reasoning_shape": "elimination",
-        "option_style": "概念判断",
         "stem_length": "medium"
       },
-      "slot_guidance": "Q22题位是极其稳定的计算机组成原理单选题，主要聚焦于I/O系统（特别是中断机制与DMA机制）和基本体系结构概念。出题时应侧重于概念辨析、机制执行过程的正误判断，或者结合简单的指标计算（如时间占比）。题目应具备清晰的辨析度，干扰项应针对考生对软硬件功能边界、执行阶段或适用范围的常见混淆进行设计。",
-      "should_be": "一道考察I/O系统（中断/DMA）基本概念或机制的纯概念辨析题，或极其基础的指标计算题。",
-      "should_not_be": "复杂的跨科目综合应用题，深度算法分析题，包含大量条件的高难度计算题",
-      "generation_style": "通过并列或对比不同机制（如中断与DMA、内中断与外中断）来构建精确的概念判断选项。",
-      "stability_assessment": "极高的科目（计组）与主题（I/O与中断）稳定性，难度常年维持在基础到中等水平。"
+      "radar_shape": "K4陷阱型",
+      "reasoning_shape_mode": "simulation",
+      "reasoning_shape_distribution": {
+        "elimination": 0.5,
+        "multi_step": 0.21,
+        "one_formula": 0.14,
+        "simulation": 0.14
+      },
+      "reasoning_shape_guidance": "",
+      "slot_guidance": "",
+      "should_be": "",
+      "should_not_be": "",
+      "generation_style": "",
+      "stability_assessment": "基于14道真题分析"
     },
     "Q43": {
       "slot_id": "Q43",
       "section": "综合应用题",
       "question_type": "comprehensive",
-      "typical_score": 11,
-      "subject_stability": "跨科目",
+      "typical_score": 10,
+      "subject_stability": "跨领域",
       "subject_distribution": {
-        "计算机组成原理": 0.9,
-        "数据结构": 0.1
+        "数据表示与运算": 0.3,
+        "I/O系统性能计算": 0.2,
+        "存储系统与总线性能": 0.1,
+        "总线与Cache性能": 0.1,
+        "算法设计与分析": 0.1,
+        "指令系统设计": 0.1,
+        "存储系统层次结构": 0.1
       },
       "target_family_distribution": {
         "数据表示与运算": 0.3,
         "I/O系统性能计算": 0.2,
-        "存储系统与Cache": 0.3,
+        "存储系统与总线性能": 0.1,
+        "总线与Cache性能": 0.1,
+        "算法设计与分析": 0.1,
         "指令系统设计": 0.1,
-        "算法设计与分析": 0.1
+        "存储系统层次结构": 0.1
       },
       "target_depth_distribution": {
-        "knowledge": 0.0,
         "mechanism": 0.8,
         "pattern": 0.2
       },
       "paper_role_distribution": {
-        "calculation_stability": 0.3,
         "mechanism_trigger": 0.3,
-        "difficulty_separator": 0.2,
+        "difficulty_separator": 0.3,
+        "calculation_stability": 0.2,
         "cross_topic_integration": 0.2
       },
       "difficulty_anchor": {
-        "overall_mode": 4,
-        "overall_range": [
+        "K1_mode": 4,
+        "K1_range": [
           3,
-          5
+          4
         ],
-        "knowledge_depth_mode": 3,
-        "reasoning_steps_mode": 4,
-        "calculation_load_mode": 4
-      },
-      "style_mode": {
-        "stem_length": "medium",
-        "reasoning_shape": "multi_step",
-        "option_style": "数字结果与概念判断混合"
-      },
-      "slot_guidance": "该题位为核心硬件机制深度考察区，绝大多数年份考查计算机组成原理。题目设计应包含复杂的计算或微观机制推理，常结合C语言代码、具体数据或系统参数，要求考生展现从高级语言到底层机器实现或从微观部件到整体性能的分析能力。",
-      "should_be": "具备强计算性或微观机制推演的综合分析题，涉及数据表示底层、系统性能计算或存储层次映射。",
-      "should_not_be": "纯记忆性问答, 跨度过大脱离计算机体系结构的知识点, 仅含单步推理的简单计算",
-      "generation_style": "设定一个具体的硬件系统参数环境或代码片段，要求推导底层表示、计算性能指标或分析执行过程。",
-      "stability_assessment": "科目属性高度集中于计算机组成原理，且考察深度极深，几乎全部要求基于机制进行复杂计算或逻辑推理。"
-    },
-    "Q44": {
-      "slot_id": "Q44",
-      "section": "综合应用题",
-      "question_type": "comprehensive",
-      "typical_score": 13,
-      "subject_stability": "稳定",
-      "subject_distribution": {
-        "计算机组成原理": 0.7,
-        "操作系统": 0.15,
-        "计算机组成原理与操作系统综合": 0.15
-      },
-      "target_family_distribution": {
-        "存储器层次结构(Cache/TLB/内存)": 0.57,
-        "I/O系统与中断DMA": 0.29,
-        "指令系统与寻址": 0.14
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.14,
-        "mechanism": 0.72,
-        "pattern": 0.14
-      },
-      "paper_role_distribution": {
-        "mechanism_trigger": 0.29,
-        "cross_topic_integration": 0.29,
-        "calculation_stability": 0.14,
-        "pattern_execution": 0.14,
-        "difficulty_separator": 0.14
-      },
-      "difficulty_anchor": {
-        "overall_mode": 4,
-        "overall_range": [
-          3,
-          5
-        ],
-        "knowledge_depth_mode": 3,
-        "mechanism_depth_mode": 4,
-        "reasoning_steps_mode": 3,
-        "calculation_load_mode": 3
-      },
-      "style_mode": {
-        "reasoning_shape": "multi_step/simulation",
-        "stem_length": "medium",
-        "option_style": "数字结果/混合",
-        "trap_strength": "medium"
-      },
-      "slot_guidance": "此题位主要用于考查计算机组成原理的核心机制，特别是存储器层次结构（Cache、TLB、虚拟存储器）和I/O系统的量化计算。通常要求考生具备从底层电路结构到上层系统调用的完整数据通路分析能力。",
-      "should_be": "涉及地址划分、命中率计算、时间周期分析、跨硬件与操作系统边界的综合机制分析题。",
-      "should_not_be": "纯理论默写, 离散数学证明, 脱离硬件背景的纯数据结构算法题, 极其简单的单步概念题",
-      "generation_style": "应当给出一个具体的计算机系统参数设定（如主存容量、Cache行大小、映射方式），要求考生进行地址字段的划分、运行过程的模拟或性能（命中率、时间）的精确计算。",
-      "stability_assessment": "高度稳定，深耕于计组的存储系统和I/O系统，近年来有向OS和指令系统底层细节交叉融合的明显趋势。"
-    },
-    "Q45": {
-      "slot_id": "Q45",
-      "section": "综合应用题",
-      "question_type": "comprehensive",
-      "typical_score": 9,
-      "subject_stability": "跨科目",
-      "subject_distribution": {
-        "操作系统": 0.6,
-        "计算机组成原理": 0.3,
-        "跨科目": 0.1
-      },
-      "target_family_distribution": {
-        "虚拟内存与地址映射": 0.7,
-        "进程同步与内存分配": 0.2,
-        "文件系统与磁盘管理": 0.1
-      },
-      "target_depth_distribution": {
-        "mechanism": 0.8,
-        "pattern": 0.2,
-        "knowledge": 0.0
-      },
-      "paper_role_distribution": {
-        "cross_topic_integration": 0.7,
-        "mechanism_trigger": 0.3
-      },
-      "difficulty_anchor": {
-        "overall_mode": 4,
-        "overall_range": [
-          3,
-          5
-        ],
-        "knowledge_depth_mode": 3,
-        "mechanism_depth_mode": 4,
-        "reasoning_steps_mode": 4,
-        "calculation_load_mode": 3
-      },
-      "style_mode": {
-        "reasoning_shape": "multi_step",
-        "stem_length": "long",
-        "option_style": "concept_judgment"
-      },
-      "slot_guidance": "这个题位应当侧重于考查计算机存储体系的综合分析能力，特别是虚拟地址到物理地址再到Cache映射的全链路理解，结合软硬件协同工作的机制进行考察。",
-      "should_be": "跨越软硬件层次、包含参数计算与机制分析的综合应用题。",
-      "should_not_be": "纯机械记忆的概念默写,只涉及单一知识点的简单计算,无实际系统场景的数学推导",
-      "generation_style": "基于特定硬件参数配置的机制推演与概念解释相结合。",
-      "stability_assessment": "稳定作为高区分度的硬件与系统综合机制分析题。"
-    },
-    "Q21": {
-      "slot_id": "Q21",
-      "section": "选择题",
-      "question_type": "single_choice",
-      "typical_score": 2,
-      "subject_stability": "计算机组成原理",
-      "subject_distribution": {
-        "计算机组成原理": 1.0
-      },
-      "target_family_distribution": {
-        "中断系统": 0.4,
-        "I/O系统": 0.33,
-        "总线系统": 0.13,
-        "异常与中断": 0.07,
-        "存储系统": 0.07
-      },
-      "target_depth_distribution": {
-        "knowledge": 0.27,
-        "mechanism": 0.46,
-        "pattern": 0.27
-      },
-      "paper_role_distribution": {
-        "foundation_check": 0.33,
-        "mechanism_trigger": 0.33,
-        "trap_diagnosis": 0.2,
-        "pattern_execution": 0.07,
-        "calculation_stability": 0.07
-      },
-      "difficulty_anchor": {
-        "overall_mode": 2,
-        "overall_range": [
+        "K2_mode": 3,
+        "K2_range": [
           2,
           3
         ],
-        "knowledge_depth_mode": 2,
-        "mechanism_depth_mode": 2,
-        "reasoning_steps_mode": 2,
-        "calculation_load_mode": 1,
-        "trap_strength_mode": 2,
-        "cross_topic_mode": 0
+        "K3_mode": 4,
+        "K3_range": [
+          4,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          4,
+          5
+        ],
+        "K5_mode": 4,
+        "K5_range": [
+          3,
+          5
+        ]
       },
       "style_mode": {
-        "stem_length": "medium",
-        "condition_count": 1,
-        "option_style": "concept_judgment",
-        "reasoning_shape": "elimination"
+        "option_style": "数字结果",
+        "reasoning_shape": "multi_step",
+        "stem_length": "medium"
       },
-      "slot_guidance": "该题位固定考察计算机组成原理，核心聚焦于I/O系统与中断机制。应设计为辨析底层硬件交互细节、中断响应流程或I/O数据流向的概念判断题。重点关注机制触发条件和常见的概念混淆盲区。",
-      "should_be": "考察中断系统流程、I/O接口编址或总线基本特性的概念判断题或机制推导题。",
-      "should_not_be": "跨科目综合计算, 复杂的数据通路设计分析, 庞大的算术计算, 纯记忆无推理的死知识",
-      "generation_style": "采用“机制辨析”或“正误判断”的形式，针对CPU、总线、接口与外设之间的数据流和控制流设置合理的逻辑陷阱。",
-      "stability_assessment": "极高，完全属于计算机组成原理的I/O、中断与总线模块，题型高度一致为概念判断。"
+      "radar_shape": "K3-K4 复合陷阱型 / K3-K5 复合推演型",
+      "reasoning_shape_mode": "multi_step",
+      "reasoning_shape_distribution": {
+        "multi_step": 0.7,
+        "simulation": 0.2,
+        "elimination": 0.1
+      },
+      "reasoning_shape_guidance": "",
+      "slot_guidance": "",
+      "should_be": "",
+      "should_not_be": "",
+      "generation_style": "",
+      "stability_assessment": "基于10道真题分析"
     }
   }
 }

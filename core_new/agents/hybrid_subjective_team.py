@@ -105,12 +105,22 @@ class QuestionDesignerAgent(BaseAgent):
         )
 
         fix_instruction = blackboard.get("stem_fix_instruction", "")
+        has_fix = bool(self._memory and any(
+            m.get("role") == "review" for m in self._memory
+        ))
         if fix_instruction:
+            has_fix = True
+
+        if has_fix:
             prompt += (
-                f"\n\n## 前一轮审核反馈（必须修正以下问题）\n"
-                f"{fix_instruction}\n\n"
-                "请在重新生成题干时，确保修正上述问题。"
+                "\n\n## 重要提示\n"
+                "你正在**修改**前一轮生成的题干，不是重新出一道不同的题。\n"
+                "请查看下方历史记录中的审查反馈，针对审核指出的具体问题进行精确修改。\n"
+                "保持题干整体结构、考察方向和知识点不变，仅修正被指出的问题。\n"
             )
+            if fix_instruction:
+                prompt += f"\n补充修复指令：{fix_instruction}\n"
+
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
@@ -243,6 +253,7 @@ class HybridRubricWriter(BaseAgent):
                 output_key="rubric",
                 max_tokens=max_tokens,
                 enable_thinking=False,
+                required_fields=[],
                 role_type=RoleType.SUMMARIZER,
                 system_prompt="你是一位408考研评分标准制定专家。严格按markdown格式输出。",
             ),

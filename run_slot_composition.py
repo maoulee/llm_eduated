@@ -33,6 +33,7 @@ from core_new.agents.slot_agents import (
 from core_new.agents.unified_pipeline import UnifiedQuestionPipeline
 from core_new.blackboard import Blackboard
 from core_new.llm_gateway import get_gateway
+from core_new.provider_router import get_routed_gateway as _rgw
 
 
 # ── Step 1: Compose ───────────────────────────────────────────
@@ -54,7 +55,7 @@ async def compose_paper(gateway, templates, user_requirements) -> dict:
         },
     )
 
-    composer = PaperComposerAgent(gateway)
+    composer = PaperComposerAgent(_rgw("paper_composer"))
     t0 = time.monotonic()
     record = None
     for attempt in range(3):
@@ -99,7 +100,7 @@ async def review_blueprint(gateway, blueprint, templates, user_requirements, max
     print("Step 2: BlueprintReviewer — 审核蓝图")
     print("=" * 60)
 
-    reviewer = BlueprintReviewerAgent(gateway)
+    reviewer = BlueprintReviewerAgent(_rgw("blueprint_review"))
 
     for attempt in range(max_revisions + 1):
         bb = Blackboard(
@@ -181,7 +182,7 @@ async def knowledge_slot_gate(gateway, blueprint, templates, user_requirements):
         },
     )
 
-    agent = KnowledgeGateAgent(gateway)
+    agent = KnowledgeGateAgent(_rgw("gate"))
     record = await agent.execute(bb)
 
     if record.error:
@@ -225,7 +226,7 @@ def _is_comprehensive_slot(sb: dict) -> bool:
     return False
 
 
-async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False) -> list:
+async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1) -> list:
     """Step 3: Generate questions per slot via UnifiedQuestionPipeline."""
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行)")
@@ -235,14 +236,15 @@ async def generate_questions(gateway, slot_blueprints, experience_cards, enable_
         slot_id = sb.get("slot_id", "Q12")
         exp_card = experience_cards.get(slot_id, "")
         return await _generate_unified(gateway, sb, slot_id, exp_card,
-                                       enable_stem_gate=enable_stem_gate)
+                                       enable_stem_gate=enable_stem_gate,
+                                       max_adversarial_rounds=max_adversarial_rounds)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
     return list(questions)
 
 
-async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False):
+async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1):
     """Generate a question using the unified pipeline (both SC and Comp).
 
     UnifiedQuestionPipeline:
@@ -256,8 +258,9 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
 
     try:
         pipeline = UnifiedQuestionPipeline(
-            max_revision_rounds=1,
+            max_revision_rounds=max_adversarial_rounds,
             enable_stem_gate=enable_stem_gate,
+            use_runtime_sc_design=False,
         )
         result = await pipeline.run(sb, exp_card, gateway)
         elapsed = time.monotonic() - t0
@@ -308,14 +311,15 @@ async def review_and_fix(
     templates,
     experience_cards,
     max_rounds=2,
+    max_adversarial_rounds=1,
 ) -> tuple:
     """Step 4-5: PaperReviewer → categorize issues → fix/regenerate loop."""
     print("\n" + "=" * 60)
     print("Step 4: PaperReviewer — 整卷审核")
     print("=" * 60)
 
-    reviewer = PaperReviewerAgent(gateway)
-    fixer = QuestionFixerAgent(gateway)
+    reviewer = PaperReviewerAgent(_rgw("paper_review"))
+    fixer = QuestionFixerAgent(_rgw("fixer"))
 
     current_questions = list(questions)
     revision_rounds = []
@@ -409,7 +413,7 @@ async def review_and_fix(
 
         # Execute fixes in parallel
         async def _do_regen(slot_id: str, q_idx: int, instruction: str):
-            """Regenerate a question, routing by pipeline type."""
+            """Regenerate a question, passing previous question + fix instruction for targeted adjustment."""
             sb = None
             for s in blueprint.get("slots", []):
                 if s.get("slot_id") == slot_id:
@@ -420,11 +424,15 @@ async def review_and_fix(
 
             orig_q = current_questions[q_idx]
 
-            # Always use UnifiedQuestionPipeline for regeneration (handles both SC and Comp)
-            print(f"    [{slot_id}] Regenerating via UnifiedQuestionPipeline...")
+            print(f"    [{slot_id}] Regenerating (with feedback) via UnifiedQuestionPipeline...")
             try:
-                pipeline = UnifiedQuestionPipeline(max_revision_rounds=1)
-                result = await pipeline.run(sb, experience_cards.get(slot_id, ""), gateway)
+                pipeline = UnifiedQuestionPipeline(max_revision_rounds=max_adversarial_rounds)
+                result = await pipeline.run(
+                    sb, experience_cards.get(slot_id, ""), gateway,
+                    previous_question=orig_q,
+                    fix_instruction=instruction,
+                    is_regen=True,
+                )
                 regen = dict(result.final_question or {})
                 regen["slot_id"] = slot_id
                 regen["pipeline_type"] = result.pipeline_type
@@ -439,7 +447,71 @@ async def review_and_fix(
             except Exception as e:
                 print(f"    [{slot_id}] Unified regen failed ({e}), keeping original")
                 return q_idx, current_questions[q_idx]
-            return q_idx, regen
+
+        async def _do_resolve(slot_id: str, q_idx: int, instruction: str):
+            """Re-solve only — keep stem/sub-questions, re-run solver + formatter."""
+            from core_new.agents.file_code_solver import RuntimeFileCodeSolver
+            from core_new.agents.hybrid_subjective_team import HybridSolutionFormatter
+
+            orig_q = current_questions[q_idx]
+            stem = orig_q.get("stem", "")
+            sub_questions = orig_q.get("sub_questions", [])
+
+            if not stem:
+                print(f"    [{slot_id}] No stem found, falling back to regen")
+                return await _do_regen(slot_id, q_idx, instruction)
+
+            print(f"    [{slot_id}] Re-solving (keeping stem)...")
+            try:
+                # Re-run solver
+                solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=4096, max_iterations=8)
+                if isinstance(sub_questions, str):
+                    try:
+                        sub_questions = json.loads(sub_questions)
+                    except json.JSONDecodeError:
+                        sub_questions = [sub_questions]
+
+                code_solution = await solver.solve(
+                    question_draft=stem,
+                    sub_questions=sub_questions if sub_questions else None,
+                    question_type="comprehensive",
+                    slot_id=slot_id,
+                )
+                solver_dict = code_solution.to_dict() if code_solution else {}
+
+                # Re-format solution
+                bb = Blackboard(
+                    task_id=f"resolve_{slot_id}",
+                    task_type="unified_comp",
+                    initial_state={
+                        "question_design": {"stem": stem, "sub_questions": sub_questions, "slot_id": slot_id},
+                        "solver_result": solver_dict,
+                    },
+                )
+                formatter = HybridSolutionFormatter(_rgw("formatter"))
+                record = await formatter.execute(bb)
+                if record.error:
+                    print(f"    [{slot_id}] Re-solve format failed ({record.error}), keeping original")
+                    return q_idx, orig_q
+
+                formatted = bb.get("formatted_solution", {})
+                answers = formatted.get("answers", {})
+
+                # Update question with new answers
+                resolved = dict(orig_q)
+                resolved["correct_answer"] = answers
+                resolved["answer"] = answers
+                resolved["solver_result"] = solver_dict
+                resolved["revision_type"] = "re_solve"
+                resolved["resolve_reason"] = instruction
+                resolved["revision_round"] = round_num + 1
+
+                answer_preview = str(answers)[:80]
+                print(f"    [{slot_id}] Re-solve done: answer={answer_preview}")
+                return q_idx, resolved
+            except Exception as e:
+                print(f"    [{slot_id}] Re-solve failed ({e}), falling back to regen")
+                return await _do_regen(slot_id, q_idx, instruction)
 
         async def _do_fix(task):
             ftype, q_idx, slot_id, instruction = task
@@ -447,8 +519,7 @@ async def review_and_fix(
             orig_pipeline_type = orig_q.get("pipeline_type", "")
 
             if ftype == "fix":
-                # For comprehensive questions, answer_fix should upgrade to regen
-                # because QuestionFixerAgent produces single-choice format
+                # For comprehensive questions, answer_error → re-solve (keep stem)
                 sb = None
                 for s in blueprint.get("slots", []):
                     if s.get("slot_id") == slot_id:
@@ -456,8 +527,8 @@ async def review_and_fix(
                         break
 
                 if sb and _is_comprehensive_slot(sb):
-                    print(f"    [{slot_id}] answer_error on comprehensive → upgrading to regen")
-                    return await _do_regen(slot_id, q_idx, instruction)
+                    print(f"    [{slot_id}] answer_error on comprehensive → re-solving")
+                    return await _do_resolve(slot_id, q_idx, instruction)
 
                 fbb = Blackboard(
                     task_id=f"fix_{slot_id}",
@@ -524,6 +595,7 @@ async def run_composition(
     slot_ids: list = None,
     max_bp_revisions: int = 1,
     max_fix_rounds: int = 2,
+    max_adversarial_rounds: int = 1,
     gate_config: dict = None,
 ) -> dict:
     """Run the full composition pipeline."""
@@ -598,11 +670,13 @@ async def run_composition(
     initial_questions = await generate_questions(
         gateway, slot_blueprints, experience_cards,
         enable_stem_gate=enable_stem_gate,
+        max_adversarial_rounds=max_adversarial_rounds,
     )
 
     # Step 4-5: Review + fix loop
     final_questions, final_review, revision_rounds = await review_and_fix(
-        gateway, blueprint, initial_questions, templates, experience_cards, max_rounds=max_fix_rounds
+        gateway, blueprint, initial_questions, templates, experience_cards,
+        max_rounds=max_fix_rounds, max_adversarial_rounds=max_adversarial_rounds,
     )
 
     total_time = time.monotonic() - total_start
@@ -650,6 +724,7 @@ async def main():
     parser.add_argument("--requirements", default="出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点")
     parser.add_argument("--max-bp-revisions", type=int, default=1, help="Max blueprint revision rounds")
     parser.add_argument("--max-fix-rounds", type=int, default=2, help="Max question fix rounds")
+    parser.add_argument("--max-adversarial-rounds", type=int, default=1, help="Max adversarial review rounds per question")
     parser.add_argument("--enable-knowledge-gate", action="store_true", default=False,
                         help="Enable Gate 1: knowledge/slot review before generation")
     parser.add_argument("--enable-stem-gate", action="store_true", default=False,
@@ -690,6 +765,7 @@ async def main():
         slot_ids=args.slots,
         max_bp_revisions=args.max_bp_revisions,
         max_fix_rounds=args.max_fix_rounds,
+        max_adversarial_rounds=args.max_adversarial_rounds,
         gate_config=gate_config,
     )
 

@@ -7,7 +7,7 @@ Design principles:
 1. Reviewer judges whether a question CAN be solved, not whether it IS solved.
 2. Knowledge points: same concept with different wording is fine unless it misleads.
 3. Environment: check closure, not correctness.
-4. Output format: YAML front matter (control fields) + Markdown body (analysis).
+4. Output format: Markdown sections (consistent with all other agents).
 """
 
 # ── Gate 1: Knowledge Gate ──────────────────────────────────────────
@@ -48,22 +48,20 @@ KNOWLEDGE_GATE_PROMPT = """\
 【题目知识点/题干核心术语】
 {knowledge_terms_or_stem}
 
-**输出要求：先输出 YAML 控制字段（用 --- 包裹），再写 Markdown 分析正文。**
+请严格按以下markdown格式输出：
 
----
-verdict: "pass 或 warning 或 blocked"
-severity: "pass 或 info 或 warning 或 blocking"
-issue_types: []
-can_continue: true
-summary: "1-3句话概括审核结论"
-fix_instruction: "无 或 最小修改建议"
-fix_target: "none 或 blueprint 或 stem"
-confidence: "low 或 medium 或 high"
----
+## verdict
+- **verdict**: pass 或 warning 或 blocked
+- **severity**: pass 或 info 或 warning 或 blocking
+- **issue_types**: 问题类型列表（无问题写"无"）
+- **can_continue**: true 或 false
+- **summary**: 1-3句话概括审核结论
+- **fix_instruction**: 无 或 最小修改建议
+- **fix_target**: none 或 blueprint 或 stem
+- **confidence**: low 或 medium 或 high
 
 ## 审核分析
-
-（用自然语言展开你的分析过程。不要输出 JSON。）
+（用自然语言展开你的分析过程。）
 """
 
 # ── Gate 2: Environment Closure Gate ────────────────────────────────
@@ -113,23 +111,21 @@ ENVIRONMENT_CLOSURE_GATE_PROMPT = """\
 【问题要求】
 {question_prompt}
 
-**输出要求：先输出 YAML 控制字段（用 --- 包裹），再写 Markdown 分析正文。**
+请严格按以下markdown格式输出：
 
----
-verdict: "pass 或 warning 或 blocked"
-severity: "pass 或 info 或 warning 或 blocking"
-issue_types: []
-can_continue: true
-can_send_to_solver: true
-summary: "1-3句话概括审核结论"
-fix_instruction: "无 或 最小修改建议"
-fix_target: "none 或 stem"
-confidence: "low 或 medium 或 high"
----
+## verdict
+- **verdict**: pass 或 warning 或 blocked
+- **severity**: pass 或 info 或 warning 或 blocking
+- **issue_types**: 问题类型列表（无问题写"无"）
+- **can_continue**: true 或 false
+- **can_send_to_solver**: true 或 false
+- **summary**: 1-3句话概括审核结论
+- **fix_instruction**: 无 或 最小修改建议
+- **fix_target**: none 或 stem
+- **confidence**: low 或 medium 或 high
 
 ## 审核分析
-
-（用自然语言展开你的分析过程。不要输出 JSON。）
+（用自然语言展开你的分析过程。）
 """
 
 # ── Gate 3 restriction for existing reviewers ────────────────────────

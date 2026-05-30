@@ -23,8 +23,9 @@ from typing import Any
 
 from core_new.llm_gateway import LLMGateway
 from core_new.prompts.formatter_prompts import (
-    POLISH_EXPLANATION_PROMPT,
-    SELF_DISCUSSION_PATTERNS,
+    POLISH_SC_PROMPT,
+    POLISH_COMP_PROMPT,
+    FORMAT_ISSUE_PATTERNS,
 )
 
 logger = logging.getLogger(__name__)
@@ -275,49 +276,43 @@ class PaperFormatterAgent:
     # ── Step 2: LLM content polishing ───────────────────────────
 
     async def _polish_content(self, md: str, questions: list[dict]) -> str:
-        """Use LLM to clean up problematic explanation sections."""
+        """Use LLM to fix layout/formatting issues in explanation sections."""
         if not self.gateway:
             return md
+
+        sc_ids = {q.get("slot_id", "") for q in questions if int(re.sub(r"[^\d]", "", q.get("slot_id", "99")) or "99") < 43}
+        comp_ids = {q.get("slot_id", "") for q in questions if int(re.sub(r"[^\d]", "", q.get("slot_id", "99")) or "99") >= 43}
 
         sections = md.split("---")
         polished = []
 
         for section in sections:
-            needs_polish, issues = self._detect_issues(section)
+            needs_polish = self._detect_format_issues(section)
+            if not needs_polish:
+                polished.append(section)
+                continue
 
-            if needs_polish and issues:
-                try:
-                    polished_section = await self._llm_polish(section, issues)
-                    polished.append(polished_section)
-                    logger.info("Polished section with issues: %s", issues)
-                except Exception as exc:
-                    logger.warning("Polish failed, keeping original: %s", exc)
-                    polished.append(section)
-            else:
+            # Determine type by checking if any comp slot_id appears in section
+            is_comp = any(sid in section for sid in comp_ids)
+            try:
+                polished_section = await self._llm_polish(section, is_comp)
+                polished.append(polished_section)
+                logger.info("Polished section (type=%s)", "comp" if is_comp else "sc")
+            except Exception as exc:
+                logger.warning("Polish failed, keeping original: %s", exc)
                 polished.append(section)
 
         return "---".join(polished)
 
-    def _detect_issues(self, section: str) -> tuple[bool, str]:
-        issues = []
+    def _detect_format_issues(self, section: str) -> bool:
+        for pattern in FORMAT_ISSUE_PATTERNS:
+            if re.search(pattern, section):
+                return True
+        return False
 
-        for pattern in SELF_DISCUSSION_PATTERNS:
-            if pattern in section:
-                issues.append(f"包含自我讨论：'{pattern}'")
-
-        if re.search(r"难度：\?/5|难度：/5", section):
-            issues.append("缺少难度评级")
-
-        if re.search(r"考察目标：\s*$|考点：\s*$", section, re.MULTILINE):
-            issues.append("缺少考点描述")
-
-        return bool(issues), "; ".join(issues)
-
-    async def _llm_polish(self, section: str, issues: str) -> str:
-        prompt = POLISH_EXPLANATION_PROMPT.format(
-            issues=issues,
-            raw_text=section.strip(),
-        )
+    async def _llm_polish(self, section: str, is_comp: bool) -> str:
+        prompt_template = POLISH_COMP_PROMPT if is_comp else POLISH_SC_PROMPT
+        prompt = prompt_template.format(raw_text=section.strip())
 
         result = await self.gateway.chat(
             messages=[{"role": "user", "content": prompt}],
