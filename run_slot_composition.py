@@ -226,7 +226,7 @@ def _is_comprehensive_slot(sb: dict) -> bool:
     return False
 
 
-async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1) -> list:
+async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None) -> list:
     """Step 3: Generate questions per slot via UnifiedQuestionPipeline."""
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行)")
@@ -237,14 +237,15 @@ async def generate_questions(gateway, slot_blueprints, experience_cards, enable_
         exp_card = experience_cards.get(slot_id, "")
         return await _generate_unified(gateway, sb, slot_id, exp_card,
                                        enable_stem_gate=enable_stem_gate,
-                                       max_adversarial_rounds=max_adversarial_rounds)
+                                       max_adversarial_rounds=max_adversarial_rounds,
+                                       debug_dir=debug_dir)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
     return list(questions)
 
 
-async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1):
+async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None):
     """Generate a question using the unified pipeline (both SC and Comp).
 
     UnifiedQuestionPipeline:
@@ -261,6 +262,7 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
             max_revision_rounds=max_adversarial_rounds,
             enable_stem_gate=enable_stem_gate,
             use_runtime_sc_design=False,
+            debug_dir=debug_dir,
         )
         result = await pipeline.run(sb, exp_card, gateway)
         elapsed = time.monotonic() - t0
@@ -312,6 +314,7 @@ async def review_and_fix(
     experience_cards,
     max_rounds=2,
     max_adversarial_rounds=1,
+    debug_dir=None,
 ) -> tuple:
     """Step 4-5: PaperReviewer → categorize issues → fix/regenerate loop."""
     print("\n" + "=" * 60)
@@ -426,7 +429,7 @@ async def review_and_fix(
 
             print(f"    [{slot_id}] Regenerating (with feedback) via UnifiedQuestionPipeline...")
             try:
-                pipeline = UnifiedQuestionPipeline(max_revision_rounds=max_adversarial_rounds)
+                pipeline = UnifiedQuestionPipeline(max_revision_rounds=max_adversarial_rounds, debug_dir=debug_dir)
                 result = await pipeline.run(
                     sb, experience_cards.get(slot_id, ""), gateway,
                     previous_question=orig_q,
@@ -710,12 +713,14 @@ async def run_composition(
         gateway, slot_blueprints, experience_cards,
         enable_stem_gate=enable_stem_gate,
         max_adversarial_rounds=max_adversarial_rounds,
+        debug_dir=debug_dir,
     )
 
     # Step 4-5: Review + fix loop
     final_questions, final_review, revision_rounds = await review_and_fix(
         gateway, blueprint, initial_questions, templates, experience_cards,
         max_rounds=max_fix_rounds, max_adversarial_rounds=max_adversarial_rounds,
+        debug_dir=debug_dir,
     )
 
     total_time = time.monotonic() - total_start
@@ -768,7 +773,19 @@ async def main():
                         help="Enable Gate 1: knowledge/slot review before generation")
     parser.add_argument("--enable-stem-gate", action="store_true", default=False,
                         help="Enable Gate 2: stem review before options/solver")
+    parser.add_argument("--debug", action="store_true", default=False,
+                        help="Dump all agent I/O to debug/ directory for analysis")
     args = parser.parse_args()
+
+    # Debug directory setup
+    debug_dir = None
+    if args.debug:
+        from datetime import datetime
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        slots_tag = "_".join(args.slots) if args.slots else "all"
+        debug_dir = os.path.join("debug", f"{slots_tag}_{ts}")
+        os.makedirs(debug_dir, exist_ok=True)
+        print(f"[Debug] Agent I/O will be saved to: {debug_dir}")
 
     tpl_path = "data/slot_templates.json"
     if not os.path.exists(tpl_path):

@@ -280,6 +280,7 @@ class UnifiedQuestionPipeline:
         enable_architecture: bool = True,
         enable_post_review: bool = True,
         enable_summary: bool = True,
+        debug_dir: Optional[str] = None,
     ):
         self.max_revision_rounds = max_revision_rounds
         self.use_runtime_sc_design = use_runtime_sc_design
@@ -289,6 +290,11 @@ class UnifiedQuestionPipeline:
         self.enable_summary = enable_summary
         self.enable_stem_gate = enable_stem_gate
         self.use_runtime_solver = use_runtime_solver
+        self.debugger = None
+        if debug_dir:
+            from core_new.debug_pipeline import PipelineDebugger
+            self.debugger = PipelineDebugger(debug_dir)
+            logger.info("[Debug] Pipeline debug output: %s", debug_dir)
         self.fix_router = FixRouter(max_revision_rounds=max_revision_rounds)
         self.fallback_executor = FallbackExecutor()
         self.fallback_executor.register("human_review", self._fallback_human_review)
@@ -460,11 +466,16 @@ class UnifiedQuestionPipeline:
         # Step 0: Architecture — design question structure from slot philosophy
         question_design = None
         if self.enable_architecture:
+            t0 = time.monotonic()
             question_design = await self._run_architecture(
                 slot_blueprint, experience_card, gateway,
                 previous_question=previous_question,
                 fix_instruction=fix_instruction,
             )
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "architecture", 0, question_design,
+                                        timing_s=time.monotonic() - t0,
+                                        input_data={"blueprint": slot_blueprint, "experience_card": experience_card})
 
         for rnd in range(self.max_revision_rounds + 1):
             if rnd > 0:
@@ -492,6 +503,8 @@ class UnifiedQuestionPipeline:
                     logger.error("[%s] Design produced empty result", slot_id)
                     break
                 if design.get("status") in {"needs_human_review", "needs_human_check"}:
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "design", rnd, design)
                     total_time = time.monotonic() - total_start
                     return UnifiedPipelineResult(
                         final_question=design,
@@ -504,6 +517,8 @@ class UnifiedQuestionPipeline:
                         generation_time_s=round(total_time, 1),
                         pipeline_type="unified_sc" if is_sc else "unified_comp",
                     )
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "design", rnd, design)
 
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
@@ -513,6 +528,8 @@ class UnifiedQuestionPipeline:
                     question_design=question_design,
                     round_history=round_history,
                 )
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "options", rnd, options)
 
             # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
             need_gate = self.enable_stem_gate and (rnd == 0 or fix_target in ("question", "stem"))
@@ -554,6 +571,8 @@ class UnifiedQuestionPipeline:
                     logger.info("[%s] StemBlueprintGate: minor polish applied", slot_id)
 
                 logger.info("[%s] StemBlueprintGate PASSED (status=%s severity=%s)", slot_id, gate_status, gate_severity)
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "gate", rnd, gate_result)
 
             # ── Step 4: Solve (unified computation) ──
             need_solve = rnd == 0 or fix_target in ("question", "options", "answer", "solver")
@@ -562,6 +581,8 @@ class UnifiedQuestionPipeline:
                     design, options if is_sc else None, is_sc, slot_id, gateway,
                 )
                 solver_dict = code_solution.to_dict() if code_solution else {}
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "solve", rnd, solver_dict)
 
             # ── Step 5: SolverVerify (replaces review) ──
             verify_result = await self._run_solver_verify(
@@ -576,6 +597,8 @@ class UnifiedQuestionPipeline:
 
             logger.info("[%s] SolverVerify: status=%s fix_target=%s trusted=%s",
                         slot_id, verify_status, verify_fix_target, verify_result.get("trusted", "?"))
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "verify", rnd, verify_result)
 
             # Save round snapshot
             snapshot = self._build_round_snapshot(
@@ -609,12 +632,16 @@ class UnifiedQuestionPipeline:
                 )
             else:
                 solution = await self._format_comp(design, solver_dict, gateway)
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "format", rnd, solution)
 
             # ── Step 7: Rubric (Comp only) ──
             if not is_sc:
                 rubric = await self._write_rubric(
                     design, solution, slot_blueprint, gateway,
                 )
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "rubric", rnd, rubric)
 
             # All checks passed, break out of revision loop
             break
@@ -626,6 +653,8 @@ class UnifiedQuestionPipeline:
                 design, options, solution, solver_dict, review, {},
                 is_sc, slot_id, gateway,
             )
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "summary", 0, summary)
 
         # ── Assemble final result ──
         total_time = time.monotonic() - total_start
@@ -636,6 +665,10 @@ class UnifiedQuestionPipeline:
 
         if summary:
             final_question["summary"] = summary
+
+        if self.debugger:
+            self.debugger.dump_full_run(slot_id, final_question, solver_dict,
+                                        review, total_time, rnd + 1)
 
         logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s)",
                      slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp")
