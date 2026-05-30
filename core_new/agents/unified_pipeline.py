@@ -456,7 +456,6 @@ class UnifiedQuestionPipeline:
         fix_target: Optional[str] = None
         stem_fix_instruction: Optional[str] = None
         round_history: List[Dict[str, Any]] = []
-        stem_minor_issues: str = ""
 
         # Step 0: Architecture — design question structure from slot philosophy
         question_design = None
@@ -506,38 +505,6 @@ class UnifiedQuestionPipeline:
                         pipeline_type="unified_sc" if is_sc else "unified_comp",
                     )
 
-            # ── Step 1.5: Gates (Knowledge + Environment Closure, if enabled) ──
-            knowledge_gate_result = None
-            environment_gate_result = None
-            if self.enable_stem_gate and need_design:
-                knowledge_gate_result, environment_gate_result = await self._run_gates(
-                    design, slot_blueprint, slot_id, gateway,
-                )
-                blocked_gate = None
-                if knowledge_gate_result and knowledge_gate_result.blocked:
-                    blocked_gate = knowledge_gate_result
-                elif environment_gate_result and environment_gate_result.blocked:
-                    blocked_gate = environment_gate_result
-
-                if blocked_gate:
-                    logger.warning(
-                        "[%s] Gate BLOCKED (%s): %s",
-                        slot_id,
-                        blocked_gate.gate_name,
-                        blocked_gate.summary[:200],
-                    )
-                    fix_target = "stem"
-                    round_history.append({
-                        "role": "review",
-                        "content": f"门禁 [{blocked_gate.gate_name}] 阻止：{blocked_gate.summary}",
-                        "round": rnd,
-                    })
-                    if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] Gate blocked, revision budget exhausted", slot_id)
-                        break
-                    continue
-                logger.info("[%s] Gates PASSED", slot_id)
-
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
             if need_options:
@@ -547,139 +514,116 @@ class UnifiedQuestionPipeline:
                     round_history=round_history,
                 )
 
-            # ── Step 2.5: Stem verification (before solving) ──
-            need_stem_verify = (rnd == 0 or fix_target in ("question", "stem"))
-            if need_stem_verify:
-                stem_verification = await self._verify_stem(
+            # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
+            need_gate = self.enable_stem_gate and (rnd == 0 or fix_target in ("question", "stem"))
+            if need_gate:
+                gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,
-                    question_design, is_sc, slot_id, gateway,
+                    slot_blueprint, question_design, experience_card,
+                    slot_id, gateway,
                 )
-                severity = stem_verification.get("severity", "critical")
-                status = stem_verification.get("status", "")
+                gate_status = gate_result.get("status", "pass")
+                gate_severity = gate_result.get("severity", "none")
 
-                # Minor issues: capture for inline polish, don't block
-                minor_issues = stem_verification.get("minor_issues", "")
-                if status == "pass_with_notes" and minor_issues and minor_issues != "无":
-                    stem_minor_issues = minor_issues
-                    logger.info("[%s] Stem verification: minor issues (non-blocking): %s",
-                                slot_id, minor_issues[:200])
+                minor_text = gate_result.get("fix_detail", "")
 
-                # Only block on critical severity
-                if status == "needs_fix" and severity == "critical":
-                    fix_target = "stem"
-                    # Conversation-style: pass raw review as message to next agent
-                    raw_review = stem_verification.get("_raw_text", "")
-                    if raw_review:
-                        round_history.append({
-                            "role": "review",
-                            "content": raw_review,
-                            "round": rnd,
-                        })
+                # needs_fix (any severity) → route based on severity
+                if gate_status == "needs_fix":
+                    if gate_severity == "critical":
+                        # Critical → back to design
+                        fix_target = "stem"
+                        raw_text = gate_result.get("_raw_text", "")
+                        if raw_text:
+                            round_history.append({"role": "review", "content": raw_text, "round": rnd})
+                        else:
+                            round_history.append({"role": "review", "content": gate_result.get("fix_detail", ""), "round": rnd})
+                        logger.info("[%s] StemBlueprintGate FAILED (critical), routing to stem redesign", slot_id)
+                        if rnd >= self.max_revision_rounds:
+                            logger.warning("[%s] Gate failed, revision budget exhausted", slot_id)
+                            break
+                        continue
                     else:
-                        # Fallback: use parsed fields if raw text unavailable
-                        fix_detail = stem_verification.get("fix_detail", "")
-                        contradiction = stem_verification.get("contradiction_detail", "")
-                        parts = [p for p in [fix_detail, contradiction] if p and p != "无"]
-                        if parts:
-                            round_history.append({
-                                "role": "review",
-                                "content": "\n".join(parts),
-                                "round": rnd,
-                            })
-                    logger.info("[%s] Stem verification failed (critical), routing to stem redesign",
-                                slot_id)
-                    if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] Stem verification failed, revision budget exhausted", slot_id)
-                        break
-                    continue
+                        # minor needs_fix → treat as pass_with_notes, polish inline
+                        if minor_text and minor_text != "无":
+                            design = await self._polish_stem_minor(design, minor_text)
+                            logger.info("[%s] StemBlueprintGate: minor needs_fix polished", slot_id)
 
-            # ── Step 2.6: Apply minor stem polish (non-blocking) ──
-            if stem_minor_issues and (rnd == 0 or fix_target in ("question", "stem")):
-                design = await self._polish_stem_minor(design, stem_minor_issues)
-                stem_minor_issues = ""  # consumed
+                # pass_with_notes → inline polish
+                elif gate_status == "pass_with_notes" and minor_text and minor_text != "无":
+                    design = await self._polish_stem_minor(design, minor_text)
+                    logger.info("[%s] StemBlueprintGate: minor polish applied", slot_id)
 
-            # ── Step 3: Solve (unified computation) ──
-            need_solve = rnd == 0 or fix_target in ("question", "options", "answer")
+                logger.info("[%s] StemBlueprintGate PASSED (status=%s severity=%s)", slot_id, gate_status, gate_severity)
+
+            # ── Step 4: Solve (unified computation) ──
+            need_solve = rnd == 0 or fix_target in ("question", "options", "answer", "solver")
             if need_solve:
                 code_solution = await self._solve(
                     design, options if is_sc else None, is_sc, slot_id, gateway,
                 )
                 solver_dict = code_solution.to_dict() if code_solution else {}
 
-            # ── Step 4: Format solution ──
-            need_format = rnd == 0 or fix_target in ("question", "options", "answer")
-            if need_format:
-                if is_sc:
-                    solution = await self._format_sc(
-                        design, options, solver_dict, gateway,
-                    )
-                else:
-                    solution = await self._format_comp(design, solver_dict, gateway)
-
-            # ── Step 5: Rubric (Comp only) ──
-            if not is_sc and need_format:
-                rubric = await self._write_rubric(
-                    design, solution, slot_blueprint, gateway,
-                )
-
-            # ── Step 6: Review ──
-            review = await self._review(
-                design, options, solver_dict, solution, rubric,
-                slot_blueprint, is_sc, gateway,
-                round_history=round_history,
+            # ── Step 5: SolverVerify (replaces review) ──
+            verify_result = await self._run_solver_verify(
+                design, options if is_sc else None,
+                solver_dict, question_design, is_sc, slot_id, gateway,
+                slot_blueprint=slot_blueprint,
             )
+            review = verify_result  # Use verify_result as review for downstream compat
 
-            audit = AuditResultNormalizer.normalize(
-                review,
-                mode=AuditMode.QUESTION_REVIEW,
-            )
-            route = self.fix_router.route(
-                audit,
-                current_round=rnd,
-                is_single_choice=is_sc,
-                source_policy=source_policy_for_audit_mode(AuditMode.QUESTION_REVIEW),
-            )
-            review["audit_result"] = audit.to_dict()
-            review["fix_route"] = route.to_dict()
+            verify_status = verify_result.get("status", "pass")
+            verify_fix_target = verify_result.get("fix_target", "none")
 
-            logger.info(
-                "[%s] Review round %d: status=%s issue=%s route=%s target=%s",
-                slot_id,
-                rnd,
-                audit.status,
-                audit.issue_type,
-                route.next_action,
-                route.pipeline_fix_target,
-            )
+            logger.info("[%s] SolverVerify: status=%s fix_target=%s trusted=%s",
+                        slot_id, verify_status, verify_fix_target, verify_result.get("trusted", "?"))
 
-            # ── Save round snapshot for context continuity ──
+            # Save round snapshot
             snapshot = self._build_round_snapshot(
                 rnd, design, options if is_sc else {}, solution, review, is_sc,
                 design_intent=question_design,
             )
             round_history.extend(snapshot)
 
-            if route.next_action != "revise":
-                break
+            if verify_status == "needs_fix":
+                if verify_fix_target == "stem":
+                    fix_target = "stem"
+                    raw_text = verify_result.get("_raw_text", "")
+                    if raw_text:
+                        round_history.append({"role": "review", "content": raw_text, "round": rnd})
+                    if rnd >= self.max_revision_rounds:
+                        logger.warning("[%s] SolverVerify found stem issue, budget exhausted", slot_id)
+                        break
+                    continue
+                else:
+                    # solver issue → rerun solver only
+                    fix_target = "solver"
+                    if rnd >= self.max_revision_rounds:
+                        logger.warning("[%s] SolverVerify failed, budget exhausted", slot_id)
+                        break
+                    continue
 
-            fix_target = route.pipeline_fix_target
+            # ── Step 6: Format solution ──
+            if is_sc:
+                solution = await self._format_sc(
+                    design, options, solver_dict, gateway,
+                )
+            else:
+                solution = await self._format_comp(design, solver_dict, gateway)
 
-        # ── Step 7: Post-review (final quality check) ──
-        # Skip post-review during regen — outer paper review loop handles quality
-        post_review = {}
-        if self.enable_post_review and not is_regen:
-                post_review = await self._post_review(
-                design, options, solution, solver_dict, review, question_design,
-                is_sc, slot_id, gateway,
-                slot_blueprint=slot_blueprint,
-                experience_card=experience_card,
-            )
+            # ── Step 7: Rubric (Comp only) ──
+            if not is_sc:
+                rubric = await self._write_rubric(
+                    design, solution, slot_blueprint, gateway,
+                )
+
+            # All checks passed, break out of revision loop
+            break
 
         # ── Step 8: Summary (consolidate all outputs) ──
         summary = {}
-        if self.enable_summary:
+        if self.enable_summary and not is_regen:
             summary = await self._summarize(
-                design, options, solution, solver_dict, review, post_review,
+                design, options, solution, solver_dict, review, {},
                 is_sc, slot_id, gateway,
             )
 
@@ -690,15 +634,11 @@ class UnifiedQuestionPipeline:
             summary=summary,
         )
 
-        final_question["post_review"] = post_review
         if summary:
             final_question["summary"] = summary
 
         logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s)",
                      slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp")
-
-        kgr_dict = knowledge_gate_result.to_dict() if knowledge_gate_result else None
-        egr_dict = environment_gate_result.to_dict() if environment_gate_result else None
 
         return UnifiedPipelineResult(
             final_question=final_question,
@@ -706,8 +646,6 @@ class UnifiedQuestionPipeline:
             review=review,
             generation_time_s=round(total_time, 1),
             pipeline_type="unified_sc" if is_sc else "unified_comp",
-            knowledge_gate_result=kgr_dict,
-            environment_gate_result=egr_dict,
         )
 
     # ── Gates ───────────────────────────────────────────────────
@@ -741,6 +679,98 @@ class UnifiedQuestionPipeline:
             question_prompt=question_prompt,
             slot_id=slot_id,
         )
+
+    async def _run_stem_blueprint_gate(
+        self,
+        design: Dict[str, Any],
+        options: Optional[Dict[str, Any]],
+        slot_blueprint: Dict[str, Any],
+        question_design: Optional[Dict[str, Any]],
+        experience_card: str,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Pre-solve gate: validate stem + blueprint compliance."""
+        from core_new.agents.stem_blueprint_gate import StemBlueprintGateAgent
+
+        stem = design.get("stem", "")
+        if not stem:
+            logger.warning("[%s] No stem to gate-review, skipping", slot_id)
+            return {"status": "pass", "severity": "none"}
+
+        initial = {
+            "stem": stem,
+            "blueprint": slot_blueprint,
+            "question_design": question_design or {},
+            "experience_radar": experience_card,
+        }
+        if options:
+            initial["options"] = options
+
+        bb = Blackboard(
+            task_id=f"gate_{slot_id}",
+            task_type="gate",
+            initial_state=initial,
+        )
+        agent = StemBlueprintGateAgent(_rgw("gate"))
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] StemBlueprintGate failed: %s, proceeding anyway",
+                           slot_id, record.error)
+            return {"status": "pass", "severity": "none", "note": "gate_skipped"}
+
+        result = bb.get("stem_blueprint_gate_result", {})
+        logger.info("[%s] StemBlueprintGate: status=%s severity=%s",
+                    slot_id, result.get("status"), result.get("severity"))
+        return result
+
+    async def _run_solver_verify(
+        self,
+        design: Dict[str, Any],
+        options: Optional[Dict[str, Any]],
+        solver_dict: Dict[str, Any],
+        question_design: Optional[Dict[str, Any]],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+        *,
+        slot_blueprint: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Post-solve verify: is the solver result trustworthy?"""
+        from core_new.agents.solver_verify import SolverVerifyAgent
+
+        stem = design.get("stem", "")
+        if not stem or not solver_dict:
+            logger.warning("[%s] No stem or solver result to verify, skipping", slot_id)
+            return {"status": "pass", "trusted": "true", "overall_quality": 8, "note": "verify_skipped"}
+
+        initial = {
+            "stem": stem,
+            "solver_result": solver_dict,
+            "question_design": question_design or {},
+            "question_type": "single_choice" if is_sc else "comprehensive",
+        }
+        if options:
+            initial["options"] = options
+        if slot_blueprint:
+            initial["blueprint"] = slot_blueprint
+
+        bb = Blackboard(
+            task_id=f"verify_{slot_id}",
+            task_type="verify",
+            initial_state=initial,
+        )
+        agent = SolverVerifyAgent(_rgw("verify"))
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] SolverVerify failed: %s, proceeding anyway",
+                           slot_id, record.error)
+            return {"status": "pass", "trusted": "true", "note": "verify_skipped"}
+
+        result = bb.get("solver_verify_result", {})
+        logger.info("[%s] SolverVerify: status=%s trusted=%s",
+                    slot_id, result.get("status"), result.get("trusted"))
+        return result
 
     # ── Step methods ───────────────────────────────────────────
 

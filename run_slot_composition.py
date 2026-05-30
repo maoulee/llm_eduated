@@ -449,64 +449,103 @@ async def review_and_fix(
                 return q_idx, current_questions[q_idx]
 
         async def _do_resolve(slot_id: str, q_idx: int, instruction: str):
-            """Re-solve only — keep stem/sub-questions, re-run solver + formatter."""
+            """Re-solve only — keep stem, re-run solver + formatter. Works for both SC and Comp."""
             from core_new.agents.file_code_solver import RuntimeFileCodeSolver
-            from core_new.agents.hybrid_subjective_team import HybridSolutionFormatter
 
             orig_q = current_questions[q_idx]
             stem = orig_q.get("stem", "")
-            sub_questions = orig_q.get("sub_questions", [])
+            is_sc = orig_q.get("pipeline_type") == "unified_sc"
 
             if not stem:
                 print(f"    [{slot_id}] No stem found, falling back to regen")
                 return await _do_regen(slot_id, q_idx, instruction)
 
-            print(f"    [{slot_id}] Re-solving (keeping stem)...")
+            print(f"    [{slot_id}] Re-solving (keeping stem, type={'SC' if is_sc else 'Comp'})...")
             try:
-                # Re-run solver
                 solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=4096, max_iterations=8)
-                if isinstance(sub_questions, str):
-                    try:
-                        sub_questions = json.loads(sub_questions)
-                    except json.JSONDecodeError:
-                        sub_questions = [sub_questions]
 
-                code_solution = await solver.solve(
-                    question_draft=stem,
-                    sub_questions=sub_questions if sub_questions else None,
-                    question_type="comprehensive",
-                    slot_id=slot_id,
-                )
-                solver_dict = code_solution.to_dict() if code_solution else {}
+                if is_sc:
+                    options_dict = {
+                        "A": orig_q.get("option_A", ""),
+                        "B": orig_q.get("option_B", ""),
+                        "C": orig_q.get("option_C", ""),
+                        "D": orig_q.get("option_D", ""),
+                    }
+                    code_solution = await solver.solve(
+                        question_draft=stem,
+                        options=options_dict,
+                        question_type="single_choice",
+                        slot_id=slot_id,
+                    )
+                    solver_dict = code_solution.to_dict() if code_solution else {}
 
-                # Re-format solution
-                bb = Blackboard(
-                    task_id=f"resolve_{slot_id}",
-                    task_type="unified_comp",
-                    initial_state={
-                        "question_design": {"stem": stem, "sub_questions": sub_questions, "slot_id": slot_id},
-                        "solver_result": solver_dict,
-                    },
-                )
-                formatter = HybridSolutionFormatter(_rgw("formatter"))
+                    bb = Blackboard(
+                        task_id=f"resolve_sc_{slot_id}",
+                        task_type="unified_sc",
+                        initial_state={
+                            "sc_draft_result": {"stem": stem, "slot_id": slot_id},
+                            "sc_options_result": {
+                                "option_A": options_dict["A"],
+                                "option_B": options_dict["B"],
+                                "option_C": options_dict["C"],
+                                "option_D": options_dict["D"],
+                                "correct_answer": orig_q.get("correct_answer", ""),
+                            },
+                            "sc_solver_result": solver_dict,
+                        },
+                    )
+                    from core_new.agents.single_choice_team import SCSolutionFormatterAgent
+                    formatter = SCSolutionFormatterAgent(_rgw("formatter"))
+                else:
+                    sub_questions = orig_q.get("sub_questions", [])
+                    if isinstance(sub_questions, str):
+                        try:
+                            sub_questions = json.loads(sub_questions)
+                        except json.JSONDecodeError:
+                            sub_questions = [sub_questions]
+
+                    code_solution = await solver.solve(
+                        question_draft=stem,
+                        sub_questions=sub_questions if sub_questions else None,
+                        question_type="comprehensive",
+                        slot_id=slot_id,
+                    )
+                    solver_dict = code_solution.to_dict() if code_solution else {}
+
+                    bb = Blackboard(
+                        task_id=f"resolve_comp_{slot_id}",
+                        task_type="unified_comp",
+                        initial_state={
+                            "question_design": {"stem": stem, "sub_questions": sub_questions, "slot_id": slot_id},
+                            "solver_result": solver_dict,
+                        },
+                    )
+                    from core_new.agents.hybrid_subjective_team import HybridSolutionFormatter
+                    formatter = HybridSolutionFormatter(_rgw("formatter"))
+
                 record = await formatter.execute(bb)
                 if record.error:
                     print(f"    [{slot_id}] Re-solve format failed ({record.error}), keeping original")
                     return q_idx, orig_q
 
-                formatted = bb.get("formatted_solution", {})
-                answers = formatted.get("answers", {})
-
-                # Update question with new answers
                 resolved = dict(orig_q)
-                resolved["correct_answer"] = answers
-                resolved["answer"] = answers
                 resolved["solver_result"] = solver_dict
                 resolved["revision_type"] = "re_solve"
                 resolved["resolve_reason"] = instruction
                 resolved["revision_round"] = round_num + 1
 
-                answer_preview = str(answers)[:80]
+                if is_sc:
+                    formatted = bb.get("sc_solution_result", {})
+                    resolved["correct_answer"] = formatted.get("correct_answer", orig_q.get("correct_answer", ""))
+                    resolved["explanation"] = formatted.get("explanation", "")
+                    answer_preview = formatted.get("correct_answer", "?")
+                else:
+                    formatted = bb.get("formatted_solution", {})
+                    answers = formatted.get("answers", {})
+                    resolved["correct_answer"] = answers
+                    resolved["answer"] = answers
+                    answer_preview = str(answers)[:80]
+
                 print(f"    [{slot_id}] Re-solve done: answer={answer_preview}")
                 return q_idx, resolved
             except Exception as e:
@@ -519,15 +558,15 @@ async def review_and_fix(
             orig_pipeline_type = orig_q.get("pipeline_type", "")
 
             if ftype == "fix":
-                # For comprehensive questions, answer_error → re-solve (keep stem)
+                # answer_error → re-solve (keep stem, re-run solver) for both SC and Comp
                 sb = None
                 for s in blueprint.get("slots", []):
                     if s.get("slot_id") == slot_id:
                         sb = s
                         break
 
-                if sb and _is_comprehensive_slot(sb):
-                    print(f"    [{slot_id}] answer_error on comprehensive → re-solving")
+                if sb:
+                    print(f"    [{slot_id}] answer_error → re-solving")
                     return await _do_resolve(slot_id, q_idx, instruction)
 
                 fbb = Blackboard(
