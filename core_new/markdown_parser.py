@@ -385,6 +385,110 @@ def try_parse_json_object(text: str) -> Optional[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# Alias normalization (moved from slot_agents.py)
+# ---------------------------------------------------------------------------
+
+_FIELD_ALIASES = {
+    "hard_viation": "hard_violation",
+    "hard_violation_count": "hard_violation_count",
+    "soft_devation": "soft_deviation",
+    "soft_deviation_count": "soft_deviation_count",
+    "major_devation_count": "major_deviation_count",
+    "minor_devation_count": "minor_deviation_count",
+    "diffculty": "difficulty",
+}
+
+
+def normalize_aliases(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Fix common LLM key spelling drift in *result* (in-place) and return it."""
+    for wrong, correct in _FIELD_ALIASES.items():
+        if wrong in result and correct not in result:
+            result[correct] = result.pop(wrong)
+    return result
+
+
+def parse_md_sections_with_aliases(text: str) -> Dict[str, Any]:
+    """Split markdown by ## headers, parse each section's key-value pairs with alias normalization."""
+    sections = parse_md_sections(text)
+    for name, kv in sections.items():
+        if isinstance(kv, dict):
+            normalize_aliases(kv)
+    return sections
+
+
+# ---------------------------------------------------------------------------
+# FieldExtractor — typed field extraction from parsed MD sections
+# ---------------------------------------------------------------------------
+
+class FieldExtractor:
+    """Extract typed fields from parsed MD section text."""
+
+    @staticmethod
+    def quality(text: str) -> int:
+        """Extract overall_quality score (1-10) from text."""
+        if not text:
+            return 0
+        for pat in (
+            r"overall_quality[*:\s=]*(\d+)",
+            r"(?<!\w)quality[*:\s=]*(\d+)",
+            r"质量[*:\s=]*(\d+)",
+        ):
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                val = int(m.group(1))
+                return max(0, min(10, val))
+        return 0
+
+    @staticmethod
+    def status(text: str) -> str:
+        """Extract pass/needs_fix status from text."""
+        if not text:
+            return "pass"
+        low = text.lower()
+        if "needs_fix" in low or "needs fix" in low or "需要修复" in low:
+            return "needs_fix"
+        if "blocked" in low or "阻塞" in low:
+            return "blocked"
+        if "warning" in low or "警告" in low:
+            return "warning"
+        if "revise" in low:
+            return "revise"
+        return "pass"
+
+    @staticmethod
+    def fix_target(text: str) -> str:
+        """Extract fix_target field."""
+        val = FieldExtractor.field(text, "fix_target")
+        return val.lower().strip() if val else "none"
+
+    @staticmethod
+    def fix_detail(text: str) -> str:
+        """Extract fix_detail field."""
+        return FieldExtractor.field(text, "fix_detail")
+
+    @staticmethod
+    def field(text: str, name: str, default: str = "") -> str:
+        """Extract arbitrary named field from markdown text.
+
+        Handles patterns:
+            **field_name**: value
+            field_name: value
+            - **field_name**: value
+        """
+        if not text:
+            return default
+        for pat in (
+            rf"\*\*{re.escape(name)}\*\*[*:\s]*(.+?)(?:\n|$)",
+            rf"-\s*\*\*{re.escape(name)}\*\*[*:\s]*(.+?)(?:\n|$)",
+            rf"\b{re.escape(name)}\b[*:\s]*(.+?)(?:\n|$)",
+        ):
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                return m.group(1).strip()
+        return default
+
+
+# ---------------------------------------------------------------------------
 # P1 parser
 # ---------------------------------------------------------------------------
 

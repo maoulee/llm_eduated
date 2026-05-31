@@ -18,39 +18,7 @@ from typing import Any, Dict, List, Optional
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import AuditMode, RoleType
 from core_new.blackboard import Blackboard
-from core_new.markdown_parser import parse_md_kv, parse_md_sections
-
-
-# ── Markdown parsing helpers ─────────────────────────────────
-
-
-# Known LLM key spelling drift
-_FIELD_ALIASES = {
-    "hard_viation": "hard_violation",
-    "hard_violation_count": "hard_violation_count",
-    "soft_devation": "soft_deviation",
-    "soft_deviation_count": "soft_deviation_count",
-    "major_devation_count": "major_deviation_count",
-    "minor_devation_count": "minor_deviation_count",
-    "diffculty": "difficulty",
-}
-
-
-def _normalize_aliases(result: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply _FIELD_ALIASES normalization to a parsed dict."""
-    for wrong, correct in _FIELD_ALIASES.items():
-        if wrong in result and correct not in result:
-            result[correct] = result.pop(wrong)
-    return result
-
-
-def _parse_md_sections_with_aliases(text: str) -> Dict[str, Any]:
-    """Split markdown by ## headers, parse each section's key-value pairs with alias normalization."""
-    sections = parse_md_sections(text)
-    for name, kv in sections.items():
-        if isinstance(kv, dict):
-            _normalize_aliases(kv)
-    return sections
+from core_new.markdown_parser import parse_md_sections_with_aliases
 
 
 def _is_slot_id(name: str) -> bool:
@@ -115,7 +83,7 @@ class PaperComposerAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections_with_aliases(raw)
+        sections = parse_md_sections_with_aliases(raw)
 
         # Extract overall section
         overall = sections.get("整体", {})
@@ -189,7 +157,7 @@ class BlueprintReviewerAgent(BaseAgent):
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections_with_aliases(raw)
+        sections = parse_md_sections_with_aliases(raw)
 
         overall = sections.get("总体", {})
         result = dict(overall)
@@ -249,7 +217,7 @@ class QuestionWriterAgent(BaseAgent):
         )
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections_with_aliases(raw)
+        sections = parse_md_sections_with_aliases(raw)
 
         result = {}
 
@@ -307,7 +275,7 @@ class QuestionFixerAgent(BaseAgent):
 
     def parse_output(self, raw: Any) -> Any:
         # Same format as QuestionWriter
-        sections = _parse_md_sections_with_aliases(raw)
+        sections = parse_md_sections_with_aliases(raw)
 
         result = {}
         if "题目" in sections:
@@ -364,7 +332,7 @@ class PaperReviewerAgent(BaseAgent):
         return prompt
 
     def parse_output(self, raw: Any) -> Any:
-        sections = _parse_md_sections_with_aliases(raw)
+        sections = parse_md_sections_with_aliases(raw)
 
         overall = sections.get("总体", {})
         result = dict(overall)

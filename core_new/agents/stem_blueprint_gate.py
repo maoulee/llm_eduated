@@ -13,6 +13,7 @@ from typing import Any, Dict
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import RoleType
 from core_new.blackboard import Blackboard
+from core_new.markdown_parser import parse_md_sections
 
 
 class StemBlueprintGateAgent(BaseAgent):
@@ -108,19 +109,31 @@ class StemBlueprintGateAgent(BaseAgent):
                 "comment": "审核输出为空",
                 "_raw_text": text,
             }
-        sections = _parse_gate_sections(text)
+        sections = parse_md_sections(text)
 
         verdict = sections.get("verdict", {})
+        if not isinstance(verdict, dict):
+            verdict = {}
         checks = sections.get("checks", {})
+        if not isinstance(checks, dict):
+            checks = {}
         fix_instruction = sections.get("fix_instruction", {})
+        if not isinstance(fix_instruction, dict):
+            fix_instruction = {}
 
         status = verdict.get("status", "pass")
         severity = verdict.get("severity", "none")
         fix_target = verdict.get("fix_target", "none")
 
-        # Map severity from text values
         if status == "needs_fix" and severity not in ("critical", "minor"):
             severity = "critical"
+
+        evidence_text = sections.get("evidence", "")
+        if isinstance(evidence_text, dict):
+            evidence_text = evidence_text.get("text", str(evidence_text))
+        code_verification_text = sections.get("code_verification", "")
+        if isinstance(code_verification_text, dict):
+            code_verification_text = code_verification_text.get("text", str(code_verification_text))
 
         result = {
             "status": status,
@@ -128,21 +141,14 @@ class StemBlueprintGateAgent(BaseAgent):
             "next_action": verdict.get("next_action", "continue"),
             "fix_target": fix_target,
             "checks": checks,
-            "evidence": _extract_text(sections.get("evidence", "")),
-            "code_verification": _extract_text(sections.get("code_verification", "")),
+            "evidence": str(evidence_text),
+            "code_verification": str(code_verification_text),
             "fix_detail": fix_instruction.get("fix_detail", ""),
-            "comment": _extract_text(sections.get("evidence", ""))[:300],
+            "comment": str(evidence_text)[:300],
         }
 
-        # Attach raw text for round history
         result["_raw_text"] = text
         return result
-
-
-def _extract_text(val) -> str:
-    if isinstance(val, dict):
-        return val.get("text", "")
-    return str(val) if val else ""
 
 
 def _dump_blueprint_for_gate(blueprint: dict) -> str:
@@ -192,51 +198,3 @@ def _dump_options_md(options) -> str:
                 parts.append(f"- **{label}**: {options[key]}")
         return "\n".join(parts) if parts else "（无选项）"
     return str(options)
-
-
-def _parse_gate_sections(text: str) -> dict[str, dict]:
-    """Parse gate output into sections with key-value pairs."""
-    sections: dict[str, dict] = {}
-    current_section = None
-
-    for line in text.split("\n"):
-        stripped = line.strip()
-
-        # Section header
-        if stripped.startswith("## "):
-            section_name = stripped[3:].strip().lower()
-            # Normalize section names
-            name_map = {
-                "verdict": "verdict",
-                "checks": "checks",
-                "evidence": "evidence",
-                "code_verification": "code_verification",
-                "code verification": "code_verification",
-                "code verification results": "code_verification",
-                "fix_instruction": "fix_instruction",
-                "fix instruction": "fix_instruction",
-            }
-            current_section = name_map.get(section_name, section_name)
-            if current_section not in sections:
-                sections[current_section] = {}
-            continue
-
-        # Key-value line
-        if current_section and stripped.startswith("- **"):
-            match_start = stripped.find("**")
-            match_end = stripped.find("**", match_start + 2)
-            if match_start >= 0 and match_end > match_start:
-                key = stripped[match_start + 2:match_end].strip()
-                value = stripped[match_end + 2:].strip()
-                # Remove leading colon
-                if value.startswith(":"):
-                    value = value[1:].strip()
-                if current_section in ("evidence", "code_verification"):
-                    sections[current_section] = {"text": sections[current_section].get("text", "") + stripped + "\n"}
-                else:
-                    sections[current_section][key] = value
-        elif current_section in ("evidence", "code_verification") and stripped:
-            sections.setdefault(current_section, {})
-            sections[current_section]["text"] = sections[current_section].get("text", "") + stripped + "\n"
-
-    return sections

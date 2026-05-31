@@ -13,6 +13,7 @@ from typing import Any, Dict
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import RoleType
 from core_new.blackboard import Blackboard
+from core_new.markdown_parser import parse_md_sections, FieldExtractor
 
 
 class SolverVerifyAgent(BaseAgent):
@@ -80,30 +81,49 @@ class SolverVerifyAgent(BaseAgent):
                 "_raw_text": text,
                 "overall_quality": 3,
             }
-        sections = _parse_verify_sections(text)
+        sections = parse_md_sections(text)
+
+        # Normalize section names (handle English/Chinese variants)
+        name_map = {
+            "verified result": "verified_result",
+            "fix instruction": "fix_instruction",
+        }
+        for old, new in name_map.items():
+            if old in sections and new not in sections:
+                sections[new] = sections.pop(old)
 
         verdict = sections.get("verdict", {})
         checks = sections.get("checks", {})
+        if not isinstance(checks, dict):
+            checks = {}
         verified = sections.get("verified_result", {})
+        if not isinstance(verified, dict):
+            verified = {}
         fix_instruction = sections.get("fix_instruction", {})
+        if not isinstance(fix_instruction, dict):
+            fix_instruction = {}
 
-        status = verdict.get("status", "pass")
-        fix_target = verdict.get("fix_target", "none")
+        status = verdict.get("status", "pass") if isinstance(verdict, dict) else "pass"
+        fix_target = verdict.get("fix_target", "none") if isinstance(verdict, dict) else "none"
 
         # Default: if needs_fix but no explicit target, assume solver
         if status == "needs_fix" and fix_target == "none":
             fix_target = "solver"
 
+        evidence_text = sections.get("evidence", "")
+        if isinstance(evidence_text, dict):
+            evidence_text = evidence_text.get("text", str(evidence_text))
+
         result = {
             "status": status,
-            "next_action": verdict.get("next_action", "continue"),
+            "next_action": verdict.get("next_action", "continue") if isinstance(verdict, dict) else "continue",
             "fix_target": fix_target,
             "checks": checks,
-            "trusted": verified.get("trusted", "true") if verified else "true",
-            "computed_answer": verified.get("computed_answer", "") if verified else "",
-            "evidence": _extract_text(sections.get("evidence", "")),
+            "trusted": verified.get("trusted", "true"),
+            "computed_answer": verified.get("computed_answer", ""),
+            "evidence": str(evidence_text),
             "fix_detail": fix_instruction.get("fix_detail", ""),
-            "comment": _extract_text(sections.get("evidence", ""))[:300],
+            "comment": str(evidence_text)[:300],
         }
 
         result["_raw_text"] = text
@@ -111,12 +131,6 @@ class SolverVerifyAgent(BaseAgent):
         # Provide overall_quality from LLM output, fallback to default
         result["overall_quality"] = checks.get("overall_quality", 8 if result["status"] == "pass" else 5)
         return result
-
-
-def _extract_text(val) -> str:
-    if isinstance(val, dict):
-        return val.get("text", "")
-    return str(val) if val else ""
 
 
 def _dump_blueprint_for_verify(blueprint: dict) -> str:
@@ -155,46 +169,3 @@ def _dump_options_md(options) -> str:
                 parts.append(f"- **{label}**: {options[key]}")
         return "\n".join(parts) if parts else "（无选项）"
     return str(options)
-
-
-def _parse_verify_sections(text: str) -> dict[str, dict]:
-    """Parse verify output into sections with key-value pairs."""
-    sections: dict[str, dict] = {}
-    current_section = None
-
-    for line in text.split("\n"):
-        stripped = line.strip()
-
-        if stripped.startswith("## "):
-            section_name = stripped[3:].strip().lower()
-            name_map = {
-                "verdict": "verdict",
-                "checks": "checks",
-                "evidence": "evidence",
-                "verified_result": "verified_result",
-                "verified result": "verified_result",
-                "fix_instruction": "fix_instruction",
-                "fix instruction": "fix_instruction",
-            }
-            current_section = name_map.get(section_name, section_name)
-            if current_section not in sections:
-                sections[current_section] = {}
-            continue
-
-        if current_section and stripped.startswith("- **"):
-            match_start = stripped.find("**")
-            match_end = stripped.find("**", match_start + 2)
-            if match_start >= 0 and match_end > match_start:
-                key = stripped[match_start + 2:match_end].strip()
-                value = stripped[match_end + 2:].strip()
-                if value.startswith(":"):
-                    value = value[1:].strip()
-                if current_section == "evidence":
-                    sections[current_section] = {"text": sections[current_section].get("text", "") + stripped + "\n"}
-                else:
-                    sections[current_section][key] = value
-        elif current_section == "evidence" and stripped:
-            sections.setdefault(current_section, {})
-            sections[current_section]["text"] = sections[current_section].get("text", "") + stripped + "\n"
-
-    return sections

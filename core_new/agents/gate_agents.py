@@ -21,6 +21,7 @@ from core_new.agent_base import BaseAgent, AgentConfig
 from core_new.agent_roles import AuditMode, RoleType
 from core_new.blackboard import Blackboard
 from core_new.gate_protocol import GateDecision, GateResult
+from core_new.markdown_parser import parse_md_sections
 from core_new.prompts.gate_prompts import (
     KNOWLEDGE_GATE_PROMPT,
     ENVIRONMENT_CLOSURE_GATE_PROMPT,
@@ -41,32 +42,26 @@ def _parse_verdict_section(text: str) -> tuple[dict[str, str], str]:
         ## 审核分析
         ...
     """
+    sections = parse_md_sections(text)
+
+    # Extract verdict fields (already a dict from parse_md_sections)
     fields: dict[str, str] = {}
+    verdict = sections.get("verdict", {})
+    if isinstance(verdict, dict):
+        for key, value in verdict.items():
+            fields[str(key)] = str(value)
 
-    # Extract the ## verdict section content
-    verdict_match = re.search(
-        r"^##\s*verdict\s*\n(.*?)(?=^##\s|\Z)",
-        text.strip(),
-        re.DOTALL | re.MULTILINE,
-    )
-    if not verdict_match:
-        return fields, text
-
-    section_body = verdict_match.group(1)
-
-    # Parse `- **key**: value` lines
-    for line in section_body.splitlines():
-        m = re.match(r"-\s*\*\*(.+?)\*\*\s*:\s*(.+)", line.strip())
-        if m:
-            fields[m.group(1).strip()] = m.group(2).strip()
-
-    # Extract everything after ## 审核分析 as the report
-    report_match = re.search(
-        r"^##\s*审核分析\s*\n(.*)",
-        text.strip(),
-        re.DOTALL | re.MULTILINE,
-    )
-    report_md = report_match.group(1).strip() if report_match else ""
+    # Extract everything from 审核分析 section as the report
+    report_md = ""
+    report_section = sections.get("审核分析", "")
+    if isinstance(report_section, dict):
+        # If parsed as dict, reconstruct text
+        report_parts = []
+        for k, v in report_section.items():
+            report_parts.append(f"- **{k}**: {v}")
+        report_md = "\n".join(report_parts)
+    elif isinstance(report_section, str):
+        report_md = report_section
 
     return fields, report_md
 
