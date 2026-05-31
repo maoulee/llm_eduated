@@ -240,7 +240,7 @@ class FileCodeSolverAgent:
         options: Optional[Dict[str, str]] = None,
         sub_questions: Optional[List[str]] = None,
         question_type: str = "comprehensive",
-        slot_id: str = "Q43",
+        slot_id: str = "unknown",
     ) -> CodeSolution:
         """Run the file-based coding loop to solve a question."""
         start_time = time.monotonic()
@@ -468,7 +468,7 @@ class RuntimeFileCodeSolver:
         options: Optional[Dict[str, str]] = None,
         sub_questions: Optional[List[str]] = None,
         question_type: str = "comprehensive",
-        slot_id: str = "Q43",
+        slot_id: str = "unknown",
     ) -> CodeSolution:
         """Run the tool-calling solver loop."""
         start_time = time.monotonic()

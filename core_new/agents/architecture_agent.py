@@ -9,8 +9,11 @@ to read (考察理念, 难度维度, 设计理念, 往年案例) and fetches the
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any, Dict
+
+logger = logging.getLogger(__name__)
 
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import RoleType
@@ -65,18 +68,20 @@ class ArchitectureAgent(BaseAgent):
             blueprint.get("primary_target_name", ""),
         )
 
-        # Determine question type
-        question_type = blackboard.get("question_type", "")
+        # Determine question type — must come from blueprint/blackboard, never inferred
+        question_type = (
+            blackboard.get("question_type", "")
+            or blueprint.get("question_type", "")
+        )
         if not question_type:
-            qt = blueprint.get("question_type", "")
-            if qt:
-                question_type = qt
-            else:
-                score = int(blueprint.get("target_difficulty", 2))
-                question_type = "comprehensive" if score > 2 else "single_choice"
+            logger.warning(
+                "architecture_agent: no question_type in blackboard or blueprint for slot %s",
+                blackboard.get("slot_id", "?"),
+            )
+            question_type = "single_choice"
 
         score = int(blueprint.get("target_difficulty", 2))
-        subject = blueprint.get("target_subject", "计算机组成原理")
+        subject = blueprint.get("target_subject", "未指定科目")
         blueprint_md = _dump_blueprint_md(blueprint)
 
         # Build feedback sections for regeneration

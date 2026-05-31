@@ -48,14 +48,41 @@ def _fuzzy_get(d: Dict[str, Any], *keys) -> Any:
     return None
 
 
+def _dump_blueprint_md(blueprint: dict) -> str:
+    """Convert blueprint dict to readable Markdown for the merged design prompt."""
+    if not blueprint:
+        return "（无特殊蓝图要求）"
+
+    lines = []
+    lines.append(f"- **科目**: {blueprint.get('target_subject', '未指定')}")
+    lines.append(f"- **知识族**: {blueprint.get('target_family', '未指定')}")
+    lines.append(f"- **核心考点**: {blueprint.get('primary_target_name', '未指定')}")
+    lines.append(f"- **目标难度**: {blueprint.get('target_difficulty', '未指定')}")
+    lines.append(f"- **子问数量**: {blueprint.get('sub_questions', '未指定')}（必须严格遵守）")
+    lines.append(f"- **答案格式**: {blueprint.get('answer_format', '未指定')}")
+    lines.append(f"- **功能角色**: {blueprint.get('primary_paper_role', '未指定')}")
+    lines.append(f"- **必考要素**: {blueprint.get('must_include', '无')}")
+    lines.append(f"- **禁止内容**: {blueprint.get('must_avoid', '无')}")
+
+    dp = blueprint.get("difficulty_profile", {})
+    if dp:
+        lines.append(f"- **难度配置**: 知识深度={dp.get('knowledge_depth', '?')}, 推理步数={dp.get('reasoning_steps', '?')}, 计算量={dp.get('calculation_load', '?')}")
+
+    return "\n".join(lines)
+
+
 # ── Step 1: Question Designer ────────────────────────────────
 
 
 class QuestionDesignerAgent(BaseAgent):
-    """Design question with explicit intent — what each sub-question tests,
-    expected solving path, trap design, sub-question logic."""
+    """Design question with explicit intent — merged architecture+design in one step.
+
+    Reads slot philosophy via read_slot tool, then produces question + design intent
+    in a single LLM call.
+    """
 
     def __init__(self, llm_backend, *, max_tokens: int = 32768):
+        from core_new.agent_tools import SLOT_TOOLS
         super().__init__(
             AgentConfig(
                 name="question_designer",
@@ -69,6 +96,8 @@ class QuestionDesignerAgent(BaseAgent):
                 required_fields=["stem", "sub_questions"],
                 repair_max_retries=1,
                 role_type=RoleType.GENERATOR,
+                tools=SLOT_TOOLS,
+                max_tool_rounds=5,
                 expected_output_format=(
                     "# question Qxx\n\n"
                     "## 题目\n"
@@ -78,30 +107,34 @@ class QuestionDesignerAgent(BaseAgent):
                     "- **difficulty_self_assessment**: 1-5\n"
                     "- **knowledge_points**: 知识点\n"
                     "- **parameter_notes**: 参数说明\n\n"
+                    "## 推理模式\n"
+                    "- **reasoning_form**: multi_step/simulation/one_formula/elimination\n"
+                    "- **reasoning_rationale**: ...\n"
+                    "- **condition_utilization**: ...\n\n"
                     "## 设计意图\n"
                     "- **sub_q1_intent**: 考察内容和解题路径\n"
                     "- **trap_design**: 陷阱设计\n"
-                    "- **sub_question_logic**: 子问逻辑关系"
+                    "- **sub_question_logic**: 子问逻辑关系\n\n"
+                    "## 自检清单\n"
+                    "- **parameter_consistency**: PASS/FAIL\n"
+                    "- **unique_solution**: PASS/FAIL\n"
+                    "- **all_conditions_used**: PASS/FAIL"
                 ),
-                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。你必须写清设计意图，但不写答案。",
+                system_prompt="你是一位408考研出题专家，擅长按照蓝图精确设计综合应用题。使用提供的工具读取题位文件，获取考察理念和往年案例，然后一次性完成出题。你必须写清设计意图，但不写答案。",
             ),
             llm_backend,
         )
 
     def build_input(self, blackboard: Blackboard) -> str:
-        from core_new.slot_prompts import SUBJECTIVE_DRAFT_ONLY_PROMPT
-
-        question_design = blackboard.get("question_design", {})
-        design_md = question_design.get("raw_design_md", "")
-        if not design_md:
-            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
+        from core_new.slot_prompts import SUBJECTIVE_DESIGN_MERGED_PROMPT
 
         blueprint = blackboard.get("current_blueprint", {})
-        slot_id = blueprint.get("slot_id", "Q43")
+        slot_id = blueprint.get("slot_id", "unknown")
+        blueprint_md = _dump_blueprint_md(blueprint)
 
-        prompt = SUBJECTIVE_DRAFT_ONLY_PROMPT.format(
-            question_design_md=design_md,
+        prompt = SUBJECTIVE_DESIGN_MERGED_PROMPT.format(
             slot_id=slot_id,
+            blueprint_md=blueprint_md,
         )
 
         fix_instruction = blackboard.get("stem_fix_instruction", "")
@@ -131,7 +164,7 @@ class QuestionDesignerAgent(BaseAgent):
         if len(stripped.strip()) > 50:
             text = stripped
 
-        result = parse_structured_output(text, md_sections=("题目", "设计意图"))
+        result = parse_structured_output(text, md_sections=("题目", "推理模式", "设计意图", "自检清单"))
         if not result:
             # Fallback: search all sections for stem/sub_questions
             from core_new.markdown_parser import parse_md_sections as _pms
@@ -214,7 +247,7 @@ class HybridSolutionFormatter(BaseAgent):
         return SUBJECTIVE_SOLUTION_FORMATTER_PROMPT.format(
             question_json=json.dumps(question, ensure_ascii=False, indent=2),
             solver_result_json=json.dumps(solver_result, ensure_ascii=False, indent=2),
-            slot_id=question.get("slot_id", "Q43"),
+            slot_id=question.get("slot_id", "unknown"),
         )
 
     def parse_output(self, raw: Any) -> Any:
@@ -271,7 +304,7 @@ class HybridRubricWriter(BaseAgent):
             question_json=json.dumps(question, ensure_ascii=False, indent=2),
             solution_json=json.dumps(solution, ensure_ascii=False, indent=2),
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            slot_id=question.get("slot_id", "Q43"),
+            slot_id=question.get("slot_id", "unknown"),
         )
 
     def parse_output(self, raw: Any) -> Any:
@@ -331,7 +364,7 @@ class IntentBasedReviewer(BaseAgent):
             solution_json=json.dumps(solution, ensure_ascii=False, indent=2),
             rubric_json=json.dumps(rubric, ensure_ascii=False, indent=2),
             slot_blueprint_json=json.dumps(blueprint, ensure_ascii=False, indent=2),
-            slot_id=question.get("slot_id", "Q43"),
+            slot_id=question.get("slot_id", "unknown"),
         )
         checklist = self.get_audit_checklist()
         if checklist:
@@ -467,7 +500,7 @@ class HybridSubjectivePipeline:
         experience_card: str,
         gateway,
     ) -> HybridSubjectiveResult:
-        slot_id = slot_blueprint.get("slot_id", "Q43")
+        slot_id = slot_blueprint.get("slot_id", "unknown")
         total_start = time.monotonic()
 
         design: Dict[str, Any] = {}

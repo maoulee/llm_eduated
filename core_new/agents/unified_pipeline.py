@@ -4,7 +4,7 @@ Provider routing: review/gate/format agents use local Qwen when available,
 generation agents always use remote GLM.
 
 Architecture:
-  Step 1: Design (SC: stem; Comp: stem + sub_questions + intent)
+  Step 1: Design (SC: stem; Comp: stem + sub_questions + intent — merged with slot reading)
   Step 2: Options (SC only — 4 options with distractor strategies)
   Step 3: Solve (FileCodeSolver — pure computation engine)
     SC: verify each option A/B/C/D via Python code
@@ -277,7 +277,6 @@ class UnifiedQuestionPipeline:
         runtime_fallback: bool = True,
         enable_stem_gate: bool = False,
         use_runtime_solver: bool = True,
-        enable_architecture: bool = True,
         enable_post_review: bool = True,
         enable_summary: bool = True,
         debug_dir: Optional[str] = None,
@@ -285,7 +284,6 @@ class UnifiedQuestionPipeline:
         self.max_revision_rounds = max_revision_rounds
         self.use_runtime_sc_design = use_runtime_sc_design
         self.runtime_fallback = runtime_fallback
-        self.enable_architecture = enable_architecture
         self.enable_post_review = enable_post_review
         self.enable_summary = enable_summary
         self.enable_stem_gate = enable_stem_gate
@@ -308,10 +306,14 @@ class UnifiedQuestionPipeline:
             return True
         if q_type == "comprehensive":
             return False
-        slot_id = blueprint.get("slot_id", "")
-        if slot_id.startswith("Q") and slot_id[1:].isdigit():
-            return int(slot_id[1:]) < 43
-        return True
+        logger.warning(
+            "blueprint missing question_type, cannot determine question kind: slot_id=%s",
+            blueprint.get("slot_id", "?"),
+        )
+        raise ValueError(
+            f"blueprint must contain 'question_type' ('single_choice' or 'comprehensive'); "
+            f"got {q_type!r} for slot {blueprint.get('slot_id', '?')}"
+        )
 
     @staticmethod
     def _require_step_fields(
@@ -463,20 +465,6 @@ class UnifiedQuestionPipeline:
         stem_fix_instruction: Optional[str] = None
         round_history: List[Dict[str, Any]] = []
 
-        # Step 0: Architecture — design question structure from slot philosophy
-        question_design = None
-        if self.enable_architecture:
-            t0 = time.monotonic()
-            question_design = await self._run_architecture(
-                slot_blueprint, experience_card, gateway,
-                previous_question=previous_question,
-                fix_instruction=fix_instruction,
-            )
-            if self.debugger:
-                self.debugger.dump_step(slot_id, "architecture", 0, question_design,
-                                        timing_s=time.monotonic() - t0,
-                                        input_data={"blueprint": slot_blueprint, "experience_card": experience_card})
-
         for rnd in range(self.max_revision_rounds + 1):
             if rnd > 0:
                 logger.info("[%s] Revision round %d, fix_target=%s",
@@ -488,14 +476,12 @@ class UnifiedQuestionPipeline:
                 if is_sc:
                     design = await self._design_sc(
                         slot_blueprint, experience_card, gateway,
-                        question_design=question_design,
                         stem_fix_instruction=stem_fix_instruction,
                         round_history=round_history,
                     )
                 else:
                     design = await self._design_comp(
                         slot_blueprint, experience_card, gateway,
-                        question_design=question_design,
                         stem_fix_instruction=stem_fix_instruction,
                         round_history=round_history,
                     )
@@ -525,7 +511,6 @@ class UnifiedQuestionPipeline:
             if need_options:
                 options = await self._generate_options(
                     design, slot_blueprint, gateway,
-                    question_design=question_design,
                     round_history=round_history,
                 )
                 if self.debugger:
@@ -536,7 +521,7 @@ class UnifiedQuestionPipeline:
             if need_gate:
                 gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,
-                    slot_blueprint, question_design, experience_card,
+                    slot_blueprint, None, experience_card,
                     slot_id, gateway,
                 )
                 gate_status = gate_result.get("status", "pass")
@@ -587,7 +572,7 @@ class UnifiedQuestionPipeline:
             # ── Step 5: SolverVerify (replaces review) ──
             verify_result = await self._run_solver_verify(
                 design, options if is_sc else None,
-                solver_dict, question_design, is_sc, slot_id, gateway,
+                solver_dict, None, is_sc, slot_id, gateway,
                 slot_blueprint=slot_blueprint,
             )
             review = verify_result  # Use verify_result as review for downstream compat
@@ -603,7 +588,7 @@ class UnifiedQuestionPipeline:
             # Save round snapshot
             snapshot = self._build_round_snapshot(
                 rnd, design, options if is_sc else {}, solution, review, is_sc,
-                design_intent=question_design,
+                design_intent=None,
             )
             round_history.extend(snapshot)
 
@@ -734,7 +719,7 @@ class UnifiedQuestionPipeline:
         initial = {
             "stem": stem,
             "blueprint": slot_blueprint,
-            "question_design": question_design or {},
+            "question_design": question_design or design,
             "experience_radar": experience_card,
         }
         if options:
@@ -780,7 +765,7 @@ class UnifiedQuestionPipeline:
         initial = {
             "stem": stem,
             "solver_result": solver_dict,
-            "question_design": question_design or {},
+            "question_design": question_design or design,
             "question_type": "single_choice" if is_sc else "comprehensive",
         }
         if options:
@@ -807,59 +792,11 @@ class UnifiedQuestionPipeline:
 
     # ── Step methods ───────────────────────────────────────────
 
-    async def _run_architecture(
-        self,
-        blueprint: Dict[str, Any],
-        experience_card: str,
-        gateway,
-        *,
-        previous_question: Optional[Dict[str, Any]] = None,
-        fix_instruction: str = "",
-    ) -> Dict[str, Any]:
-        """Step 0: ArchitectureAgent — design question structure from slot philosophy."""
-        from core_new.agents.architecture_agent import ArchitectureAgent
-        from core_new.pattern_cards import SlotMeta
-
-        slot_id = blueprint.get("slot_id", "Q1")
-        slot = SlotMeta.load(slot_id)
-        if not slot:
-            logger.warning("[%s] No slot content found, skipping architecture step", slot_id)
-            return {}
-
-        agent = ArchitectureAgent(_rgw("architecture"))
-        initial = {
-            "slot_id": slot_id,
-            "slot_meta": slot,
-            "blueprint": blueprint,
-            "knowledge_point": blueprint.get("primary_target_name", ""),
-        }
-        if previous_question:
-            initial["previous_question"] = previous_question
-        if fix_instruction:
-            initial["fix_instruction"] = fix_instruction
-
-        bb = Blackboard(
-            task_id=f"arch_{slot_id}",
-            task_type="architecture",
-            initial_state=initial,
-        )
-
-        record = await agent.execute(bb)
-        if record.error:
-            logger.warning("[%s] Architecture step failed: %s", slot_id, record.error)
-            return {}
-
-        question_design = bb.get("question_design", {})
-        logger.info("[%s] Architecture done: %d chars", slot_id,
-                    len(question_design.get("raw_design_md", "")))
-        return question_design
-
     async def _design_sc(
         self,
         blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
-        question_design: Optional[Dict[str, Any]] = None,
         stem_fix_instruction: Optional[str] = None,
         round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
@@ -869,12 +806,10 @@ class UnifiedQuestionPipeline:
                 "current_blueprint": blueprint,
                 "experience_card": experience_card,
             }
-            if question_design:
-                initial["question_design"] = question_design
             if stem_fix_instruction:
                 initial["stem_fix_instruction"] = stem_fix_instruction
             return Blackboard(
-                task_id=f"sc_design_{blueprint.get('slot_id', 'Q1')}",
+                task_id=f"sc_design_{blueprint.get('slot_id', 'unknown')}",
                 task_type="unified_sc",
                 initial_state=initial,
             )
@@ -936,7 +871,6 @@ class UnifiedQuestionPipeline:
         blueprint: Dict[str, Any],
         experience_card: str,
         gateway,
-        question_design: Optional[Dict[str, Any]] = None,
         stem_fix_instruction: Optional[str] = None,
         round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
@@ -946,12 +880,10 @@ class UnifiedQuestionPipeline:
             "experience_card": experience_card,
             "reference_questions": experience_card,
         }
-        if question_design:
-            initial["question_design"] = question_design
         if stem_fix_instruction:
             initial["stem_fix_instruction"] = stem_fix_instruction
         bb = Blackboard(
-            task_id=f"comp_design_{blueprint.get('slot_id', 'Q43')}",
+            task_id=f"comp_design_{blueprint.get('slot_id', 'unknown')}",
             task_type="unified_comp",
             initial_state=initial,
         )
@@ -1003,7 +935,6 @@ class UnifiedQuestionPipeline:
         design: Dict[str, Any],
         blueprint: Dict[str, Any],
         gateway,
-        question_design: Optional[Dict[str, Any]] = None,
         round_history: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         """SC Step 2: generate 4 options with distractor intent."""
@@ -1011,10 +942,8 @@ class UnifiedQuestionPipeline:
             "sc_draft_result": design,
             "current_blueprint": blueprint,
         }
-        if question_design:
-            initial["question_design"] = question_design
         bb = Blackboard(
-            task_id=f"sc_opts_{blueprint.get('slot_id', 'Q1')}",
+            task_id=f"sc_opts_{blueprint.get('slot_id', 'unknown')}",
             task_type="unified_sc",
             initial_state=initial,
         )
@@ -1109,7 +1038,7 @@ class UnifiedQuestionPipeline:
     ) -> CodeSolution:
         """Step 3: Solve — pure computation engine (runtime or text-parsing)."""
         if self.use_runtime_solver:
-            solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=4096, max_iterations=8)
+            solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=16384, max_iterations=8)
         else:
             solver = FileCodeSolverAgent(_rgw("solver"), max_tokens=16384, max_steps=5)
 
@@ -1157,7 +1086,7 @@ class UnifiedQuestionPipeline:
     ) -> Dict[str, Any]:
         """SC Step 4: format solution from solver verification result."""
         bb = Blackboard(
-            task_id=f"sc_format_{design.get('slot_id', 'Q1')}",
+            task_id=f"sc_format_{design.get('slot_id', 'unknown')}",
             task_type="unified_sc",
             initial_state={
                 "sc_draft_result": design,
@@ -1180,7 +1109,7 @@ class UnifiedQuestionPipeline:
     ) -> Dict[str, Any]:
         """Comp Step 4: format solution from solver output."""
         bb = Blackboard(
-            task_id=f"comp_format_{design.get('slot_id', 'Q43')}",
+            task_id=f"comp_format_{design.get('slot_id', 'unknown')}",
             task_type="unified_comp",
             initial_state={
                 "question_design": design,
@@ -1203,7 +1132,7 @@ class UnifiedQuestionPipeline:
     ) -> Dict[str, Any]:
         """Comp Step 5: write grading rubric."""
         bb = Blackboard(
-            task_id=f"comp_rubric_{design.get('slot_id', 'Q43')}",
+            task_id=f"comp_rubric_{design.get('slot_id', 'unknown')}",
             task_type="unified_comp",
             initial_state={
                 "question_design": design,
@@ -1237,9 +1166,8 @@ class UnifiedQuestionPipeline:
             "review": review,
             "solver_result": solver_dict,
             "is_sc": is_sc,
+            "question_design": question_design or design,
         }
-        if question_design:
-            initial["question_design"] = question_design
         if is_sc:
             initial["sc_options_result"] = options
         if slot_blueprint:
@@ -1321,7 +1249,7 @@ class UnifiedQuestionPipeline:
                 "current_blueprint": blueprint,
             }
             bb = Blackboard(
-                task_id=f"sc_review_{blueprint.get('slot_id', 'Q1')}",
+                task_id=f"sc_review_{blueprint.get('slot_id', 'unknown')}",
                 task_type="unified_sc",
                 initial_state=initial_state,
             )
@@ -1334,7 +1262,7 @@ class UnifiedQuestionPipeline:
                 "current_blueprint": blueprint,
             }
             bb = Blackboard(
-                task_id=f"comp_review_{blueprint.get('slot_id', 'Q43')}",
+                task_id=f"comp_review_{blueprint.get('slot_id', 'unknown')}",
                 task_type="unified_comp",
                 initial_state=initial_state,
             )

@@ -639,6 +639,7 @@ async def run_composition(
     max_fix_rounds: int = 2,
     max_adversarial_rounds: int = 1,
     gate_config: dict = None,
+    debug_dir: str = None,
 ) -> dict:
     """Run the full composition pipeline."""
     if slot_ids:
@@ -691,6 +692,14 @@ async def run_composition(
     if not slot_blueprints:
         print("  ERROR: No slot blueprints generated")
         return {"status": "error", "step": "compose", "error": "empty slots"}
+
+    # Inherit question_type from templates when LLM blueprint omits it
+    for sb in slot_blueprints:
+        sid = sb.get("slot_id", "")
+        if not sb.get("question_type"):
+            tpl = templates.get(sid, {})
+            if tpl.get("question_type"):
+                sb["question_type"] = tpl["question_type"]
 
     # Step 2b: Knowledge/Slot Gate (optional)
     gate_config = gate_config or {}
@@ -823,6 +832,7 @@ async def main():
         max_fix_rounds=args.max_fix_rounds,
         max_adversarial_rounds=args.max_adversarial_rounds,
         gate_config=gate_config,
+        debug_dir=debug_dir,
     )
 
 

@@ -127,7 +127,7 @@ class AgentRegistry:
             agent = agent_cls(gateway, **kwargs)
             question_draft = blackboard.get("question_design", {}).get("stem", "")
             sub_questions = blackboard.get("question_design", {}).get("sub_questions")
-            slot_id = blackboard.get("current_blueprint", {}).get("slot_id", "Q43")
+            slot_id = blackboard.get("current_blueprint", {}).get("slot_id", "unknown")
 
             if isinstance(sub_questions, str):
                 import json
