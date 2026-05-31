@@ -17,6 +17,25 @@ from core_new.prompts.fixer_prompt import FINAL_FIXER_PROMPT
 
 logger = logging.getLogger(__name__)
 
+# Keywords for inferring fix target from issue text
+_FIX_TARGET_KEYWORDS = {
+    "stem": ["题干", "条件", "题目", "stem", "题目描述", "给定条件"],
+    "answer": ["答案", "解析", "解答", "计算", "求解", "answer", "solution", "公式", "数值"],
+    "options": ["选项", "干扰", "option", "distractor", "正确答案"],
+    "sub_questions": ["子问题", "子题", "小问", "sub_question"],
+}
+
+
+def _infer_fix_target(issues_text: str, raw_text: str) -> str:
+    """Infer fix_target from issue descriptions when structured field is missing."""
+    combined = f"{issues_text} {raw_text[:2000]}"
+    scores = {}
+    for target, keywords in _FIX_TARGET_KEYWORDS.items():
+        scores[target] = sum(1 for kw in keywords if kw in combined)
+    if not scores or max(scores.values()) == 0:
+        return "none"
+    return max(scores, key=scores.get)
+
 
 class FinalReviewAgent(BaseAgent):
     """Comprehensive post-pipeline quality audit agent."""
@@ -65,7 +84,13 @@ class FinalReviewAgent(BaseAgent):
     def parse_output(self, raw_output) -> Dict[str, Any]:
         text = str(raw_output).strip()
         if not text or len(text) < 20:
-            return {"status": "pass", "overall_quality": 0, "issues": [], "fix_instruction": {"fix_target": "none", "fix_detail": ""}, "_raw_text": text}
+            return {
+                "status": "needs_human_review",
+                "overall_quality": 0,
+                "issues": "FinalReview output empty or invalid",
+                "fix_instruction": {"fix_target": "none", "fix_detail": "终审未返回有效输出，需要人工复核"},
+                "_raw_text": text,
+            }
 
         # Parse Markdown sections
         sections = parse_md_sections(text)
@@ -79,13 +104,15 @@ class FinalReviewAgent(BaseAgent):
         if not isinstance(review, dict):
             review = {}
 
-        status = review.get("status", "pass")
+        status = review.get("status", "needs_human_review")
         if not isinstance(status, str):
             status = str(status)
         if "needs_fix" in status.lower():
             status = "needs_fix"
-        elif "pass" not in status.lower():
+        elif "pass" in status.lower():
             status = "pass"
+        else:
+            status = "needs_human_review"
 
         quality_val = review.get("overall_quality", 0)
         quality = int(quality_val) if isinstance(quality_val, (int, float, str)) and str(quality_val).strip().isdigit() else FieldExtractor.quality(str(review))
@@ -105,6 +132,25 @@ class FinalReviewAgent(BaseAgent):
         else:
             fix_target = FieldExtractor.fix_target(str(fix)) if fix else "none"
             fix_detail = FieldExtractor.fix_detail(str(fix)) if fix else ""
+
+        # ── Consistency enforcement ──
+        # If issues found but status is pass → force needs_fix
+        if issues_text and issues_text != "无" and status == "pass":
+            logger.warning("[FinalReview] Issues found but status=pass, overriding to needs_fix")
+            status = "needs_fix"
+
+        # If quality is low → force needs_fix
+        if quality < 6 and status == "pass":
+            status = "needs_fix"
+
+        # If status=needs_fix but fix_target=none → force a target from issues
+        if status == "needs_fix" and fix_target == "none":
+            inferred = _infer_fix_target(issues_text, text)
+            if inferred != "none":
+                fix_target = inferred
+                logger.info("[FinalReview] Inferred fix_target=%s from issues", fix_target)
+            else:
+                logger.warning("[FinalReview] needs_fix but fix_target=none and cannot infer")
 
         return {
             "status": status,

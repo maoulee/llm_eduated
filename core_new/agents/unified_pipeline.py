@@ -535,7 +535,8 @@ class UnifiedQuestionPipeline:
                     self.debugger.dump_step(slot_id, "options", rnd, options)
 
             # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
-            need_gate = self.enable_stem_gate and (rnd == 0 or fix_target in ("question", "stem"))
+            auto_gate = not is_sc  # comprehensive questions always gate
+            need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
             if need_gate:
                 gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,
@@ -712,12 +713,33 @@ class UnifiedQuestionPipeline:
         if summary:
             final_question["summary"] = summary
 
+        # ── Step 10: Artifact consistency check (non-LLM) ──
+        from core_new.artifact_consistency import (
+            check_artifact_consistency,
+            can_export,
+        )
+        consistency = check_artifact_consistency(
+            final_question, solver_dict, summary, rubric, is_sc=is_sc,
+        )
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "consistency", 0, consistency)
+
+        # ── Step 11: Export gate ──
+        review_records = [
+            {"phase": "solver_verify", "status": verify_result.get("status", "unknown")},
+            {"phase": "final_review", "status": review.get("status", "unknown")},
+        ]
+        export_gate = can_export(final_question, review_records, consistency)
+        final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
+        final_question["block_reasons"] = export_gate["block_reasons"]
+
         if self.debugger:
             self.debugger.dump_full_run(slot_id, final_question, solver_dict,
                                         review, total_time, rnd + 1)
 
-        logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s)",
-                     slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp")
+        logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s, export=%s)",
+                     slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp",
+                     final_question["export_status"])
 
         return UnifiedPipelineResult(
             final_question=final_question,
@@ -774,8 +796,8 @@ class UnifiedQuestionPipeline:
 
         stem = design.get("stem", "")
         if not stem:
-            logger.warning("[%s] No stem to gate-review, skipping", slot_id)
-            return {"status": "pass", "severity": "none"}
+            logger.warning("[%s] No stem to gate-review", slot_id)
+            return {"status": "needs_fix", "severity": "high", "fix_target": "stem"}
 
         initial = {
             "stem": stem,
@@ -794,9 +816,8 @@ class UnifiedQuestionPipeline:
         agent = StemBlueprintGateAgent(_rgw("gate"))
         record = await agent.execute(bb)
         if record.error:
-            logger.warning("[%s] StemBlueprintGate failed: %s, proceeding anyway",
-                           slot_id, record.error)
-            return {"status": "pass", "severity": "none", "note": "gate_skipped"}
+            logger.warning("[%s] StemBlueprintGate agent error: %s", slot_id, record.error)
+            return {"status": "needs_fix", "severity": "high", "note": f"gate_error: {record.error}"}
 
         result = bb.get("stem_blueprint_gate_result", {})
         logger.info("[%s] StemBlueprintGate: status=%s severity=%s",
@@ -820,8 +841,14 @@ class UnifiedQuestionPipeline:
 
         stem = design.get("stem", "")
         if not stem or not solver_dict:
-            logger.warning("[%s] No stem or solver result to verify, skipping", slot_id)
-            return {"status": "pass", "trusted": "true", "overall_quality": 8, "note": "verify_skipped"}
+            logger.warning("[%s] No stem or solver result to verify", slot_id)
+            return {
+                "status": "needs_fix",
+                "trusted": "false",
+                "fix_target": "solver",
+                "overall_quality": 2,
+                "note": "verify_missing_input",
+            }
 
         initial = {
             "stem": stem,
@@ -842,9 +869,14 @@ class UnifiedQuestionPipeline:
         agent = SolverVerifyAgent(_rgw("verify"))
         record = await agent.execute(bb)
         if record.error:
-            logger.warning("[%s] SolverVerify failed: %s, proceeding anyway",
-                           slot_id, record.error)
-            return {"status": "pass", "trusted": "true", "note": "verify_skipped"}
+            logger.warning("[%s] SolverVerify agent error: %s", slot_id, record.error)
+            return {
+                "status": "needs_fix",
+                "trusted": "false",
+                "fix_target": "solver",
+                "overall_quality": 1,
+                "note": f"verify_agent_error: {record.error}",
+            }
 
         result = bb.get("solver_verify_result", {})
         logger.info("[%s] SolverVerify: status=%s trusted=%s",
@@ -891,7 +923,12 @@ class UnifiedQuestionPipeline:
         parsed = bb.get("final_review")
         if isinstance(parsed, dict) and parsed:
             return parsed
-        return {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
+        return {
+            "status": "needs_human_review",
+            "overall_quality": 0,
+            "issues": "FinalReview output unparseable",
+            "fix_instruction": {"fix_target": "none", "fix_detail": "终审输出无法解析，需要人工复核"},
+        }
 
     async def _run_final_fixer(
         self,
@@ -910,6 +947,16 @@ class UnifiedQuestionPipeline:
         fix_detail = fix_instruction.get("fix_detail", "")
 
         if fix_target == "none":
+            if review_result.get("status") == "needs_fix":
+                logger.warning(
+                    "[%s] FinalReview needs_fix but fix_target=none, needs human review",
+                    slot_id,
+                )
+                return {
+                    "status": "needs_human_review",
+                    "fix_applied": "FinalReview reported needs_fix but fix_target=none",
+                    "reason": "invalid_review_contract",
+                }
             return {"status": "skipped"}
 
         initial = {
@@ -1139,9 +1186,8 @@ class UnifiedQuestionPipeline:
         agent = StemVerifierAgent(_rgw("stem_verify"))
         record = await agent.execute(bb)
         if record.error:
-            logger.warning("[%s] Stem verification failed: %s, proceeding anyway",
-                           slot_id, record.error)
-            return {"status": "pass", "note": "verification_skipped"}
+            logger.warning("[%s] Stem verification agent error: %s", slot_id, record.error)
+            return {"status": "needs_fix", "note": f"verification_error: {record.error}"}
         result = bb.get("stem_verification_result", {})
         # Attach raw review text for conversation-style fix
         if hasattr(record, 'raw_text') and record.raw_text:
@@ -1336,8 +1382,8 @@ class UnifiedQuestionPipeline:
         agent = PostReviewAgent(_rgw("post_review"))
         record = await agent.execute(bb)
         if record.error:
-            logger.warning("[%s] Post-review failed: %s, proceeding", slot_id, record.error)
-            return {"status": "pass", "note": "post_review_skipped"}
+            logger.warning("[%s] Post-review agent error: %s", slot_id, record.error)
+            return {"status": "needs_fix", "note": f"post_review_error: {record.error}"}
         result = bb.get("post_review_result", {})
         logger.info("[%s] Post-review: status=%s quality=%s",
                     slot_id, result.get("status"), result.get("overall_quality"))
