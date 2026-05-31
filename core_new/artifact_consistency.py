@@ -110,21 +110,25 @@ def check_artifact_consistency(
     if rubric and not is_sc:
         rubric_text = str(rubric)
         answer_text = str(final_question.get("answer", ""))
-        rubric_nums = _extract_numbers(rubric_text)
         answer_nums = _extract_numbers(answer_text)
-        if rubric_nums and answer_nums:
-            # Check rubric numbers that look like final results
-            # (near keywords indicating expected values)
+        if answer_nums:
             result_keywords = ["答案", "结果", "计算", "应为", "等于", "正确", "answer", "result"]
-            for i, rn in enumerate(rubric_nums):
-                # Check surrounding context for result keywords
-                context_start = max(0, rubric_text.find(rn) - 20)
-                context_end = min(len(rubric_text), rubric_text.find(rn) + len(rn) + 20)
+            num_pattern = re.compile(r"(?<!\w)(-?\d+\.?\d*)(?!\w)")
+            seen = set()
+            for match in num_pattern.finditer(rubric_text):
+                rn = match.group(1)
+                context_start = max(0, match.start() - 20)
+                context_end = min(len(rubric_text), match.end() + 20)
                 context = rubric_text[context_start:context_end].lower()
                 is_result_num = any(kw in context for kw in result_keywords)
                 if not is_result_num:
                     continue
-                # This rubric number claims to be a result — must match an answer number
+                # Deduplicate by numeric value
+                norm = _normalize_number(rn)
+                if norm is not None and norm in seen:
+                    continue
+                if norm is not None:
+                    seen.add(norm)
                 matched = any(_numeric_equal(rn, an) for an in answer_nums)
                 if not matched:
                     conflicts.append({
@@ -237,14 +241,37 @@ def _truncate(text: str, max_len: int = 100) -> str:
 
 
 def _values_match(a: Any, b: Any) -> bool:
-    """Compare two answer values, handling numeric normalization."""
+    """Compare two answer values with structural awareness.
+
+    - dicts: compare by key, each value must match
+    - lists: compare by position
+    - strings: extract number sets and require full coverage
+    """
+    if a == b:
+        return True
+
+    # Dict comparison: every key's value must match
+    if isinstance(a, dict) and isinstance(b, dict):
+        keys = set(a.keys()) | set(b.keys())
+        return all(_values_match(a.get(k), b.get(k)) for k in keys)
+
+    # List comparison: positional match
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        if len(a) != len(b):
+            return False
+        return all(_values_match(ai, bi) for ai, bi in zip(a, b))
+
     sa, sb = str(a).strip(), str(b).strip()
     if sa == sb:
         return True
-    # Try numeric comparison
+
+    # Numeric set comparison: all numbers in smaller set must appear in larger
     nums_a = _extract_numbers(sa)
     nums_b = _extract_numbers(sb)
     if nums_a and nums_b:
-        # If both have numbers, check if key numbers match
-        return any(_numeric_equal(na, nb) for na in nums_a for nb in nums_b)
+        smaller, larger = (nums_a, nums_b) if len(nums_a) <= len(nums_b) else (nums_b, nums_a)
+        return all(
+            any(_numeric_equal(s, l) for l in larger)
+            for s in smaller
+        )
     return False
