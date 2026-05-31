@@ -238,7 +238,7 @@ class FinalFixerAgent(BaseAgent):
         fixed_content = sections.get("fixed_content", {})
 
         if not fix_result and not fixed_content:
-            return {"status": "failed", "fix_applied": f"parse error: no fix_result section found"}
+            return {"status": "failed", "fix_applied": "parse error: no fix_result section found"}
 
         result: Dict[str, Any] = {}
 
@@ -260,7 +260,34 @@ class FinalFixerAgent(BaseAgent):
             for key in ("fixed_stem", "fixed_answer", "fixed_options", "fixed_sub_questions"):
                 if fixed_content.get(key) and key not in result:
                     result[key] = fixed_content[key]
-        elif fixed_content and "fixed_content_raw" not in result:
-            result["fixed_content_raw"] = str(fixed_content)
+
+        # Fallback: extract raw text between ## fixed_content and next ## header
+        _has_fixed_field = any(k in result for k in ("fixed_stem", "fixed_answer", "fixed_options", "fixed_sub_questions"))
+        if not _has_fixed_field and "## fixed_content" in text:
+            import re
+            parts = re.split(r"## fixed_content", text, maxsplit=1)
+            if len(parts) > 1:
+                after = re.split(r"## ", parts[1])
+                raw_body = after[0].strip()
+                if raw_body:
+                    fix_target = ""
+                    if isinstance(fix_result, dict):
+                        fix_target = str(fix_result.get("fix_target", ""))
+                    if "stem" in fix_target:
+                        result["fixed_stem"] = raw_body
+                    elif "answer" in fix_target:
+                        result["fixed_answer"] = raw_body
+                    elif "option" in fix_target:
+                        result["fixed_options"] = raw_body
+                    else:
+                        result["fixed_content_raw"] = raw_body
+
+        # Warn if status=ok but no actual fixed content
+        if result.get("status") == "ok":
+            has_fix = any(k in result for k in ("fixed_stem", "fixed_answer", "fixed_options", "fixed_sub_questions", "fixed_content_raw"))
+            if not has_fix:
+                logger.warning("[FinalFixer] status=ok but no fixed content fields found, downgrading to failed")
+                result["status"] = "failed"
+                result["fix_applied"] = "LLM reported ok but produced no fixable content"
 
         return result

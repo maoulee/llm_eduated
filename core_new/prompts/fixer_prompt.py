@@ -23,12 +23,17 @@ FINAL_FIXER_PROMPT = """你是一名408考试出题修复专家。根据终审�
 
 ## 输出格式
 
-请严格按以下Markdown格式输出：
+请严格按以下Markdown格式输出。**fixed_content 部分必须包含修复后的完整文本内容，不要只写修复说明。**
 
 ## fix_result
 - **status**: ok（修复成功）或 failed（无法修复）
 - **fix_applied**: 简述修复了什么
 
 ## fixed_content
-（修复后的完整内容。根据fix_target，包含对应字段的完整修复后内容。不需要修复的字段不要包含。）
+（必须输出修复后的完整内容，按修复目标填写对应字段。如果修复了题干就写 fixed_stem 字段，修复了答案就写 fixed_answer 字段。不允许省略。）
+
+- **fixed_stem**: （如果修复了题干，输出修复后的完整题干文本）
+- **fixed_answer**: （如果修复了答案/解析，输出修复后的完整答案文本）
+- **fixed_options**: （如果修复了选项，输出修复后的完整选项）
+- **fixed_sub_questions**: （如果修复了子问题，输出修复后的完整子问题列表）
 """

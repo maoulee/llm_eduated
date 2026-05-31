@@ -651,6 +651,44 @@ class TestFinalFixerMarkdownParse:
         result = self._parse("这是一些无格式的文本")
         assert result["status"] == "failed"
 
+    def test_k6_ok_but_no_fixed_content_downgrades(self):
+        """status=ok but no fixed content fields → downgrade to failed."""
+        text = """## fix_result
+- **status**: ok
+- **fix_applied**: 修正了术语表述
+
+## fixed_content
+"""
+        result = self._parse(text)
+        assert result["status"] == "failed"
+
+    def test_k7_plain_text_fixed_content_mapped_by_target(self):
+        """Plain text in fixed_content auto-mapped via fix_target."""
+        text = """## fix_result
+- **status**: ok
+- **fix_applied**: 补充了提问
+- **fix_target**: stem
+
+## fixed_content
+这是修复后的完整题干内容，包含了补充的具体提问。
+"""
+        result = self._parse(text)
+        assert result["status"] == "ok"
+        assert "题干" in result.get("fixed_stem", "")
+
+    def test_k8_structured_fixed_stem_in_fixed_content(self):
+        """Structured fixed_stem field in fixed_content section."""
+        text = """## fix_result
+- **status**: ok
+- **fix_applied**: 修正了题干
+
+## fixed_content
+- **fixed_stem**: 某计算机系统的总线时钟频率为 100MHz。求传输时间。
+"""
+        result = self._parse(text)
+        assert result["status"] == "ok"
+        assert "100MHz" in result.get("fixed_stem", "")
+
 
 # ─── L. Pipeline Resume ───
 
