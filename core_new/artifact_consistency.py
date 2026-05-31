@@ -112,7 +112,7 @@ def check_artifact_consistency(
         answer_text = str(final_question.get("answer", ""))
         answer_nums = _extract_numbers(answer_text)
         if answer_nums:
-            result_keywords = ["答案", "结果", "计算", "应为", "等于", "正确", "answer", "result"]
+            result_keywords = ["答案", "结果", "应为", "等于", "正确", "answer", "result"]
             num_pattern = re.compile(r"(?<!\w)(-?\d+\.?\d*)(?!\w)")
             seen = set()
             for match in num_pattern.finditer(rubric_text):

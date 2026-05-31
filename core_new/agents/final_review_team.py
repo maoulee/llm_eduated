@@ -125,6 +125,16 @@ class FinalReviewAgent(BaseAgent):
         else:
             issues_text = str(issues_val) if issues_val else "无"
 
+        # Fallback: parse_md_sections may lose plain-text issues (no **key**: value)
+        if issues_text == "无" and "## issues" in text:
+            import re
+            parts = re.split(r"## issues", text, maxsplit=1)
+            if len(parts) > 1:
+                after = re.split(r"## ", parts[1])
+                raw_issues = after[0].strip()
+                if raw_issues and raw_issues != "无":
+                    issues_text = raw_issues
+
         fix = sections.get("fix_instruction", {})
         if isinstance(fix, dict):
             fix_target = fix.get("fix_target", "none") or "none"
