@@ -70,29 +70,37 @@ class FinalReviewAgent(BaseAgent):
         # Parse Markdown sections
         sections = parse_md_sections(text)
 
-        # Extract review fields - sections are dicts from parse_md_sections
-        review_section = sections.get("review", "")
-        # Flatten dict values into searchable text for FieldExtractor
-        if isinstance(review_section, dict):
-            review_text = "\n".join(f"**{k}**: {v}" for k, v in review_section.items())
-        else:
-            review_text = str(review_section)
+        # Extract review fields directly from parsed dict
+        review = sections.get("review", {})
+        if not isinstance(review, dict):
+            review = {}
 
-        status = FieldExtractor.status(review_text)
-        quality = FieldExtractor.quality(review_text)
+        status = review.get("status", "pass")
+        if not isinstance(status, str):
+            status = str(status)
+        if "needs_fix" in status.lower():
+            status = "needs_fix"
+        elif "pass" not in status.lower():
+            status = "pass"
+
+        quality_val = review.get("overall_quality", 0)
+        quality = int(quality_val) if isinstance(quality_val, (int, float, str)) and str(quality_val).strip().isdigit() else FieldExtractor.quality(str(review))
+
         issues_val = sections.get("issues", "无")
         if isinstance(issues_val, dict):
             issues_text = "\n".join(f"- **{k}**: {v}" for k, v in issues_val.items()) if issues_val else "无"
+        elif isinstance(issues_val, list):
+            issues_text = "\n".join(f"- {item}" for item in issues_val) if issues_val else "无"
         else:
-            issues_text = str(issues_val)
-        fix_section = sections.get("fix_instruction", "")
-        if isinstance(fix_section, dict):
-            fix_text = "\n".join(f"**{k}**: {v}" for k, v in fix_section.items())
-        else:
-            fix_text = str(fix_section)
+            issues_text = str(issues_val) if issues_val else "无"
 
-        fix_target = FieldExtractor.fix_target(fix_text) if fix_text else "none"
-        fix_detail = FieldExtractor.fix_detail(fix_text) if fix_text else ""
+        fix = sections.get("fix_instruction", {})
+        if isinstance(fix, dict):
+            fix_target = fix.get("fix_target", "none") or "none"
+            fix_detail = fix.get("fix_detail", "") or ""
+        else:
+            fix_target = FieldExtractor.fix_target(str(fix)) if fix else "none"
+            fix_detail = FieldExtractor.fix_detail(str(fix)) if fix else ""
 
         return {
             "status": status,

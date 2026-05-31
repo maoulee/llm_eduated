@@ -884,7 +884,9 @@ class UnifiedQuestionPipeline:
 
         agent = FinalReviewAgent(gateway)
         record = await agent.execute(bb)
-        return agent.parse_output(record)
+        if record.error:
+            return {"status": "error", "overall_quality": 0, "issues": record.error, "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
+        return record.output if isinstance(record.output, dict) else {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
 
     async def _run_final_fixer(
         self,
@@ -920,7 +922,9 @@ class UnifiedQuestionPipeline:
 
         agent = FinalFixerAgent(gateway)
         record = await agent.execute(bb)
-        return agent.parse_output(record)
+        if record.error:
+            return {"status": "error", "fix_applied": record.error}
+        return record.output if isinstance(record.output, dict) else {"status": "failed", "fix_applied": "no output"}
 
     @staticmethod
     def _safe_parse(text: str) -> Dict[str, Any]:
