@@ -888,8 +888,10 @@ class UnifiedQuestionPipeline:
         record = await agent.execute(bb)
         if record.error:
             return {"status": "error", "overall_quality": 0, "issues": record.error, "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
-        parsed = bb.get("final_review", {})
-        return parsed if isinstance(parsed, dict) else {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
+        parsed = bb.get("final_review")
+        if isinstance(parsed, dict) and parsed:
+            return parsed
+        return {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
 
     async def _run_final_fixer(
         self,
@@ -928,8 +930,10 @@ class UnifiedQuestionPipeline:
         record = await agent.execute(bb)
         if record.error:
             return {"status": "error", "fix_applied": record.error}
-        parsed = bb.get("final_fixer", {})
-        return parsed if isinstance(parsed, dict) else {"status": "failed", "fix_applied": "no output"}
+        parsed = bb.get("final_fixer")
+        if isinstance(parsed, dict) and parsed:
+            return parsed
+        return {"status": "failed", "fix_applied": "no output"}
 
     @staticmethod
     def _safe_parse(text: str) -> Dict[str, Any]:
