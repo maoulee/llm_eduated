@@ -537,13 +537,14 @@ class UnifiedQuestionPipeline:
             # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
             auto_gate = not is_sc  # comprehensive questions always gate
             need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
+            gate_result = {"status": "skipped"}
             if need_gate:
                 gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,
                     slot_blueprint, None, experience_card,
                     slot_id, gateway,
                 )
-                gate_status = gate_result.get("status", "pass")
+                gate_status = gate_result.get("status", "needs_fix")
                 gate_severity = gate_result.get("severity", "none")
 
                 minor_text = gate_result.get("fix_detail", "")
@@ -596,7 +597,7 @@ class UnifiedQuestionPipeline:
             )
             review = verify_result  # Use verify_result as review for downstream compat
 
-            verify_status = verify_result.get("status", "pass")
+            verify_status = verify_result.get("status", "needs_fix")
             verify_fix_target = verify_result.get("fix_target", "none")
 
             logger.info("[%s] SolverVerify: status=%s fix_target=%s trusted=%s",
@@ -726,8 +727,9 @@ class UnifiedQuestionPipeline:
 
         # ── Step 11: Export gate ──
         review_records = [
+            {"phase": "stem_blueprint_gate", "status": gate_result.get("status", "unknown")},
             {"phase": "solver_verify", "status": verify_result.get("status", "unknown")},
-            {"phase": "final_review", "status": review.get("status", "unknown")},
+            {"phase": "final_review", "status": final_review.get("status", "unknown")},
         ]
         export_gate = can_export(final_question, review_records, consistency)
         final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
