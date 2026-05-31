@@ -463,6 +463,9 @@ class UnifiedQuestionPipeline:
         solution: Dict[str, Any] = {}
         rubric: Dict[str, Any] = {}
         review: Dict[str, Any] = {}
+        verify_result: Dict[str, Any] = {}
+        gate_result: Dict[str, Any] = {"status": "skipped"}
+        final_review: Dict[str, Any] = {}
         fix_target: Optional[str] = None
         stem_fix_instruction: Optional[str] = None
         round_history: List[Dict[str, Any]] = []
@@ -537,7 +540,6 @@ class UnifiedQuestionPipeline:
             # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
             auto_gate = not is_sc  # comprehensive questions always gate
             need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
-            gate_result = {"status": "skipped"}
             if need_gate:
                 gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,

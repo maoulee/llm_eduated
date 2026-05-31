@@ -21,7 +21,7 @@ class StemBlueprintGateAgent(BaseAgent):
 
     def __init__(self, llm_backend, *, max_tokens: int = 8192):
         from core_new.agent_tools import ToolDef
-        from core_new.code_exec import execute_python
+        from core_new.tool_executor import execute_python
 
         def _python_exec_handler(**kwargs):
             code = kwargs.get("code", "")
