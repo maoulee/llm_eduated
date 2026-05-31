@@ -147,6 +147,68 @@ def _list_directory(dir_path: str, pattern: str = "") -> str:
     return json.dumps(sorted(entries), ensure_ascii=False)
 
 
+# ── Context pull tools ──────────────────────────────────────────
+
+# 全局上下文存储，由 BaseAgent.execute() 在调用前设置
+_context_store: dict[str, Any] = {}
+
+
+def set_context_store(store: dict[str, Any]) -> None:
+    """Set the global context store (called by BaseAgent.execute)."""
+    global _context_store
+    _context_store = store
+
+
+def _list_context() -> str:
+    """列出当前可用的上下文信息源目录。"""
+    if not _context_store:
+        return json.dumps({"info": "当前无可用上下文信息"}, ensure_ascii=False)
+    catalog = {}
+    for key, (desc, _) in _context_store.get("__catalog__", {}).items():
+        catalog[key] = desc
+    return json.dumps(catalog, ensure_ascii=False, indent=2)
+
+
+def _read_context(key: str) -> str:
+    """读取指定上下文信息源的详细内容。"""
+    if key.startswith("__"):
+        return json.dumps({"error": f"信息源 '{key}' 不存在"}, ensure_ascii=False)
+    if not _context_store or key not in _context_store:
+        available = list(_context_store.get("__catalog__", {}).keys()) if _context_store else []
+        return json.dumps({"error": f"信息源 '{key}' 不存在", "available": available}, ensure_ascii=False)
+    content = _context_store.get(key)
+    if content is None:
+        return json.dumps({"error": f"信息源 '{key}' 内容为空"}, ensure_ascii=False)
+    if isinstance(content, (dict, list)):
+        return json.dumps(content, ensure_ascii=False, indent=2)[:8000]
+    return str(content)[:8000]
+
+
+CONTEXT_TOOLS: List[ToolDef] = [
+    ToolDef(
+        name="list_context",
+        description="列出当前可用的上下文信息源目录（名称+简要描述）。先调用此工具了解有哪些信息，再调用 read_context 获取具体内容。",
+        parameters={
+            "type": "object",
+            "properties": {},
+        },
+        handler=_list_context,
+    ),
+    ToolDef(
+        name="read_context",
+        description="读取指定上下文信息源的详细内容。参数 key 为信息源名称（如 design、solver_result、review 等）。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "key": {"type": "string", "description": "信息源名称，如 design、solver_result、review 等"},
+            },
+            "required": ["key"],
+        },
+        handler=_read_context,
+    ),
+]
+
+
 # ── Pre-built tool sets ────────────────────────────────────────
 
 SLOT_TOOLS: List[ToolDef] = [
@@ -190,7 +252,9 @@ SLOT_TOOLS: List[ToolDef] = [
     ),
 ]
 
-SOLVER_TOOLS: List[ToolDef] = SLOT_TOOLS + [
+CONTEXT_AWARE_TOOLS: List[ToolDef] = SLOT_TOOLS + CONTEXT_TOOLS
+
+SOLVER_TOOLS: List[ToolDef] = SLOT_TOOLS + CONTEXT_TOOLS + [
     ToolDef(
         name="python_exec",
         description="执行Python代码验证计算。仅用于数学验证，不要执行文件操作。",

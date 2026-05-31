@@ -6,7 +6,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import BaseAgent, AgentConfig
-from core_new.agent_tools import SOLVER_TOOLS, SLOT_TOOLS
+from core_new.agent_tools import CONTEXT_AWARE_TOOLS, SOLVER_TOOLS, SLOT_TOOLS
 from core_new.markdown_parser import (
     parse_md_sections,
     try_parse_json_object,
@@ -50,6 +50,9 @@ class FinalReviewAgent(BaseAgent):
             max_tokens=4096,
             tools=SOLVER_TOOLS,  # has python_exec for math verification
             max_tool_rounds=3,
+            required_fields=["status", "overall_quality", "issues"],
+            repair_on_parse_failure=True,
+            repair_max_retries=1,
         )
         super().__init__(config, gateway)
 
@@ -185,42 +188,34 @@ class FinalFixerAgent(BaseAgent):
             output_format="markdown",
             enable_thinking=True,
             max_tokens=4096,
+            tools=CONTEXT_AWARE_TOOLS,
+            max_tool_rounds=3,
+            context_sources={
+                "sc_design": "题目设计（stem, sub_questions, given_conditions 等）",
+                "sc_options_result": "选项内容（option_A~D，仅选择题）",
+                "sc_solution_result": "格式化答案（explanation, answer 等）",
+                "solver_result": "求解器输出（computed_results, code 等）",
+                "final_review_result": "终审结果（status, quality, issues, fix_instruction 等）",
+            },
+            required_fields=["status", "fix_applied"],
+            repair_on_parse_failure=True,
+            repair_max_retries=1,
         )
         super().__init__(config, gateway)
 
     def build_input(self, blackboard) -> str:
-        # Build original content from blackboard
-        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
-        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
-        solution_result = blackboard.get("sc_solution_result", {})
         review_result = blackboard.get("final_review_result", {})
-
-        stem = draft_result.get("stem", "")
-        parts = [f"题干: {stem}"]
-
-        is_sc = blackboard.get("is_sc", True)
-        if is_sc:
-            parts.append("选项:")
-            for opt in ("A", "B", "C", "D"):
-                parts.append(f"- {opt}: {options_result.get(f'option_{opt}', '')}")
-        else:
-            sub_qs = draft_result.get("sub_questions", [])
-            if sub_qs:
-                parts.append("子问题:")
-                for i, sq in enumerate(sub_qs, 1):
-                    parts.append(f"- ({i}) {sq}")
-
-        parts.append(f"答案/解析: {solution_result.get('explanation', '')}")
-        original_content = "\n".join(parts)
-
         review_issues = review_result.get("issues", "")
         fix_detail = review_result.get("fix_instruction", {}).get("fix_detail", "")
+        fix_target = review_result.get("fix_instruction", {}).get("fix_target", "none")
+
+        catalog = self._context_catalog_text()
 
         return FINAL_FIXER_PROMPT.format(
-            original_content=original_content,
+            original_content="(请通过 read_context 工具获取)",
             review_issues=review_issues,
             fix_detail=fix_detail,
-        )
+        ) + "\n\n" + catalog + f"\n\n修复目标: {fix_target}"
 
     def parse_output(self, raw_output) -> Dict[str, Any]:
         text = str(raw_output).strip()

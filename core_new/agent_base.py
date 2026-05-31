@@ -38,6 +38,9 @@ class AgentConfig:
     role_type: RoleType | str = RoleType.GENERATOR
     audit_mode: AuditMode | str | None = None
     execution_policy: ExecutionPolicy | None = None
+    # Pull-based context sources
+    context_sources: dict[str, str] = field(default_factory=dict)
+    # 例: {"design": "题目设计（stem, sub_questions, ...）", "review": "终审结果"}
     # Tool-calling support
     tools: list = field(default_factory=list)      # List[ToolDef]
     max_tool_rounds: int = 10
@@ -129,6 +132,24 @@ class BaseAgent(ABC):
         from core_new.audit_profiles import build_audit_checklist_prompt
         return build_audit_checklist_prompt(self.config.audit_mode)
 
+    def _prepare_context_store(self, blackboard: Blackboard) -> dict[str, Any]:
+        """Build context store from context_sources + blackboard state."""
+        store: dict[str, Any] = {"__catalog__": {}}
+        for key, desc in self.config.context_sources.items():
+            value = blackboard.get(key)
+            store[key] = value
+            store["__catalog__"][key] = (desc, value is not None)
+        return store
+
+    def _context_catalog_text(self) -> str:
+        """Generate context catalog description for the prompt."""
+        if not self.config.context_sources:
+            return ""
+        lines = ["你可以通过工具获取以下上下文信息（先调用 list_context 查看目录，再调用 read_context(key) 获取详细内容）："]
+        for key, desc in self.config.context_sources.items():
+            lines.append(f"  - {key}: {desc}")
+        return "\n".join(lines)
+
     @abstractmethod
     def build_input(self, blackboard: Blackboard) -> str:
         """Build the user prompt from blackboard state."""
@@ -166,74 +187,84 @@ class BaseAgent(ABC):
         last_error = ""
         repair_attempts = 0
 
-        for attempt in range(self.config.max_retries + 1):
-            try:
-                prompt = self.build_input(blackboard)
-                memory_text = self.get_memory_text()
-                if memory_text:
-                    prompt += (
-                        "\n\n## 历史尝试记录（请参考，避免重复相同错误）\n"
-                        + memory_text
+        try:
+            for attempt in range(self.config.max_retries + 1):
+                try:
+                    # Prepare context store for pull-based tools
+                    if self.config.context_sources:
+                        from .agent_tools import set_context_store
+                        set_context_store(self._prepare_context_store(blackboard))
+                    prompt = self.build_input(blackboard)
+                    memory_text = self.get_memory_text()
+                    if memory_text:
+                        prompt += (
+                            "\n\n## 历史尝试记录（请参考，避免重复相同错误）\n"
+                            + memory_text
+                        )
+                    result = await asyncio.wait_for(
+                        self._call_llm(prompt),
+                        timeout=self.config.timeout_s,
                     )
-                result = await asyncio.wait_for(
-                    self._call_llm(prompt),
-                    timeout=self.config.timeout_s,
-                )
-                if not result.ok:
-                    raise RuntimeError(f"{result.error_code}: {result.error_message}")
-                raw_text, parsed, repair_attempts = await self._parse_validate_repair(
-                    prompt=prompt,
-                    result=result,
-                )
-                if not raw_text and parsed is not None:
-                    raw_text = json.dumps(parsed, ensure_ascii=False, indent=2, default=str)
-                # Auto-save this exchange to memory
-                self._memory.append({
-                    "role": "user",
-                    "content": prompt,
-                })
-                self._memory.append({
-                    "role": "assistant",
-                    "content": raw_text,
-                })
-                latency_s = time.monotonic() - start
-                record = await blackboard.write(
-                    self.config.name,
-                    raw_text,
-                    self.config.phase,
-                    output_key=self.config.output_key,
-                    parsed=parsed,
-                    input_snapshot=input_snapshot,
-                    tokens_used=result.tokens_used,
-                    latency_s=latency_s,
-                )
-                self._attach_metadata(record, repair_attempts)
-                return record
-            except Exception as exc:
-                last_error = str(exc)
-                if attempt >= self.config.max_retries:
+                    if not result.ok:
+                        raise RuntimeError(f"{result.error_code}: {result.error_message}")
+                    raw_text, parsed, repair_attempts = await self._parse_validate_repair(
+                        prompt=prompt,
+                        result=result,
+                    )
+                    if not raw_text and parsed is not None:
+                        raw_text = json.dumps(parsed, ensure_ascii=False, indent=2, default=str)
+                    # Auto-save this exchange to memory
+                    self._memory.append({
+                        "role": "user",
+                        "content": prompt,
+                    })
+                    self._memory.append({
+                        "role": "assistant",
+                        "content": raw_text,
+                    })
                     latency_s = time.monotonic() - start
-                    record = await blackboard.mark_failed(
+                    record = await blackboard.write(
                         self.config.name,
-                        last_error,
-                        phase=self.config.phase,
+                        raw_text,
+                        self.config.phase,
+                        output_key=self.config.output_key,
+                        parsed=parsed,
                         input_snapshot=input_snapshot,
+                        tokens_used=result.tokens_used,
                         latency_s=latency_s,
                     )
                     self._attach_metadata(record, repair_attempts)
-                    if self.execution_policy.fallback.enabled:
-                        record.metadata["fallback"] = {
-                            "enabled": True,
-                            "target": self.execution_policy.fallback.target,
-                            "original_error": last_error,
-                        }
-                        logger.warning(
-                            "[%s] Agent failed, fallback target: %s",
-                            self.config.name,
-                            self.execution_policy.fallback.target,
-                        )
                     return record
-                await asyncio.sleep(min(2 ** attempt, 5))
+                except Exception as exc:
+                    last_error = str(exc)
+                    if attempt >= self.config.max_retries:
+                        latency_s = time.monotonic() - start
+                        record = await blackboard.mark_failed(
+                            self.config.name,
+                            last_error,
+                            phase=self.config.phase,
+                            input_snapshot=input_snapshot,
+                            latency_s=latency_s,
+                        )
+                        self._attach_metadata(record, repair_attempts)
+                        if self.execution_policy.fallback.enabled:
+                            record.metadata["fallback"] = {
+                                "enabled": True,
+                                "target": self.execution_policy.fallback.target,
+                                "original_error": last_error,
+                            }
+                            logger.warning(
+                                "[%s] Agent failed, fallback target: %s",
+                                self.config.name,
+                                self.execution_policy.fallback.target,
+                            )
+                        return record
+                    await asyncio.sleep(min(2 ** attempt, 5))
+        finally:
+            # Clean up context store to prevent leakage between agents
+            if self.config.context_sources:
+                from .agent_tools import set_context_store
+                set_context_store({})
 
     def _attach_metadata(self, record: AgentRecord, repair_attempts: int) -> None:
         record.metadata = {

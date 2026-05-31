@@ -28,7 +28,7 @@ class SolverVerifyAgent(BaseAgent):
                 output_key="solver_verify_result",
                 max_tokens=max_tokens,
                 enable_thinking=False,
-                required_fields=[],
+                required_fields=["status"],
                 role_type=RoleType.AUDIT,
                 system_prompt=(
                     "你是一位408考研解答审核专家。你验证代码解答智能体的结果是否可信。"

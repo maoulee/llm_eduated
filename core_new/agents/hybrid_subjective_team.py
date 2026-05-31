@@ -94,6 +94,7 @@ class QuestionDesignerAgent(BaseAgent):
                 timeout_s=300.0,
                 max_retries=2,
                 required_fields=["stem", "sub_questions"],
+                repair_on_parse_failure=True,
                 repair_max_retries=1,
                 role_type=RoleType.GENERATOR,
                 tools=SLOT_TOOLS,
