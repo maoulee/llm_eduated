@@ -68,13 +68,14 @@ class ContextBuilder:
         tool_schemas: list[dict[str, Any]] | None = None,
         skill_names: list[str] | None = None,
         extra_system: str = "",
+        native_tools: bool = False,
     ) -> list[dict[str, Any]]:
         runtime = self._runtime_context()
         return [
             {
                 "role": "system",
                 "content": self.build_system_prompt(
-                    tool_schemas=tool_schemas,
+                    tool_schemas=None if native_tools else tool_schemas,
                     skill_names=skill_names,
                     extra_system=extra_system,
                 ),

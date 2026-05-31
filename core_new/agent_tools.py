@@ -10,6 +10,7 @@ OpenAI-compatible tool schema:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from dataclasses import dataclass, field
@@ -48,17 +49,38 @@ class ToolExecutor:
     def has_tool(self, name: str) -> bool:
         return name in self._tools
 
-    def execute(self, tool_name: str, arguments: Dict[str, Any]) -> str:
+    async def execute(self, tool_name: str, arguments: Dict[str, Any]) -> str:
         tool = self._tools.get(tool_name)
         if not tool:
             return json.dumps({"error": f"Unknown tool: {tool_name}"}, ensure_ascii=False)
         try:
+            if asyncio.iscoroutinefunction(tool.handler):
+                return await tool.handler(**arguments)
             return tool.handler(**arguments)
         except Exception as e:
             return json.dumps({"error": str(e)}, ensure_ascii=False)
 
 
 # ── Built-in tool implementations ─────────────────────────────
+
+
+async def _python_exec(code: str, timeout: int = 10) -> str:
+    """Execute Python code and return stdout/stderr."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "python3", "-c", code,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        output = stdout.decode("utf-8", errors="replace")
+        if stderr:
+            output += f"\nSTDERR: {stderr.decode('utf-8', errors='replace')}"
+        return output or "(no output)"
+    except asyncio.TimeoutError:
+        return f"Error: execution timed out after {timeout}s"
+    except Exception as e:
+        return f"Error: {e}"
 
 
 def _read_file(file_path: str, encoding: str = "utf-8") -> str:
@@ -165,5 +187,21 @@ SLOT_TOOLS: List[ToolDef] = [
             "required": ["dir_path"],
         },
         handler=_list_directory,
+    ),
+]
+
+SOLVER_TOOLS: List[ToolDef] = SLOT_TOOLS + [
+    ToolDef(
+        name="python_exec",
+        description="执行Python代码验证计算。仅用于数学验证，不要执行文件操作。",
+        parameters={
+            "type": "object",
+            "properties": {
+                "code": {"type": "string", "description": "要执行的Python代码"},
+                "timeout": {"type": "integer", "description": "超时秒数，默认10"},
+            },
+            "required": ["code"],
+        },
+        handler=_python_exec,
     ),
 ]

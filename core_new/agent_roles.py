@@ -42,7 +42,7 @@ class PipelineFixTarget(str, Enum):
 
 @dataclass(frozen=True)
 class TransportRetryPolicy:
-    max_attempts: int = 3
+    max_attempts: int = 10
     backoff: str = "exponential_jitter"
     retry_on: tuple[str, ...] = (
         "connection_error",

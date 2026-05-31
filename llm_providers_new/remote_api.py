@@ -20,7 +20,6 @@ Supported online API protocols:
 """
 
 import asyncio
-import copy
 import json
 import logging
 import re
@@ -33,6 +32,27 @@ from .base import BaseLLMProvider
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Module-level shared httpx client for connection pooling
+_shared_client: Optional[httpx.AsyncClient] = None
+_shared_client_timeout: float = 300.0
+
+
+async def _get_shared_client(timeout: float = 300.0) -> httpx.AsyncClient:
+    """Get or create the shared httpx.AsyncClient with connection pooling."""
+    global _shared_client, _shared_client_timeout
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client_timeout = timeout
+        _shared_client = httpx.AsyncClient(timeout=timeout)
+    return _shared_client
+
+
+async def close_shared_client():
+    """Close the shared httpx client. Call when shutting down the application."""
+    global _shared_client
+    if _shared_client is not None and not _shared_client.is_closed:
+        await _shared_client.aclose()
+    _shared_client = None
 
 
 class RemoteAPIProvider(BaseLLMProvider):
@@ -90,9 +110,21 @@ class RemoteAPIProvider(BaseLLMProvider):
 
     def _prepare_messages(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> List[Dict[str, Any]]:
         """Copy and lightly modify messages according to prompt/json control."""
-        processed = copy.deepcopy(messages)
-        if not processed:
-            return processed
+        if not messages:
+            return []
+        # Only need to copy the last message if we'll modify it
+        needs_modify = (
+            messages[-1].get("role") == "user"
+            and (
+                (self.thinking_control_method == "prompt" and (not enable_thinking or json_mode))
+                or json_mode
+            )
+        )
+        if needs_modify:
+            processed = list(messages)  # shallow copy the list
+            processed[-1] = dict(messages[-1])  # copy only the last dict
+        else:
+            return list(messages)  # return shallow copy (caller shouldn't mutate)
 
         last = processed[-1]
         if last.get("role") == "user":
@@ -159,49 +191,32 @@ class RemoteAPIProvider(BaseLLMProvider):
         if extra_body:
             params["extra_body"] = extra_body
 
-        max_retries = 5
-        for attempt in range(max_retries):
-            try:
-                response = await self.client.chat.completions.create(**params)
-                msg = response.choices[0].message
-                reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
-                # Extract tool calls if present
-                tool_calls = None
-                raw_tool_calls = getattr(msg, "tool_calls", None)
-                if raw_tool_calls:
-                    tool_calls = []
-                    for tc in raw_tool_calls:
-                        tool_calls.append({
-                            "id": tc.id,
-                            "type": tc.type,
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            },
-                        })
-                return {
-                    "content": msg.content or "",
-                    "reasoning_content": reasoning_content,
-                    "tool_calls": tool_calls,
-                }
-            except Exception as e:
-                import asyncio as _asyncio
-                is_retryable = (
-                    "500" in str(e)
-                    or "ConnectionError" in type(e).__name__
-                    or "Connection error" in str(e)
-                    or "TimeoutExpired" in type(e).__name__
-                    or "429" in str(e)
-                    or "rate_limit" in str(e).lower()
-                )
-                if is_retryable and attempt < max_retries - 1:
-                    wait_s = min(2 ** attempt * 3, 30)
-                    logger.warning("Retryable API error (attempt %d/%d), waiting %ds: %s",
-                                   attempt + 1, max_retries, wait_s, str(e)[:200])
-                    await _asyncio.sleep(wait_s)
-                    continue
-                logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
-                return {"content": f"Error: API call failed. Details: {e}", "reasoning_content": ""}
+        try:
+            response = await self.client.chat.completions.create(**params)
+            msg = response.choices[0].message
+            reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
+            # Extract tool calls if present
+            tool_calls = None
+            raw_tool_calls = getattr(msg, "tool_calls", None)
+            if raw_tool_calls:
+                tool_calls = []
+                for tc in raw_tool_calls:
+                    tool_calls.append({
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    })
+            return {
+                "content": msg.content or "",
+                "reasoning_content": reasoning_content,
+                "tool_calls": tool_calls,
+            }
+        except Exception as e:
+            logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
+            raise  # Let gateway handle retries
 
     async def _vllm_chat_batch_call(
         self,
@@ -238,10 +253,10 @@ class RemoteAPIProvider(BaseLLMProvider):
             headers["Authorization"] = f"Bearer {self.api_key}"
 
         try:
-            async with httpx.AsyncClient(timeout=self.request_timeout) as client:
-                response = await client.post(url, json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
+            client = await _get_shared_client(self.request_timeout)
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 logger.warning("vLLM batch endpoint not available (404), falling back to sequential calls")
@@ -333,34 +348,47 @@ class RemoteAPIProvider(BaseLLMProvider):
         if not messages_batch:
             return []
 
+        # Fast path: single message with openai_chat protocol
+        if len(messages_batch) == 1 and self.api_protocol == "openai_chat":
+            result = await self._chat_call(
+                messages_batch[0], stop_sequences=stop_sequences,
+                max_tokens=max_tokens, enable_thinking=enable_thinking,
+                json_mode=json_mode,
+            )
+            return [result]
+
         if self.api_protocol in {"vllm_chat_batch", "openai_chat_batch"}:
-            outputs: List[Dict[str, Any]] = []
-            for start in range(0, len(messages_batch), self.batch_size):
-                chunk = messages_batch[start:start + self.batch_size]
-                outputs.extend(
-                    await self._vllm_chat_batch_call(
-                        chunk,
-                        stop_sequences=stop_sequences,
-                        max_tokens=max_tokens,
-                        enable_thinking=enable_thinking,
-                        json_mode=json_mode,
-                    )
+            chunks = [
+                messages_batch[start:start + self.batch_size]
+                for start in range(0, len(messages_batch), self.batch_size)
+            ]
+            chunk_results = await asyncio.gather(*[
+                self._vllm_chat_batch_call(
+                    chunk, stop_sequences=stop_sequences, max_tokens=max_tokens,
+                    enable_thinking=enable_thinking, json_mode=json_mode,
                 )
+                for chunk in chunks
+            ])
+            outputs = []
+            for result in chunk_results:
+                outputs.extend(result)
             return outputs
 
         if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
-            outputs: List[Dict[str, Any]] = []
-            for start in range(0, len(messages_batch), self.batch_size):
-                chunk = messages_batch[start:start + self.batch_size]
-                outputs.extend(
-                    await self._completion_batch_call(
-                        chunk,
-                        stop_sequences=stop_sequences,
-                        max_tokens=max_tokens,
-                        enable_thinking=enable_thinking,
-                        json_mode=json_mode,
-                    )
+            chunks = [
+                messages_batch[start:start + self.batch_size]
+                for start in range(0, len(messages_batch), self.batch_size)
+            ]
+            chunk_results = await asyncio.gather(*[
+                self._completion_batch_call(
+                    chunk, stop_sequences=stop_sequences, max_tokens=max_tokens,
+                    enable_thinking=enable_thinking, json_mode=json_mode,
                 )
+                for chunk in chunks
+            ])
+            outputs = []
+            for result in chunk_results:
+                outputs.extend(result)
             return outputs
 
         semaphore = asyncio.Semaphore(self.batch_size)

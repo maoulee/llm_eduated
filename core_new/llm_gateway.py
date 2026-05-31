@@ -37,16 +37,25 @@ from llm_providers_new import get_llm_provider
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Global concurrency control — all gateway instances share this semaphore
-_MAX_CONCURRENCY = int(os.getenv("LLM_MAX_CONCURRENCY", "2"))
-_concurrency_sem: Optional[asyncio.Semaphore] = None
+# Separate concurrency limits for local (vLLM) and remote (GLM) providers
+_LOCAL_CONCURRENCY = int(os.getenv("LLM_LOCAL_CONCURRENCY", "10"))
+_REMOTE_CONCURRENCY = int(os.getenv("LLM_REMOTE_CONCURRENCY", "5"))
+_local_sem: Optional[asyncio.Semaphore] = None
+_remote_sem: Optional[asyncio.Semaphore] = None
 
 
-def _get_sem() -> asyncio.Semaphore:
-    global _concurrency_sem
-    if _concurrency_sem is None:
-        _concurrency_sem = asyncio.Semaphore(_MAX_CONCURRENCY)
-    return _concurrency_sem
+def _get_local_sem() -> asyncio.Semaphore:
+    global _local_sem
+    if _local_sem is None:
+        _local_sem = asyncio.Semaphore(_LOCAL_CONCURRENCY)
+    return _local_sem
+
+
+def _get_remote_sem() -> asyncio.Semaphore:
+    global _remote_sem
+    if _remote_sem is None:
+        _remote_sem = asyncio.Semaphore(_REMOTE_CONCURRENCY)
+    return _remote_sem
 
 
 # ── Error hierarchy ────────────────────────────────────────
@@ -133,8 +142,12 @@ class LLMGateway:
         self._provider = get_llm_provider(self._config)
         self._model_name = self._config.get("model_path", provider_name)
         self._transport_retry = transport_retry or TransportRetryPolicy()
-        logger.info("LLMGateway initialized: provider=%s model=%s max_attempts=%d",
-                     self._provider_name, self._model_name, self._transport_retry.max_attempts)
+        # Determine scope: local (vLLM) vs remote (cloud API)
+        self._is_local = provider_name in ("api_vllm", "vllm") or "vllm" in provider_name.lower()
+        logger.info("LLMGateway initialized: provider=%s model=%s scope=%s max_attempts=%d",
+                    self._provider_name, self._model_name,
+                    "local" if self._is_local else "remote",
+                    self._transport_retry.max_attempts)
 
     @classmethod
     def from_provider(cls, provider, name: str = "wrapped", *, transport_retry: TransportRetryPolicy | None = None) -> "LLMGateway":
@@ -145,9 +158,14 @@ class LLMGateway:
         instance._provider = provider
         instance._model_name = name
         instance._transport_retry = transport_retry or TransportRetryPolicy()
+        instance._is_local = "vllm" in name.lower()
         return instance
 
     # ── Retry helpers ──────────────────────────────────────
+
+    def _get_sem(self) -> asyncio.Semaphore:
+        """Return the appropriate semaphore for this gateway's scope."""
+        return _get_local_sem() if self._is_local else _get_remote_sem()
 
     def _should_retry(self, error_code: str) -> bool:
         """Check if an error code should be retried per transport policy."""
@@ -162,10 +180,10 @@ class LLMGateway:
         return False
 
     async def _wait_with_backoff(self, attempt: int) -> None:
-        """Exponential backoff with jitter."""
-        base = min(2 ** attempt, 30)  # cap at 30s
-        jitter = random.uniform(0, base * 0.5)
-        delay = base + jitter
+        """Fixed-interval backoff with jitter."""
+        base_delay = 3.0
+        max_delay = 15.0
+        delay = min(base_delay + random.uniform(0, base_delay * 0.3), max_delay)
         logger.info("Transport retry attempt %d, waiting %.1fs", attempt + 1, delay)
         await asyncio.sleep(delay)
 
@@ -187,7 +205,7 @@ class LLMGateway:
         last_error_msg = None
 
         for attempt in range(self._transport_retry.max_attempts):
-            async with _get_sem():
+            async with self._get_sem():
                 start_time = time.monotonic()
                 has_raw = hasattr(self._provider, "_generate_raw_batch")
 
@@ -263,7 +281,7 @@ class LLMGateway:
         last_error_msg = None
 
         for attempt in range(self._transport_retry.max_attempts):
-            async with _get_sem():
+            async with self._get_sem():
                 start_time = time.monotonic()
 
                 try:
@@ -341,7 +359,7 @@ class LLMGateway:
         last_error_msg = None
 
         for attempt in range(self._transport_retry.max_attempts):
-            async with _get_sem():
+            async with self._get_sem():
                 start_time = time.monotonic()
 
                 try:
@@ -480,7 +498,7 @@ class LLMGateway:
                         fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
                     except json.JSONDecodeError:
                         fn_args = {}
-                    result_str = tool_executor.execute(fn_name, fn_args)
+                    result_str = await tool_executor.execute(fn_name, fn_args)
                     conversation.append({
                         "role": "tool",
                         "tool_call_id": tc["id"],

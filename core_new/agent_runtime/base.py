@@ -177,3 +177,7 @@ class Tool(ABC):
                 "parameters": self.parameters,
             },
         }
+
+    def to_openai_tool(self) -> dict[str, Any]:
+        """Alias for to_schema() — same OpenAI function calling format."""
+        return self.to_schema()

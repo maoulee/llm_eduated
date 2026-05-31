@@ -45,7 +45,9 @@ from core_new.agents.single_choice_team import (
     PostReviewAgent,
     QuestionSummaryAgent,
 )
+from core_new.agents.final_review_team import FinalReviewAgent, FinalFixerAgent
 from core_new.blackboard import Blackboard
+from core_new.validators import structural_validate
 from core_new.fallback_executor import FallbackExecutor, FallbackResult
 from core_new.provider_router import get_routed_gateway as _rgw
 from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
@@ -503,6 +505,22 @@ class UnifiedQuestionPipeline:
                         generation_time_s=round(total_time, 1),
                         pipeline_type="unified_sc" if is_sc else "unified_comp",
                     )
+
+                # Structural pre-check (pure Python, no LLM)
+                struct_errors = structural_validate(design, "single_choice" if is_sc else "comprehensive")
+                if struct_errors:
+                    logger.warning("[%s] Structural validation failed: %s", slot_id, struct_errors)
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "design", rnd, {"structural_errors": struct_errors})
+                    # For structural errors, route to redesign immediately
+                    if rnd >= self.max_revision_rounds:
+                        logger.warning("[%s] Structural validation failed, revision budget exhausted", slot_id)
+                        break
+                    fix_target = "stem"
+                    stem_fix_instruction = f"Structural errors detected: {', '.join(struct_errors)}. Please fix these format issues."
+                    round_history.append({"role": "review", "content": stem_fix_instruction, "round": rnd})
+                    continue
+
                 if self.debugger:
                     self.debugger.dump_step(slot_id, "design", rnd, design)
 
@@ -631,7 +649,49 @@ class UnifiedQuestionPipeline:
             # All checks passed, break out of revision loop
             break
 
-        # ── Step 8: Summary (consolidate all outputs) ──
+        # ── Step 8: Final Review + Fixer (after format, before summary) ──
+        final_review = await self._run_final_review(
+            design, options if is_sc else None, solution, solver_dict,
+            is_sc, slot_id, gateway
+        )
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "final_review", 0,
+                                    final_review,
+                                    input_data={"design": design, "solution": solution})
+
+        if final_review.get("status") == "needs_fix":
+            logger.info("Final review found issues (quality=%s): %s",
+                        final_review.get("overall_quality"),
+                        final_review.get("issues", "")[:200])
+
+            fix_result = await self._run_final_fixer(
+                design, options if is_sc else None, solution, solver_dict,
+                final_review, is_sc, slot_id, gateway
+            )
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "final_fixer", 0,
+                                        fix_result,
+                                        input_data={"review": final_review})
+
+            if fix_result.get("status") == "ok":
+                # Apply targeted fixes
+                if fix_result.get("fixed_stem"):
+                    design["stem"] = fix_result["fixed_stem"]
+                if fix_result.get("fixed_answer") and solution:
+                    solution.update(
+                        self._safe_parse(fix_result["fixed_answer"])
+                        if isinstance(fix_result["fixed_answer"], str)
+                        else fix_result["fixed_answer"]
+                    )
+                if fix_result.get("fixed_options") and is_sc and options:
+                    options = fix_result["fixed_options"]
+                if fix_result.get("fixed_sub_questions") and not is_sc and design:
+                    design["sub_questions"] = fix_result["fixed_sub_questions"]
+                logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
+            else:
+                logger.warning("Final fixer failed, using original output (degraded)")
+
+        # ── Step 9: Summary (consolidate all outputs) ──
         summary = {}
         if self.enable_summary and not is_regen:
             summary = await self._summarize(
@@ -789,6 +849,86 @@ class UnifiedQuestionPipeline:
         logger.info("[%s] SolverVerify: status=%s trusted=%s",
                     slot_id, result.get("status"), result.get("trusted"))
         return result
+
+    async def _run_final_review(
+        self,
+        design: Dict[str, Any],
+        options: Optional[Dict[str, Any]],
+        solution: Dict[str, Any],
+        solver_dict: Dict[str, Any],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Run comprehensive final review on pipeline output."""
+        parts = []
+        if design:
+            parts.append(f"### 题干\n{design.get('stem', '')}")
+        if options and is_sc:
+            parts.append(f"### 选项\n{options}")
+        if solution:
+            parts.append(f"### 解答\n{solution}")
+
+        initial = {
+            "content_to_review": "\n\n".join(parts),
+            "sc_design": design,
+            "sc_options_result": options,
+            "sc_solution_result": solution,
+            "solver_result": solver_dict,
+        }
+        bb = Blackboard(
+            task_id=f"final_review_{slot_id}",
+            task_type="final_review",
+            initial_state=initial,
+        )
+
+        agent = FinalReviewAgent(gateway)
+        record = await agent.execute(bb)
+        return agent.parse_output(record)
+
+    async def _run_final_fixer(
+        self,
+        design: Dict[str, Any],
+        options: Optional[Dict[str, Any]],
+        solution: Dict[str, Any],
+        solver_dict: Dict[str, Any],
+        review_result: Dict[str, Any],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Run targeted fixer based on final review feedback."""
+        fix_instruction = review_result.get("fix_instruction", {})
+        fix_target = fix_instruction.get("fix_target", "none")
+        fix_detail = fix_instruction.get("fix_detail", "")
+
+        if fix_target == "none":
+            return {"status": "skipped"}
+
+        initial = {
+            "sc_design": design,
+            "sc_options_result": options,
+            "sc_solution_result": solution,
+            "solver_result": solver_dict,
+            "final_review_result": review_result,
+        }
+        bb = Blackboard(
+            task_id=f"final_fixer_{slot_id}",
+            task_type="final_fixer",
+            initial_state=initial,
+        )
+
+        agent = FinalFixerAgent(gateway)
+        record = await agent.execute(bb)
+        return agent.parse_output(record)
+
+    @staticmethod
+    def _safe_parse(text: str) -> Dict[str, Any]:
+        """Safely parse JSON string, returning empty dict on failure."""
+        try:
+            return json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            return {}
 
     # ── Step methods ───────────────────────────────────────────
 
