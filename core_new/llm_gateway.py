@@ -508,6 +508,8 @@ class LLMGateway:
                 continue
 
             # No tool calls — this is the final content
+            logger.info("[generate_with_tools] Final content len=%d, reasoning len=%d, rounds=%d",
+                        len(content or ""), len(raw.get("reasoning_content", "")), round_idx + 1)
             reasoning = raw.get("reasoning_content", "")
             return LLMResult.success(
                 content=content,

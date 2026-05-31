@@ -69,6 +69,9 @@ class FinalReviewAgent(BaseAgent):
 
         # Parse Markdown sections
         sections = parse_md_sections(text)
+        logger.info("[FinalReview] sections=%s quality_raw=%s",
+                     list(sections.keys()) if isinstance(sections, dict) else type(sections).__name__,
+                     sections.get("review", {}).get("overall_quality", "?") if isinstance(sections.get("review"), dict) else "no-review-section")
 
         # Extract review fields directly from parsed dict
         review = sections.get("review", {})

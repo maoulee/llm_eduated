@@ -688,8 +688,9 @@ class UnifiedQuestionPipeline:
                 if fix_result.get("fixed_sub_questions") and not is_sc and design:
                     design["sub_questions"] = fix_result["fixed_sub_questions"]
                 logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
-            else:
-                logger.warning("Final fixer failed, using original output (degraded)")
+            elif fix_result.get("status") not in ("skipped",):
+                logger.warning("Final fixer failed (status=%s), using original output (degraded)",
+                                fix_result.get("status"))
 
         # ── Step 9: Summary (consolidate all outputs) ──
         summary = {}
@@ -875,6 +876,7 @@ class UnifiedQuestionPipeline:
             "sc_options_result": options,
             "sc_solution_result": solution,
             "solver_result": solver_dict,
+            "is_sc": is_sc,
         }
         bb = Blackboard(
             task_id=f"final_review_{slot_id}",
@@ -882,11 +884,12 @@ class UnifiedQuestionPipeline:
             initial_state=initial,
         )
 
-        agent = FinalReviewAgent(gateway)
+        agent = FinalReviewAgent(_rgw("final_review"))
         record = await agent.execute(bb)
         if record.error:
             return {"status": "error", "overall_quality": 0, "issues": record.error, "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
-        return record.output if isinstance(record.output, dict) else {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
+        parsed = bb.get("final_review", {})
+        return parsed if isinstance(parsed, dict) else {"status": "pass", "overall_quality": 0, "issues": "无", "fix_instruction": {"fix_target": "none", "fix_detail": ""}}
 
     async def _run_final_fixer(
         self,
@@ -913,6 +916,7 @@ class UnifiedQuestionPipeline:
             "sc_solution_result": solution,
             "solver_result": solver_dict,
             "final_review_result": review_result,
+            "is_sc": is_sc,
         }
         bb = Blackboard(
             task_id=f"final_fixer_{slot_id}",
@@ -920,11 +924,12 @@ class UnifiedQuestionPipeline:
             initial_state=initial,
         )
 
-        agent = FinalFixerAgent(gateway)
+        agent = FinalFixerAgent(_rgw("final_fixer"))
         record = await agent.execute(bb)
         if record.error:
             return {"status": "error", "fix_applied": record.error}
-        return record.output if isinstance(record.output, dict) else {"status": "failed", "fix_applied": "no output"}
+        parsed = bb.get("final_fixer", {})
+        return parsed if isinstance(parsed, dict) else {"status": "failed", "fix_applied": "no output"}
 
     @staticmethod
     def _safe_parse(text: str) -> Dict[str, Any]:
