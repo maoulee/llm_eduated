@@ -451,6 +451,8 @@ class UnifiedQuestionPipeline:
         previous_question: Optional[Dict[str, Any]] = None,
         fix_instruction: str = "",
         is_regen: bool = False,
+        resume_from: Optional[str] = None,
+        resume_state: Optional[Dict[str, Any]] = None,
     ) -> UnifiedPipelineResult:
         is_sc = self._is_single_choice(slot_blueprint)
         slot_id = slot_blueprint.get("slot_id", "Q1")
@@ -470,14 +472,62 @@ class UnifiedQuestionPipeline:
         stem_fix_instruction: Optional[str] = None
         round_history: List[Dict[str, Any]] = []
 
+        # ── Resume support ──
+        _RESUME_STAGES = {
+            "design", "options", "gate", "solve", "verify",
+            "format", "rubric", "final_review", "final_fixer",
+        }
+        _STAGE_ORDER = [
+            "design", "options", "gate", "solve", "verify",
+            "format", "rubric", "final_review", "final_fixer",
+        ]
+
+        if resume_from:
+            if resume_from not in _RESUME_STAGES:
+                raise ValueError(f"Invalid resume_from: {resume_from!r}")
+            if not resume_state:
+                raise ValueError("resume_state required when resume_from is set")
+            # Restore state from resume_state
+            is_sc = resume_state.get("is_sc", is_sc)
+            design = resume_state.get("design", design)
+            options = resume_state.get("options", options)
+            solver_dict = resume_state.get("solver_dict", solver_dict)
+            if solver_dict and not code_solution:
+                code_solution = CodeSolution.from_dict(solver_dict)
+            solution = resume_state.get("solution", solution)
+            rubric = resume_state.get("rubric", rubric)
+            verify_result = resume_state.get("verify_result", verify_result)
+            review = resume_state.get("review", review)
+            gate_result = resume_state.get("gate_result", gate_result)
+            final_review = resume_state.get("final_review", final_review)
+            logger.info("[%s] Resuming from stage: %s", slot_id, resume_from)
+
+        # Compute which stages to skip when resuming
+        if resume_from and resume_from in _STAGE_ORDER:
+            resume_idx = _STAGE_ORDER.index(resume_from)
+            _skip_stages = set(s for s in _STAGE_ORDER if _STAGE_ORDER.index(s) < resume_idx)
+        else:
+            _skip_stages = set()
+
+        # When resuming, skip the entire revision loop
+        if _skip_stages and resume_from in _STAGE_ORDER:
+            resume_idx = _STAGE_ORDER.index(resume_from)
+            _skip_loop = resume_from not in {"design", "options", "gate", "solve", "verify"}
+        else:
+            _skip_loop = False
+
         for rnd in range(self.max_revision_rounds + 1):
+            if _skip_loop:
+                break
             if rnd > 0:
                 logger.info("[%s] Revision round %d, fix_target=%s",
                             slot_id, rnd, fix_target)
 
             # ── Step 1: Design ──
             need_design = rnd == 0 or fix_target in ("question", "stem")
-            if need_design:
+            if "design" in _skip_stages:
+                logger.info("[%s] Resuming: skipping design", slot_id)
+            elif need_design:
                 if is_sc:
                     design = await self._design_sc(
                         slot_blueprint, experience_card, gateway,
@@ -529,7 +579,9 @@ class UnifiedQuestionPipeline:
 
             # ── Step 2: Options (SC only) ──
             need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
-            if need_options:
+            if "options" in _skip_stages:
+                logger.info("[%s] Resuming: skipping options", slot_id)
+            elif need_options:
                 options = await self._generate_options(
                     design, slot_blueprint, gateway,
                     round_history=round_history,
@@ -540,7 +592,9 @@ class UnifiedQuestionPipeline:
             # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
             auto_gate = not is_sc  # comprehensive questions always gate
             need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
-            if need_gate:
+            if "gate" in _skip_stages:
+                logger.info("[%s] Resuming: skipping gate", slot_id)
+            elif need_gate:
                 gate_result = await self._run_stem_blueprint_gate(
                     design, options if is_sc else None,
                     slot_blueprint, None, experience_card,
@@ -583,7 +637,9 @@ class UnifiedQuestionPipeline:
 
             # ── Step 4: Solve (unified computation) ──
             need_solve = rnd == 0 or fix_target in ("question", "options", "answer", "solver")
-            if need_solve:
+            if "solve" in _skip_stages:
+                logger.info("[%s] Resuming: skipping solve", slot_id)
+            elif need_solve:
                 code_solution = await self._solve(
                     design, options if is_sc else None, is_sc, slot_id, gateway,
                 )
@@ -592,11 +648,14 @@ class UnifiedQuestionPipeline:
                     self.debugger.dump_step(slot_id, "solve", rnd, solver_dict)
 
             # ── Step 5: SolverVerify (replaces review) ──
-            verify_result = await self._run_solver_verify(
-                design, options if is_sc else None,
-                solver_dict, None, is_sc, slot_id, gateway,
-                slot_blueprint=slot_blueprint,
-            )
+            if "verify" in _skip_stages:
+                logger.info("[%s] Resuming: skipping verify", slot_id)
+            else:
+                verify_result = await self._run_solver_verify(
+                    design, options if is_sc else None,
+                    solver_dict, None, is_sc, slot_id, gateway,
+                    slot_blueprint=slot_blueprint,
+                )
             review = verify_result  # Use verify_result as review for downstream compat
 
             verify_status = verify_result.get("status", "needs_fix")
@@ -633,7 +692,9 @@ class UnifiedQuestionPipeline:
                     continue
 
             # ── Step 6: Format solution ──
-            if is_sc:
+            if "format" in _skip_stages:
+                logger.info("[%s] Resuming: skipping format", slot_id)
+            elif is_sc:
                 solution = await self._format_sc(
                     design, options, solver_dict, gateway,
                 )
@@ -643,7 +704,9 @@ class UnifiedQuestionPipeline:
                 self.debugger.dump_step(slot_id, "format", rnd, solution)
 
             # ── Step 7: Rubric (Comp only) ──
-            if not is_sc:
+            if "rubric" in _skip_stages:
+                logger.info("[%s] Resuming: skipping rubric", slot_id)
+            elif not is_sc:
                 rubric = await self._write_rubric(
                     design, solution, slot_blueprint, gateway,
                 )
@@ -654,47 +717,49 @@ class UnifiedQuestionPipeline:
             break
 
         # ── Step 8: Final Review + Fixer (after format, before summary) ──
-        final_review = await self._run_final_review(
-            design, options if is_sc else None, solution, solver_dict,
-            is_sc, slot_id, gateway
-        )
-        if self.debugger:
-            self.debugger.dump_step(slot_id, "final_review", 0,
-                                    final_review,
-                                    input_data={"design": design, "solution": solution})
-
-        if final_review.get("status") == "needs_fix":
-            logger.info("Final review found issues (quality=%s): %s",
-                        final_review.get("overall_quality"),
-                        final_review.get("issues", "")[:200])
-
-            fix_result = await self._run_final_fixer(
+        if "final_review" in _skip_stages:
+            logger.info("[%s] Resuming: skipping final_review", slot_id)
+        else:
+            final_review = await self._run_final_review(
                 design, options if is_sc else None, solution, solver_dict,
-                final_review, is_sc, slot_id, gateway
+                is_sc, slot_id, gateway
             )
             if self.debugger:
-                self.debugger.dump_step(slot_id, "final_fixer", 0,
-                                        fix_result,
-                                        input_data={"review": final_review})
+                self.debugger.dump_step(slot_id, "final_review", 0,
+                                        final_review,
+                                        input_data={"design": design, "solution": solution})
 
-            if fix_result.get("status") == "ok":
-                # Apply targeted fixes
-                if fix_result.get("fixed_stem"):
-                    design["stem"] = fix_result["fixed_stem"]
-                if fix_result.get("fixed_answer") and solution:
-                    solution.update(
-                        self._safe_parse(fix_result["fixed_answer"])
-                        if isinstance(fix_result["fixed_answer"], str)
-                        else fix_result["fixed_answer"]
-                    )
-                if fix_result.get("fixed_options") and is_sc and options:
-                    options = fix_result["fixed_options"]
-                if fix_result.get("fixed_sub_questions") and not is_sc and design:
-                    design["sub_questions"] = fix_result["fixed_sub_questions"]
-                logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
-            elif fix_result.get("status") not in ("skipped",):
-                logger.warning("Final fixer failed (status=%s), using original output (degraded)",
-                                fix_result.get("status"))
+            if final_review.get("status") == "needs_fix":
+                logger.info("Final review found issues (quality=%s): %s",
+                            final_review.get("overall_quality"),
+                            final_review.get("issues", "")[:200])
+
+                fix_result = await self._run_final_fixer(
+                    design, options if is_sc else None, solution, solver_dict,
+                    final_review, is_sc, slot_id, gateway
+                )
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "final_fixer", 0,
+                                            fix_result,
+                                            input_data={"review": final_review})
+
+                if fix_result.get("status") == "ok":
+                    if fix_result.get("fixed_stem"):
+                        design["stem"] = fix_result["fixed_stem"]
+                    if fix_result.get("fixed_answer") and solution:
+                        solution.update(
+                            self._safe_parse(fix_result["fixed_answer"])
+                            if isinstance(fix_result["fixed_answer"], str)
+                            else fix_result["fixed_answer"]
+                        )
+                    if fix_result.get("fixed_options") and is_sc and options:
+                        options = fix_result["fixed_options"]
+                    if fix_result.get("fixed_sub_questions") and not is_sc and design:
+                        design["sub_questions"] = fix_result["fixed_sub_questions"]
+                    logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
+                elif fix_result.get("status") not in ("skipped",):
+                    logger.warning("Final fixer failed (status=%s), using original output (degraded)",
+                                    fix_result.get("status"))
 
         # ── Step 9: Summary (consolidate all outputs) ──
         summary = {}

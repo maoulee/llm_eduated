@@ -23,18 +23,12 @@ FINAL_FIXER_PROMPT = """你是一名408考试出题修复专家。根据终审�
 
 ## 输出格式
 
-输出一个JSON对象，包含修复后的完整内容：
+请严格按以下Markdown格式输出：
 
-```json
-{{
-  "status": "ok",
-  "fix_applied": "简述修复了什么",
-  "fixed_stem": "修复后的题干（如果fix_target包含stem）",
-  "fixed_answer": "修复后的答案/解题过程（如果fix_target包含answer）",
-  "fixed_options": "修复后的选项（如果fix_target包含options）",
-  "fixed_sub_questions": "修复后的子问题（如果fix_target包含sub_questions）"
-}}
-```
+## fix_result
+- **status**: ok（修复成功）或 failed（无法修复）
+- **fix_applied**: 简述修复了什么
 
-只包含需要修复的字段，不需要修复的字段不要包含。
+## fixed_content
+（修复后的完整内容。根据fix_target，包含对应字段的完整修复后内容。不需要修复的字段不要包含。）
 """

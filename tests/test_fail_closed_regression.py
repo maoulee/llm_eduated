@@ -10,7 +10,12 @@ Covers:
   G. Rubric vs answer scanning
   H. _values_match structural comparison
   I. Export gate (can_export)
+  J. Markdown-first structural validation
+  K. FinalFixerAgent Markdown parse
+  L. Pipeline resume
 """
+
+import json
 
 import pytest
 from core_new.artifact_consistency import (
@@ -20,8 +25,10 @@ from core_new.artifact_consistency import (
     _numeric_equal,
     _normalize_number,
 )
+from core_new.validators import structural_validate
 from core_new.agents.final_review_team import (
     FinalReviewAgent,
+    FinalFixerAgent,
     _infer_fix_target,
 )
 
@@ -526,3 +533,194 @@ class TestInferFixTarget:
 
     def test_no_match(self):
         assert _infer_fix_target("一切正常", "") == "none"
+
+
+# ─── J. Markdown-First Structural Validation ───
+
+class TestMarkdownStructuralValidation:
+    """Validate that _validate_comprehensive accepts both string and dict sub_questions."""
+
+    def test_j1_string_list_sub_questions_passes(self):
+        """String list sub_questions with content should pass validation."""
+        question = {
+            "stem": "某计算机系统...",
+            "sub_questions": [
+                "(1) 计算总线传输时间",
+                "(2) 计算磁盘读取时间",
+            ],
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert errors == [], f"Expected no errors, got: {errors}"
+
+    def test_j2_dict_list_sub_questions_passes(self):
+        """Dict list sub_questions with answers should still pass."""
+        question = {
+            "stem": "某计算机系统...",
+            "sub_questions": [
+                {"question": "(1) 计算时间", "answer": "180 ns"},
+                {"question": "(2) 计算磁盘时间", "answer": "7.08 ms"},
+            ],
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert errors == [], f"Expected no errors, got: {errors}"
+
+    def test_j3_empty_string_sub_question_fails(self):
+        """Empty string sub_question should fail validation."""
+        question = {
+            "stem": "某计算机系统...",
+            "sub_questions": ["(1) 有效问题", ""],
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert any("empty" in e.lower() or "sub_question" in e for e in errors)
+
+    def test_j4_empty_sub_questions_list_fails(self):
+        """Empty sub_questions list should fail."""
+        question = {
+            "stem": "某计算机系统...",
+            "sub_questions": [],
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert len(errors) > 0
+
+    def test_j5_no_sub_questions_fails(self):
+        """Missing sub_questions should fail."""
+        question = {
+            "stem": "某计算机系统...",
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert len(errors) > 0
+
+    def test_j6_mixed_types_sub_questions(self):
+        """Mixed string/dict sub_questions should handle both correctly."""
+        question = {
+            "stem": "某计算机系统...",
+            "sub_questions": [
+                "(1) 计算总线传输时间",
+                {"question": "(2) 计算磁盘时间", "answer": "7.08 ms"},
+            ],
+        }
+        errors = structural_validate(question, "comprehensive")
+        assert errors == [], f"Expected no errors, got: {errors}"
+
+
+# ─── K. FinalFixerAgent Markdown Parse ───
+
+class TestFinalFixerMarkdownParse:
+    """Validate FinalFixerAgent.parse_output with Markdown format."""
+
+    def _parse(self, text):
+        agent = FinalFixerAgent.__new__(FinalFixerAgent)
+        return agent.parse_output(text)
+
+    def test_k1_valid_markdown_fix(self):
+        """Valid Markdown fix output with fix_result + fixed_content sections."""
+        text = """## fix_result
+- **status**: ok
+- **fix_applied**: 修正了T_avg_local的计算错误
+
+## fixed_content
+- **fixed_answer**: T_avg_local = 0.9 * 0.5 + 0.1 * 180 = 18.45 ns
+"""
+        result = self._parse(text)
+        assert result["status"] == "ok"
+        assert "T_avg_local" in result.get("fix_applied", "")
+
+    def test_k2_empty_output_fails_closed(self):
+        """Empty output returns failed status."""
+        result = self._parse("")
+        assert result["status"] == "failed"
+
+    def test_k3_json_backward_compat(self):
+        """JSON output still works (backward compatibility)."""
+        text = '{"status": "ok", "fix_applied": "修正答案", "fixed_answer": "18.45 ns"}'
+        result = self._parse(text)
+        assert result["status"] == "ok"
+        assert result.get("fixed_answer") == "18.45 ns"
+
+    def test_k4_failed_fix_status(self):
+        """Failed fix status correctly parsed."""
+        text = """## fix_result
+- **status**: failed
+- **fix_applied**: 无法修复，需要重新设计题目
+"""
+        result = self._parse(text)
+        assert result["status"] == "failed"
+
+    def test_k5_no_sections_fails(self):
+        """Output with no recognizable sections returns failed."""
+        result = self._parse("这是一些无格式的文本")
+        assert result["status"] == "failed"
+
+
+# ─── L. Pipeline Resume ───
+
+class TestPipelineResume:
+    """Validate load_debug_state and state reconstruction."""
+
+    def test_l1_load_design_from_dump(self, tmp_path):
+        """load_debug_state correctly loads design dump."""
+        from core_new.pipeline_resume import load_debug_state
+
+        dump = {
+            "slot_id": "Q43",
+            "step": "design",
+            "round": 0,
+            "timestamp": "2026-05-31T13:35:46",
+            "output": {
+                "stem": "某计算机系统...",
+                "sub_questions": ["(1) 问题1", "(2) 问题2"],
+            },
+        }
+        dump_file = tmp_path / "Q43_design_r0.json"
+        dump_file.write_text(json.dumps(dump, ensure_ascii=False))
+
+        state = load_debug_state(str(tmp_path), "Q43", "final_review")
+        assert "design" in state
+        assert state["design"]["stem"] == "某计算机系统..."
+
+    def test_l2_latest_round_selected(self, tmp_path):
+        """When multiple rounds exist, the latest is loaded."""
+        from core_new.pipeline_resume import load_debug_state
+
+        for rnd in range(3):
+            dump = {
+                "slot_id": "Q43",
+                "step": "design",
+                "round": rnd,
+                "output": {"stem": f"Round {rnd} stem", "sub_questions": []},
+            }
+            (tmp_path / f"Q43_design_r{rnd}.json").write_text(
+                json.dumps(dump, ensure_ascii=False)
+            )
+
+        state = load_debug_state(str(tmp_path), "Q43", "format")
+        assert state["design"]["stem"] == "Round 2 stem"
+
+    def test_l3_rebuild_blackboard_state(self, tmp_path):
+        """rebuild_blackboard_state maps dump keys to pipeline variable names."""
+        from core_new.pipeline_resume import load_debug_state, rebuild_blackboard_state
+
+        dump = {
+            "slot_id": "Q43",
+            "step": "solve",
+            "round": 0,
+            "output": {"computed_results": {"answer": "180"}, "python_exec_count": 5},
+        }
+        (tmp_path / "Q43_solve_r0.json").write_text(json.dumps(dump, ensure_ascii=False))
+
+        state = load_debug_state(str(tmp_path), "Q43", "format")
+        rebuilt = rebuild_blackboard_state(state, is_sc=False)
+        assert "solver_dict" in rebuilt
+        assert rebuilt["solver_dict"]["python_exec_count"] == 5
+
+    def test_l4_missing_step_graceful(self, tmp_path):
+        """Missing step dumps produce warnings but don't crash."""
+        from core_new.pipeline_resume import load_debug_state
+
+        dump = {"slot_id": "Q43", "step": "design", "round": 0,
+                "output": {"stem": "test"}}
+        (tmp_path / "Q43_design_r0.json").write_text(json.dumps(dump, ensure_ascii=False))
+
+        state = load_debug_state(str(tmp_path), "Q43", "format")
+        assert "design" in state
+        assert "solve" not in state  # Missing, but no crash

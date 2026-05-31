@@ -55,6 +55,18 @@ class CodeSolution:
             "error": self.error,
         }
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "CodeSolution":
+        return cls(
+            slot_id=d.get("slot_id", ""),
+            code_files=d.get("code_files", []),
+            outputs=d.get("outputs", []),
+            computed_results=d.get("computed_results", {}),
+            python_exec_count=d.get("python_exec_count", 0),
+            total_time_s=d.get("total_time_s", 0.0),
+            error=d.get("error", ""),
+        )
+
     def get_last_output(self) -> str:
         if self.outputs:
             return self.outputs[-1]

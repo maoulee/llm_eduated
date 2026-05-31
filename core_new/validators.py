@@ -56,11 +56,16 @@ def _validate_comprehensive(question: Dict[str, Any], errors: List[str]) -> None
 
     sub_questions = question.get("sub_questions", [])
     if isinstance(sub_questions, list):
+        if not sub_questions:
+            errors.append("Comprehensive question has empty sub_questions")
         for i, sq in enumerate(sub_questions):
-            if not isinstance(sq, dict):
-                errors.append(f"sub_question[{i}] is not a dict")
-                continue
-            if not sq.get("answer") and not sq.get("standard_answer"):
-                errors.append(f"sub_question[{i}] missing answer")
+            if isinstance(sq, str):
+                if not sq.strip():
+                    errors.append(f"sub_question[{i}] is empty")
+            elif isinstance(sq, dict):
+                if not sq.get("answer") and not sq.get("standard_answer"):
+                    errors.append(f"sub_question[{i}] missing answer")
+            else:
+                errors.append(f"sub_question[{i}] has unexpected type: {type(sq).__name__}")
     elif not sub_questions:
         errors.append("Comprehensive question missing sub_questions")

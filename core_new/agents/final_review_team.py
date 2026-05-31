@@ -182,7 +182,7 @@ class FinalFixerAgent(BaseAgent):
             name="final_fixer",
             phase="final_fix",
             system_prompt="你是一名408考试出题修复专家。根据终审反馈对题目进行定向修复。",
-            output_format="json",
+            output_format="markdown",
             enable_thinking=True,
             max_tokens=4096,
         )
@@ -227,9 +227,40 @@ class FinalFixerAgent(BaseAgent):
         if not text:
             return {"status": "failed", "fix_applied": "empty output"}
 
-        # Try JSON parse
+        # 1. JSON backward compat
         parsed = try_parse_json_object(text)
         if parsed:
             return parsed
 
-        return {"status": "failed", "fix_applied": f"parse error: {text[:200]}"}
+        # 2. Markdown sections parse
+        sections = parse_md_sections(text)
+        fix_result = sections.get("fix_result", {})
+        fixed_content = sections.get("fixed_content", {})
+
+        if not fix_result and not fixed_content:
+            return {"status": "failed", "fix_applied": f"parse error: no fix_result section found"}
+
+        result: Dict[str, Any] = {}
+
+        # Extract status
+        if isinstance(fix_result, dict):
+            status_val = str(fix_result.get("status", "failed")).lower()
+            result["status"] = "ok" if status_val in ("ok", "success", "applied") else status_val
+            result["fix_applied"] = fix_result.get("fix_applied", "")
+            # Top-level fixed fields (LLM may flatten into fix_result)
+            for key in ("fixed_stem", "fixed_answer", "fixed_options", "fixed_sub_questions"):
+                if fix_result.get(key):
+                    result[key] = fix_result[key]
+        else:
+            result["status"] = "failed"
+            result["fix_applied"] = ""
+
+        # Extract fixed_content section
+        if isinstance(fixed_content, dict):
+            for key in ("fixed_stem", "fixed_answer", "fixed_options", "fixed_sub_questions"):
+                if fixed_content.get(key) and key not in result:
+                    result[key] = fixed_content[key]
+        elif fixed_content and "fixed_content_raw" not in result:
+            result["fixed_content_raw"] = str(fixed_content)
+
+        return result
