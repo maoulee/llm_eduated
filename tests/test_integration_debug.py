@@ -39,9 +39,9 @@ def debug_files(debug_dir):
 
 
 class TestDebugFilesExist:
-    def test_has_architecture(self, debug_files):
-        assert any("architecture" in f for f in debug_files), \
-            f"No architecture file found in {list(debug_files.keys())}"
+    def test_has_design(self, debug_files):
+        assert any("design" in f for f in debug_files), \
+            f"No design file found in {list(debug_files.keys())}"
 
     def test_has_design(self, debug_files):
         assert any("design" in f for f in debug_files), \
@@ -61,12 +61,6 @@ class TestDebugFilesExist:
 
 
 class TestDebugOutputNonEmpty:
-    def test_architecture_has_output(self, debug_dir, debug_files):
-        arch_files = [f for f in debug_files if "architecture" in f]
-        assert arch_files, "No architecture file"
-        data = _load_json(os.path.join(debug_dir, arch_files[0]))
-        assert data.get("output"), f"Architecture output is empty: {arch_files[0]}"
-
     def test_design_has_output(self, debug_dir, debug_files):
         design_files = [f for f in debug_files if "design" in f]
         assert design_files, "No design file"

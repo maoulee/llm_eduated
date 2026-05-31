@@ -45,6 +45,7 @@ AGENT_ROUTING = {
     "fixer":            "local",
     "minor_fix":        "local",
     "format_fix":       "local",
+    "verify":           "local",
 }
 
 # ── Health Check ───────────────────────────────────────────────
