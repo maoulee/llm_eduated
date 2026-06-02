@@ -557,8 +557,8 @@ class LLMGateway:
                     seen_calls[args_key] = seen_calls.get(args_key, 0) + 1
                     tool_name_counts[fn_name] = tool_name_counts.get(fn_name, 0) + 1
 
-                    # Hard stop: same tool name called 3+ times → force return
-                    if tool_name_counts[fn_name] >= 3:
+                    # Hard stop: same tool name called 5+ times → force return
+                    if tool_name_counts[fn_name] >= 5:
                         logger.warning(
                             "[generate_with_tools] Circuit breaker HARD STOP: %s called %d times, forcing output",
                             fn_name, tool_name_counts[fn_name],

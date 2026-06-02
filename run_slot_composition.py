@@ -226,7 +226,7 @@ def _is_comprehensive_slot(sb: dict) -> bool:
     return False
 
 
-async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None) -> list:
+async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic") -> list:
     """Step 3: Generate questions per slot via UnifiedQuestionPipeline."""
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行)")
@@ -238,20 +238,31 @@ async def generate_questions(gateway, slot_blueprints, experience_cards, enable_
         return await _generate_unified(gateway, sb, slot_id, exp_card,
                                        enable_stem_gate=enable_stem_gate,
                                        max_adversarial_rounds=max_adversarial_rounds,
-                                       debug_dir=debug_dir)
+                                       debug_dir=debug_dir,
+                                       pipeline_mode=pipeline_mode)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
     return list(questions)
 
 
-async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None):
+async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic"):
     """Generate a question using the unified pipeline (both SC and Comp).
 
     UnifiedQuestionPipeline:
       Design → Options(SC) → FileCodeSolver → Format → Review → Fix loop
     Solver verifies all 4 options for SC, computes sub-questions for Comp.
+
+    DocPipeline (pipeline_mode="doc"):
+      Design → Question ↔ Analysis → Coding → Review → Fix? → Format
+      All communication via files, no text parsing.
     """
+
+    # ── Doc pipeline fast path ──
+    if pipeline_mode == "doc":
+        return await _generate_doc(gateway, sb, slot_id, exp_card)
+
+    # ── Classic pipeline ──
     is_sc = UnifiedQuestionPipeline._is_single_choice(sb)
     q_kind = "SC" if is_sc else "Comp"
     print(f"  [{slot_id}] UnifiedPipeline ({q_kind})...")
@@ -302,6 +313,56 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
         return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "unified"}
 
 
+async def _generate_doc(gateway, sb, slot_id, exp_card):
+    """Generate a question using the document-based 4-layer pipeline."""
+    from core_new.doc_pipeline import DocPipeline
+
+    try:
+        from core_new.slot_prompts import K_RADAR_DEFINITIONS
+    except ImportError:
+        K_RADAR_DEFINITIONS = ""
+
+    print(f"  [{slot_id}] DocPipeline (4-layer)...")
+    t0 = time.monotonic()
+
+    try:
+        # DocPipeline uses its own gateway (local Qwen) — ignores the composition gateway
+        dp = DocPipeline()
+        result = await dp.run(
+            slot_id=slot_id,
+            slot_data=sb,
+            experience_card=exp_card,
+            k_definitions=K_RADAR_DEFINITIONS if "K_RADAR_DEFINITIONS" in dir() else "",
+        )
+        elapsed = time.monotonic() - t0
+
+        q_data = {
+            "slot_id": slot_id,
+            "pipeline_type": result.get("pipeline_type", "doc_4layer"),
+            "generation_time_s": result.get("total_time_s", 0),
+            "ok": result.get("ok", False),
+            "_blueprint": sb,
+            "_experience_card": exp_card,
+        }
+
+        # Extract final content as the question data
+        final_content = result.get("final_content", "")
+        if final_content:
+            q_data["final_md"] = final_content
+
+        review_status = result.get("review_status", "?")
+        iters = result.get("analysis_iterations", 0)
+        print(f"  [{slot_id}] DocPipeline done ({elapsed:.1f}s): "
+              f"review={review_status} iters={iters} ok={result.get('ok')}")
+
+        return q_data
+
+    except Exception as e:
+        elapsed = time.monotonic() - t0
+        print(f"  [{slot_id}] DocPipeline failed ({elapsed:.1f}s): {e}")
+        return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "doc_4layer"}
+
+
 
 # ── Step 4: Review Paper + Fix Loop ───────────────────────────
 
@@ -328,6 +389,16 @@ async def review_and_fix(
     revision_rounds = []
 
     for round_num in range(max_rounds + 1):
+        # Separate doc_pipeline questions (already self-reviewed) from classic ones
+        doc_questions = [q for q in current_questions
+                         if q.get("pipeline_type") == "doc_4layer"]
+        classic_questions = [q for q in current_questions
+                            if q.get("pipeline_type") != "doc_4layer"]
+
+        if not classic_questions:
+            print("  所有题目均来自 DocPipeline（已自审通过），跳过外层审核")
+            break
+
         rbb = Blackboard(
             task_id=f"review_r{round_num}",
             task_type="slot_composition",
@@ -486,15 +557,15 @@ async def review_and_fix(
                         task_id=f"resolve_sc_{slot_id}",
                         task_type="unified_sc",
                         initial_state={
-                            "sc_draft_result": {"stem": stem, "slot_id": slot_id},
-                            "sc_options_result": {
+                            "design": {"stem": stem, "slot_id": slot_id},
+                            "options": {
                                 "option_A": options_dict["A"],
                                 "option_B": options_dict["B"],
                                 "option_C": options_dict["C"],
                                 "option_D": options_dict["D"],
                                 "correct_answer": orig_q.get("correct_answer", ""),
                             },
-                            "sc_solver_result": solver_dict,
+                            "solver_result": solver_dict,
                         },
                     )
                     from core_new.agents.single_choice_team import SCSolutionFormatterAgent
@@ -519,7 +590,7 @@ async def review_and_fix(
                         task_id=f"resolve_comp_{slot_id}",
                         task_type="unified_comp",
                         initial_state={
-                            "question_design": {"stem": stem, "sub_questions": sub_questions, "slot_id": slot_id},
+                            "design": {"stem": stem, "sub_questions": sub_questions, "slot_id": slot_id},
                             "solver_result": solver_dict,
                         },
                     )
@@ -640,6 +711,7 @@ async def run_composition(
     max_adversarial_rounds: int = 1,
     gate_config: dict = None,
     debug_dir: str = None,
+    pipeline_mode: str = "classic",
 ) -> dict:
     """Run the full composition pipeline."""
     if slot_ids:
@@ -723,6 +795,7 @@ async def run_composition(
         enable_stem_gate=enable_stem_gate,
         max_adversarial_rounds=max_adversarial_rounds,
         debug_dir=debug_dir,
+        pipeline_mode=pipeline_mode,
     )
 
     # Step 4-5: Review + fix loop
@@ -782,6 +855,8 @@ async def main():
                         help="Enable Gate 1: knowledge/slot review before generation")
     parser.add_argument("--enable-stem-gate", action="store_true", default=False,
                         help="Enable Gate 2: stem review before options/solver")
+    parser.add_argument("--pipeline", choices=["classic", "doc"], default="classic",
+                        help="Pipeline mode: classic (existing) or doc (document-based 4-layer)")
     parser.add_argument("--debug", action="store_true", default=False,
                         help="Dump all agent I/O to debug/ directory for analysis")
     args = parser.parse_args()
@@ -833,6 +908,7 @@ async def main():
         max_adversarial_rounds=args.max_adversarial_rounds,
         gate_config=gate_config,
         debug_dir=debug_dir,
+        pipeline_mode=args.pipeline,
     )
 
 

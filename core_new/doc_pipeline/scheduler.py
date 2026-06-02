@@ -375,11 +375,10 @@ class DocScheduler:
         if tool_choice and tools:
             params["tool_choice"] = tool_choice
 
-        # Thinking budget: caps reasoning tokens so the model has room
-        # for the actual output (tool call or content).
+        # Thinking budget: vLLM expects this as a top-level parameter,
+        # NOT nested in extra_body.
         if thinking_budget:
-            params.setdefault("extra_body", {})
-            params["extra_body"]["thinking_token_budget"] = thinking_budget
+            params["thinking_token_budget"] = thinking_budget
 
         # Only pass thinking control when explicitly requested (True or False).
         # None = let the model decide naturally (no parameter sent).
