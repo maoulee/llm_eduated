@@ -22,10 +22,18 @@ from core_new.agent_tools import ToolExecutor
 from core_new.llm_gateway import LLMGateway
 from core_new.provider_router import get_gateway
 
-from .agents import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, _RETRY_FEEDBACK
+from .agent_loader import (
+    get_agent_dicts,
+    _RETRY_FEEDBACK,
+    load_agents,
+)
 from .doc_parser import get_doc_status, parse_doc_header, parse_doc_section
 from .write_file_tool import WriteFileTool
 from core_new.markdown_parser import _extract_sections
+
+# Load AgentMD files once at module level — produces the same dicts
+# that agents.py used to export.
+AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, _LOADED_THINKING_BUDGET = get_agent_dicts()
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +50,8 @@ DOC_SAMPLING_OVERRIDES = {
 }
 
 # Per-role thinking budget (tokens).  None = no cap.
-ROLE_THINKING_BUDGET = {
+# Values loaded from AgentMD frontmatter override these defaults.
+_ROLE_THINKING_DEFAULTS = {
     "design": 8000,
     "question": 10000,
     "analysis": 10000,
@@ -50,6 +59,7 @@ ROLE_THINKING_BUDGET = {
     "review": 8000,
     "fix": 10000,
 }
+ROLE_THINKING_BUDGET = {**_ROLE_THINKING_DEFAULTS, **_LOADED_THINKING_BUDGET}
 
 
 class DocScheduler:

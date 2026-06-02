@@ -12,7 +12,9 @@ import pytest
 
 from core_new.doc_pipeline.write_file_tool import WriteFileTool
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
-from core_new.doc_pipeline.agents import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
+from core_new.doc_pipeline.agents import AGENT_PROMPTS as _AGENT_PROMPTS_LEGACY, AGENT_OUTPUT_FILES as _AGENT_OUTPUT_FILES_LEGACY, MULTI_TURN_AGENTS as _MULTI_TURN_LEGACY
+from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
+from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
 from core_new.doc_pipeline.scheduler import DocScheduler
 
 
@@ -337,3 +339,69 @@ class TestDocSchedulerToolProtocol:
 
         assert result == "## status\ndraft"
         assert (tmp_path / "S4" / "blueprint.md").exists()
+
+
+# ── AgentMD loader tests ────────────────────────────────────────
+
+
+class TestAgentLoader:
+    def test_loads_all_seven_agents(self):
+        specs = load_agents()
+        expected = {"design", "question", "analysis", "coding", "review", "fix", "format"}
+        assert set(specs.keys()) == expected
+
+    def test_each_spec_has_required_fields(self):
+        for name, spec in load_agents().items():
+            assert isinstance(spec, AgentSpec)
+            assert spec.name == name
+            assert spec.output_file.endswith((".md", ".py"))
+            assert len(spec.prompt) > 0
+
+    def test_prompt_includes_write_file_suffix(self):
+        for name, spec in load_agents().items():
+            assert "【强制要求】" in spec.prompt, f"{name} missing write_file suffix"
+            assert spec.output_file in spec.prompt, f"{name} missing filename in suffix"
+
+    def test_multi_turn_agents(self):
+        _, _, multi_turn, _ = get_agent_dicts()
+        assert multi_turn == {"question", "analysis"}
+
+    def test_thinking_budget_loaded(self):
+        _, _, _, thinking = get_agent_dicts()
+        assert thinking["design"] == 8000
+        assert thinking["coding"] == 10000
+        # format has no thinking_budget → not in dict
+        assert "format" not in thinking
+
+    def test_compat_dicts_match_legacy(self):
+        """AgentMD-loaded dicts should contain same keys as legacy agents.py."""
+        prompts, output_files, multi_turn, _ = get_agent_dicts()
+        assert set(prompts.keys()) == set(_AGENT_PROMPTS_LEGACY.keys())
+        assert set(output_files.keys()) == set(_AGENT_OUTPUT_FILES_LEGACY.keys())
+        assert multi_turn == _MULTI_TURN_LEGACY
+
+    def test_parse_custom_agent_md(self, tmp_path):
+        agent_file = tmp_path / "test_role.md"
+        agent_file.write_text(
+            "---\n"
+            "name: test_role\n"
+            "phase: 1\n"
+            "output_file: out.md\n"
+            "thinking_budget: 5000\n"
+            "multi_turn: false\n"
+            "---\n\n"
+            "You are a test agent.\n",
+            encoding="utf-8",
+        )
+        spec = _parse_agent_md(agent_file)
+        assert spec.name == "test_role"
+        assert spec.phase == 1
+        assert spec.output_file == "out.md"
+        assert spec.thinking_budget == 5000
+        assert "You are a test agent." in spec.prompt
+
+    def test_parse_rejects_missing_frontmatter(self, tmp_path):
+        bad_file = tmp_path / "bad.md"
+        bad_file.write_text("No frontmatter here", encoding="utf-8")
+        with pytest.raises(ValueError, match="no valid YAML frontmatter"):
+            _parse_agent_md(bad_file)
