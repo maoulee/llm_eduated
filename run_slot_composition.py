@@ -865,8 +865,8 @@ async def main():
                         help="Enable Gate 2: stem review before options/solver")
     parser.add_argument("--pipeline", choices=["classic", "doc"], default="classic",
                         help="Pipeline mode: classic (existing) or doc (document-based 4-layer)")
-    parser.add_argument("--routing", choices=["all_local", "all_remote", "mixed"], default="all_local",
-                        help="Model routing: all_local (Qwen), all_remote (GLM), mixed (Qwen+GLM for review)")
+    parser.add_argument("--routing", choices=["all_local", "all_remote", "mixed", "glm_gen_qwen_review"], default="all_local",
+                        help="Model routing: all_local (Qwen), all_remote (GLM), mixed (Qwen+GLM for review), glm_gen_qwen_review (GLM generates, Qwen reviews)")
     parser.add_argument("--output-dir", default="docs",
                         help="Output directory for results (default: docs)")
     parser.add_argument("--debug", action="store_true", default=False,

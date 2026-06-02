@@ -61,6 +61,7 @@ class AgentSpec:
         "required_sections", "status_values",
         "thinking_budget", "max_tokens", "model_routing",
         "multi_turn", "max_attempts", "inject_files",
+        "required_tools",  # list of tool names this agent needs
         "prompt",  # assembled system prompt (body + write_file suffix)
     )
 
@@ -77,6 +78,7 @@ class AgentSpec:
         self.multi_turn = meta.get("multi_turn", False)
         self.max_attempts = meta.get("max_attempts", 2)
         self.inject_files = meta.get("inject_files", [])
+        self.required_tools = meta.get("required_tools", ["write_file"])
         # Assemble prompt: body + mandatory write_file suffix
         suffix = _WRITE_FILE_SUFFIX.replace("{filename}", self.output_file)
         self.prompt = body.strip() + suffix
@@ -129,11 +131,11 @@ def load_agents(agents_dir: Path | str | None = None) -> dict[str, AgentSpec]:
 
 def get_agent_dicts(
     agents_dir: Path | str | None = None,
-) -> tuple[dict[str, str], dict[str, str], set[str], dict[str, int]]:
+) -> tuple[dict[str, str], dict[str, str], set[str], dict[str, int], dict[str, list[str]]]:
     """Load AgentMD files and return the same dicts agents.py exported.
 
     Returns:
-        (AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, ROLE_THINKING_BUDGET)
+        (AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, ROLE_THINKING_BUDGET, ROLE_REQUIRED_TOOLS)
     """
     specs = load_agents(agents_dir)
     prompts = {name: s.prompt for name, s in specs.items()}
@@ -144,4 +146,5 @@ def get_agent_dicts(
         for name, s in specs.items()
         if s.thinking_budget is not None
     }
-    return prompts, output_files, multi_turn, thinking_budget
+    required_tools = {name: s.required_tools for name, s in specs.items()}
+    return prompts, output_files, multi_turn, thinking_budget, required_tools

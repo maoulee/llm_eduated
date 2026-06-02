@@ -22,7 +22,13 @@ DOC_SAMPLING_OVERRIDES = {
 }
 
 # Load AgentMD files once at module level.
-AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, _LOADED_THINKING_BUDGET = get_agent_dicts()
+(
+    AGENT_PROMPTS,
+    AGENT_OUTPUT_FILES,
+    MULTI_TURN_AGENTS,
+    _LOADED_THINKING_BUDGET,
+    ROLE_REQUIRED_TOOLS,
+) = get_agent_dicts()
 
 # Per-role thinking budget (tokens). None = no cap.
 # Values loaded from AgentMD frontmatter override these defaults.

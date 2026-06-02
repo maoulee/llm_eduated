@@ -182,6 +182,35 @@ def set_routing_profile(profile: str) -> dict[str, str] | None:
         logger.info("Routing profile: mixed (%d remote roles)", len(_REVIEW_FIXER_ROLES))
         # DocPipeline model_routing: review/fix/format → GLM
         return {"review": FALLBACK_PROVIDER, "fix": FALLBACK_PROVIDER}
+    elif profile == "glm_gen_qwen_review":
+        # GLM generates content, Qwen reviews — best quality + speed tradeoff
+        _GENERATOR_ROLES = frozenset({
+            "design", "question", "coding", "fix", "format",
+        })
+        _REVIEWER_ROLES = frozenset({
+            "analysis", "review",
+        })
+        for k in AGENT_ROUTING:
+            if k in _GENERATOR_ROLES:
+                AGENT_ROUTING[k] = "remote"
+            elif k in _REVIEWER_ROLES:
+                AGENT_ROUTING[k] = "local"
+            else:
+                AGENT_ROUTING[k] = "remote"
+        clear_cache()
+        logger.info(
+            "Routing profile: glm_gen_qwen_review (%d gen→remote, %d review→local)",
+            len(_GENERATOR_ROLES), len(_REVIEWER_ROLES),
+        )
+        # DocPipeline model_routing: generation → GLM, review → local
+        return {
+            "design": FALLBACK_PROVIDER,
+            "question": FALLBACK_PROVIDER,
+            "coding": FALLBACK_PROVIDER,
+            "fix": FALLBACK_PROVIDER,
+            "analysis": LOCAL_PROVIDER,
+            "review": LOCAL_PROVIDER,
+        }
     else:
         raise ValueError(f"Unknown routing profile: {profile}")
 

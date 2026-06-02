@@ -221,11 +221,11 @@ class TestDocParser:
 
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format"}
+        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
     def test_all_roles_have_output_files(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format"}
+        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
     def test_output_files_have_extensions(self):
@@ -510,7 +510,7 @@ class TestGatewayStreamChat:
 class TestAgentLoader:
     def test_loads_all_seven_agents(self):
         specs = load_agents()
-        expected = {"design", "question", "analysis", "coding", "review", "fix", "format"}
+        expected = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
         assert set(specs.keys()) == expected
 
     def test_each_spec_has_required_fields(self):
@@ -526,21 +526,23 @@ class TestAgentLoader:
             assert spec.output_file in spec.prompt, f"{name} missing filename in suffix"
 
     def test_multi_turn_agents(self):
-        _, _, multi_turn, _ = get_agent_dicts()
+        _, _, multi_turn, _, _ = get_agent_dicts()
         assert multi_turn == {"question", "analysis"}
 
     def test_thinking_budget_loaded(self):
-        _, _, _, thinking = get_agent_dicts()
+        _, _, _, thinking, _ = get_agent_dicts()
         assert thinking["design"] == 8000
         assert thinking["coding"] == 10000
         # format has no thinking_budget → not in dict
         assert "format" not in thinking
 
     def test_compat_dicts_match_legacy(self):
-        """AgentMD-loaded dicts should contain same keys as legacy agents.py."""
-        prompts, output_files, multi_turn, _ = get_agent_dicts()
-        assert set(prompts.keys()) == set(_AGENT_PROMPTS_LEGACY.keys())
-        assert set(output_files.keys()) == set(_AGENT_OUTPUT_FILES_LEGACY.keys())
+        """AgentMD-loaded dicts should contain same keys as legacy agents.py (plus experience)."""
+        prompts, output_files, multi_turn, _, _ = get_agent_dicts()
+        # experience is new (not in legacy); everything else must match
+        md_keys = set(prompts.keys()) - {"experience"}
+        assert md_keys == set(_AGENT_PROMPTS_LEGACY.keys())
+        assert set(output_files.keys()) - {"experience"} == set(_AGENT_OUTPUT_FILES_LEGACY.keys())
         assert multi_turn == _MULTI_TURN_LEGACY
 
     def test_parse_custom_agent_md(self, tmp_path):

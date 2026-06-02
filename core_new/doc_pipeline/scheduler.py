@@ -29,8 +29,10 @@ from .config import (
     MAX_ANALYSIS_ITERATIONS,
     MULTI_TURN_AGENTS,
     PYTHON_EXEC_TIMEOUT,
+    ROLE_REQUIRED_TOOLS,
     ROLE_THINKING_BUDGET,
 )
+from .exec_python_tool import ExecPythonTool
 from .write_file_tool import WriteFileTool
 
 logger = logging.getLogger(__name__)
@@ -125,12 +127,16 @@ class DocScheduler:
                 {"role": "user", "content": full_task},
             ]
 
-        # 3. Build tool registry with write_file tool
+        # 3. Build tool registry based on role's required tools
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
 
+        required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
+        if "exec_python" in required_tools:
+            registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
+
         # 4. Convert to OpenAI tool schemas and build executor
-        tool_list = [registry.get("write_file")]
+        tool_list = [registry.get(name) for name in required_tools if registry.get(name) is not None]
         executor = ToolExecutor(tool_list)
         openai_tools = [t.to_openai_tool() for t in tool_list]
 
@@ -146,12 +152,16 @@ class DocScheduler:
         if expected_path.exists():
             expected_path.unlink()
 
-        # Force a tool call — we only register write_file, so naming it
-        # explicitly is equivalent to "required" but works on both vLLM and GLM.
-        forced_tool_choice = {
-            "type": "function",
-            "function": {"name": "write_file"},
-        }
+        # Force a tool call. When only write_file is registered, name it
+        # explicitly (works on both vLLM and GLM). With multiple tools, use
+        # "required" which means any tool call is accepted.
+        if len(openai_tools) == 1:
+            forced_tool_choice = {
+                "type": "function",
+                "function": {"name": openai_tools[0]["function"]["name"]},
+            }
+        else:
+            forced_tool_choice = "required"
 
         for attempt in range(MAX_AGENT_ATTEMPTS):
             raw = await self._streaming_chat_call(
@@ -195,13 +205,13 @@ class DocScheduler:
                         fn_args = {}
 
                     logger.info("[%s] Executing tool: %s(%s)", slot_id, fn_name, str(fn_args)[:100])
-                    if fn_name != "write_file":
+                    if fn_name in required_tools:
+                        result_str = await executor.execute(fn_name, fn_args)
+                    else:
                         result_str = json.dumps(
-                            {"ok": False, "error": f"unexpected tool: {fn_name}; expected write_file"},
+                            {"ok": False, "error": f"unexpected tool: {fn_name}; allowed: {required_tools}"},
                             ensure_ascii=False,
                         )
-                    else:
-                        result_str = await executor.execute(fn_name, fn_args)
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tc["id"],
