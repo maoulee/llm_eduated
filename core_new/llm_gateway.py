@@ -445,6 +445,8 @@ class LLMGateway:
         max_tokens: Optional[int] = None,
         enable_thinking: bool = True,
         max_rounds: int = 10,
+        max_tool_calls: int = 0,
+        tool_choice: Optional[Any] = None,
     ) -> LLMResult:
         """Generate with tool-calling loop.
 
@@ -452,12 +454,29 @@ class LLMGateway:
         1. Send messages + tools to LLM
         2. If response has tool_calls, execute them and append results
         3. If response has content, return as final result
+
+        Budget controls:
+        - max_rounds: max conversation turns with the LLM
+        - max_tool_calls: max total tool invocations (0 = unlimited)
+        - Circuit breaker: same tool + same args twice → inject stop message
         """
         max_tokens = self._floor_max_tokens(max_tokens, enable_thinking)
         conversation = list(messages)
         total_latency = 0
+        tool_call_count = 0
+        seen_calls: Dict[str, int] = {}  # (tool_name + args_hash) → count
+        tool_name_counts: Dict[str, int] = {}  # tool_name → total call count
+        total_circuit_breaks = [0]  # mutable counter for circuit breaker triggers
 
         for round_idx in range(max_rounds):
+            # Early exit if too many circuit breaker triggers
+            if total_circuit_breaks[0] >= 4:
+                logger.warning(
+                    "[generate_with_tools] Circuit breaker budget exhausted (%d breaks), forcing output",
+                    total_circuit_breaks[0],
+                )
+                break
+
             start_time = time.monotonic()
             try:
                 raw = await self._provider._chat_call(
@@ -467,6 +486,7 @@ class LLMGateway:
                     enable_thinking=enable_thinking,
                     json_mode=False,
                     tools=tools,
+                    tool_choice=tool_choice,
                 )
             except Exception as e:
                 latency_ms = int((time.monotonic() - start_time) * 1000)
@@ -498,7 +518,85 @@ class LLMGateway:
                         fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
                     except json.JSONDecodeError:
                         fn_args = {}
+
+                    # Budget check
+                    tool_call_count += 1
+                    if max_tool_calls > 0 and tool_call_count > max_tool_calls:
+                        logger.warning(
+                            "[generate_with_tools] Tool budget exhausted (%d/%d), forcing output",
+                            tool_call_count - 1, max_tool_calls,
+                        )
+                        conversation.append({
+                            "role": "tool",
+                            "tool_call_id": tc["id"],
+                            "content": "工具调用次数已达上限。请立即基于已有信息输出最终结果，不要再调用工具。",
+                        })
+                        # Force one more LLM turn to get the final output
+                        force_raw = await self._provider._chat_call(
+                            conversation,
+                            stop_sequences=None,
+                            max_tokens=max_tokens,
+                            enable_thinking=enable_thinking,
+                            json_mode=False,
+                            tools=[],  # No more tools
+                        )
+                        force_latency = int((time.monotonic() - start_time) * 1000)
+                        total_latency += force_latency
+                        force_content = force_raw.get("content", "")
+                        force_reasoning = force_raw.get("reasoning_content", "")
+                        return LLMResult.success(
+                            content=force_content,
+                            reasoning=force_reasoning or None,
+                            provider=self._provider_name,
+                            model=self._model_name,
+                            latency_ms=total_latency,
+                        )
+
+                    # Circuit breaker: detect repeated calls (same args or same tool name)
+                    args_key = f"{fn_name}:{json.dumps(fn_args, sort_keys=True)}"
+                    seen_calls[args_key] = seen_calls.get(args_key, 0) + 1
+                    tool_name_counts[fn_name] = tool_name_counts.get(fn_name, 0) + 1
+
+                    # Hard stop: same tool name called 3+ times → force return
+                    if tool_name_counts[fn_name] >= 3:
+                        logger.warning(
+                            "[generate_with_tools] Circuit breaker HARD STOP: %s called %d times, forcing output",
+                            fn_name, tool_name_counts[fn_name],
+                        )
+                        conversation.append({
+                            "role": "tool",
+                            "tool_call_id": tc["id"],
+                            "content": json.dumps({"ok": True, "note": "工具调用已达上限，请立即输出最终结果。"}),
+                        })
+                        # Continue to let the model see this response and produce final output
+                        # but if it tries to call tools again next round, the outer loop
+                        # will catch it via total_circuit_breaks below.
+                        total_circuit_breaks[0] += 1
+                        continue
+
+                    # Soft stop: same exact args called 2+ times → inject warning
+                    if seen_calls[args_key] >= 2:
+                        logger.warning(
+                            "[generate_with_tools] Circuit breaker: %s called %d times with same args",
+                            fn_name, seen_calls[args_key],
+                        )
+                        conversation.append({
+                            "role": "tool",
+                            "tool_call_id": tc["id"],
+                            "content": (
+                                f"你已经用相同参数调用了 {fn_name} {seen_calls[args_key]} 次，结果不会改变。"
+                                "请立即基于已有信息输出最终结果，停止调用工具。"
+                            ),
+                        })
+                        total_circuit_breaks[0] += 1
+                        if total_circuit_breaks[0] >= 3:
+                            logger.warning("[generate_with_tools] Too many circuit breaks (%d), forcing final output",
+                                           total_circuit_breaks[0])
+                        continue
+
+                    logger.info("[generate_with_tools] Executing tool: %s(%s)", fn_name, str(fn_args)[:100])
                     result_str = await tool_executor.execute(fn_name, fn_args)
+                    logger.info("[generate_with_tools] Tool %s done, result_len=%d", fn_name, len(result_str))
                     conversation.append({
                         "role": "tool",
                         "tool_call_id": tc["id"],
@@ -508,8 +606,8 @@ class LLMGateway:
                 continue
 
             # No tool calls — this is the final content
-            logger.info("[generate_with_tools] Final content len=%d, reasoning len=%d, rounds=%d",
-                        len(content or ""), len(raw.get("reasoning_content") or ""), round_idx + 1)
+            logger.info("[generate_with_tools] Final content len=%d, reasoning len=%d, rounds=%d, tool_calls=%d",
+                        len(content or ""), len(raw.get("reasoning_content") or ""), round_idx + 1, tool_call_count)
             reasoning = raw.get("reasoning_content", "")
             return LLMResult.success(
                 content=content,

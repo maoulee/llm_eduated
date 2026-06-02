@@ -169,6 +169,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         enable_thinking: bool,
         json_mode: bool,
         tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
     ) -> Dict[str, Any]:
         processed_messages = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
         # OpenAI client doesn't accept top_k; pass it via extra_body for vLLM
@@ -186,6 +187,8 @@ class RemoteAPIProvider(BaseLLMProvider):
             params["response_format"] = {"type": "json_object"}
         if tools:
             params["tools"] = tools
+        if tool_choice and tools:
+            params["tool_choice"] = tool_choice
 
         extra_body = self._extra_body_for_thinking(enable_thinking)
         if extra_body:
@@ -358,21 +361,13 @@ class RemoteAPIProvider(BaseLLMProvider):
             return [result]
 
         if self.api_protocol in {"vllm_chat_batch", "openai_chat_batch"}:
-            chunks = [
-                messages_batch[start:start + self.batch_size]
-                for start in range(0, len(messages_batch), self.batch_size)
-            ]
-            chunk_results = await asyncio.gather(*[
-                self._vllm_chat_batch_call(
-                    chunk, stop_sequences=stop_sequences, max_tokens=max_tokens,
-                    enable_thinking=enable_thinking, json_mode=json_mode,
-                )
-                for chunk in chunks
-            ])
-            outputs = []
-            for result in chunk_results:
-                outputs.extend(result)
-            return outputs
+            # Use sequential chat calls instead of /batch endpoint
+            # for better stability with tool calling scenarios.
+            return await self._fallback_sequential_chat(
+                messages_batch, stop_sequences=stop_sequences,
+                max_tokens=max_tokens, enable_thinking=enable_thinking,
+                json_mode=json_mode,
+            )
 
         if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
             chunks = [
