@@ -226,7 +226,7 @@ def _is_comprehensive_slot(sb: dict) -> bool:
     return False
 
 
-async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic") -> list:
+async def generate_questions(gateway, slot_blueprints, experience_cards, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic", output_dir="docs", model_routing=None) -> list:
     """Step 3: Generate questions per slot via UnifiedQuestionPipeline."""
     print("\n" + "=" * 60)
     print(f"Step 3: 出题 ({len(slot_blueprints)}题，并行)")
@@ -239,14 +239,16 @@ async def generate_questions(gateway, slot_blueprints, experience_cards, enable_
                                        enable_stem_gate=enable_stem_gate,
                                        max_adversarial_rounds=max_adversarial_rounds,
                                        debug_dir=debug_dir,
-                                       pipeline_mode=pipeline_mode)
+                                       pipeline_mode=pipeline_mode,
+                                       output_dir=output_dir,
+                                       model_routing=model_routing)
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)
     return list(questions)
 
 
-async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic"):
+async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=False, max_adversarial_rounds=1, debug_dir=None, pipeline_mode="classic", output_dir="docs", model_routing=None):
     """Generate a question using the unified pipeline (both SC and Comp).
 
     UnifiedQuestionPipeline:
@@ -260,7 +262,7 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
 
     # ── Doc pipeline fast path ──
     if pipeline_mode == "doc":
-        return await _generate_doc(gateway, sb, slot_id, exp_card)
+        return await _generate_doc(gateway, sb, slot_id, exp_card, output_dir=output_dir, model_routing=model_routing)
 
     # ── Classic pipeline ──
     is_sc = UnifiedQuestionPipeline._is_single_choice(sb)
@@ -313,7 +315,7 @@ async def _generate_unified(gateway, sb, slot_id, exp_card, enable_stem_gate=Fal
         return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "unified"}
 
 
-async def _generate_doc(gateway, sb, slot_id, exp_card):
+async def _generate_doc(gateway, sb, slot_id, exp_card, *, output_dir="docs", model_routing=None):
     """Generate a question using the document-based 4-layer pipeline."""
     from core_new.doc_pipeline import DocPipeline
 
@@ -326,8 +328,9 @@ async def _generate_doc(gateway, sb, slot_id, exp_card):
     t0 = time.monotonic()
 
     try:
-        # DocPipeline uses its own gateway (local Qwen) — ignores the composition gateway
-        dp = DocPipeline()
+        # Workspace: output_dir/{slot_id}/
+        doc_workspace = os.path.join(output_dir, "workspace")
+        dp = DocPipeline(workspace=doc_workspace, model_routing=model_routing)
         result = await dp.run(
             slot_id=slot_id,
             slot_data=sb,
@@ -387,6 +390,8 @@ async def review_and_fix(
 
     current_questions = list(questions)
     revision_rounds = []
+
+    review = {}  # Initialize for early-exit path (all-doc questions skip the loop)
 
     for round_num in range(max_rounds + 1):
         # Separate doc_pipeline questions (already self-reviewed) from classic ones
@@ -712,6 +717,8 @@ async def run_composition(
     gate_config: dict = None,
     debug_dir: str = None,
     pipeline_mode: str = "classic",
+    output_dir: str = "docs",
+    model_routing: dict[str, str] | None = None,
 ) -> dict:
     """Run the full composition pipeline."""
     if slot_ids:
@@ -796,9 +803,9 @@ async def run_composition(
         max_adversarial_rounds=max_adversarial_rounds,
         debug_dir=debug_dir,
         pipeline_mode=pipeline_mode,
+        output_dir=output_dir,
+        model_routing=model_routing,
     )
-
-    # Step 4-5: Review + fix loop
     final_questions, final_review, revision_rounds = await review_and_fix(
         gateway, blueprint, initial_questions, templates, experience_cards,
         max_rounds=max_fix_rounds, max_adversarial_rounds=max_adversarial_rounds,
@@ -821,8 +828,8 @@ async def run_composition(
         "total_time_s": round(total_time, 1),
     }
 
-    os.makedirs("docs", exist_ok=True)
-    output_path = "docs/slot_composition_result.json"
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "slot_composition_result.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(output, f, ensure_ascii=False, indent=2, default=str)
     print(f"\n结果已保存到: {output_path}")
@@ -833,7 +840,8 @@ async def run_composition(
 
         formatter = PaperFormatterAgent(gateway=gateway)
         md = await formatter.format(final_questions, blueprint, final_review)
-        md_path = Path("docs/exam_paper_clean.md")
+        md_path = Path(output_dir) / "exam_paper_clean.md"
+        md_path.parent.mkdir(parents=True, exist_ok=True)
         md_path.write_text(md, encoding="utf-8")
         print(f"排版完成: {md_path}")
     except Exception as exc:
@@ -857,6 +865,10 @@ async def main():
                         help="Enable Gate 2: stem review before options/solver")
     parser.add_argument("--pipeline", choices=["classic", "doc"], default="classic",
                         help="Pipeline mode: classic (existing) or doc (document-based 4-layer)")
+    parser.add_argument("--routing", choices=["all_local", "all_remote", "mixed"], default="all_local",
+                        help="Model routing: all_local (Qwen), all_remote (GLM), mixed (Qwen+GLM for review)")
+    parser.add_argument("--output-dir", default="docs",
+                        help="Output directory for results (default: docs)")
     parser.add_argument("--debug", action="store_true", default=False,
                         help="Dump all agent I/O to debug/ directory for analysis")
     args = parser.parse_args()
@@ -892,6 +904,11 @@ async def main():
 
     print(f"Loaded {len(templates)} templates, {len(exp_cards)} experience cards")
 
+    # Set routing profile
+    from core_new.provider_router import set_routing_profile
+    model_routing = set_routing_profile(args.routing)
+    print(f"[Routing] Profile: {args.routing}")
+
     gateway = get_gateway("glm5.1")
     gate_config = {
         "enable_knowledge_gate": args.enable_knowledge_gate,
@@ -909,6 +926,8 @@ async def main():
         gate_config=gate_config,
         debug_dir=debug_dir,
         pipeline_mode=args.pipeline,
+        output_dir=args.output_dir,
+        model_routing=model_routing,
     )
 
 

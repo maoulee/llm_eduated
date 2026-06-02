@@ -71,6 +71,69 @@ def _dump_blueprint_md(blueprint: dict) -> str:
     return "\n".join(lines)
 
 
+# ── Slot philosophy extraction ─────────────────────────────
+
+
+_SLOT_PHILOSOPHY_SECTIONS = [
+    "认知雷达锚点",
+    "考察理念",
+    "设计理念",
+    "推理形式分析",
+    "出题指导",
+]
+
+
+def _extract_slot_philosophy(slot_id: str) -> str:
+    """Extract key design philosophy sections from slot file for pre-injection.
+
+    Extracts: 认知雷达锚点, 考察理念, 设计理念, 推理形式分析, 出题指导.
+    Skips large reference sections (往年案例, 参考题目 K1-K5 评分).
+    Returns combined text or empty string if slot file not found.
+    """
+    import os as _os
+    path = _os.path.join("data", "slots", f"{slot_id}_slot.md")
+    if not _os.path.exists(path):
+        return ""
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    lines = content.split("\n")
+    extracted_parts = []
+
+    for target in _SLOT_PHILOSOPHY_SECTIONS:
+        capturing = False
+        match_level = 0
+        result = []
+        for line in lines:
+            if line.startswith("### "):
+                heading_level = 3
+            elif line.startswith("## "):
+                heading_level = 2
+            elif line.startswith("# "):
+                heading_level = 1
+            else:
+                heading_level = 0
+
+            if not capturing and heading_level >= 2 and target in line:
+                capturing = True
+                match_level = heading_level
+                result.append(line)
+                continue
+            if capturing:
+                if heading_level > 0 and heading_level <= match_level:
+                    break
+                result.append(line)
+
+        section_text = "\n".join(result).strip()
+        if section_text and len(section_text) > 20:
+            extracted_parts.append(section_text)
+
+    if not extracted_parts:
+        return ""
+    return "\n\n---\n\n".join(extracted_parts)
+
+
 # ── Step 1: Question Designer ────────────────────────────────
 
 
@@ -82,11 +145,11 @@ class QuestionDesignerAgent(BaseAgent):
     """
 
     def __init__(self, llm_backend, *, max_tokens: int = 32768):
-        from core_new.agent_tools import SLOT_TOOLS
         super().__init__(
             AgentConfig(
                 name="question_designer",
                 phase="design",
+                step_name="design_comp",
                 output_format="markdown",
                 output_key="question_design",
                 max_tokens=max_tokens,
@@ -97,8 +160,8 @@ class QuestionDesignerAgent(BaseAgent):
                 repair_on_parse_failure=True,
                 repair_max_retries=1,
                 role_type=RoleType.GENERATOR,
-                tools=SLOT_TOOLS,
-                max_tool_rounds=5,
+                tools=[],  # Designer is pure NL — no tools
+                max_tool_rounds=0,
                 expected_output_format=(
                     "# question Qxx\n\n"
                     "## 题目\n"
@@ -127,18 +190,21 @@ class QuestionDesignerAgent(BaseAgent):
         )
 
     def build_input(self, blackboard: Blackboard) -> str:
-        from core_new.slot_prompts import SUBJECTIVE_DESIGN_MERGED_PROMPT
+        from core_new.slot_prompts import K_RADAR_DEFINITIONS, SUBJECTIVE_DESIGN_MERGED_PROMPT
 
-        blueprint = blackboard.get("current_blueprint", {})
+        blueprint = blackboard.get("blueprint", {})
         slot_id = blueprint.get("slot_id", "unknown")
         blueprint_md = _dump_blueprint_md(blueprint)
+        slot_philosophy = _extract_slot_philosophy(slot_id)
 
         prompt = SUBJECTIVE_DESIGN_MERGED_PROMPT.format(
             slot_id=slot_id,
             blueprint_md=blueprint_md,
+            k_definitions=K_RADAR_DEFINITIONS,
+            slot_philosophy=slot_philosophy or "（未找到题位设计哲学，请用 read_slot 工具读取）",
         )
 
-        fix_instruction = blackboard.get("stem_fix_instruction", "")
+        fix_instruction = blackboard.get("fix_instruction", "")
         has_fix = bool(self._memory and any(
             m.get("role") == "review" for m in self._memory
         ))
@@ -227,6 +293,7 @@ class HybridSolutionFormatter(BaseAgent):
             AgentConfig(
                 name="subjective_solution_formatter",
                 phase="format_solution",
+                step_name="format_comp",
                 output_format="markdown",
                 output_key="formatted_solution",
                 max_tokens=max_tokens,
@@ -242,7 +309,7 @@ class HybridSolutionFormatter(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import SUBJECTIVE_SOLUTION_FORMATTER_PROMPT
 
-        question = blackboard.get("question_design", {})
+        question = blackboard.get("design", {})
         solver_result = blackboard.get("solver_result", {})
 
         return SUBJECTIVE_SOLUTION_FORMATTER_PROMPT.format(
@@ -297,9 +364,9 @@ class HybridRubricWriter(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import SUBJECTIVE_RUBRIC_PROMPT
 
-        question = blackboard.get("question_design", {})
-        solution = blackboard.get("formatted_solution", {})
-        blueprint = blackboard.get("current_blueprint", {})
+        question = blackboard.get("design", {})
+        solution = blackboard.get("solution", {})
+        blueprint = blackboard.get("blueprint", {})
 
         return SUBJECTIVE_RUBRIC_PROMPT.format(
             question_json=json.dumps(question, ensure_ascii=False, indent=2),
@@ -345,10 +412,10 @@ class IntentBasedReviewer(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.slot_prompts import SUBJECTIVE_QUESTION_REVIEW_PROMPT
 
-        question = blackboard.get("question_design", {})
-        solution = blackboard.get("formatted_solution", {})
+        question = blackboard.get("design", {})
+        solution = blackboard.get("solution", {})
         rubric = blackboard.get("rubric", {})
-        blueprint = blackboard.get("current_blueprint", {})
+        blueprint = blackboard.get("blueprint", {})
 
         design_intent = {}
         for key in ("sub_q1_intent", "sub_q2_intent", "sub_q3_intent",

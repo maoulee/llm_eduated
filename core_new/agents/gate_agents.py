@@ -1,12 +1,11 @@
-"""Gate agents for the 2-gate review system.
+"""Gate agent for knowledge point review.
 
-Gate 1: KnowledgeGateAgent — reviews knowledge points before stem generation
-Gate 2: EnvironmentClosureGateAgent — reviews stem environment closure before solving
+KnowledgeGateAgent — reviews knowledge points before stem generation.
 
-Both agents output Markdown sections format:
+Output format:
   ## verdict
   - **field**: value
-  ...
+...
   ## 审核分析
   (free-form analysis)
 """
@@ -24,7 +23,6 @@ from core_new.gate_protocol import GateDecision, GateResult
 from core_new.markdown_parser import parse_md_sections
 from core_new.prompts.gate_prompts import (
     KNOWLEDGE_GATE_PROMPT,
-    ENVIRONMENT_CLOSURE_GATE_PROMPT,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,29 +31,18 @@ logger = logging.getLogger(__name__)
 
 
 def _parse_verdict_section(text: str) -> tuple[dict[str, str], str]:
-    """Parse `## verdict` section into key-value dict + remaining body.
-
-    Expected format:
-        ## verdict
-        - **key**: value
-        ...
-        ## 审核分析
-        ...
-    """
+    """Parse `## verdict` section into key-value dict + remaining body."""
     sections = parse_md_sections(text)
 
-    # Extract verdict fields (already a dict from parse_md_sections)
     fields: dict[str, str] = {}
     verdict = sections.get("verdict", {})
     if isinstance(verdict, dict):
         for key, value in verdict.items():
             fields[str(key)] = str(value)
 
-    # Extract everything from 审核分析 section as the report
     report_md = ""
     report_section = sections.get("审核分析", "")
     if isinstance(report_section, dict):
-        # If parsed as dict, reconstruct text
         report_parts = []
         for k, v in report_section.items():
             report_parts.append(f"- **{k}**: {v}")
@@ -119,7 +106,7 @@ def _build_gate_result(
     )
 
 
-# ── Gate 1: Knowledge Gate ──────────────────────────────────────
+# ── Knowledge Gate ──────────────────────────────────────────────
 
 
 class KnowledgeGateAgent(BaseAgent):
@@ -171,143 +158,3 @@ class KnowledgeGateAgent(BaseAgent):
         output["decision"] = result.verdict.value
         output["can_continue"] = result.can_continue
         return output
-
-
-# ── Gate 2: Environment Closure Gate ────────────────────────────
-
-
-class EnvironmentClosureGateAgent(BaseAgent):
-    """Gate 2: Review stem environment closure before solving."""
-
-    def __init__(self, llm_backend, *, max_tokens: int = 4000):
-        super().__init__(
-            AgentConfig(
-                name="environment_closure_gate",
-                phase="gate_environment_closure",
-                output_format="markdown",
-                output_key="environment_closure_gate_result",
-                max_tokens=max_tokens,
-                enable_thinking=False,
-                required_fields=[],
-                role_type=RoleType.AUDIT,
-                audit_mode=AuditMode.ENVIRONMENT_CLOSURE_GATE,
-                system_prompt="你是一位严格的408考试命题审核员，只审核题目环境是否闭环可解。严格按 Markdown 格式输出。",
-            ),
-            llm_backend,
-        )
-
-    def build_input(self, blackboard: Blackboard) -> str:
-        approved_terms = blackboard.get("approved_knowledge_terms", "")
-        stem = blackboard.get("stem", "")
-        question_prompt = blackboard.get("question_prompt", "")
-
-        return ENVIRONMENT_CLOSURE_GATE_PROMPT.format(
-            approved_knowledge_terms=approved_terms,
-            stem=stem,
-            question_prompt=question_prompt,
-        )
-
-    def parse_output(self, raw: Any) -> Any:
-        text = str(raw)
-        fields, report_md = _parse_verdict_section(text)
-        result = _build_gate_result("environment_closure", fields, report_md, text)
-
-        output = result.to_dict()
-        output["decision"] = result.verdict.value
-        output["can_continue"] = result.can_continue
-        output["can_send_to_solver"] = result.can_send_to_solver
-        return output
-
-
-# ── Convenience: run both gates sequentially ─────────────────────
-
-
-async def run_gates(
-    gateway,
-    *,
-    slot_intent: str,
-    outline_scope: str,
-    knowledge_terms_or_stem: str,
-    stem: str,
-    question_prompt: str = "",
-    slot_id: str = "",
-    enable_knowledge_gate: bool = True,
-    enable_environment_gate: bool = True,
-) -> tuple[Optional[GateResult], Optional[GateResult]]:
-    """Run Knowledge Gate then Environment Closure Gate sequentially.
-
-    Returns (knowledge_gate_result, environment_gate_result).
-    Environment gate is skipped if knowledge gate blocks.
-    """
-    knowledge_result = None
-    environment_result = None
-
-    # Gate 1: Knowledge Gate
-    if enable_knowledge_gate:
-        kg_agent = KnowledgeGateAgent(gateway)
-        bb = Blackboard(
-            task_id=f"knowledge_gate_{slot_id}",
-            task_type="gate",
-            initial_state={
-                "slot_intent": slot_intent,
-                "outline_scope": outline_scope,
-                "knowledge_terms_or_stem": knowledge_terms_or_stem,
-            },
-        )
-        record = await kg_agent.execute(bb)
-
-        if record.error:
-            logger.warning("[%s] Knowledge gate execution failed: %s", slot_id, record.error)
-            knowledge_result = GateResult(
-                gate_name="knowledge",
-                verdict=GateDecision.WARNING,
-                summary=f"Gate execution failed: {record.error}",
-                raw_response=str(record.output),
-            )
-        else:
-            parsed = bb.get("knowledge_gate_result", {})
-            if isinstance(parsed, dict):
-                knowledge_result = GateResult.from_dict(parsed)
-
-        if knowledge_result and knowledge_result.blocked:
-            logger.info("[%s] Knowledge gate BLOCKED: %s", slot_id, knowledge_result.summary)
-            return knowledge_result, None
-
-    # Gate 2: Environment Closure Gate
-    if enable_environment_gate:
-        approved = ""
-        if knowledge_result and knowledge_result.passed:
-            approved = knowledge_result.summary
-
-        ec_agent = EnvironmentClosureGateAgent(gateway)
-        bb = Blackboard(
-            task_id=f"env_closure_gate_{slot_id}",
-            task_type="gate",
-            initial_state={
-                "approved_knowledge_terms": approved,
-                "stem": stem,
-                "question_prompt": question_prompt,
-            },
-        )
-        record = await ec_agent.execute(bb)
-
-        if record.error:
-            logger.warning("[%s] Environment gate execution failed: %s", slot_id, record.error)
-            environment_result = GateResult(
-                gate_name="environment_closure",
-                verdict=GateDecision.WARNING,
-                summary=f"Gate execution failed: {record.error}",
-                raw_response=str(record.output),
-            )
-        else:
-            parsed = bb.get("environment_closure_gate_result", {})
-            if isinstance(parsed, dict):
-                environment_result = GateResult.from_dict(parsed)
-
-        if environment_result:
-            if environment_result.blocked:
-                logger.info("[%s] Environment gate BLOCKED: %s", slot_id, environment_result.summary)
-            else:
-                logger.info("[%s] Environment gate PASSED: %s", slot_id, environment_result.summary)
-
-    return knowledge_result, environment_result

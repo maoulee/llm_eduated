@@ -106,7 +106,7 @@ def is_final_answer(text: str) -> bool:
 
 
 def parse_exec_result(raw: str) -> Dict[str, Any]:
-    """Parse code_exec_408 JSON output."""
+    """Parse python_exec JSON output."""
     try:
         data = json.loads(raw)
         return data if isinstance(data, dict) else {"ok": False, "stderr": raw}

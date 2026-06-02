@@ -9,7 +9,5 @@
 
 推荐分工：
 
-- `compose-paper-408`: 将教师需求和 slot templates 组织成 PaperBlueprint。
-- `generate-question-408`: 根据 SlotBlueprint 生成单题。
-- `solve-408`: 使用代码执行工具验证答案。
+- `solve-408`: 使用 `python_exec` 验证答案。
 - `review-question-408`: 结合 slot blueprint、答案证据、结构规则审核题目。

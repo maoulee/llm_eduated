@@ -177,4 +177,13 @@ K5 跨域联动：1=单一系统, 2=提及无关联, 3=单向传递, 4=状态互
 
 ## fix_instruction
 - **fix_detail**: 具体问题描述和修复方向；无问题写"无"
+
+## corrected_content
+（仅在 status=needs_fix 时填写，pass 时写"无"）
+
+### corrected_stem
+（当 fix_target=stem 时）提供修正后的完整题干。保持原有知识点和考点不变，仅修正有问题的参数/条件/描述。修正后的题干必须自洽且可求解。如果 fix_target 不是 stem，写"n/a"
+
+### corrected_code
+（当 fix_target=solver 时）提供修正后的完整 Python 代码。保持与题干一致，仅修正公式/计算错误。代码必须自包含（只用标准库），打印完整求解过程。如果 fix_target 不是 solver，写"n/a"
 """

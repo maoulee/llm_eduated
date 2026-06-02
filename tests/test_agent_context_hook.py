@@ -263,3 +263,155 @@ class TestContextCatalogText:
         assert store["design"] == {"stem": "test"}
         assert store["solver"] is None
         assert "design" in store["__catalog__"]
+
+
+# ─── Q. Data Flow Contracts ────────────────────────────────────
+
+
+class TestDataKeys:
+    """Validate key-name normalization."""
+
+    def test_q1_design_aliases(self):
+        from core_new.data_keys import canonical, DESIGN
+        assert canonical("sc_draft_result") == DESIGN
+        assert canonical("question_design") == DESIGN
+        assert canonical("sc_design") == DESIGN
+
+    def test_q2_blueprint_aliases(self):
+        from core_new.data_keys import canonical, BLUEPRINT
+        assert canonical("current_blueprint") == BLUEPRINT
+        assert canonical("slot_blueprint") == BLUEPRINT
+
+    def test_q3_unknown_key_passthrough(self):
+        from core_new.data_keys import canonical
+        assert canonical("totally_unknown") == "totally_unknown"
+
+
+class TestDataFlowContracts:
+    """Validate STEP_INPUTS contracts and validation."""
+
+    def test_q4_solve_forbids_blueprint(self):
+        from core_new.data_flow import get_step_inputs
+        from core_new.data_keys import BLUEPRINT
+        si = get_step_inputs("solve")
+        assert BLUEPRINT in si.forbidden
+
+    def test_q5_design_forbids_solver(self):
+        from core_new.data_flow import get_step_inputs
+        from core_new.data_keys import SOLVER_RESULT
+        for step in ("design_sc", "design_comp"):
+            si = get_step_inputs(step)
+            assert SOLVER_RESULT in si.forbidden
+
+    def test_q6_fixer_mandatory_review(self):
+        from core_new.data_flow import get_step_inputs
+        from core_new.data_keys import REVIEW
+        si = get_step_inputs("fixer")
+        assert REVIEW in si.mandatory
+
+    def test_q7_validate_catches_forbidden(self):
+        from core_new.data_flow import validate_initial_state
+        violations = validate_initial_state("solve", {
+            "design": {},
+            "blueprint": {},  # forbidden
+        })
+        assert len(violations) == 1
+        assert "FORBIDDEN" in violations[0]
+
+    def test_q8_validate_clean_pass(self):
+        from core_new.data_flow import validate_initial_state
+        violations = validate_initial_state("solve", {
+            "design": {},
+            "options": {},
+        })
+        assert len(violations) == 0
+
+    def test_q9_revision_upgrade_fix_instruction(self):
+        from core_new.data_flow import get_step_inputs
+        from core_new.data_keys import FIX_INSTRUCTION
+        si_normal = get_step_inputs("design_sc", is_revision=False)
+        si_rev = get_step_inputs("design_sc", is_revision=True)
+        assert FIX_INSTRUCTION in si_normal.optional
+        assert FIX_INSTRUCTION in si_rev.mandatory
+
+    def test_q10_classify_keys(self):
+        from core_new.data_flow import classify_keys
+        result = classify_keys("gate", ["design", "blueprint", "options", "solver_result"])
+        assert "design" in result["mandatory"]
+        assert "blueprint" in result["mandatory"]
+        assert "options" in result["optional"]
+        assert "solver_result" in result["forbidden"]
+
+
+class TestDataFlowContextStore:
+    """Validate data_flow-driven context store with real agent."""
+
+    def _make_flow_agent(self, step_name):
+        from core_new.agents.final_review_team import FinalFixerAgent
+        from core_new.agent_roles import resolve_execution_policy
+
+        config = AgentConfig(
+            name=f"test_{step_name}",
+            phase="test",
+            step_name=step_name,
+        )
+        agent = FinalFixerAgent.__new__(FinalFixerAgent)
+        agent.config = config
+        agent.llm = MagicMock()
+        agent._memory = []
+        agent.execution_policy = resolve_execution_policy(config.role_type, config.execution_policy)
+        return agent
+
+    def _make_blackboard(self, data):
+        bb = MagicMock()
+        bb._state = list(data.keys())
+        bb.get = lambda key, default=None, **kw: data.get(key, default)
+        return bb
+
+    def test_q11_fixer_forbidden_blueprint(self):
+        from core_new.agent_tools import set_context_store, _read_context
+        agent = self._make_flow_agent("fixer")
+        bb = self._make_blackboard({
+            "design": {"stem": "x"},
+            "blueprint": {"forbidden": True},
+            "review": {"status": "needs_fix"},
+        })
+        store = agent._prepare_context_store(bb)
+        set_context_store(store)
+        result = _read_context("blueprint")
+        assert "error" in result
+
+    def test_q12_fixer_optional_design_accessible(self):
+        from core_new.agent_tools import set_context_store, _read_context
+        agent = self._make_flow_agent("fixer")
+        bb = self._make_blackboard({
+            "design": {"stem": "test"},
+            "review": {"status": "needs_fix"},
+        })
+        store = agent._prepare_context_store(bb)
+        set_context_store(store)
+        result = _read_context("design")
+        assert "error" not in result
+
+    def test_q13_fixer_mandatory_not_in_store(self):
+        """Mandatory data goes in prompt, not in pull store."""
+        agent = self._make_flow_agent("fixer")
+        bb = self._make_blackboard({
+            "review": {"status": "needs_fix"},
+        })
+        store = agent._prepare_context_store(bb)
+        assert "review" not in store.get("__catalog__", {})
+
+    def test_q14_catalog_text_uses_flow(self):
+        agent = self._make_flow_agent("fixer")
+        text = agent._context_catalog_text()
+        assert "design" in text
+        assert "solver_result" in text
+        # blueprint is forbidden, should not appear
+        assert "blueprint" not in text
+
+    def test_q15_revision_detection(self):
+        agent = self._make_flow_agent("design_sc")
+        assert not agent._is_revision_round()
+        agent._memory.append({"role": "review", "content": "fix stem"})
+        assert agent._is_revision_round()

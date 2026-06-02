@@ -8,10 +8,12 @@ Uses python_exec tool for numerical verification.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict
 
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import RoleType
+from core_new.agent_tools import PYTHON_EXEC_TOOL
 from core_new.blackboard import Blackboard
 from core_new.markdown_parser import parse_md_sections
 
@@ -20,42 +22,11 @@ class StemBlueprintGateAgent(BaseAgent):
     """Pre-solve gate: validate stem + blueprint compliance before sending to solver."""
 
     def __init__(self, llm_backend, *, max_tokens: int = 8192):
-        from core_new.agent_tools import ToolDef
-        from core_new.tool_executor import execute_python
-
-        def _python_exec_handler(**kwargs):
-            code = kwargs.get("code", "")
-            result = execute_python(code, timeout=kwargs.get("timeout", 10.0))
-            return json.dumps({
-                "ok": result.ok,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-            }, ensure_ascii=False)
-
-        python_exec_tool = ToolDef(
-            name="python_exec",
-            description=(
-                "Execute Python code in a sandbox environment. "
-                "Available: math, struct, itertools, collections, functools, and standard library. "
-                "Write any code you need for verification."
-            ),
-            parameters={
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "description": "Python code to execute for verification",
-                    },
-                },
-                "required": ["code"],
-            },
-            handler=_python_exec_handler,
-        )
-
         super().__init__(
             AgentConfig(
                 name="stem_blueprint_gate",
                 phase="gate",
+                step_name="gate",
                 output_format="markdown",
                 output_key="stem_blueprint_gate_result",
                 max_tokens=max_tokens,
@@ -67,8 +38,9 @@ class StemBlueprintGateAgent(BaseAgent):
                     "你不解答题目，只判断是否值得交给代码解答智能体。"
                     "使用 python_exec 工具验证数值断言。严格按markdown格式输出。"
                 ),
-                tools=[python_exec_tool],
+                tools=[PYTHON_EXEC_TOOL],
                 max_tool_rounds=5,
+                max_tool_calls=3,
             ),
             llm_backend,
         )
@@ -79,8 +51,8 @@ class StemBlueprintGateAgent(BaseAgent):
         stem = blackboard.get("stem", "")
         options = blackboard.get("options")
         blueprint = blackboard.get("blueprint", {})
-        question_design = blackboard.get("question_design", {})
-        experience_radar = blackboard.get("experience_radar", "")
+        question_design = blackboard.get("design", {})
+        experience_radar = blackboard.get("experience", "")
 
         blueprint_md = _dump_blueprint_for_gate(blueprint)
         options_md = _dump_options_md(options)
@@ -109,7 +81,7 @@ class StemBlueprintGateAgent(BaseAgent):
                 "comment": "审核输出为空",
                 "_raw_text": text,
             }
-        sections = parse_md_sections(text)
+        sections = _parse_gate_sections(text)
 
         verdict = sections.get("verdict", {})
         if not isinstance(verdict, dict):
@@ -128,12 +100,8 @@ class StemBlueprintGateAgent(BaseAgent):
         if status == "needs_fix" and severity not in ("critical", "minor"):
             severity = "critical"
 
-        evidence_text = sections.get("evidence", "")
-        if isinstance(evidence_text, dict):
-            evidence_text = evidence_text.get("text", str(evidence_text))
-        code_verification_text = sections.get("code_verification", "")
-        if isinstance(code_verification_text, dict):
-            code_verification_text = code_verification_text.get("text", str(code_verification_text))
+        evidence_text = _extract_text(sections.get("evidence", ""))
+        code_verification_text = _extract_text(sections.get("code_verification", ""))
 
         result = {
             "status": status,
@@ -149,6 +117,69 @@ class StemBlueprintGateAgent(BaseAgent):
 
         result["_raw_text"] = text
         return result
+
+
+def _normalize_gate_section_name(name: str) -> str:
+    normalized = name.strip().lower()
+    aliases = {
+        "code verification": "code_verification",
+        "code verification results": "code_verification",
+        "code_verification": "code_verification",
+        "fix instruction": "fix_instruction",
+        "fix_instruction": "fix_instruction",
+    }
+    return aliases.get(normalized, normalized.replace("_", " "))
+
+
+def _parse_section_kv(lines: list[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for line in lines:
+        match = re.match(r"^\s*[-*]\s+\*\*(.+?)\*\*[:：]\s*(.*)\s*$", line)
+        if not match:
+            match = re.match(r"^\s*[-*]\s+([^*:：]+?)[:：]\s*(.*)\s*$", line)
+        if match:
+            parsed[match.group(1).strip()] = match.group(2).strip()
+    return parsed
+
+
+def _parse_gate_sections(text: str) -> dict[str, dict[str, str]]:
+    """Parse gate markdown into normalized section dictionaries."""
+    if not text or not str(text).strip():
+        return {}
+
+    sections: dict[str, dict[str, str]] = {}
+    current_name: str | None = None
+    current_lines: list[str] = []
+
+    def flush() -> None:
+        if not current_name:
+            return
+        key = _normalize_gate_section_name(current_name)
+        content = "\n".join(current_lines).strip()
+        if key in {"evidence", "code_verification"}:
+            sections[key] = {"text": content}
+        else:
+            sections[key] = _parse_section_kv(current_lines)
+
+    for line in str(text).splitlines():
+        match = re.match(r"^##\s+(.+?)\s*$", line)
+        if match:
+            flush()
+            current_name = match.group(1).strip()
+            current_lines = []
+        elif current_name:
+            current_lines.append(line)
+
+    flush()
+    return sections
+
+
+def _extract_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("text", ""))
+    if value is None:
+        return ""
+    return str(value)
 
 
 def _dump_blueprint_for_gate(blueprint: dict) -> str:

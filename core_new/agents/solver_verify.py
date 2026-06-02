@@ -8,6 +8,7 @@ Pure text review, no code execution tools.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict
 
 from core_new.agent_base import AgentConfig, BaseAgent
@@ -24,6 +25,7 @@ class SolverVerifyAgent(BaseAgent):
             AgentConfig(
                 name="solver_verify",
                 phase="verify",
+                step_name="verify",
                 output_format="markdown",
                 output_key="solver_verify_result",
                 max_tokens=max_tokens,
@@ -46,7 +48,7 @@ class SolverVerifyAgent(BaseAgent):
 
         stem = blackboard.get("stem", "")
         options = blackboard.get("options")
-        question_design = blackboard.get("question_design", {})
+        question_design = blackboard.get("design", {})
         solver_result = blackboard.get("solver_result", {})
         question_type = blackboard.get("question_type", "single_choice")
         blueprint = blackboard.get("blueprint", {})
@@ -81,16 +83,7 @@ class SolverVerifyAgent(BaseAgent):
                 "_raw_text": text,
                 "overall_quality": 3,
             }
-        sections = parse_md_sections(text)
-
-        # Normalize section names (handle English/Chinese variants)
-        name_map = {
-            "verified result": "verified_result",
-            "fix instruction": "fix_instruction",
-        }
-        for old, new in name_map.items():
-            if old in sections and new not in sections:
-                sections[new] = sections.pop(old)
+        sections = _parse_verify_sections(text)
 
         verdict = sections.get("verdict", {})
         checks = sections.get("checks", {})
@@ -110,9 +103,19 @@ class SolverVerifyAgent(BaseAgent):
         if status == "needs_fix" and fix_target == "none":
             fix_target = "solver"
 
-        evidence_text = sections.get("evidence", "")
-        if isinstance(evidence_text, dict):
-            evidence_text = evidence_text.get("text", str(evidence_text))
+        evidence_text = _extract_text(sections.get("evidence", ""))
+
+        # Extract corrected content (in-place fixes)
+        corrected = sections.get("corrected_content", {})
+        corrected_stem = ""
+        corrected_code = ""
+        if isinstance(corrected, dict):
+            corrected_stem = corrected.get("corrected_stem", "")
+            corrected_code = corrected.get("corrected_code", "")
+        if corrected_stem and corrected_stem.strip().lower() in ("n/a", "无", "none"):
+            corrected_stem = ""
+        if corrected_code and corrected_code.strip().lower() in ("n/a", "无", "none"):
+            corrected_code = ""
 
         result = {
             "status": status,
@@ -123,6 +126,8 @@ class SolverVerifyAgent(BaseAgent):
             "computed_answer": verified.get("computed_answer", ""),
             "evidence": str(evidence_text),
             "fix_detail": fix_instruction.get("fix_detail", ""),
+            "corrected_stem": corrected_stem,
+            "corrected_code": corrected_code,
             "comment": str(evidence_text)[:300],
         }
 
@@ -131,6 +136,101 @@ class SolverVerifyAgent(BaseAgent):
         # Provide overall_quality from LLM output, fallback to default
         result["overall_quality"] = checks.get("overall_quality", 8 if result["status"] == "pass" else 5)
         return result
+
+
+def _normalize_verify_section_name(name: str) -> str:
+    normalized = name.strip().lower()
+    aliases = {
+        "verified result": "verified_result",
+        "verified_result": "verified_result",
+        "fix instruction": "fix_instruction",
+        "fix_instruction": "fix_instruction",
+    }
+    return aliases.get(normalized, normalized.replace("_", " "))
+
+
+def _parse_section_kv(lines: list[str]) -> dict[str, str]:
+    parsed: dict[str, str] = {}
+    for line in lines:
+        match = re.match(r"^\s*[-*]\s+\*\*(.+?)\*\*[:：]\s*(.*)\s*$", line)
+        if not match:
+            match = re.match(r"^\s*[-*]\s+([^*:：]+?)[:：]\s*(.*)\s*$", line)
+        if match:
+            parsed[match.group(1).strip()] = match.group(2).strip()
+    return parsed
+
+
+def _parse_verify_sections(text: str) -> dict[str, dict[str, str]]:
+    """Parse verifier markdown into normalized section dictionaries."""
+    if not text or not str(text).strip():
+        return {}
+
+    sections: dict[str, dict[str, str]] = {}
+    current_name: str | None = None
+    current_lines: list[str] = []
+
+    # Sub-section tracking for corrected_content
+    sub_name: str | None = None
+    sub_lines: list[str] = []
+    sub_results: dict[str, str] = {}
+
+    def flush() -> None:
+        nonlocal sub_name, sub_lines, sub_results
+        if not current_name:
+            return
+        # Flush any pending sub-section first
+        _flush_sub()
+        key = _normalize_verify_section_name(current_name)
+        content = "\n".join(current_lines).strip()
+        if key == "evidence":
+            sections[key] = {"text": content}
+        elif key == "corrected_content":
+            # Merge sub-section results into the dict
+            sections[key] = sub_results if sub_results else _parse_section_kv(current_lines)
+        else:
+            sections[key] = _parse_section_kv(current_lines)
+        sub_results = {}
+
+    def _flush_sub() -> None:
+        nonlocal sub_name, sub_lines
+        if sub_name and sub_lines:
+            sub_results[sub_name] = "\n".join(sub_lines).strip()
+        sub_name = None
+        sub_lines = []
+
+    for line in str(text).splitlines():
+        # Check for ### sub-sections (inside corrected_content)
+        sub_match = re.match(r"^###\s+(.+?)\s*$", line)
+        if sub_match and current_name and _normalize_verify_section_name(current_name) == "corrected_content":
+            _flush_sub()
+            sub_name = sub_match.group(1).strip().lower().replace(" ", "_")
+            sub_lines = []
+            continue
+
+        # Check for ## main sections
+        match = re.match(r"^##\s+(.+?)\s*$", line)
+        if match:
+            flush()
+            current_name = match.group(1).strip()
+            current_lines = []
+            sub_name = None
+            sub_lines = []
+            sub_results = {}
+        elif current_name:
+            if sub_name is not None:
+                sub_lines.append(line)
+            current_lines.append(line)
+
+    flush()
+    return sections
+
+
+def _extract_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return str(value.get("text", ""))
+    if value is None:
+        return ""
+    return str(value)
 
 
 def _dump_blueprint_for_verify(blueprint: dict) -> str:

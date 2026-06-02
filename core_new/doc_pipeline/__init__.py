@@ -15,13 +15,15 @@ from typing import Any
 from core_new.llm_gateway import LLMGateway
 from core_new.provider_router import get_routed_gateway
 
-from .scheduler import DocScheduler, DEFAULT_MAX_TOKENS
+from .config import DEFAULT_MAX_TOKENS
+from .orchestrator import DocPipelineOrchestrator
+from .scheduler import DocScheduler
 
-__all__ = ["DocPipeline"]
+__all__ = ["DocPipeline", "DocPipelineOrchestrator", "DocScheduler"]
 
 
 class DocPipeline:
-    """High-level wrapper over DocScheduler.
+    """High-level wrapper that wires scheduler infrastructure to orchestration.
 
     Handles gateway resolution and workspace setup.
     """
@@ -67,7 +69,12 @@ class DocPipeline:
             enable_thinking=self.enable_thinking,
             model_routing=self.model_routing,
         )
-        return await scheduler.run_pipeline(
+        orchestrator = DocPipelineOrchestrator(
+            scheduler=scheduler,
+            workspace=self.workspace,
+            max_tokens=self.max_tokens,
+        )
+        return await orchestrator.run_pipeline(
             slot_id,
             slot_data,
             experience_card=experience_card,

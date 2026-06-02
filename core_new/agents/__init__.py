@@ -19,13 +19,11 @@ from .agent_registry import AgentRegistry
 from .paper_formatter import PaperFormatterAgent
 from .gate_agents import (
     KnowledgeGateAgent,
-    EnvironmentClosureGateAgent,
 )
 from .single_choice_team import (
     SingleChoiceDraftAgent,
     OptionAndDistractorAgent,
     SCSolutionFormatterAgent,
-    StemVerifierAgent,
     PostReviewAgent,
     QuestionSummaryAgent,
 )
@@ -48,11 +46,9 @@ __all__ = [
     "AgentRegistry",
     "PaperFormatterAgent",
     "KnowledgeGateAgent",
-    "EnvironmentClosureGateAgent",
     "SingleChoiceDraftAgent",
     "OptionAndDistractorAgent",
     "SCSolutionFormatterAgent",
-    "StemVerifierAgent",
     "PostReviewAgent",
     "QuestionSummaryAgent",
     "solver_utils",

@@ -30,6 +30,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+import httpx
+
 from config import get_provider_config
 from core_new.agent_roles import TransportRetryPolicy
 from llm_providers_new import get_llm_provider
@@ -40,6 +42,7 @@ logger = logging.getLogger(__name__)
 # Separate concurrency limits for local (vLLM) and remote (GLM) providers
 _LOCAL_CONCURRENCY = int(os.getenv("LLM_LOCAL_CONCURRENCY", "10"))
 _REMOTE_CONCURRENCY = int(os.getenv("LLM_REMOTE_CONCURRENCY", "5"))
+_RETRYABLE_HTTP_STATUS = {408, 409, 425, 429, 500, 502, 503, 504}
 _local_sem: Optional[asyncio.Semaphore] = None
 _remote_sem: Optional[asyncio.Semaphore] = None
 
@@ -436,6 +439,224 @@ class LLMGateway:
     async def generate_text(self, messages: List[Dict], **kw) -> LLMResult:
         return (await self.generate_text_batch([messages], **kw))[0]
 
+    async def stream_chat(
+        self,
+        messages: List[Dict[str, Any]],
+        *,
+        max_tokens: Optional[int] = None,
+        enable_thinking: Optional[bool] = None,
+        thinking_budget: Optional[int] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+        sampling_overrides: Optional[Dict[str, Any]] = None,
+        json_mode: bool = False,
+    ) -> Dict[str, Any]:
+        """Run one streaming chat request through the shared gateway policy.
+
+        This is the common infrastructure path for agent-style streaming calls:
+        provider message preparation, local/remote concurrency limits, transport
+        retries, retryable error classification, and provider-specific extension
+        filtering all live here.  Orchestrators should vary prompts, sampling,
+        tools, and routing, not reimplement transport behavior.
+        """
+        provider = self._provider
+        max_tokens = self._floor_max_tokens(max_tokens, bool(enable_thinking))
+        params = self._build_chat_params(
+            provider,
+            messages,
+            max_tokens=max_tokens,
+            enable_thinking=enable_thinking,
+            thinking_budget=thinking_budget,
+            tools=tools,
+            tool_choice=tool_choice,
+            sampling_overrides=sampling_overrides,
+            json_mode=json_mode,
+            stream=True,
+        )
+
+        last_exc: Exception | None = None
+        attempts = max(1, self._transport_retry.max_attempts)
+        for attempt in range(attempts):
+            async with self._get_sem():
+                try:
+                    return await self._read_chat_stream(provider, params)
+                except Exception as exc:
+                    if not self._is_retryable_stream_error(exc) or attempt >= attempts - 1:
+                        raise
+                    last_exc = exc
+
+            await self._wait_with_backoff(attempt)
+
+        raise last_exc or RuntimeError("stream_chat failed without an exception")
+
+    def _build_chat_params(
+        self,
+        provider,
+        messages: List[Dict[str, Any]],
+        *,
+        max_tokens: Optional[int],
+        enable_thinking: Optional[bool],
+        thinking_budget: Optional[int],
+        tools: Optional[List[Dict[str, Any]]],
+        tool_choice: Optional[Any],
+        sampling_overrides: Optional[Dict[str, Any]],
+        json_mode: bool,
+        stream: bool,
+    ) -> Dict[str, Any]:
+        if enable_thinking is not None and hasattr(provider, "_prepare_messages"):
+            processed = provider._prepare_messages(
+                messages,
+                enable_thinking=enable_thinking,
+                json_mode=json_mode,
+            )
+        else:
+            processed = list(messages)
+
+        sampling = {k: v for k, v in getattr(provider, "sampling_params", {}).items() if k != "top_k"}
+        if sampling_overrides:
+            sampling.update({k: v for k, v in sampling_overrides.items() if v is not None})
+
+        params: Dict[str, Any] = {
+            "model": provider.model_name,
+            "messages": processed,
+            "stream": stream,
+            **sampling,
+        }
+        if max_tokens:
+            params["max_tokens"] = max_tokens
+        if json_mode and getattr(provider, "supports_response_format", False):
+            params["response_format"] = {"type": "json_object"}
+        if tools:
+            params["tools"] = tools
+        if tool_choice and tools:
+            params["tool_choice"] = tool_choice
+
+        if thinking_budget and self._supports_thinking_budget(provider):
+            params.setdefault("extra_body", {})
+            params["extra_body"]["thinking_token_budget"] = thinking_budget
+
+        if enable_thinking is not None and hasattr(provider, "_extra_body_for_thinking"):
+            extra_body = provider._extra_body_for_thinking(enable_thinking)
+            if extra_body:
+                params.setdefault("extra_body", {}).update(extra_body)
+
+        return params
+
+    async def _read_chat_stream(self, provider, params: Dict[str, Any]) -> Dict[str, Any]:
+        content_parts: List[str] = []
+        reasoning_parts: List[str] = []
+        tool_calls_accum: Dict[int, Dict[str, str]] = {}
+        finish_reason: str | None = None
+
+        logger.debug(
+            "[stream_chat] provider=%s model=%s tool_choice=%s tools=%d max_tokens=%s",
+            self._provider_name,
+            params.get("model"),
+            params.get("tool_choice"),
+            len(params.get("tools", [])),
+            params.get("max_tokens"),
+        )
+
+        stream = await provider.client.chat.completions.create(**params)
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = choice.delta
+
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
+
+            if delta.content:
+                content_parts.append(delta.content)
+
+            reasoning = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None) or ""
+            if reasoning:
+                reasoning_parts.append(reasoning)
+
+            if delta.tool_calls:
+                for tc_delta in delta.tool_calls:
+                    idx = tc_delta.index
+                    if idx not in tool_calls_accum:
+                        tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
+                    if tc_delta.id:
+                        tool_calls_accum[idx]["id"] = tc_delta.id
+                    if tc_delta.function:
+                        if tc_delta.function.name:
+                            tool_calls_accum[idx]["name"] = tc_delta.function.name
+                        if tc_delta.function.arguments:
+                            tool_calls_accum[idx]["arguments"] += tc_delta.function.arguments
+
+        tool_calls = None
+        if tool_calls_accum:
+            tool_calls = []
+            for idx in sorted(tool_calls_accum):
+                tc = tool_calls_accum[idx]
+                tool_calls.append({
+                    "id": tc["id"],
+                    "type": "function",
+                    "function": {
+                        "name": tc["name"],
+                        "arguments": tc["arguments"],
+                    },
+                })
+
+        content = "".join(content_parts)
+        reasoning_content = "".join(reasoning_parts)
+        logger.info(
+            "[stream_chat] provider=%s content=%d reasoning=%d tool_calls=%s finish_reason=%s",
+            self._provider_name,
+            len(content),
+            len(reasoning_content),
+            len(tool_calls) if tool_calls else 0,
+            finish_reason,
+        )
+        return {
+            "content": content,
+            "reasoning_content": reasoning_content,
+            "tool_calls": tool_calls,
+            "finish_reason": finish_reason,
+        }
+
+    @staticmethod
+    def _supports_thinking_budget(provider) -> bool:
+        method = getattr(provider, "thinking_control_method", "")
+        base_url = str(getattr(provider, "api_base_url", "")).lower()
+        provider_type = getattr(provider, "provider_type", "")
+        return (
+            provider_type == "local"
+            or method == "chat_template_kwargs"
+            or "127.0.0.1" in base_url
+            or "localhost" in base_url
+        )
+
+    @staticmethod
+    def _is_retryable_stream_error(exc: Exception) -> bool:
+        if isinstance(exc, (
+            httpx.ConnectError,
+            httpx.ReadError,
+            httpx.WriteError,
+            httpx.PoolTimeout,
+            httpx.ConnectTimeout,
+            httpx.ReadTimeout,
+            ConnectionError,
+            OSError,
+        )):
+            return True
+
+        status_code = getattr(exc, "status_code", None)
+        response = getattr(exc, "response", None)
+        if status_code is None and response is not None:
+            status_code = getattr(response, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code in _RETRYABLE_HTTP_STATUS or status_code >= 500
+
+        name = exc.__class__.__name__.lower()
+        return any(
+            marker in name
+            for marker in ("timeout", "connection", "ratelimit", "rate_limit")
+        )
+
     async def generate_with_tools(
         self,
         messages: List[Dict],
@@ -543,7 +764,7 @@ class LLMGateway:
                         force_latency = int((time.monotonic() - start_time) * 1000)
                         total_latency += force_latency
                         force_content = force_raw.get("content", "")
-                        force_reasoning = force_raw.get("reasoning_content", "")
+                        force_reasoning = force_raw.get("reasoning") or force_raw.get("reasoning_content", "")
                         return LLMResult.success(
                             content=force_content,
                             reasoning=force_reasoning or None,
@@ -607,8 +828,8 @@ class LLMGateway:
 
             # No tool calls — this is the final content
             logger.info("[generate_with_tools] Final content len=%d, reasoning len=%d, rounds=%d, tool_calls=%d",
-                        len(content or ""), len(raw.get("reasoning_content") or ""), round_idx + 1, tool_call_count)
-            reasoning = raw.get("reasoning_content", "")
+                        len(content or ""), len(raw.get("reasoning") or raw.get("reasoning_content") or ""), round_idx + 1, tool_call_count)
+            reasoning = raw.get("reasoning") or raw.get("reasoning_content", "")
             return LLMResult.success(
                 content=content,
                 reasoning=reasoning or None,
@@ -690,7 +911,7 @@ def _classify_error_content(content: str) -> str:
 def _process_json_raw(raw: Dict[str, Any], provider: str, model: str, latency_ms: int) -> LLMResult:
     """Process a raw output dict from _generate_raw_batch for JSON mode."""
     content = raw.get("content", "")
-    reasoning = raw.get("reasoning_content", "")
+    reasoning = raw.get("reasoning") or raw.get("reasoning_content", "")
 
     if content.startswith("Error:"):
         return LLMResult.failure(

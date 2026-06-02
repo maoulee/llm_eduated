@@ -43,6 +43,7 @@ class SingleChoiceDraftAgent(BaseAgent):
             AgentConfig(
                 name="sc_draft",
                 phase="sc_draft",
+                step_name="design_sc",
                 output_format="markdown",
                 output_key="sc_draft_result",
                 max_tokens=16384,
@@ -51,6 +52,8 @@ class SingleChoiceDraftAgent(BaseAgent):
                 required_fields=["stem"],
                 repair_max_retries=1,
                 role_type=RoleType.GENERATOR,
+                tools=[],  # Designer is pure NL — no tools
+                max_tool_rounds=0,
                 expected_output_format=(
                     "## stem\n"
                     "- **stem**: question stem only, no options, no answer, no code block\n"
@@ -64,7 +67,7 @@ class SingleChoiceDraftAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import SC_DRAFT_PROMPT
 
-        question_design = blackboard.get("question_design", {})
+        question_design = blackboard.get("design", {})
         design_md = question_design.get("raw_design_md", "")
         if not design_md:
             design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
@@ -78,8 +81,8 @@ class SingleChoiceDraftAgent(BaseAgent):
             m.get("role") == "review" for m in self._memory
         ))
 
-        # Legacy: also check blackboard for stem_fix_instruction
-        fix_instruction = blackboard.get("stem_fix_instruction", "")
+        # Legacy: also check blackboard for fix_instruction
+        fix_instruction = blackboard.get("fix_instruction", "")
         if fix_instruction:
             has_fix = True
 
@@ -139,7 +142,7 @@ class RuntimeSingleChoiceDraftAgent(SingleChoiceDraftAgent):
                 prompt = self.build_input(blackboard)
                 loop = Edu408AgentLoop(
                     self.llm,
-                    build_408_tools(self.llm, include_llm_tools=False),
+                    build_408_tools(),
                     workspace=DEFAULT_WORKSPACE,
                     max_iterations=5,
                     max_tokens=self.config.max_tokens,
@@ -150,7 +153,7 @@ class RuntimeSingleChoiceDraftAgent(SingleChoiceDraftAgent):
                     loop.run(
                         self._runtime_task(prompt),
                         allowed_tools=self.ALLOWED_TOOLS,
-                        skill_names=["generate-question-408"],
+                        skill_names=["solve-408"],
                         extra_system=self._runtime_system(),
                     ),
                     timeout=self.config.timeout_s,
@@ -226,6 +229,7 @@ class OptionAndDistractorAgent(BaseAgent):
             AgentConfig(
                 name="sc_options",
                 phase="sc_options",
+                step_name="options",
                 output_format="markdown",
                 output_key="sc_options_result",
                 max_tokens=16384,
@@ -257,8 +261,8 @@ class OptionAndDistractorAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import SC_OPTIONS_PROMPT
 
-        draft_result = blackboard.get("sc_draft_result", {})
-        question_design = blackboard.get("question_design", {})
+        draft_result = blackboard.get("design", {})
+        question_design = blackboard.get("design", {})
         design_md = question_design.get("raw_design_md", "")
         if not design_md:
             design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
@@ -310,136 +314,6 @@ class OptionAndDistractorAgent(BaseAgent):
         return True, ""
 
 
-# ── StemVerifierAgent ─────────────────────────────────────────
-
-
-class StemVerifierAgent(BaseAgent):
-    """Pre-solve stem verification: coding agent that verifies parameters, severity-graded.
-
-    Works like the solver — a coding agent with full Python execution environment.
-    The model analyzes the stem, writes verification code, runs it, and judges based
-    on actual computation results.
-    """
-
-    def __init__(self, llm_backend):
-        from core_new.agent_tools import ToolDef
-        from core_new.tool_executor import execute_python
-
-        def _python_exec_handler(code: str, **kwargs) -> str:
-            import json
-            result = execute_python(code, timeout=kwargs.get("timeout", 10.0))
-            return json.dumps({
-                "ok": result.ok,
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-            }, ensure_ascii=False)
-
-        python_exec_tool = ToolDef(
-            name="python_exec",
-            description=(
-                "Execute Python code in a sandbox environment. "
-                "Available: math, struct, itertools, collections, functools, and standard library. "
-                "Write any code you need for verification."
-            ),
-            parameters={
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "description": "Python code to execute for verification",
-                    },
-                },
-                "required": ["code"],
-            },
-            handler=_python_exec_handler,
-        )
-
-        super().__init__(
-            AgentConfig(
-                name="stem_verifier",
-                phase="stem_verification",
-                output_format="markdown",
-                output_key="stem_verification_result",
-                max_tokens=8192,
-                enable_thinking=True,
-                max_retries=1,
-                required_fields=["status"],
-                repair_max_retries=1,
-                role_type=RoleType.AUDIT,
-                audit_mode=AuditMode.STEM_VERIFICATION,
-                tools=[python_exec_tool],
-                max_tool_rounds=5,
-                expected_output_format=(
-                    "## verification\n"
-                    "- **status**: pass|needs_fix|pass_with_notes\n"
-                    "- **severity**: none|critical|minor\n"
-                    "- **code_verification_results**: ...\n"
-                    "- **critical_issues**: ...\n"
-                    "- **minor_issues**: ...\n"
-                    "- **overall_comment**: ...\n\n"
-                    "## fix_instruction\n"
-                    "- **fix_target**: stem|none\n"
-                    "- **fix_detail**: ..."
-                ),
-                system_prompt=(
-                    "你是一位408考研题干参数审核专家。你的任务是验证题干中的数值参数是否自洽。"
-                    "你有 code_exec_408 工具可以执行 Python 代码验证数值。"
-                    "只阻断 critical 问题，minor 问题记录但不阻断。严格按markdown格式输出。"
-                ),
-            ),
-            llm_backend,
-        )
-
-    def build_input(self, blackboard: Blackboard) -> str:
-        from core_new.prompts.single_choice_prompts import STEM_VERIFICATION_PROMPT
-
-        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
-        question_design = blackboard.get("question_design", {})
-        design_md = question_design.get("raw_design_md", "")
-        if not design_md:
-            design_md = json.dumps(question_design, ensure_ascii=False, indent=2)
-
-        stem = draft_result.get("stem", "")
-
-        # Build options section if available
-        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
-        if options_result:
-            options_md = (
-                f"- A: {options_result.get('option_A', '')}\n"
-                f"- B: {options_result.get('option_B', '')}\n"
-                f"- C: {options_result.get('option_C', '')}\n"
-                f"- D: {options_result.get('option_D', '')}"
-            )
-        else:
-            options_md = "（非选择题，无选项）"
-
-        return STEM_VERIFICATION_PROMPT.format(
-            stem=stem,
-            options_md=options_md,
-            question_design_md=design_md,
-        )
-
-    def parse_output(self, raw: Any) -> Any:
-        text = str(raw)
-        result = parse_structured_output(text, md_sections=("verification", "fix_instruction"))
-        if result:
-            # Handle fix_instruction as dict
-            data = try_parse_json_object(text)
-            if data and isinstance(data.get("fix_instruction"), dict):
-                result["fix_instruction"] = data["fix_instruction"]
-            return result
-        return {}
-
-    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
-        ok, detail = super().validate_parsed(parsed)
-        if not ok:
-            return ok, detail
-        status = str(parsed.get("status", "")).strip().lower()
-        if status not in {"pass", "needs_fix", "pass_with_notes"}:
-            return False, "status must be pass, needs_fix, or pass_with_notes"
-        return True, ""
-
-
 # ── SCSolutionFormatterAgent ───────────────────────────────────
 
 
@@ -451,6 +325,7 @@ class SCSolutionFormatterAgent(BaseAgent):
             AgentConfig(
                 name="sc_solution_formatter",
                 phase="sc_solution_format",
+                step_name="format_sc",
                 output_format="markdown",
                 output_key="sc_solution_result",
                 max_tokens=8192,
@@ -466,9 +341,9 @@ class SCSolutionFormatterAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import SC_SOLUTION_FORMATTER_PROMPT
 
-        draft_result = blackboard.get("sc_draft_result", {})
-        options_result = blackboard.get("sc_options_result", {})
-        solver_result = blackboard.get("sc_solver_result", {})
+        draft_result = blackboard.get("design", {})
+        options_result = blackboard.get("options", {})
+        solver_result = blackboard.get("solver_result", {})
 
         stem = draft_result.get("stem", "")
         options_md = (
@@ -507,6 +382,7 @@ class SingleChoiceReviewerAgent(BaseAgent):
             AgentConfig(
                 name="sc_reviewer",
                 phase="sc_review",
+                step_name="review",
                 output_format="markdown",
                 output_key="sc_review_result",
                 max_tokens=8192,
@@ -523,10 +399,10 @@ class SingleChoiceReviewerAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import SC_REVIEWER_PROMPT
 
-        draft_result = blackboard.get("sc_draft_result", {})
-        options_result = blackboard.get("sc_options_result", {})
-        solution_result = blackboard.get("sc_solution_result", {})
-        blueprint = blackboard.get("current_blueprint", {})
+        draft_result = blackboard.get("design", {})
+        options_result = blackboard.get("options", {})
+        solution_result = blackboard.get("solution", {})
+        blueprint = blackboard.get("blueprint", {})
 
         stem = draft_result.get("stem", "")
         option_A = options_result.get("option_A", "")
@@ -609,14 +485,14 @@ class PostReviewAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import POST_REVIEW_PROMPT
 
-        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
-        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
-        solution_result = blackboard.get("sc_solution_result", {})
+        draft_result = blackboard.get("design", {})
+        options_result = blackboard.get("options", {})
+        solution_result = blackboard.get("solution", {})
         review_result = blackboard.get("review", {})
-        question_design = blackboard.get("question_design", {})
+        question_design = blackboard.get("design", {})
         solver_result = blackboard.get("solver_result", {})
-        slot_blueprint = blackboard.get("slot_blueprint", {})
-        experience_card = blackboard.get("experience_card", "")
+        slot_blueprint = blackboard.get("blueprint", {})
+        experience_card = blackboard.get("experience", {})
         is_sc = blackboard.get("is_sc", True)
 
         stem = draft_result.get("stem", "")
@@ -763,9 +639,9 @@ class QuestionSummaryAgent(BaseAgent):
     def build_input(self, blackboard: Blackboard) -> str:
         from core_new.prompts.single_choice_prompts import QUESTION_SUMMARY_PROMPT
 
-        draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
-        options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
-        solution_result = blackboard.get("sc_solution_result", {})
+        draft_result = blackboard.get("design", {})
+        options_result = blackboard.get("options", {})
+        solution_result = blackboard.get("solution", {})
         solver_result = blackboard.get("solver_result", {})
         review_result = blackboard.get("review", {})
         is_sc = blackboard.get("is_sc", True)
@@ -842,10 +718,10 @@ class SingleChoiceAssemblerAgent(BaseAgent):
         return raw
 
     async def execute(self, blackboard: Blackboard) -> Any:
-        blueprint = blackboard.get("current_blueprint", {})
-        draft_result = blackboard.get("sc_draft_result", {})
-        options_result = blackboard.get("sc_options_result", {})
-        solution_result = blackboard.get("sc_solution_result", {})
+        blueprint = blackboard.get("blueprint", {})
+        draft_result = blackboard.get("design", {})
+        options_result = blackboard.get("options", {})
+        solution_result = blackboard.get("solution", {})
 
         assembled = {
             "slot_id": blueprint.get("slot_id", ""),

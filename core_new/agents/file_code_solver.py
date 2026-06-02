@@ -2,7 +2,7 @@
 
 Unlike the inline CodeActSolver, this agent:
 1. Writes complete, self-contained Python scripts to tmp/solutions/{slot_id}/
-2. Runs them via code_exec_408 in ToolRegistry
+2. Runs them via python_exec in ToolRegistry
 3. Code is persisted for independent verification
 4. Does NOT format answers — just produces code + raw output
 5. No dependency on pre-built tools_408.py — writes everything from scratch
@@ -244,7 +244,7 @@ class FileCodeSolverAgent:
         self.gateway = gateway
         self.max_tokens = max_tokens
         self.max_steps = max_steps
-        self.tools = tool_registry or build_408_tools(gateway=None, include_llm_tools=False)
+        self.tools = tool_registry or build_408_tools()
 
     async def solve(
         self,
@@ -312,7 +312,7 @@ class FileCodeSolverAgent:
             # Extract Python code
             code = extract_python_code(response_text)
             if code:
-                exec_raw = await self.tools.execute("code_exec_408", {
+                exec_raw = await self.tools.execute("python_exec", {
                     "code": code,
                     "slot_id": slot_id,
                     "step": step + 1,
@@ -386,7 +386,7 @@ class FileCodeSolverAgent:
 
     async def re_run(self, file_path: str) -> Dict[str, Any]:
         """Re-run a previously saved script (for verification)."""
-        raw = await self.tools.execute("code_exec_408", {
+        raw = await self.tools.execute("python_exec", {
             "file_path": file_path,
             "timeout": RUN_TIMEOUT,
             "max_stdout": 5000,
@@ -402,12 +402,13 @@ RUNTIME_SOLVER_SYSTEM = """你是一个Python编程解题智能体。你的任�
 
 ## 你的工作方式
 1. 分析题目，规划求解步骤
-2. 使用 code_exec_408 工具执行Python代码
+2. 使用 python_exec 工具执行Python代码
 3. 观察执行结果，如果出错则修复代码重新执行
 4. 确保输出包含**完整的求解过程**（每一步中间计算都要 print）
 5. 得到最终结果后，直接用文字输出最终答案
 
 ## 核心规则
+- **必须使用 python_exec 工具执行代码**。禁止手动推导计算结果。
 - 每步中间计算都必须 print，包括：公式推导、中间变量值、单位换算
 - 严禁硬编码中间值，必须用代码从原始数据计算
 - 如果代码执行出错（exit_code != 0），分析错误原因并修复后重新执行
@@ -415,7 +416,7 @@ RUNTIME_SOLVER_SYSTEM = """你是一个Python编程解题智能体。你的任�
 - 代码必须是自包含的，只依赖Python标准库
 
 ## 完成标志
-当你已经得到所有子问/选项的计算结果并确认正确时，直接输出最终答案文本，不再调用工具。"""
+当你已经通过代码得到所有子问/选项的计算结果并确认正确时，直接输出最终答案文本，不再调用工具。"""
 
 
 RUNTIME_SOLVER_SC_TASK = """请逐个验证以下单选题的每个选项。
@@ -430,7 +431,7 @@ C: {option_C}
 D: {option_D}
 
 ## 要求
-- 使用 code_exec_408 工具编写并执行Python代码
+- 使用 python_exec 工具编写并执行Python代码
 - 对每个选项独立计算验证
 - **打印完整推理过程**：提取了什么数据、用了什么公式、中间步骤、最终结论
 - 如果代码出错，分析错误并修复后重新执行
@@ -445,7 +446,7 @@ RUNTIME_SOLVER_COMP_TASK = """请为以下综合题编写Python求解脚本。
 {sub_questions_section}
 
 ## 要求
-- 使用 code_exec_408 工具编写并执行Python代码
+- 使用 python_exec 工具编写并执行Python代码
 - **打印完整求解过程**：每步推导、中间变量、公式应用
 - 如果代码出错，分析错误并修复后重新执行
 - 全部子问求解完毕后，输出最终答案"""
@@ -456,7 +457,7 @@ class RuntimeFileCodeSolver:
 
     Unlike FileCodeSolverAgent (text-parsing loop), this uses Edu408AgentLoop
     so the model is in control of the observe-think-act cycle:
-    - Model outputs tool calls → code_exec_408 runs → model sees result
+    - Model outputs tool calls → python_exec runs → model sees result
     - Model decides: fix error? add prints? output final answer?
     """
 
@@ -472,7 +473,7 @@ class RuntimeFileCodeSolver:
         self.gateway = gateway
         self.max_tokens = max_tokens
         self.max_iterations = max_iterations
-        self.tools = build_408_tools(gateway=None, include_llm_tools=False)
+        self.tools = build_408_tools()
 
     async def solve(
         self,
@@ -519,7 +520,7 @@ class RuntimeFileCodeSolver:
 
         result = await loop.run(
             task,
-            allowed_tools=["code_exec_408"],
+            allowed_tools=["python_exec"],
             extra_system=RUNTIME_SOLVER_SYSTEM,
         )
 
@@ -541,24 +542,180 @@ class RuntimeFileCodeSolver:
         # Collect code files and outputs from tool traces
         for trace_entry in (result.trace.tool_traces if result.trace else []):
             tool_name = trace_entry.tool_name
-            if tool_name == "code_exec_408":
+            if tool_name == "python_exec":
                 solution.python_exec_count += 1
-                obs = str(trace_entry.observation)
-                # Extract file paths and outputs from observations
-                file_match = re.search(r"file_path[\":\s]+(tmp/solutions/[^\s\"']+)", obs)
-                if file_match:
-                    solution.code_files.append(file_match.group(1))
-                # Extract stdout from observation
-                stdout_match = re.search(r"stdout[\":\s]+(.*?)(?:stderr|$)", obs, re.DOTALL)
-                if stdout_match:
-                    stdout_text = stdout_match.group(1).strip()[:5000]
+                obs = trace_entry.observation
+                try:
+                    obs_data = json.loads(str(obs)) if isinstance(obs, str) else obs
+                except (json.JSONDecodeError, TypeError):
+                    obs_data = {}
+                if isinstance(obs_data, dict):
+                    file_path = obs_data.get("file_path", "")
+                    if file_path:
+                        solution.code_files.append(file_path)
+                    stdout_text = obs_data.get("stdout", "")[:5000]
                     if stdout_text:
                         solution.outputs.append(stdout_text)
                         extracted = extract_results_from_output(stdout_text)
                         solution.computed_results.update(extracted)
 
         solution.total_time_s = time.monotonic() - start_time
+        if solution.python_exec_count == 0:
+            solution.error = "zero_code_executions: solver produced answer without executing any code"
+            logger.warning("[%s] Solver produced zero code executions — manual fallback detected",
+                           slot_id)
         logger.info("[%s] Runtime solver done: %d tool calls, %.1fs, tools=%s",
                      slot_id, len(result.tools_used), solution.total_time_s,
                      result.tools_used)
+        return solution
+
+
+# ── One-shot solver: single-pass code generation ─────────────
+
+
+ONESHOT_SOLVER_SYSTEM = """你是一个Python编程解题智能体。你的任务是为408考研题目编写**完整的、自包含的Python求解脚本**。
+
+核心规则：
+- 输出**一个完整的Python代码块**，包含所有求解步骤
+- 代码必须自包含，只依赖Python标准库
+- 每步中间计算都必须 print，包括：公式推导、中间变量值、单位换算
+- 严禁硬编码中间值，必须用代码从原始数据计算
+- 最后用 print 输出所有子问/选项的最终答案
+
+输出格式：
+```python
+# 你的完整代码
+```
+
+严禁输出多个代码块。一次性写完所有代码。"""
+
+
+ONESHOT_SOLVER_SC_TASK = """请为以下单选题编写完整的Python验证脚本。
+
+## 题目
+{stem}
+
+## 选项
+A: {option_A}
+B: {option_B}
+C: {option_C}
+D: {option_D}
+
+## 要求
+- 在一个代码块中完成所有选项的验证
+- 每个选项独立计算验证，打印完整推理过程
+- 最后输出结论：哪个选项正确"""
+
+
+ONESHOT_SOLVER_COMP_TASK = """请为以下综合题编写完整的Python求解脚本。
+
+## 题目
+{question_draft}
+
+{sub_questions_section}
+
+## 要求
+- 在一个代码块中完成所有子问的求解
+- 每步推导、中间变量、公式应用都要 print
+- 最后输出每个子问的答案"""
+
+
+class OneShotSolver:
+    """One-shot solver: single LLM call → complete code → one execution.
+
+    Replaces the iterative RuntimeFileCodeSolver for faster solving.
+    Expected: 5min → ~1min (one LLM call + one exec vs 8 iterations).
+    """
+
+    role_type = RoleType.REASONER
+
+    def __init__(self, gateway: LLMGateway, *, max_tokens: int = 16384):
+        self.gateway = gateway
+        self.max_tokens = max_tokens
+        self.tools = build_408_tools()
+
+    async def solve(
+        self,
+        question_draft: str,
+        options: Optional[Dict[str, str]] = None,
+        sub_questions: Optional[List[str]] = None,
+        question_type: str = "comprehensive",
+        slot_id: str = "unknown",
+    ) -> CodeSolution:
+        """Generate code in one shot, execute once."""
+        start_time = time.monotonic()
+        solution = CodeSolution(slot_id=slot_id)
+
+        # Build prompt
+        if question_type == "single_choice" and options:
+            task = ONESHOT_SOLVER_SC_TASK.format(
+                stem=question_draft,
+                option_A=options.get("A", ""),
+                option_B=options.get("B", ""),
+                option_C=options.get("C", ""),
+                option_D=options.get("D", ""),
+            )
+        else:
+            sub_section = ""
+            if sub_questions:
+                lines = [f"- {sq}" for sq in sub_questions]
+                sub_section = "## 子问\n" + "\n".join(lines)
+            task = ONESHOT_SOLVER_COMP_TASK.format(
+                question_draft=question_draft,
+                sub_questions_section=sub_section,
+            )
+
+        # Single LLM call — no tools
+        messages = [
+            {"role": "system", "content": ONESHOT_SOLVER_SYSTEM},
+            {"role": "user", "content": task},
+        ]
+        result = await self.gateway.generate_text(
+            messages,
+            max_tokens=self.max_tokens,
+        )
+        raw_text = (result.content or "") if result else ""
+
+        # Extract code block
+        code = extract_python_code(raw_text)
+        if not code:
+            solution.error = f"no_code_block: solver output has no python code block (len={len(raw_text)})"
+            solution.computed_results["raw_text"] = raw_text[:3000]
+            logger.warning("[%s] OneShot: no code block found", slot_id)
+            return solution
+
+        # Execute once
+        try:
+            exec_raw = await self.tools.execute("python_exec", {
+                "code": code,
+                "timeout": 15,
+                "max_stdout": 8000,
+            })
+            solution.python_exec_count = 1
+            exec_result = parse_exec_result(exec_raw)
+            stdout = exec_result.get("stdout", "")
+            if stdout:
+                solution.outputs.append(stdout)
+                extracted = extract_results_from_output(stdout)
+                solution.computed_results.update(extracted)
+            stderr = exec_result.get("stderr", "")
+            exit_code = exec_result.get("exit_code", -1)
+            if exit_code != 0:
+                solution.error = f"exec_failed: exit={exit_code}, stderr={stderr[:500]}"
+                logger.warning("[%s] OneShot exec failed: exit=%d", slot_id, exit_code)
+            else:
+                # Try to extract JSON from output
+                parsed = parse_final_json(stdout)
+                if parsed:
+                    solution.computed_results.update(parsed)
+                elif not solution.computed_results:
+                    solution.computed_results["raw_text"] = stdout[:3000]
+        except Exception as e:
+            solution.error = f"exec_error: {e}"
+            logger.warning("[%s] OneShot exec exception: %s", slot_id, e)
+
+        solution.total_time_s = time.monotonic() - start_time
+        logger.info("[%s] OneShot done: %d execs, %.1fs, error=%s",
+                     slot_id, solution.python_exec_count, solution.total_time_s,
+                     solution.error[:80] if solution.error else "none")
         return solution

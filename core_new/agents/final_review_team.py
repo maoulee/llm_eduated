@@ -44,12 +44,14 @@ class FinalReviewAgent(BaseAgent):
         config = AgentConfig(
             name="final_review",
             phase="final_review",
+            step_name="review",
             system_prompt="你是一名严格的408考试出题终审专家。对完整题目输出进行全面质量审查。",
             output_format="text",
             enable_thinking=True,
             max_tokens=4096,
             tools=SOLVER_TOOLS,  # has python_exec for math verification
             max_tool_rounds=3,
+            max_tool_calls=3,
             required_fields=["status", "overall_quality", "issues"],
             repair_on_parse_failure=True,
             repair_max_retries=1,
@@ -60,9 +62,9 @@ class FinalReviewAgent(BaseAgent):
         content_to_review = blackboard.get("content_to_review", "")
         if not content_to_review:
             # Build from blackboard components
-            draft_result = blackboard.get("sc_draft_result", blackboard.get("sc_design", {}))
-            options_result = blackboard.get("sc_options_result", blackboard.get("sc_options", {}))
-            solution_result = blackboard.get("sc_solution_result", {})
+            draft_result = blackboard.get("design", {})
+            options_result = blackboard.get("options", {})
+            solution_result = blackboard.get("solution", {})
             is_sc = blackboard.get("is_sc", True)
 
             stem = draft_result.get("stem", "")
@@ -184,6 +186,7 @@ class FinalFixerAgent(BaseAgent):
         config = AgentConfig(
             name="final_fixer",
             phase="final_fix",
+            step_name="fixer",
             system_prompt="你是一名408考试出题修复专家。根据终审反馈对题目进行定向修复。",
             output_format="markdown",
             enable_thinking=True,
@@ -191,11 +194,11 @@ class FinalFixerAgent(BaseAgent):
             tools=CONTEXT_AWARE_TOOLS,
             max_tool_rounds=3,
             context_sources={
-                "sc_design": "题目设计（stem, sub_questions, given_conditions 等）",
-                "sc_options_result": "选项内容（option_A~D，仅选择题）",
-                "sc_solution_result": "格式化答案（explanation, answer 等）",
+                "design": "题目设计（stem, sub_questions, given_conditions 等）",
+                "options": "选项内容（option_A~D，仅选择题）",
+                "solution": "格式化答案（explanation, answer 等）",
                 "solver_result": "求解器输出（computed_results, code 等）",
-                "final_review_result": "终审结果（status, quality, issues, fix_instruction 等）",
+                "review": "终审结果（status, quality, issues, fix_instruction 等）",
             },
             required_fields=["status", "fix_applied"],
             repair_on_parse_failure=True,
@@ -204,7 +207,7 @@ class FinalFixerAgent(BaseAgent):
         super().__init__(config, gateway)
 
     def build_input(self, blackboard) -> str:
-        review_result = blackboard.get("final_review_result", {})
+        review_result = blackboard.get("review", {})
         review_issues = review_result.get("issues", "")
         fix_detail = review_result.get("fix_instruction", {}).get("fix_detail", "")
         fix_target = review_result.get("fix_instruction", {}).get("fix_target", "none")

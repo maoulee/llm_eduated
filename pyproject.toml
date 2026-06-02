@@ -18,6 +18,7 @@ dependencies = [
     "rich>=13.0",
     "tqdm>=4.60",
     "networkx>=3.0",
+    "mcp>=1.0",
 ]
 
 # ── Optional groups ──────────────────────────────────────

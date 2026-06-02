@@ -3,8 +3,6 @@
 from .tools import (
     CheckQuestion408Tool,
     CodeExec408Tool,
-    ComposePaper408Tool,
-    GenerateQuestion408Tool,
     ReadWorkspaceFileTool,
     SearchKnowledge408Tool,
     build_408_tools,
@@ -13,8 +11,6 @@ from .tools import (
 __all__ = [
     "CheckQuestion408Tool",
     "CodeExec408Tool",
-    "ComposePaper408Tool",
-    "GenerateQuestion408Tool",
     "ReadWorkspaceFileTool",
     "SearchKnowledge408Tool",
     "build_408_tools",

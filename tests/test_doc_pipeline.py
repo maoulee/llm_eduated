@@ -7,15 +7,20 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 
+import httpx
 import pytest
 
 from core_new.doc_pipeline.write_file_tool import WriteFileTool
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
 from core_new.doc_pipeline.agents import AGENT_PROMPTS as _AGENT_PROMPTS_LEGACY, AGENT_OUTPUT_FILES as _AGENT_OUTPUT_FILES_LEGACY, MULTI_TURN_AGENTS as _MULTI_TURN_LEGACY
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
+from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
 from core_new.doc_pipeline.scheduler import DocScheduler
+from core_new.agent_roles import TransportRetryPolicy
+from core_new.llm_gateway import LLMGateway
 
 
 def run_async(coro):
@@ -35,6 +40,36 @@ class FakeGateway:
         sampling_params = {}
 
     _provider = Provider()
+
+
+class FakeStreamClient:
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+
+    async def create(self, **params):
+        self.calls.append(params)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+
+        async def _stream():
+            for chunk in response:
+                yield chunk
+
+        return _stream()
+
+
+def _stream_chunk(*, content="", reasoning="", tool_calls=None, finish_reason=None):
+    delta = SimpleNamespace(
+        content=content,
+        reasoning_content=reasoning,
+        reasoning="",
+        tool_calls=tool_calls,
+    )
+    choice = SimpleNamespace(delta=delta, finish_reason=finish_reason)
+    return SimpleNamespace(choices=[choice])
 
 
 def _write_file_call(path: str, content: str, call_id: str = "call_1") -> dict:
@@ -267,7 +302,10 @@ class TestDocSchedulerToolProtocol:
 
         assert result.startswith("## status")
         assert (tmp_path / "S1" / "blueprint.md").read_text(encoding="utf-8") == result
-        assert calls[0]["tool_choice"] == "required"
+        assert calls[0]["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "write_file"},
+        }
 
     def test_run_agent_extracts_textual_tool_call(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -339,6 +377,131 @@ class TestDocSchedulerToolProtocol:
 
         assert result == "## status\ndraft"
         assert (tmp_path / "S4" / "blueprint.md").exists()
+
+
+# ── Orchestration/scheduling separation ─────────────────────────
+
+
+class FakeAgentSchedulerForOrchestration:
+    def __init__(self, workspace):
+        self.workspace = Path(workspace)
+        self.calls = []
+
+    async def run_agent(
+        self,
+        role,
+        task,
+        *,
+        slot_id,
+        inject_files=None,
+        continue_session=False,
+        max_tokens=None,
+    ):
+        self.calls.append({
+            "role": role,
+            "inject_files": inject_files or {},
+            "continue_session": continue_session,
+            "max_tokens": max_tokens,
+        })
+        ws = self.workspace / slot_id
+        ws.mkdir(parents=True, exist_ok=True)
+
+        outputs = {
+            "design": ("blueprint.md", "## status\ndraft\n\n## 知识点\nCache"),
+            "question": (
+                "question.md",
+                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 答案\n42\n\n## 设计说明\n覆盖 Cache",
+            ),
+            "analysis": ("feedback.md", "## status\npass\n\n## summary\nOK\n\n## detailed_feedback\n通过"),
+            "coding": ("solve.py", "print('42')\n"),
+            "review": ("review.md", "## status\npass\n\n## summary\nOK\n\n## corrections\n无\n\n## detailed_feedback\n通过"),
+        }
+        if role not in outputs:
+            return ""
+        filename, content = outputs[role]
+        (ws / filename).write_text(content, encoding="utf-8")
+        return content
+
+
+class TestDocPipelineOrchestrator:
+    def test_orchestrator_runs_without_llm_gateway(self, tmp_path):
+        scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
+        orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline("S5", {"slot_id": "S5"}))
+
+        assert result["ok"] is True
+        assert result["code_exec_ok"] is True
+        assert [c["role"] for c in scheduler.calls] == [
+            "design",
+            "question",
+            "analysis",
+            "coding",
+            "review",
+        ]
+        final_text = (tmp_path / "S5" / "final.md").read_text(encoding="utf-8")
+        assert "## 题目" in final_text
+        assert "42" in final_text
+
+
+# ── Gateway streaming infrastructure ────────────────────────────
+
+
+class TestGatewayStreamChat:
+    def test_stream_chat_does_not_send_thinking_budget_to_remote_provider(self):
+        provider = SimpleNamespace(
+            model_name="glm-test",
+            provider_type="api",
+            api_base_url="https://example.invalid/v1",
+            thinking_control_method="none",
+            sampling_params={"temperature": 1.0, "top_p": 0.95, "top_k": 20},
+            client=FakeStreamClient([
+                [_stream_chunk(content="ok", finish_reason="stop")]
+            ]),
+        )
+        gateway = LLMGateway.from_provider(provider, name="glm5.1")
+
+        result = run_async(gateway.stream_chat(
+            [{"role": "user", "content": "hello"}],
+            max_tokens=123,
+            thinking_budget=999,
+            sampling_overrides={"temperature": 0.2},
+        ))
+
+        assert result["content"] == "ok"
+        params = provider.client.calls[0]
+        assert params["temperature"] == 0.2
+        assert params["max_tokens"] == 123
+        assert "extra_body" not in params
+
+    def test_stream_chat_retries_retryable_stream_error(self):
+        provider = SimpleNamespace(
+            model_name="glm-test",
+            provider_type="api",
+            api_base_url="https://example.invalid/v1",
+            thinking_control_method="none",
+            sampling_params={},
+            client=FakeStreamClient([
+                httpx.ReadError("stream dropped"),
+                [_stream_chunk(content="ok", finish_reason="stop")],
+            ]),
+        )
+        gateway = LLMGateway.from_provider(
+            provider,
+            name="glm5.1",
+            transport_retry=TransportRetryPolicy(max_attempts=2),
+        )
+        async def no_wait(attempt):
+            return None
+        gateway._wait_with_backoff = no_wait
+
+        result = run_async(gateway.stream_chat(
+            [{"role": "user", "content": "hello"}],
+            max_tokens=50,
+        ))
+
+        assert result["content"] == "ok"
+        assert len(provider.client.calls) == 2
 
 
 # ── AgentMD loader tests ────────────────────────────────────────

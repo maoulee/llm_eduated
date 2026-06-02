@@ -38,12 +38,14 @@ class AgentConfig:
     role_type: RoleType | str = RoleType.GENERATOR
     audit_mode: AuditMode | str | None = None
     execution_policy: ExecutionPolicy | None = None
-    # Pull-based context sources
+    # Pull-based context sources (legacy, overridden by step_name)
     context_sources: dict[str, str] = field(default_factory=dict)
-    # 例: {"design": "题目设计（stem, sub_questions, ...）", "review": "终审结果"}
+    # Data-flow step name (links to core_new.data_flow.STEP_INPUTS)
+    step_name: Optional[str] = None
     # Tool-calling support
     tools: list = field(default_factory=list)      # List[ToolDef]
     max_tool_rounds: int = 10
+    max_tool_calls: int = 0  # 0 = unlimited (governed by max_tool_rounds)
 
 
 class BaseAgent(ABC):
@@ -133,16 +135,92 @@ class BaseAgent(ABC):
         return build_audit_checklist_prompt(self.config.audit_mode)
 
     def _prepare_context_store(self, blackboard: Blackboard) -> dict[str, Any]:
-        """Build context store from context_sources + blackboard state."""
-        store: dict[str, Any] = {"__catalog__": {}}
-        for key, desc in self.config.context_sources.items():
-            value = blackboard.get(key)
-            store[key] = value
-            store["__catalog__"][key] = (desc, value is not None)
+        """Build context store respecting data-flow contracts.
+
+        If step_name is set, uses data_flow to determine what the agent
+        may pull (optional) and must not see (forbidden).
+        Otherwise falls back to legacy context_sources.
+
+        Preserves pipeline-injected fields (prefixed with __) from existing
+        context store (e.g., __blueprint__, __experience__, __agent_name__).
+        """
+        from .data_keys import canonical
+
+        if self.config.step_name:
+            store = self._prepare_context_store_from_flow(blackboard)
+        else:
+            # Legacy path (backward compat)
+            store: dict[str, Any] = {"__catalog__": {}}
+            for key, desc in self.config.context_sources.items():
+                value = blackboard.get(key)
+                store[key] = value
+                store["__catalog__"][key] = (desc, value is not None)
+
+        # Merge pipeline-injected metadata (preserved across execute())
+        from .agent_tools import _context_store as _existing
+        if _existing:
+            for k, v in _existing.items():
+                if k.startswith("__") and k not in store:
+                    store[k] = v
         return store
+
+    def _prepare_context_store_from_flow(self, blackboard: Blackboard) -> dict[str, Any]:
+        """Build context store from data-flow contracts (step_name based)."""
+        from .data_flow import build_context_catalog
+
+        # Collect ALL available data from blackboard
+        all_data: dict[str, Any] = {}
+        for key in blackboard._state:
+            all_data[key] = blackboard.get(key)
+
+        catalog = build_context_catalog(
+            self.config.step_name,
+            all_data,
+            is_revision=self._is_revision_round(),
+        )
+
+        store: dict[str, Any] = {"__catalog__": {}}
+        for canon_key, desc in catalog.items():
+            value = blackboard.get(canon_key)
+            store[canon_key] = value
+            store["__catalog__"][canon_key] = (desc, value is not None)
+        return store
+
+    def _is_revision_round(self) -> bool:
+        """Heuristic: if memory contains review feedback, this is a revision."""
+        for msg in self._memory:
+            if msg.get("role") == "review":
+                return True
+        return False
 
     def _context_catalog_text(self) -> str:
         """Generate context catalog description for the prompt."""
+        if self.config.step_name:
+            from .data_flow import build_context_catalog, get_step_inputs
+            inputs = get_step_inputs(
+                self.config.step_name,
+                is_revision=self._is_revision_round(),
+            )
+            if not inputs.optional:
+                return ""
+            from .data_keys import BLUEPRINT, DESIGN, OPTIONS, SOLVER_RESULT, SOLUTION, REVIEW, EXPERIENCE, FIX_INSTRUCTION
+            _DESC = {
+                "blueprint": "题位蓝图（出题要求、知识点、难度）",
+                "design": "题目设计（题干、子问题、给定条件）",
+                "options": "选项内容（option_A~D，仅选择题）",
+                "solver_result": "求解器输出（computed_results, code）",
+                "solution": "格式化答案（explanation, answer）",
+                "review": "审核结果（status, quality, issues）",
+                "experience": "经验卡（参考真题、知识点雷达）",
+                "fix_instruction": "修复指令",
+            }
+            lines = ["你可以通过工具获取以下上下文信息（先调用 list_context 查看目录，再调用 read_context(key) 获取详细内容）："]
+            for key in sorted(inputs.optional):
+                desc = _DESC.get(key, key)
+                lines.append(f"  - {key}: {desc}")
+            return "\n".join(lines)
+
+        # Legacy path
         if not self.config.context_sources:
             return ""
         lines = ["你可以通过工具获取以下上下文信息（先调用 list_context 查看目录，再调用 read_context(key) 获取详细内容）："]
@@ -191,7 +269,7 @@ class BaseAgent(ABC):
             for attempt in range(self.config.max_retries + 1):
                 try:
                     # Prepare context store for pull-based tools
-                    if self.config.context_sources:
+                    if self.config.context_sources or self.config.step_name:
                         from .agent_tools import set_context_store
                         set_context_store(self._prepare_context_store(blackboard))
                     prompt = self.build_input(blackboard)
@@ -412,6 +490,7 @@ Return only the corrected final content."""
             max_tokens=self.config.max_tokens,
             enable_thinking=self.config.enable_thinking,
             max_rounds=self.config.max_tool_rounds,
+            max_tool_calls=self.config.max_tool_calls,
         )
 
 

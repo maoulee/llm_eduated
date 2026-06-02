@@ -26,7 +26,7 @@ HEALTH_CHECK_TTL = 60  # seconds to cache health check result
 
 # Agent role → "local" (prefer Qwen) or "remote" (always GLM).
 AGENT_ROUTING = {
-    # All local — fast iteration with new coding-agent stem verifier
+    # All local — Qwen3-32B when available, GLM 5.1 fallback
     "architecture":     "local",
     "sc_draft":         "local",
     "options":          "local",
@@ -46,8 +46,18 @@ AGENT_ROUTING = {
     "minor_fix":        "local",
     "format_fix":       "local",
     "verify":           "local",
+    "param_verify":     "local",
+    "solver_verify":    "local",
     "final_review":     "local",
     "final_fixer":      "local",
+    # Doc pipeline agents
+    "doc_design":       "local",
+    "doc_question":     "local",
+    "doc_analysis":     "local",
+    "doc_coding":       "local",
+    "doc_review":       "local",
+    "doc_fix":          "local",
+    "doc_format":       "local",
 }
 
 # ── Health Check ───────────────────────────────────────────────
@@ -131,6 +141,49 @@ def get_routed_gateway(agent_role: str) -> LLMGateway:
     if routing == "local" and not _check_local_available_sync():
         logger.debug("Routing '%s' → %s (local unavailable, fallback)", agent_role, provider)
     return _get_or_create_gateway(provider)
+
+
+# ── Routing Profiles ─────────────────────────────────────────────
+
+_REVIEW_FIXER_ROLES = frozenset({
+    "paper_review", "fixer", "minor_fix", "format_fix",
+    "final_review", "final_fixer",
+    "doc_review", "doc_fix", "doc_format",
+})
+
+
+def set_routing_profile(profile: str) -> dict[str, str] | None:
+    """Set the routing profile for all agents.
+
+    Returns a model_routing dict for DocPipeline (role → provider name),
+    or None if no per-role override is needed.
+
+    Profiles:
+        all_local:  All → local Qwen
+        all_remote: All → remote GLM
+        mixed:      Generation → local Qwen, review/fixer → remote GLM
+    """
+    if profile == "all_local":
+        for k in AGENT_ROUTING:
+            AGENT_ROUTING[k] = "local"
+        clear_cache()
+        logger.info("Routing profile: all_local")
+        return None
+    elif profile == "all_remote":
+        for k in AGENT_ROUTING:
+            AGENT_ROUTING[k] = "remote"
+        clear_cache()
+        logger.info("Routing profile: all_remote")
+        return None
+    elif profile == "mixed":
+        for k in AGENT_ROUTING:
+            AGENT_ROUTING[k] = "remote" if k in _REVIEW_FIXER_ROLES else "local"
+        clear_cache()
+        logger.info("Routing profile: mixed (%d remote roles)", len(_REVIEW_FIXER_ROLES))
+        # DocPipeline model_routing: review/fix/format → GLM
+        return {"review": FALLBACK_PROVIDER, "fix": FALLBACK_PROVIDER}
+    else:
+        raise ValueError(f"Unknown routing profile: {profile}")
 
 
 async def get_routed_gateway_async(agent_role: str) -> LLMGateway:

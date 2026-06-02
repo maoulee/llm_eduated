@@ -53,7 +53,7 @@ class AgentRegistry:
             ),
             "solver": AgentCard(
                 name="solver", role="code_solve",
-                allowed_tools=["code_exec_408"], max_steps=5,
+                allowed_tools=["python_exec"], max_steps=5,
                 module_path="core_new.agents.file_code_solver:FileCodeSolverAgent",
             ),
             "formatter": AgentCard(

@@ -23,31 +23,33 @@ import json
 import logging
 import re
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from core_new.agent_base import AgentConfig, BaseAgent
 from core_new.agent_roles import AuditMode, RoleType, source_policy_for_audit_mode
 from core_new.audit_protocol import AuditResultNormalizer, FixRouter
-from core_new.agents.file_code_solver import FileCodeSolverAgent, RuntimeFileCodeSolver, CodeSolution
+from core_new.agents.file_code_solver import FileCodeSolverAgent, RuntimeFileCodeSolver, OneShotSolver, CodeSolution
 from core_new.agents.hybrid_subjective_team import (
     QuestionDesignerAgent,
     HybridSolutionFormatter,
     HybridRubricWriter,
     IntentBasedReviewer,
 )
+from core_new.agents.parameter_verifier import ParameterVerifierAgent
 from core_new.agents.single_choice_team import (
     SingleChoiceDraftAgent,
     RuntimeSingleChoiceDraftAgent,
     OptionAndDistractorAgent,
     SCSolutionFormatterAgent,
-    StemVerifierAgent,
     PostReviewAgent,
     QuestionSummaryAgent,
 )
 from core_new.agents.final_review_team import FinalReviewAgent, FinalFixerAgent
+from core_new.gpt_workflow import GptWorkflow, GptSessionError
 from core_new.blackboard import Blackboard
-from core_new.validators import structural_validate
+from core_new.validators import structural_validate, validate_design_draft, validate_final_question
 from core_new.fallback_executor import FallbackExecutor, FallbackResult
 from core_new.provider_router import get_routed_gateway as _rgw
 from core_new.markdown_parser import try_parse_json_object, parse_md_kv, parse_md_sections, parse_structured_output
@@ -458,6 +460,27 @@ class UnifiedQuestionPipeline:
         slot_id = slot_blueprint.get("slot_id", "Q1")
         total_start = time.monotonic()
 
+        # ── GPT 3-agent fast path ──
+        gpt_wf = GptWorkflow()
+        gpt_fallback_reason: Optional[str] = None
+        if gpt_wf.available:
+            try:
+                return await self._run_gpt_pipeline(
+                    gpt_wf, slot_blueprint, experience_card,
+                    is_sc, slot_id, total_start, gateway,
+                )
+            except GptSessionError as e:
+                gpt_fallback_reason = str(e)
+                logger.warning("[%s] GPT pipeline failed, fallback to local: %s", slot_id, gpt_fallback_reason)
+            finally:
+                # Don't cleanup WebGPT sessions in debug mode (preserve for inspection)
+                if not self.debugger:
+                    await gpt_wf.cleanup(slot_id)
+
+        # ── Local model pipeline (unchanged) ──
+        run_id = str(uuid.uuid4())
+        session_key = f"{run_id}:{slot_id}"
+
         design: Dict[str, Any] = {}
         options: Dict[str, Any] = {}
         code_solution: Optional[CodeSolution] = None
@@ -472,351 +495,420 @@ class UnifiedQuestionPipeline:
         stem_fix_instruction: Optional[str] = None
         round_history: List[Dict[str, Any]] = []
 
-        # ── Resume support ──
-        _RESUME_STAGES = {
-            "design", "options", "gate", "solve", "verify",
-            "format", "rubric", "final_review", "final_fixer",
-        }
-        _STAGE_ORDER = [
-            "design", "options", "gate", "solve", "verify",
-            "format", "rubric", "final_review", "final_fixer",
-        ]
-
-        if resume_from:
-            if resume_from not in _RESUME_STAGES:
-                raise ValueError(f"Invalid resume_from: {resume_from!r}")
-            if not resume_state:
-                raise ValueError("resume_state required when resume_from is set")
-            # Restore state from resume_state
-            is_sc = resume_state.get("is_sc", is_sc)
-            design = resume_state.get("design", design)
-            options = resume_state.get("options", options)
-            solver_dict = resume_state.get("solver_dict", solver_dict)
-            if solver_dict and not code_solution:
-                code_solution = CodeSolution.from_dict(solver_dict)
-            solution = resume_state.get("solution", solution)
-            rubric = resume_state.get("rubric", rubric)
-            verify_result = resume_state.get("verify_result", verify_result)
-            review = resume_state.get("review", review)
-            gate_result = resume_state.get("gate_result", gate_result)
-            final_review = resume_state.get("final_review", final_review)
-            logger.info("[%s] Resuming from stage: %s", slot_id, resume_from)
-
-        # Compute which stages to skip when resuming
-        if resume_from and resume_from in _STAGE_ORDER:
-            resume_idx = _STAGE_ORDER.index(resume_from)
-            _skip_stages = set(s for s in _STAGE_ORDER if _STAGE_ORDER.index(s) < resume_idx)
-        else:
-            _skip_stages = set()
-
-        # When resuming, skip the entire revision loop
-        if _skip_stages and resume_from in _STAGE_ORDER:
-            resume_idx = _STAGE_ORDER.index(resume_from)
-            _skip_loop = resume_from not in {"design", "options", "gate", "solve", "verify"}
-        else:
-            _skip_loop = False
-
-        for rnd in range(self.max_revision_rounds + 1):
-            if _skip_loop:
-                break
-            if rnd > 0:
-                logger.info("[%s] Revision round %d, fix_target=%s",
-                            slot_id, rnd, fix_target)
-
-            # ── Step 1: Design ──
-            need_design = rnd == 0 or fix_target in ("question", "stem")
-            if "design" in _skip_stages:
-                logger.info("[%s] Resuming: skipping design", slot_id)
-            elif need_design:
-                if is_sc:
-                    design = await self._design_sc(
-                        slot_blueprint, experience_card, gateway,
-                        stem_fix_instruction=stem_fix_instruction,
-                        round_history=round_history,
-                    )
-                else:
-                    design = await self._design_comp(
-                        slot_blueprint, experience_card, gateway,
-                        stem_fix_instruction=stem_fix_instruction,
-                        round_history=round_history,
-                    )
-                if not design:
-                    logger.error("[%s] Design produced empty result", slot_id)
+        try:
+            # ── Resume support ──
+            _RESUME_STAGES = {
+                "design", "options", "gate", "param_verify", "solve", "verify",
+                "format", "rubric", "final_review", "final_fixer",
+            }
+            _STAGE_ORDER = [
+                "design", "options", "gate", "param_verify", "solve", "verify",
+                "format", "rubric", "final_review", "final_fixer",
+            ]
+    
+            if resume_from:
+                if resume_from not in _RESUME_STAGES:
+                    raise ValueError(f"Invalid resume_from: {resume_from!r}")
+                if not resume_state:
+                    raise ValueError("resume_state required when resume_from is set")
+                # Restore state from resume_state
+                is_sc = resume_state.get("is_sc", is_sc)
+                design = resume_state.get("design", design)
+                options = resume_state.get("options", options)
+                solver_dict = resume_state.get("solver_dict", solver_dict)
+                if solver_dict and not code_solution:
+                    code_solution = CodeSolution.from_dict(solver_dict)
+                solution = resume_state.get("solution", solution)
+                rubric = resume_state.get("rubric", rubric)
+                verify_result = resume_state.get("verify_result", verify_result)
+                review = resume_state.get("review", review)
+                gate_result = resume_state.get("gate_result", gate_result)
+                final_review = resume_state.get("final_review", final_review)
+                logger.info("[%s] Resuming from stage: %s", slot_id, resume_from)
+    
+            # Compute which stages to skip when resuming
+            if resume_from and resume_from in _STAGE_ORDER:
+                resume_idx = _STAGE_ORDER.index(resume_from)
+                _skip_stages = set(s for s in _STAGE_ORDER if _STAGE_ORDER.index(s) < resume_idx)
+            else:
+                _skip_stages = set()
+    
+            # When resuming, skip the entire revision loop
+            if _skip_stages and resume_from in _STAGE_ORDER:
+                resume_idx = _STAGE_ORDER.index(resume_from)
+                _skip_loop = resume_from not in {"design", "options", "gate", "solve", "verify"}
+            else:
+                _skip_loop = False
+    
+            for rnd in range(self.max_revision_rounds + 1):
+                if _skip_loop:
                     break
-                if design.get("status") in {"needs_human_review", "needs_human_check"}:
+                if rnd > 0:
+                    logger.info("[%s] Revision round %d, fix_target=%s",
+                                slot_id, rnd, fix_target)
+    
+                # ── Step 1: Design ──
+                need_design = rnd == 0 or fix_target in ("question", "stem")
+                if "design" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping design", slot_id)
+                elif need_design:
+                    if is_sc:
+                        design = await self._design_sc(
+                            slot_blueprint, experience_card, gateway,
+                            stem_fix_instruction=stem_fix_instruction,
+                            round_history=round_history,
+                        )
+                    else:
+                        design = await self._design_comp(
+                            slot_blueprint, experience_card, gateway,
+                            stem_fix_instruction=stem_fix_instruction,
+                            round_history=round_history,
+                        )
+                    if not design:
+                        logger.error("[%s] Design produced empty result", slot_id)
+                        break
+                    if design.get("status") in {"needs_human_review", "needs_human_check"}:
+                        if self.debugger:
+                            self.debugger.dump_step(slot_id, "design", rnd, design)
+                        total_time = time.monotonic() - total_start
+                        return UnifiedPipelineResult(
+                            final_question=design,
+                            solver_result={},
+                            review={
+                                "status": design.get("status"),
+                                "reason": design.get("reason", ""),
+                                "fallback_target": design.get("fallback_target", ""),
+                            },
+                            generation_time_s=round(total_time, 1),
+                            pipeline_type="unified_sc" if is_sc else "unified_comp",
+                        )
+    
+                    # Structural pre-check (pure Python, no LLM) — draft-level only
+                    struct_errors = validate_design_draft(design, "single_choice" if is_sc else "comprehensive")
+                    if struct_errors:
+                        logger.warning("[%s] Structural validation failed: %s", slot_id, struct_errors)
+                        if self.debugger:
+                            self.debugger.dump_step(slot_id, "design", rnd, {"structural_errors": struct_errors})
+                        # For structural errors, route to redesign immediately
+                        if rnd >= self.max_revision_rounds:
+                            logger.warning("[%s] Structural validation failed, revision budget exhausted", slot_id)
+                            break
+                        fix_target = "stem"
+                        stem_fix_instruction = f"Structural errors detected: {', '.join(struct_errors)}. Please fix these format issues."
+                        round_history.append({"role": "review", "content": stem_fix_instruction, "round": rnd})
+                        continue
+    
                     if self.debugger:
                         self.debugger.dump_step(slot_id, "design", rnd, design)
-                    total_time = time.monotonic() - total_start
-                    return UnifiedPipelineResult(
-                        final_question=design,
-                        solver_result={},
-                        review={
-                            "status": design.get("status"),
-                            "reason": design.get("reason", ""),
-                            "fallback_target": design.get("fallback_target", ""),
-                        },
-                        generation_time_s=round(total_time, 1),
-                        pipeline_type="unified_sc" if is_sc else "unified_comp",
+    
+                # ── Step 2: Options (SC only) ──
+                need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
+                if "options" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping options", slot_id)
+                elif need_options:
+                    options = await self._generate_options(
+                        design, slot_blueprint, gateway,
+                        round_history=round_history,
                     )
-
-                # Structural pre-check (pure Python, no LLM)
-                struct_errors = structural_validate(design, "single_choice" if is_sc else "comprehensive")
-                if struct_errors:
-                    logger.warning("[%s] Structural validation failed: %s", slot_id, struct_errors)
                     if self.debugger:
-                        self.debugger.dump_step(slot_id, "design", rnd, {"structural_errors": struct_errors})
-                    # For structural errors, route to redesign immediately
-                    if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] Structural validation failed, revision budget exhausted", slot_id)
-                        break
-                    fix_target = "stem"
-                    stem_fix_instruction = f"Structural errors detected: {', '.join(struct_errors)}. Please fix these format issues."
-                    round_history.append({"role": "review", "content": stem_fix_instruction, "round": rnd})
-                    continue
+                        self.debugger.dump_step(slot_id, "options", rnd, options)
+    
+                # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
+                auto_gate = not is_sc  # comprehensive questions always gate
+                need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
+                if "gate" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping gate", slot_id)
+                elif need_gate:
+                    gate_result = await self._run_stem_blueprint_gate(
+                        design, options if is_sc else None,
+                        slot_blueprint, None, experience_card,
+                        slot_id, gateway,
+                    )
+                    gate_status = gate_result.get("status", "needs_fix")
+                    gate_severity = gate_result.get("severity", "none")
+    
+                    minor_text = gate_result.get("fix_detail", "")
+    
+                    # needs_fix (any severity) → route based on severity
+                    if gate_status == "needs_fix":
+                        if gate_severity == "critical":
+                            # Critical → back to design
+                            fix_target = "stem"
+                            raw_text = gate_result.get("_raw_text", "")
+                            if raw_text:
+                                round_history.append({"role": "review", "content": raw_text, "round": rnd})
+                            else:
+                                round_history.append({"role": "review", "content": gate_result.get("fix_detail", ""), "round": rnd})
+                            logger.info("[%s] StemBlueprintGate FAILED (critical), routing to stem redesign", slot_id)
+                            if rnd >= self.max_revision_rounds:
+                                logger.warning("[%s] Gate failed, revision budget exhausted — continuing with current design", slot_id)
+                                # Don't break — continue to solve with whatever design we have
+                            else:
+                                continue
+                        else:
+                            # minor needs_fix → treat as pass_with_notes, polish inline
+                            if minor_text and minor_text != "无":
+                                design = await self._polish_stem_minor(design, minor_text)
+                                logger.info("[%s] StemBlueprintGate: minor needs_fix polished", slot_id)
+    
+                    # pass_with_notes → inline polish
+                    elif gate_status == "pass_with_notes" and minor_text and minor_text != "无":
+                        design = await self._polish_stem_minor(design, minor_text)
+                        logger.info("[%s] StemBlueprintGate: minor polish applied", slot_id)
+    
+                    logger.info("[%s] StemBlueprintGate PASSED (status=%s severity=%s)", slot_id, gate_status, gate_severity)
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "gate", rnd, gate_result)
 
-                if self.debugger:
-                    self.debugger.dump_step(slot_id, "design", rnd, design)
+                # ── Step 3.5: ParameterVerify (Comp only) ──
+                if not is_sc and (rnd == 0 or fix_target in ("question", "stem")):
+                    param_result = await self._verify_parameters(
+                        design, slot_id, gateway,
+                    )
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "param_verify", rnd, param_result)
 
-            # ── Step 2: Options (SC only) ──
-            need_options = is_sc and (rnd == 0 or fix_target in ("question", "options"))
-            if "options" in _skip_stages:
-                logger.info("[%s] Resuming: skipping options", slot_id)
-            elif need_options:
-                options = await self._generate_options(
-                    design, slot_blueprint, gateway,
-                    round_history=round_history,
-                )
-                if self.debugger:
-                    self.debugger.dump_step(slot_id, "options", rnd, options)
-
-            # ── Step 3: StemBlueprintGate (replaces gates + stem_verify + post_review) ──
-            auto_gate = not is_sc  # comprehensive questions always gate
-            need_gate = (self.enable_stem_gate or auto_gate) and (rnd == 0 or fix_target in ("question", "stem"))
-            if "gate" in _skip_stages:
-                logger.info("[%s] Resuming: skipping gate", slot_id)
-            elif need_gate:
-                gate_result = await self._run_stem_blueprint_gate(
-                    design, options if is_sc else None,
-                    slot_blueprint, None, experience_card,
-                    slot_id, gateway,
-                )
-                gate_status = gate_result.get("status", "needs_fix")
-                gate_severity = gate_result.get("severity", "none")
-
-                minor_text = gate_result.get("fix_detail", "")
-
-                # needs_fix (any severity) → route based on severity
-                if gate_status == "needs_fix":
-                    if gate_severity == "critical":
-                        # Critical → back to design
+                    if param_result.get("status") == "needs_fix":
+                        feedback = param_result.get("feedback", param_result.get("fix_detail", ""))
+                        logger.info("[%s] ParameterVerify FAILED: %s", slot_id, feedback[:200])
+                        if rnd >= self.max_revision_rounds:
+                            logger.warning("[%s] Parameter verify failed, revision budget exhausted", slot_id)
+                            break
                         fix_target = "stem"
-                        raw_text = gate_result.get("_raw_text", "")
+                        stem_fix_instruction = f"参数验证失败: {feedback}"
+                        round_history.append({"role": "review", "content": stem_fix_instruction, "round": rnd})
+                        continue
+
+                    # Merge verified parameters into design
+                    verified = param_result.get("verified_parameters", {})
+                    if verified:
+                        design.setdefault("verified_parameters", {}).update(verified)
+
+                # ── Step 4: Solve (unified computation) ──
+                need_solve = rnd == 0 or fix_target in ("question", "options", "answer", "solver", "stem")
+                if "solve" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping solve", slot_id)
+                elif need_solve:
+                    code_solution = await self._solve(
+                        design, options if is_sc else None, is_sc, slot_id, gateway,
+                    )
+                    solver_dict = code_solution.to_dict() if code_solution else {}
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "solve", rnd, solver_dict)
+    
+                # ── Step 5: SolverVerify (replaces review) ──
+                if "verify" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping verify", slot_id)
+                else:
+                    verify_result = await self._run_solver_verify(
+                        design, options if is_sc else None,
+                        solver_dict, None, is_sc, slot_id, gateway,
+                        slot_blueprint=slot_blueprint,
+                    )
+                review = verify_result  # Use verify_result as review for downstream compat
+    
+                verify_status = verify_result.get("status", "needs_fix")
+                verify_fix_target = verify_result.get("fix_target", "none")
+    
+                logger.info("[%s] SolverVerify: status=%s fix_target=%s trusted=%s",
+                            slot_id, verify_status, verify_fix_target, verify_result.get("trusted", "?"))
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "verify", rnd, verify_result)
+    
+                # Save round snapshot
+                snapshot = self._build_round_snapshot(
+                    rnd, design, options if is_sc else {}, solution, review, is_sc,
+                    design_intent=None,
+                )
+                round_history.extend(snapshot)
+    
+                if verify_status == "needs_fix":
+                    corrected_stem = verify_result.get("corrected_stem", "")
+                    corrected_code = verify_result.get("corrected_code", "")
+
+                    # ── In-place fix: corrected stem ──
+                    if verify_fix_target == "stem" and corrected_stem:
+                        logger.info("[%s] Applying in-place stem correction + re-solve", slot_id)
+                        design["stem"] = corrected_stem
+                        if self.debugger:
+                            self.debugger.dump_step(slot_id, "inplace_stem_fix", rnd,
+                                                    {"original_len": len(design.get("stem", "")),
+                                                     "corrected_len": len(corrected_stem)})
+                        # Re-solve with corrected stem
+                        code_solution = await self._solve(
+                            design, options if is_sc else None, is_sc, slot_id, gateway,
+                        )
+                        solver_dict = code_solution.to_dict() if code_solution else {}
+                        if self.debugger:
+                            self.debugger.dump_step(slot_id, "inplace_re_solve", rnd, solver_dict)
+
+                    # ── In-place fix: corrected code ──
+                    elif verify_fix_target == "solver" and corrected_code:
+                        logger.info("[%s] Applying in-place code correction", slot_id)
+                        exec_result = await self._exec_corrected_code(corrected_code, slot_id)
+                        if exec_result.get("ok"):
+                            solver_dict = exec_result.get("solver_dict", {})
+                            code_solution = exec_result.get("code_solution")
+                            if self.debugger:
+                                self.debugger.dump_step(slot_id, "inplace_code_fix", rnd,
+                                                        {"exec_stdout_len": len(exec_result.get("stdout", ""))})
+                        else:
+                            logger.warning("[%s] In-place code fix failed, falling back to loop", slot_id)
+                            fix_target = "solver"
+                            if rnd >= self.max_revision_rounds:
+                                break
+                            continue
+
+                    # ── No correction provided → loop back ──
+                    elif verify_fix_target == "stem":
+                        fix_target = "stem"
+                        raw_text = verify_result.get("_raw_text", "")
                         if raw_text:
                             round_history.append({"role": "review", "content": raw_text, "round": rnd})
-                        else:
-                            round_history.append({"role": "review", "content": gate_result.get("fix_detail", ""), "round": rnd})
-                        logger.info("[%s] StemBlueprintGate FAILED (critical), routing to stem redesign", slot_id)
                         if rnd >= self.max_revision_rounds:
-                            logger.warning("[%s] Gate failed, revision budget exhausted", slot_id)
+                            logger.warning("[%s] SolverVerify found stem issue, budget exhausted", slot_id)
                             break
                         continue
                     else:
-                        # minor needs_fix → treat as pass_with_notes, polish inline
-                        if minor_text and minor_text != "无":
-                            design = await self._polish_stem_minor(design, minor_text)
-                            logger.info("[%s] StemBlueprintGate: minor needs_fix polished", slot_id)
-
-                # pass_with_notes → inline polish
-                elif gate_status == "pass_with_notes" and minor_text and minor_text != "无":
-                    design = await self._polish_stem_minor(design, minor_text)
-                    logger.info("[%s] StemBlueprintGate: minor polish applied", slot_id)
-
-                logger.info("[%s] StemBlueprintGate PASSED (status=%s severity=%s)", slot_id, gate_status, gate_severity)
-                if self.debugger:
-                    self.debugger.dump_step(slot_id, "gate", rnd, gate_result)
-
-            # ── Step 4: Solve (unified computation) ──
-            need_solve = rnd == 0 or fix_target in ("question", "options", "answer", "solver")
-            if "solve" in _skip_stages:
-                logger.info("[%s] Resuming: skipping solve", slot_id)
-            elif need_solve:
-                code_solution = await self._solve(
-                    design, options if is_sc else None, is_sc, slot_id, gateway,
-                )
-                solver_dict = code_solution.to_dict() if code_solution else {}
-                if self.debugger:
-                    self.debugger.dump_step(slot_id, "solve", rnd, solver_dict)
-
-            # ── Step 5: SolverVerify (replaces review) ──
-            if "verify" in _skip_stages:
-                logger.info("[%s] Resuming: skipping verify", slot_id)
-            else:
-                verify_result = await self._run_solver_verify(
-                    design, options if is_sc else None,
-                    solver_dict, None, is_sc, slot_id, gateway,
-                    slot_blueprint=slot_blueprint,
-                )
-            review = verify_result  # Use verify_result as review for downstream compat
-
-            verify_status = verify_result.get("status", "needs_fix")
-            verify_fix_target = verify_result.get("fix_target", "none")
-
-            logger.info("[%s] SolverVerify: status=%s fix_target=%s trusted=%s",
-                        slot_id, verify_status, verify_fix_target, verify_result.get("trusted", "?"))
-            if self.debugger:
-                self.debugger.dump_step(slot_id, "verify", rnd, verify_result)
-
-            # Save round snapshot
-            snapshot = self._build_round_snapshot(
-                rnd, design, options if is_sc else {}, solution, review, is_sc,
-                design_intent=None,
-            )
-            round_history.extend(snapshot)
-
-            if verify_status == "needs_fix":
-                if verify_fix_target == "stem":
-                    fix_target = "stem"
-                    raw_text = verify_result.get("_raw_text", "")
-                    if raw_text:
-                        round_history.append({"role": "review", "content": raw_text, "round": rnd})
-                    if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] SolverVerify found stem issue, budget exhausted", slot_id)
-                        break
-                    continue
+                        fix_target = "solver"
+                        if rnd >= self.max_revision_rounds:
+                            logger.warning("[%s] SolverVerify failed, budget exhausted", slot_id)
+                            break
+                        continue
+    
+                # ── Step 6: Format solution ──
+                if "format" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping format", slot_id)
+                elif is_sc:
+                    solution = await self._format_sc(
+                        design, options, solver_dict, gateway,
+                    )
                 else:
-                    # solver issue → rerun solver only
-                    fix_target = "solver"
-                    if rnd >= self.max_revision_rounds:
-                        logger.warning("[%s] SolverVerify failed, budget exhausted", slot_id)
-                        break
-                    continue
-
-            # ── Step 6: Format solution ──
-            if "format" in _skip_stages:
-                logger.info("[%s] Resuming: skipping format", slot_id)
-            elif is_sc:
-                solution = await self._format_sc(
-                    design, options, solver_dict, gateway,
-                )
+                    solution = await self._format_comp(design, solver_dict, gateway)
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "format", rnd, solution)
+    
+                # ── Step 7: Rubric (Comp only) ──
+                if "rubric" in _skip_stages:
+                    logger.info("[%s] Resuming: skipping rubric", slot_id)
+                elif not is_sc:
+                    rubric = await self._write_rubric(
+                        design, solution, slot_blueprint, gateway,
+                    )
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "rubric", rnd, rubric)
+    
+                # All checks passed, break out of revision loop
+                break
+    
+            # ── Step 8: Final Review + Fixer (after format, before summary) ──
+            if "final_review" in _skip_stages:
+                logger.info("[%s] Resuming: skipping final_review", slot_id)
             else:
-                solution = await self._format_comp(design, solver_dict, gateway)
-            if self.debugger:
-                self.debugger.dump_step(slot_id, "format", rnd, solution)
-
-            # ── Step 7: Rubric (Comp only) ──
-            if "rubric" in _skip_stages:
-                logger.info("[%s] Resuming: skipping rubric", slot_id)
-            elif not is_sc:
-                rubric = await self._write_rubric(
-                    design, solution, slot_blueprint, gateway,
-                )
-                if self.debugger:
-                    self.debugger.dump_step(slot_id, "rubric", rnd, rubric)
-
-            # All checks passed, break out of revision loop
-            break
-
-        # ── Step 8: Final Review + Fixer (after format, before summary) ──
-        if "final_review" in _skip_stages:
-            logger.info("[%s] Resuming: skipping final_review", slot_id)
-        else:
-            final_review = await self._run_final_review(
-                design, options if is_sc else None, solution, solver_dict,
-                is_sc, slot_id, gateway
-            )
-            if self.debugger:
-                self.debugger.dump_step(slot_id, "final_review", 0,
-                                        final_review,
-                                        input_data={"design": design, "solution": solution})
-
-            if final_review.get("status") == "needs_fix":
-                logger.info("Final review found issues (quality=%s): %s",
-                            final_review.get("overall_quality"),
-                            final_review.get("issues", "")[:200])
-
-                fix_result = await self._run_final_fixer(
+                final_review = await self._run_final_review(
                     design, options if is_sc else None, solution, solver_dict,
-                    final_review, is_sc, slot_id, gateway
+                    is_sc, slot_id, gateway
                 )
                 if self.debugger:
-                    self.debugger.dump_step(slot_id, "final_fixer", 0,
-                                            fix_result,
-                                            input_data={"review": final_review})
-
-                if fix_result.get("status") == "ok":
-                    if fix_result.get("fixed_stem"):
-                        design["stem"] = fix_result["fixed_stem"]
-                    if fix_result.get("fixed_answer") and solution:
-                        solution.update(
-                            self._safe_parse(fix_result["fixed_answer"])
-                            if isinstance(fix_result["fixed_answer"], str)
-                            else fix_result["fixed_answer"]
-                        )
-                    if fix_result.get("fixed_options") and is_sc and options:
-                        options = fix_result["fixed_options"]
-                    if fix_result.get("fixed_sub_questions") and not is_sc and design:
-                        design["sub_questions"] = fix_result["fixed_sub_questions"]
-                    logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
-                elif fix_result.get("status") not in ("skipped",):
-                    logger.warning("Final fixer failed (status=%s), using original output (degraded)",
-                                    fix_result.get("status"))
-
-        # ── Step 9: Summary (consolidate all outputs) ──
-        summary = {}
-        if self.enable_summary and not is_regen:
-            summary = await self._summarize(
-                design, options, solution, solver_dict, review, {},
-                is_sc, slot_id, gateway,
+                    self.debugger.dump_step(slot_id, "final_review", 0,
+                                            final_review,
+                                            input_data={"design": design, "solution": solution})
+    
+                if final_review.get("status") == "needs_fix":
+                    logger.info("Final review found issues (quality=%s): %s",
+                                final_review.get("overall_quality"),
+                                final_review.get("issues", "")[:200])
+    
+                    fix_result = await self._run_final_fixer(
+                        design, options if is_sc else None, solution, solver_dict,
+                        final_review, is_sc, slot_id, gateway
+                    )
+                    if self.debugger:
+                        self.debugger.dump_step(slot_id, "final_fixer", 0,
+                                                fix_result,
+                                                input_data={"review": final_review})
+    
+                    if fix_result.get("status") == "ok":
+                        if fix_result.get("fixed_stem"):
+                            design["stem"] = fix_result["fixed_stem"]
+                        if fix_result.get("fixed_answer") and solution:
+                            solution.update(
+                                self._safe_parse(fix_result["fixed_answer"])
+                                if isinstance(fix_result["fixed_answer"], str)
+                                else fix_result["fixed_answer"]
+                            )
+                        if fix_result.get("fixed_options") and is_sc and options:
+                            options = fix_result["fixed_options"]
+                        if fix_result.get("fixed_sub_questions") and not is_sc and design:
+                            design["sub_questions"] = fix_result["fixed_sub_questions"]
+                        logger.info("Final fixer applied: %s", fix_result.get("fix_applied", ""))
+                    elif fix_result.get("status") not in ("skipped",):
+                        logger.warning("Final fixer failed (status=%s), using original output (degraded)",
+                                        fix_result.get("status"))
+    
+            # ── Step 9: Summary (consolidate all outputs) ──
+            summary = {}
+            if self.enable_summary and not is_regen:
+                summary = await self._summarize(
+                    design, options, solution, solver_dict, review, {},
+                    is_sc, slot_id, gateway,
+                )
+                if self.debugger:
+                    self.debugger.dump_step(slot_id, "summary", 0, summary)
+    
+            # ── Assemble final result ──
+            total_time = time.monotonic() - total_start
+            final_question = self._assemble(
+                slot_id, design, options, code_solution, solution, rubric, is_sc,
+                summary=summary,
+            )
+    
+            if summary:
+                final_question["summary"] = summary
+    
+            # ── Step 10: Artifact consistency check (non-LLM) ──
+            from core_new.artifact_consistency import (
+                check_artifact_consistency,
+                can_export,
+            )
+            consistency = check_artifact_consistency(
+                final_question, solver_dict, summary, rubric, is_sc=is_sc,
             )
             if self.debugger:
-                self.debugger.dump_step(slot_id, "summary", 0, summary)
+                self.debugger.dump_step(slot_id, "consistency", 0, consistency)
+    
+            # ── Step 11: Export gate ──
+            review_records = [
+                {"phase": "stem_blueprint_gate", "status": gate_result.get("status", "unknown")},
+                {"phase": "solver_verify", "status": verify_result.get("status", "unknown")},
+                {"phase": "final_review", "status": final_review.get("status", "unknown")},
+            ]
+            export_gate = can_export(final_question, review_records, consistency)
+            final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
+            final_question["block_reasons"] = export_gate["block_reasons"]
+    
+            if self.debugger:
+                self.debugger.dump_full_run(slot_id, final_question, solver_dict,
+                                            review, total_time, rnd + 1)
+    
+            logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s, export=%s)",
+                         slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp",
+                         final_question["export_status"])
+    
+            if gpt_fallback_reason:
+                final_question["gpt_fallback_reason"] = gpt_fallback_reason
 
-        # ── Assemble final result ──
-        total_time = time.monotonic() - total_start
-        final_question = self._assemble(
-            slot_id, design, options, code_solution, solution, rubric, is_sc,
-            summary=summary,
-        )
-
-        if summary:
-            final_question["summary"] = summary
-
-        # ── Step 10: Artifact consistency check (non-LLM) ──
-        from core_new.artifact_consistency import (
-            check_artifact_consistency,
-            can_export,
-        )
-        consistency = check_artifact_consistency(
-            final_question, solver_dict, summary, rubric, is_sc=is_sc,
-        )
-        if self.debugger:
-            self.debugger.dump_step(slot_id, "consistency", 0, consistency)
-
-        # ── Step 11: Export gate ──
-        review_records = [
-            {"phase": "stem_blueprint_gate", "status": gate_result.get("status", "unknown")},
-            {"phase": "solver_verify", "status": verify_result.get("status", "unknown")},
-            {"phase": "final_review", "status": final_review.get("status", "unknown")},
-        ]
-        export_gate = can_export(final_question, review_records, consistency)
-        final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
-        final_question["block_reasons"] = export_gate["block_reasons"]
-
-        if self.debugger:
-            self.debugger.dump_full_run(slot_id, final_question, solver_dict,
-                                        review, total_time, rnd + 1)
-
-        logger.info("[%s] Unified pipeline done in %.1fs (%d rounds, type=%s, export=%s)",
-                     slot_id, total_time, rnd + 1, "SC" if is_sc else "Comp",
-                     final_question["export_status"])
-
-        return UnifiedPipelineResult(
-            final_question=final_question,
-            solver_result=solver_dict,
-            review=review,
-            generation_time_s=round(total_time, 1),
-            pipeline_type="unified_sc" if is_sc else "unified_comp",
-        )
+            return UnifiedPipelineResult(
+                final_question=final_question,
+                solver_result=solver_dict,
+                review=review,
+                generation_time_s=round(total_time, 1),
+                pipeline_type="unified_sc" if is_sc else "unified_comp",
+            )
+        finally:
+            # Always cleanup current run's session, even on exception
+            # (but not GPT sessions if debugger is active — those are preserved above)
+            await self._cleanup_gpt_sessions(session_key)
 
     # ── Gates ───────────────────────────────────────────────────
 
@@ -849,6 +941,197 @@ class UnifiedQuestionPipeline:
             question_prompt=question_prompt,
             slot_id=slot_id,
         )
+
+
+    async def _cleanup_gpt_sessions(self, session_key: str = "") -> None:
+        """Cleanup GPT sessions. Empty session_key clears all sessions."""
+        from core_new.webgpt_client import get_webgpt_client
+        client = get_webgpt_client()
+        if client:
+            try:
+                await client.cleanup(slot_id=session_key)
+            except Exception as e:
+                logger.warning("[%s] GPT cleanup error: %s", session_key or "all", e)
+
+    # ── GPT 3-Agent Pipeline ──────────────────────────────────────
+
+    async def _run_gpt_pipeline(
+        self,
+        gpt_wf: GptWorkflow,
+        blueprint: Dict[str, Any],
+        experience_card: str,
+        is_sc: bool,
+        slot_id: str,
+        total_start: float,
+        gateway,
+    ) -> UnifiedPipelineResult:
+        """Run the 4-step GPT pipeline: 出题 → 审核 → 求解(MCP) → 审核.
+
+        Raises GptSessionError on failure (caller catches and falls back).
+        """
+        q_type = "single_choice" if is_sc else "comprehensive"
+
+        # ── Step 1: 出题 ──
+        question = await gpt_wf.generate_question(slot_id, blueprint, experience_card)
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_generate", 0, question)
+
+        # Structural validation (draft-level — GPT generate produces design drafts)
+        struct_errors = validate_design_draft(question, q_type)
+        if struct_errors:
+            raise GptSessionError(f"Structural validation failed: {struct_errors}")
+
+        # ── Step 2: 审核题干+知识点 ──
+        audit_q = await gpt_wf.audit_question(slot_id, question, blueprint)
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_audit_question", 0, audit_q)
+
+        if audit_q.get("status") == "needs_fix":
+            corrected = self._apply_gpt_corrections(question, audit_q)
+            if corrected:
+                question = corrected
+                logger.info("[%s] GPT audit_question: corrections applied", slot_id)
+            else:
+                raise GptSessionError(
+                    f"Question audit failed, no parseable corrections: "
+                    f"{audit_q.get('reason', '')[:200]}"
+                )
+
+        # ── Step 3: 求解代码 + MCP 执行 ──
+        solver_code = await gpt_wf.generate_solver_code(slot_id, question, is_sc)
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_solver_code", 0, {"code_len": len(solver_code), "code_preview": solver_code[:500]})
+
+        from core_new.mcp_servers.client import mcp_python_exec
+        exec_result = await mcp_python_exec(solver_code, timeout=15)
+        if not exec_result.get("ok"):
+            raise GptSessionError(
+                f"MCP execution failed: exit_code={exec_result.get('exit_code')}, "
+                f"stderr={exec_result.get('stderr', '')[:200]}"
+            )
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_mcp_exec", 0, exec_result)
+
+        # ── Step 4: 全局审核 ──
+        audit_f = await gpt_wf.audit_final(slot_id, question, exec_result, blueprint)
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_audit_final", 0, audit_f)
+
+        if audit_f.get("status") == "needs_fix":
+            corrected = self._apply_gpt_corrections(question, audit_f)
+            if corrected:
+                question = corrected
+                logger.info("[%s] GPT audit_final: corrections applied", slot_id)
+
+        # ── Step 5: Qwen 格式化汇总 ──
+        final = await self._format_gpt_output(
+            question, exec_result, audit_f, is_sc, slot_id, gateway,
+        )
+        if self.debugger:
+            self.debugger.dump_step(slot_id, "gpt_formatted", 0, final)
+
+        total_time = time.monotonic() - total_start
+        final["pipeline_type"] = "gpt_3agent"
+        final["generation_time_s"] = round(total_time, 1)
+        final["solver_confidence"] = "high" if exec_result.get("ok") else "low"
+        final["python_exec_count"] = 1
+
+        logger.info("[%s] GPT 3-agent pipeline done in %.1fs (type=%s)",
+                     slot_id, total_time, "SC" if is_sc else "Comp")
+
+        return UnifiedPipelineResult(
+            final_question=final,
+            solver_result={
+                "slot_id": slot_id,
+                "computed_results": self._extract_computed_from_stdout(
+                    exec_result.get("stdout", "")
+                ),
+                "python_exec_count": 1,
+                "total_time_s": round(total_time, 1),
+                "error": "",
+            },
+            review=audit_f,
+            generation_time_s=round(total_time, 1),
+            pipeline_type="gpt_3agent",
+        )
+
+    async def _format_gpt_output(
+        self,
+        question: Dict[str, Any],
+        exec_result: Dict[str, Any],
+        audit: Dict[str, Any],
+        is_sc: bool,
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Qwen 格式化汇总：将 GPT 输出整理为清晰格式的最终题目。"""
+        prompt = (
+            "以下是一道408考研题目及其求解结果。请将其整理为格式清晰的最终输出。\n\n"
+            f"## 题目\n{json.dumps(question, ensure_ascii=False, indent=2)}\n\n"
+            f"## 求解结果\n{exec_result.get('stdout', '')[:3000]}\n\n"
+        )
+        if audit.get("reason"):
+            prompt += f"## 审核意见\n{audit['reason']}\n\n"
+
+        prompt += (
+            "输出要求：\n"
+            "1. 题干格式清晰，条件明确\n"
+            "2. 每个子问题独立编号\n"
+            "3. 答案和解析分开标注\n"
+            "4. 使用Markdown格式输出（##标题 + - **key**: value）\n"
+        )
+        if is_sc:
+            prompt += '   ## 题目 包含: stem, option_A-D, correct_answer, explanation\n'
+        else:
+            prompt += '   ## 题目 包含: stem, sub_questions, answer, explanation\n'
+
+        try:
+            result = await _rgw("formatter").generate_text(
+                [{"role": "user", "content": prompt}],
+                max_tokens=4096,
+                enable_thinking=False,
+            )
+            if result.ok and result.content:
+                from core_new.markdown_parser import parse_structured_output
+                parsed = parse_structured_output(result.content, md_sections=("题目", "格式化输出"))
+                if parsed and isinstance(parsed, dict):
+                    parsed["slot_id"] = slot_id
+                    return parsed
+        except Exception as e:
+            logger.warning("[%s] Qwen formatting failed: %s", slot_id, e)
+
+        # Fallback: use question + exec result directly
+        final = dict(question)
+        final["slot_id"] = slot_id
+        final["explanation"] = exec_result.get("stdout", "")[:3000]
+        return final
+
+    @staticmethod
+    def _apply_gpt_corrections(
+        question: Dict[str, Any],
+        audit: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """Apply GPT audit corrections to question. Returns modified copy or None."""
+        has_correction = False
+        corrected = dict(question)
+        if audit.get("corrected_stem"):
+            corrected["stem"] = audit["corrected_stem"]
+            has_correction = True
+        if audit.get("corrected_sub_questions"):
+            corrected["sub_questions"] = audit["corrected_sub_questions"]
+            has_correction = True
+        return corrected if has_correction else None
+
+    @staticmethod
+    def _extract_computed_from_stdout(stdout: str) -> Dict[str, Any]:
+        """Extract computation results from MCP stdout."""
+        results: Dict[str, Any] = {"raw_stdout": stdout[:3000]}
+        # Look for ANSWER: lines
+        for line in stdout.split("\n"):
+            line = line.strip()
+            if line.startswith("ANSWER:"):
+                results["answer"] = line[7:].strip()
+        return results
 
     async def _run_stem_blueprint_gate(
         self,
@@ -892,6 +1175,55 @@ class UnifiedQuestionPipeline:
         logger.info("[%s] StemBlueprintGate: status=%s severity=%s",
                     slot_id, result.get("status"), result.get("severity"))
         return result
+
+    async def _exec_corrected_code(
+        self, code: str, slot_id: str,
+    ) -> Dict[str, Any]:
+        """Execute corrected code from verify agent, return updated solver_dict."""
+        from core_new.agent_runtime import ToolRegistry
+        from core_new.edu408_runtime import build_408_tools
+        from core_new.agents.solver_utils import extract_results_from_output, parse_final_json
+
+        # Strip markdown code fence if present
+        import re
+        code = re.sub(r"^```(?:python)?\s*\n", "", code)
+        code = re.sub(r"\n```\s*$", "", code)
+
+        tools = build_408_tools()
+        try:
+            raw = await tools.execute("python_exec", {
+                "code": code,
+                "timeout": 15,
+                "max_stdout": 8000,
+            })
+            exec_data = raw if isinstance(raw, dict) else {}
+            stdout = exec_data.get("stdout", "")
+            stderr = exec_data.get("stderr", "")
+            exit_code = exec_data.get("exit_code", -1)
+
+            if exit_code != 0:
+                return {"ok": False, "error": f"exit={exit_code}, stderr={stderr[:300]}"}
+
+            computed = extract_results_from_output(stdout)
+            parsed = parse_final_json(stdout)
+            if parsed:
+                computed.update(parsed)
+            if not computed:
+                computed["raw_text"] = stdout[:3000]
+
+            solution = CodeSolution(
+                slot_id=slot_id,
+                computed_results=computed,
+                python_exec_count=1,
+            )
+            return {
+                "ok": True,
+                "stdout": stdout,
+                "solver_dict": solution.to_dict(),
+                "code_solution": solution,
+            }
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
 
     async def _run_solver_verify(
         self,
@@ -1296,6 +1628,31 @@ class UnifiedQuestionPipeline:
                         len(stem), len(design["stem"]))
         return design
 
+    async def _verify_parameters(
+        self,
+        design: Dict[str, Any],
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Step 3.5: Parameter verification (Comp only, incremental input)."""
+        from core_new.agents.parameter_verifier import ParameterVerifierAgent
+
+        # Incremental: only pass the design draft, no blueprint
+        bb = Blackboard(
+            task_id=f"param_verify_{slot_id}",
+            task_type="parameter_verify",
+            initial_state={"design": design},
+        )
+        agent = ParameterVerifierAgent(_rgw("parameter_verify"))
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] ParameterVerify agent error: %s", slot_id, record.error)
+            return {"status": "pass", "confidence": "low", "summary": f"verify_error: {record.error}"}
+        result = bb.get("parameter_validation", {})
+        logger.info("[%s] ParameterVerify: status=%s confidence=%s",
+                     slot_id, result.get("status"), result.get("confidence"))
+        return result
+
     async def _solve(
         self,
         design: Dict[str, Any],
@@ -1304,9 +1661,9 @@ class UnifiedQuestionPipeline:
         slot_id: str,
         gateway,
     ) -> CodeSolution:
-        """Step 3: Solve — pure computation engine (runtime or text-parsing)."""
+        """Step 3: Solve — pure computation engine (one-shot by default)."""
         if self.use_runtime_solver:
-            solver = RuntimeFileCodeSolver(_rgw("solver"), max_tokens=16384, max_iterations=8)
+            solver = OneShotSolver(_rgw("solver"), max_tokens=16384)
         else:
             solver = FileCodeSolverAgent(_rgw("solver"), max_tokens=16384, max_steps=5)
 

@@ -85,6 +85,26 @@ class Edu408AgentLoop:
         openai_tools = [t.to_openai_tool() for t in filtered_tools]
         executor = ToolExecutor(filtered_tools)
 
+        # Track tool calls by wrapping executor
+        tools_used: list[str] = []
+        _orig_execute = executor.execute
+
+        async def _counting_execute(name: str, args: dict) -> str:
+            tools_used.append(name)
+            observation = await _orig_execute(name, args)
+            if trace is not None:
+                trace.tool_traces.append(
+                    ToolTrace(
+                        iteration=len(trace.tool_traces) + 1,
+                        tool_name=name,
+                        arguments=dict(args or {}),
+                        observation=observation,
+                    )
+                )
+            return observation
+
+        executor.execute = _counting_execute
+
         result = await self.gateway.generate_with_tools(
             messages,
             tools=openai_tools,
@@ -93,13 +113,6 @@ class Edu408AgentLoop:
             enable_thinking=self.enable_thinking,
             max_rounds=self.max_iterations,
         )
-
-        # Extract tools used from messages for trace
-        tools_used = []
-        for msg in messages:
-            if msg.get("role") == "assistant" and msg.get("tool_calls"):
-                for tc in msg["tool_calls"]:
-                    tools_used.append(tc["function"]["name"])
 
         final = result.content or ""
 
