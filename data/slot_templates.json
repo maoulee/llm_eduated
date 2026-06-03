@@ -1,7 +1,145 @@
 {
-  "version": "2.0",
-  "generated_at": "2026-05-29T14:05:57",
+  "version": "3.0",
+  "generated_at": "2026-06-03T13:22:17",
   "templates": {
+    "Q12": {
+      "slot_id": "Q12",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机系统概述",
+      "subject_distribution": {
+        "计算机系统概述": 0.92,
+        "数据表示与运算": 0.08
+      },
+      "target_family_distribution": {
+        "计算机系统概述": 0.92,
+        "数据表示与运算": 0.08
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.54,
+        "pattern": 0.38,
+        "mechanism": 0.08
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.38,
+        "trap_diagnosis": 0.31,
+        "calculation_stability": 0.31
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          1,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "elimination",
+        "stem_length": "short"
+      },
+      "radar_shape": "计算型(K2/K4主导)与概念辨析型(K1主导)交替",
+      "reasoning_shape_mode": "并行陷阱（各干扰项独立对应不同错误认知）",
+      "reasoning_shape_distribution": {
+        "elimination": 0.46,
+        "one_formula": 0.38,
+        "multi_step": 0.15
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q13": {
+      "slot_id": "Q13",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据表示与运算",
+      "subject_distribution": {
+        "数据表示与运算": 0.93,
+        "存储器层次结构": 0.07
+      },
+      "target_family_distribution": {
+        "数据表示与运算": 0.93,
+        "存储器层次结构": 0.07
+      },
+      "target_depth_distribution": {
+        "mechanism": 0.57,
+        "knowledge": 0.43
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.43,
+        "calculation_stability": 0.21,
+        "difficulty_separator": 0.14,
+        "mechanism_trigger": 0.14,
+        "cross_topic_integration": 0.07
+      },
+      "difficulty_anchor": {
+        "K1_mode": 1,
+        "K1_range": [
+          4,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          2,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          3,
+          5
+        ],
+        "K4_mode": 1,
+        "K4_range": [
+          3,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "multi_step",
+        "stem_length": "short"
+      },
+      "radar_shape": "K3推演型 / K4陷阱型",
+      "reasoning_shape_mode": "计算验证与错误选项排除",
+      "reasoning_shape_distribution": {
+        "multi_step": 0.36,
+        "elimination": 0.29,
+        "one_formula": 0.21,
+        "simulation": 0.14
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
     "Q14": {
       "slot_id": "Q14",
       "section": "选择题",
@@ -32,7 +170,169 @@
         "cross_topic_integration": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 3,
+        "K1_mode": 1,
+        "K1_range": [
+          1,
+          3
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          2,
+          5
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 1,
+        "K4_range": [
+          3,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          2,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "elimination",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型 / K2计算型",
+      "reasoning_shape_mode": "数值推导与机制纠错",
+      "reasoning_shape_distribution": {
+        "elimination": 0.5,
+        "multi_step": 0.21,
+        "one_formula": 0.14,
+        "simulation": 0.14
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q15": {
+      "slot_id": "Q15",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "主存储器与芯片连接": 0.5,
+        "数据表示与运算": 0.25,
+        "Cache映射与性能计算": 0.17,
+        "指令系统设计": 0.08
+      },
+      "target_family_distribution": {
+        "主存储器与芯片连接": 0.5,
+        "数据表示与运算": 0.25,
+        "Cache映射与性能计算": 0.17,
+        "指令系统设计": 0.08
+      },
+      "target_depth_distribution": {
+        "pattern": 0.42,
+        "mechanism": 0.33,
+        "knowledge": 0.25
+      },
+      "paper_role_distribution": {
+        "mechanism_trigger": 0.25,
+        "trap_diagnosis": 0.17,
+        "foundation_check": 0.17,
+        "difficulty_separator": 0.17,
+        "pattern_execution": 0.08,
+        "cross_topic_integration": 0.08,
+        "calculation_stability": 0.08
+      },
+      "difficulty_anchor": {
+        "K1_mode": 1,
+        "K1_range": [
+          1,
+          2
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          2,
+          3
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          3,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          4,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          1
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "multi_step",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型 (多数题目伴随计算，但核心难点在于识别陷阱条件)",
+      "reasoning_shape_mode": "模型构建 -> 参数代入 -> 陷阱排除 -> 结果计算",
+      "reasoning_shape_distribution": {
+        "multi_step": 0.58,
+        "one_formula": 0.25,
+        "simulation": 0.08,
+        "elimination": 0.08
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于12道真题分析"
+    },
+    "Q16": {
+      "slot_id": "Q16",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "指令系统与寻址方式": 0.15,
+        "存储器分类与特性": 0.15,
+        "指令系统设计": 0.15,
+        "数据表示与运算": 0.15,
+        "Cache映射与性能计算": 0.15,
+        "Cache与存储体系": 0.08,
+        "存储体系与指令执行": 0.08,
+        "存储器扩展设计": 0.08
+      },
+      "target_family_distribution": {
+        "指令系统与寻址方式": 0.15,
+        "存储器分类与特性": 0.15,
+        "指令系统设计": 0.15,
+        "数据表示与运算": 0.15,
+        "Cache映射与性能计算": 0.15,
+        "Cache与存储体系": 0.08,
+        "存储体系与指令执行": 0.08,
+        "存储器扩展设计": 0.08
+      },
+      "target_depth_distribution": {
+        "mechanism": 0.46,
+        "knowledge": 0.31,
+        "pattern": 0.23
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.31,
+        "mechanism_trigger": 0.23,
+        "calculation_stability": 0.15,
+        "trap_diagnosis": 0.08,
+        "cross_topic_integration": 0.08,
+        "pattern_execution": 0.08,
+        "difficulty_separator": 0.08
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
         "K1_range": [
           3,
           4
@@ -44,10 +344,423 @@
         ],
         "K3_mode": 2,
         "K3_range": [
+          1,
+          2
+        ],
+        "K4_mode": 4,
+        "K4_range": [
           2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "multi_step",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型 / K1概念型",
+      "reasoning_shape_mode": "计算推导 / 概念辨析",
+      "reasoning_shape_distribution": {
+        "elimination": 0.31,
+        "multi_step": 0.31,
+        "one_formula": 0.23,
+        "simulation": 0.15
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q17": {
+      "slot_id": "Q17",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "指令系统设计": 0.36,
+        "主存储器与ROM": 0.21,
+        "中央处理器CPU": 0.21,
+        "存储器层次结构": 0.07,
+        "数据表示与运算": 0.07,
+        "Cache映射与性能计算": 0.07
+      },
+      "target_family_distribution": {
+        "指令系统设计": 0.36,
+        "主存储器与ROM": 0.21,
+        "中央处理器CPU": 0.21,
+        "存储器层次结构": 0.07,
+        "数据表示与运算": 0.07,
+        "Cache映射与性能计算": 0.07
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.5,
+        "mechanism": 0.36,
+        "pattern": 0.14
+      },
+      "paper_role_distribution": {
+        "trap_diagnosis": 0.36,
+        "foundation_check": 0.21,
+        "difficulty_separator": 0.14,
+        "mechanism_trigger": 0.14,
+        "pattern_execution": 0.07,
+        "calculation_stability": 0.07
+      },
+      "difficulty_anchor": {
+        "K1_mode": 5,
+        "K1_range": [
+          4,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
           4
         ],
         "K4_mode": 3,
+        "K4_range": [
+          1,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "elimination",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导，K4次之（概念辨析与陷阱设计并重）",
+      "reasoning_shape_mode": "概念对比 / 逻辑排他 / 多步推演",
+      "reasoning_shape_distribution": {
+        "elimination": 0.71,
+        "one_formula": 0.14,
+        "simulation": 0.07,
+        "multi_step": 0.07
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q18": {
+      "slot_id": "Q18",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "指令流水线": 0.14,
+        "CPU结构": 0.14,
+        "指令系统设计": 0.14,
+        "控制器设计": 0.14,
+        "存储器系统": 0.14,
+        "CPU数据通路": 0.14,
+        "指令系统": 0.07,
+        "CPU控制": 0.07
+      },
+      "target_family_distribution": {
+        "指令流水线": 0.14,
+        "CPU结构": 0.14,
+        "指令系统设计": 0.14,
+        "控制器设计": 0.14,
+        "存储器系统": 0.14,
+        "CPU数据通路": 0.14,
+        "指令系统": 0.07,
+        "CPU控制": 0.07
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.5,
+        "mechanism": 0.29,
+        "pattern": 0.21
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.36,
+        "calculation_stability": 0.29,
+        "trap_diagnosis": 0.21,
+        "mechanism_trigger": 0.07,
+        "pattern_execution": 0.07
+      },
+      "difficulty_anchor": {
+        "K1_mode": 5,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 4,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          1,
+          2
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          3,
+          4
+        ],
+        "K5_mode": 2,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "elimination",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念型/K4陷阱型交替主导",
+      "reasoning_shape_mode": "选项级辨析与公式应用",
+      "reasoning_shape_distribution": {
+        "elimination": 0.5,
+        "one_formula": 0.36,
+        "simulation": 0.07,
+        "multi_step": 0.07
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q19": {
+      "slot_id": "Q19",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "总线性能与定时": 0.38,
+        "流水线数据通路与冒险": 0.23,
+        "CPU控制器设计": 0.08,
+        "CPU执行与中断机制": 0.08,
+        "I/O系统与接口": 0.08,
+        "数据表示与运算": 0.08,
+        "指令系统设计": 0.08
+      },
+      "target_family_distribution": {
+        "总线性能与定时": 0.38,
+        "流水线数据通路与冒险": 0.23,
+        "CPU控制器设计": 0.08,
+        "CPU执行与中断机制": 0.08,
+        "I/O系统与接口": 0.08,
+        "数据表示与运算": 0.08,
+        "指令系统设计": 0.08
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.38,
+        "pattern": 0.38,
+        "mechanism": 0.23
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.38,
+        "calculation_stability": 0.23,
+        "difficulty_separator": 0.15,
+        "mechanism_trigger": 0.08,
+        "trap_diagnosis": 0.08,
+        "pattern_execution": 0.08
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "elimination",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1高概念辨析为主，辅以K4陷阱",
+      "reasoning_shape_mode": "概念对比与细节辨析",
+      "reasoning_shape_distribution": {
+        "elimination": 0.54,
+        "one_formula": 0.23,
+        "multi_step": 0.15,
+        "simulation": 0.08
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q20": {
+      "slot_id": "Q20",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "总线性能指标计算": 0.07,
+        "系统总线标准": 0.07,
+        "总线功能与分类": 0.07,
+        "外部总线与接口": 0.07,
+        "磁盘阵列与存储可靠性": 0.07,
+        "总线传输方式": 0.07,
+        "磁盘存储器性能": 0.07,
+        "CPU数据通路与控制": 0.07,
+        "总线架构与标准": 0.07,
+        "指令流水线性能": 0.07,
+        "中断与异常机制": 0.07,
+        "输入输出系统": 0.07,
+        "计算机系统概述": 0.07,
+        "总线与存储器交互性能": 0.07
+      },
+      "target_family_distribution": {
+        "总线性能指标计算": 0.07,
+        "系统总线标准": 0.07,
+        "总线功能与分类": 0.07,
+        "外部总线与接口": 0.07,
+        "磁盘阵列与存储可靠性": 0.07,
+        "总线传输方式": 0.07,
+        "磁盘存储器性能": 0.07,
+        "CPU数据通路与控制": 0.07,
+        "总线架构与标准": 0.07,
+        "指令流水线性能": 0.07,
+        "中断与异常机制": 0.07,
+        "输入输出系统": 0.07,
+        "计算机系统概述": 0.07,
+        "总线与存储器交互性能": 0.07
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.64,
+        "mechanism": 0.36
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.36,
+        "calculation_stability": 0.21,
+        "trap_diagnosis": 0.21,
+        "mechanism_trigger": 0.14,
+        "difficulty_separator": 0.07
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          1,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "elimination",
+        "stem_length": "short"
+      },
+      "radar_shape": "K1/K4 概念陷阱型 或 K2/K4 计算陷阱型",
+      "reasoning_shape_mode": "排除法（针对错误概念） / 分步建模（针对计算）",
+      "reasoning_shape_distribution": {
+        "elimination": 0.64,
+        "one_formula": 0.29,
+        "multi_step": 0.07
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q21": {
+      "slot_id": "Q21",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "I/O系统": 0.46,
+        "中断系统": 0.31,
+        "总线系统": 0.15,
+        "存储系统": 0.08
+      },
+      "target_family_distribution": {
+        "I/O系统": 0.46,
+        "中断系统": 0.31,
+        "总线系统": 0.15,
+        "存储系统": 0.08
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.38,
+        "pattern": 0.31,
+        "mechanism": 0.31
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.31,
+        "trap_diagnosis": 0.31,
+        "mechanism_trigger": 0.23,
+        "pattern_execution": 0.08,
+        "calculation_stability": 0.08
+      },
+      "difficulty_anchor": {
+        "K1_mode": 1,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          2,
+          4
+        ],
+        "K4_mode": 1,
         "K4_range": [
           3,
           5
@@ -59,24 +772,93 @@
         ]
       },
       "style_mode": {
-        "option_style": "数字结果",
+        "option_style": "概念判断",
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "K4陷阱型",
-      "reasoning_shape_mode": "simulation",
+      "radar_shape": "K4陷阱型 (高陷阱敏感度)",
+      "reasoning_shape_mode": "概念边界辨析与机制纠错",
       "reasoning_shape_distribution": {
-        "elimination": 0.5,
-        "multi_step": 0.21,
-        "one_formula": 0.14,
-        "simulation": 0.14
+        "elimination": 0.77,
+        "multi_step": 0.15,
+        "one_formula": 0.08
       },
-      "reasoning_shape_guidance": "",
-      "slot_guidance": "",
+      "pattern_count": "3",
       "should_be": "",
       "should_not_be": "",
-      "generation_style": "",
-      "stability_assessment": "基于14道真题分析"
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q22": {
+      "slot_id": "Q22",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "I/O控制与中断系统": 0.54,
+        "I/O控制方式": 0.31,
+        "I/O设备与接口": 0.08,
+        "处理器体系结构": 0.08
+      },
+      "target_family_distribution": {
+        "I/O控制与中断系统": 0.54,
+        "I/O控制方式": 0.31,
+        "I/O设备与接口": 0.08,
+        "处理器体系结构": 0.08
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.46,
+        "mechanism": 0.31,
+        "pattern": 0.23
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.38,
+        "trap_diagnosis": 0.23,
+        "mechanism_trigger": 0.23,
+        "calculation_stability": 0.15
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          2
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "elimination",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1/K4主导型 (概念陷阱型)",
+      "reasoning_shape_mode": "选项级辨析 (Option-level Discrimination)",
+      "reasoning_shape_distribution": {
+        "elimination": 0.85,
+        "one_formula": 0.15
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
     },
     "Q43": {
       "slot_id": "Q43",
@@ -113,29 +895,29 @@
         "cross_topic_integration": 0.2
       },
       "difficulty_anchor": {
-        "K1_mode": 4,
+        "K1_mode": 3,
         "K1_range": [
           3,
           4
         ],
         "K2_mode": 3,
         "K2_range": [
-          2,
-          3
+          1,
+          4
         ],
         "K3_mode": 4,
         "K3_range": [
-          4,
+          3,
           5
         ],
         "K4_mode": 4,
         "K4_range": [
-          4,
+          3,
           5
         ],
-        "K5_mode": 4,
+        "K5_mode": 3,
         "K5_range": [
-          3,
+          1,
           5
         ]
       },
@@ -144,19 +926,152 @@
         "reasoning_shape": "multi_step",
         "stem_length": "medium"
       },
-      "radar_shape": "K3-K4 复合陷阱型 / K3-K5 复合推演型",
-      "reasoning_shape_mode": "multi_step",
+      "radar_shape": "机制推演型 / 跨域耦合型",
+      "reasoning_shape_mode": "序列化推导 (Serial Deduction)",
       "reasoning_shape_distribution": {
-        "multi_step": 0.7,
-        "simulation": 0.2,
-        "elimination": 0.1
+        "multi_step": 0.9,
+        "simulation": 0.1
       },
-      "reasoning_shape_guidance": "",
-      "slot_guidance": "",
+      "pattern_count": "3",
       "should_be": "",
       "should_not_be": "",
-      "generation_style": "",
       "stability_assessment": "基于10道真题分析"
+    },
+    "Q44": {
+      "slot_id": "Q44",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "跨领域",
+      "subject_distribution": {
+        "存储器层次结构": 0.29,
+        "I/O系统": 0.29,
+        "虚拟存储器与Cache交互": 0.14,
+        "虚拟存储器": 0.14,
+        "指令系统与存储器交互": 0.14
+      },
+      "target_family_distribution": {
+        "存储器层次结构": 0.29,
+        "I/O系统": 0.29,
+        "虚拟存储器与Cache交互": 0.14,
+        "虚拟存储器": 0.14,
+        "指令系统与存储器交互": 0.14
+      },
+      "target_depth_distribution": {
+        "mechanism": 0.71,
+        "pattern": 0.14,
+        "knowledge": 0.14
+      },
+      "paper_role_distribution": {
+        "cross_topic_integration": 0.29,
+        "mechanism_trigger": 0.29,
+        "difficulty_separator": 0.14,
+        "pattern_execution": 0.14,
+        "calculation_stability": 0.14
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 3,
+        "K2_range": [
+          2,
+          4
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          2,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 3,
+        "K5_range": [
+          1,
+          5
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "multi_step",
+        "stem_length": "medium"
+      },
+      "radar_shape": "机制推演型 / 跨域耦合型",
+      "reasoning_shape_mode": "串行推进 (Serial)",
+      "reasoning_shape_distribution": {
+        "simulation": 0.57,
+        "multi_step": 0.29,
+        "one_formula": 0.14
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于7道真题分析"
+    },
+    "Q45": {
+      "slot_id": "Q45",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "存储器层次结构与虚拟内存管理",
+      "subject_distribution": {
+        "存储器层次结构与虚拟内存管理": 1.0
+      },
+      "target_family_distribution": {
+        "存储器层次结构与虚拟内存管理": 1.0
+      },
+      "target_depth_distribution": {
+        "mechanism": 1.0
+      },
+      "paper_role_distribution": {
+        "cross_topic_integration": 1.0
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 5,
+        "K5_range": [
+          4,
+          6
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "multi_step",
+        "stem_length": "long"
+      },
+      "radar_shape": "跨域耦合型",
+      "reasoning_shape_mode": "地址结构拆解 -> 跨模块映射 -> 状态一致性判定",
+      "reasoning_shape_distribution": {
+        "multi_step": 1.0
+      },
+      "pattern_count": "2",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于1道真题分析"
     }
   }
 }

@@ -39,7 +39,8 @@
       "slot_id": "Q12",
       "original_index": 0,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第12题]一个C语言程序在一台32位机器上运行。程序中定义了三个变量x、y和z,其中x和z为int型，y为short 型。当x=127,y=-9时，执行赋值语句z=x+y后，x、y"
     },
     {
       "year": 2010,
@@ -77,7 +78,8 @@
       "slot_id": "Q12",
       "original_index": 13,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第12题]下列选项中，能缩短程序执行时间的措施是()。\nI.提高CPU时钟频率\nⅡ。优化数据通路结构\nⅢ。对程序进行编译优化\nA.仅I和Ⅱ\nB.仅I和Ⅲ\nC.仅Ⅱ和Ⅲ\\"
     },
     {
       "year": 2011,
@@ -115,7 +117,8 @@
       "slot_id": "Q12",
       "original_index": 26,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第12题]下列选项中，描述浮点数操作速度指标的是()。\nA. MIPS \nB. CPI \nC. IPC \nD. MFLOPS"
     },
     {
       "year": 2012,
@@ -153,7 +156,8 @@
       "slot_id": "Q12",
       "original_index": 39,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第12题]假定基准程序A在某计算机上的运行时间为100秒，其中90秒为CPU时间，其余为I/O时间。若CPU速度提高50%，I/O速度不变，则运行基准程序A所耗费的时间是\nA.55"
     },
     {
       "year": 2014,
@@ -191,7 +195,8 @@
       "slot_id": "Q12",
       "original_index": 65,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第12题]程序P在机器M上的执行时间是20秒，编译优化后，P执行的指令数减少到原来的70%,而CPI增加到原来的1.2倍，则P在M上的执行时间是。\nA.8.4秒\nB.11.7秒\\"
     },
     {
       "year": 2015,
@@ -229,7 +234,8 @@
       "slot_id": "Q12",
       "original_index": 78,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第12题]计算机硬件能够直接执行的是_____。\n I.机器语言程序\n II.汇编语言程序\n III.硬件描述语言程序\n A.仅I B.仅I、II\n C.仅I、III D"
     },
     {
       "year": 2016,
@@ -267,7 +273,8 @@
       "slot_id": "Q12",
       "original_index": 91,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第12题]将高级语言源程序转换为机器级目标代码文件的程序是____。\n A.汇编程序 B.链接程序 C.编译程序 D.解释程序\n"
     },
     {
       "year": 2017,
@@ -305,7 +312,8 @@
       "slot_id": "Q12",
       "original_index": 105,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第12题]假定计算机M1和M2具有相同的指令集体系结构(ISA),主频分别为1.5GHz和\n 1.2GHz。在M1和M2上运行某基准程序P,若平均CPI分别为2和1,则程序P在M"
     },
     {
       "year": 2018,
@@ -343,7 +351,8 @@
       "slot_id": "Q12",
       "original_index": 118,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第12题]冯诺依曼结构计算机中数据采用二进制编码表示，其主要原因是。\nI.二进制的运算规则简单\nII.制造两个稳态的物理器件较容易\nIII.便于用逻辑门电路实现算术运算\nA.仅I、"
     },
     {
       "year": 2020,
@@ -381,7 +390,8 @@
       "slot_id": "Q12",
       "original_index": 144,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第12题]下列给出的部件中，其位数（宽度）一定与机器字长相同的是(  )。\nI.ALU II .指令寄存器II.通用寄存器IV.浮点寄存器\nA.仅I、II\nB.仅I、Ⅲ\nC.仅"
     },
     {
       "year": 2021,
@@ -420,7 +430,8 @@
       "slot_id": "Q12",
       "original_index": 156,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第12题]2017年公布的全球超级计算机TOP500排名中，我国“神威·太湖之光”超级计算机蝉联第一，其浮点运算速度为93.0146 PFLOPS,说明该计算机每秒钟内完成的浮点操"
     },
     {
       "year": 2022,
@@ -460,7 +471,8 @@
       "slot_id": "Q12",
       "original_index": 169,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第12题] 某计算机主频为1 GHz, 程 序P 运行过程中，共执行了10000条指令，其中，80%的指令执 行平均需1个时钟周期，20%的指令执行平均需10个时钟周期。程序P 的"
     },
     {
       "year": 2023,
@@ -499,7 +511,8 @@
       "slot_id": "Q12",
       "original_index": 182,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第12题]若机器M的主频为1.5Ghz,在M上执行程序P的指令条数为5×105，P的平均CPI为1.2，则P在M上的指令执行速度和用户CPU时间分别为()。\nA. 0. 8GIP"
     },
     {
       "year": 2009,
@@ -538,7 +551,8 @@
       "slot_id": "Q13",
       "original_index": 1,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第13题]浮点数加、减运算过程一般包括对阶、尾数运算、规格化、舍入和判溢出等步骤。设浮点数的阶码和尾数均采用补码表示，且位数分别为5位和7位（均含2位符号位）。若有两个数X=27×"
     },
     {
       "year": 2010,
@@ -577,7 +591,8 @@
       "slot_id": "Q13",
       "original_index": 14,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第13题]假定有4个整数用8位补码分别表示为r_1=FEH,r_2=F2H,r_3=90H,r_4=F8H。若将运算结果存放在一个8位寄存器中，则下列运算中会发生溢出的是()。\n"
     },
     {
       "year": 2011,
@@ -617,7 +632,8 @@
       "slot_id": "Q13",
       "original_index": 27,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第13题]float 型数据通常用IEEE754单精度浮点数格式表示。若编译器将float 型变量x分配在一个32位浮点寄存器FR1中，且x=-8.25,则FR1的内容是()。\n"
     },
     {
       "year": 2012,
@@ -656,7 +672,8 @@
       "slot_id": "Q13",
       "original_index": 40,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第13题]假定编译器规定int和short 型长度分别为32位和16位，执行下列C语言语句：\nunsigned short x=65530;\nunsigned.int:y=X7 \n"
     },
     {
       "year": 2013,
@@ -695,7 +712,8 @@
       "slot_id": "Q13",
       "original_index": 53,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第13题]某数采用IEEE754单精度浮点数格式表示为C6400000H,则该数的值是\nA.-1.5×2^13\nB.-1.5×2^12\nC.-0.5xX2^13\nD.-0.5"
     },
     {
       "year": 2014,
@@ -734,7 +752,8 @@
       "slot_id": "Q13",
       "original_index": 66,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第13题]若x=103,y=-25,则下列表达式采用8位定点补码运算实现时，会发生溢出的是。\nA.x+y \nB. - X+y \nC. x-y \nD.-X-y"
     },
     {
       "year": 2015,
@@ -773,7 +792,8 @@
       "slot_id": "Q13",
       "original_index": 79,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第13题]由3个“1”和5个“0”组成的8位二进制补码，能表示的最小整数是_______。\n A.-126\n B.-125\n C.-32\n D.-3"
     },
     {
       "year": 2016,
@@ -812,7 +832,8 @@
       "slot_id": "Q13",
       "original_index": 92,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第13题]有如下C语言程序段\n short si =-32767;\nunsigned short usi=si; 执行上述两条语句后，usi的值为_____。\n A.-327"
     },
     {
       "year": 2017,
@@ -851,7 +872,8 @@
       "slot_id": "Q13",
       "original_index": 106,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第13题]某计算机主存按字节编址，由4个64M×8位的DRAM芯片采用交叉编址方式构成， 并与宽度为32位的存储器总线相连，主存每次最多读写32位数据。若double型变量x的主存"
     },
     {
       "year": 2018,
@@ -890,7 +912,8 @@
       "slot_id": "Q13",
       "original_index": 119,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第13题]假定带符号整数采用补码表示，若int型变量x和y的机器数分别是FFFF FFDFH 和00000041H,则x、y的值以及x-y的机器数分别是。\nA.x=-65,y=41"
     },
     {
       "year": 2020,
@@ -929,7 +952,8 @@
       "slot_id": "Q13",
       "original_index": 145,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第13题]已知带符号整数用补码表示，float 型数据用IEEE754标准表示，假定变量x的类型只可能是int或float ,当x的机器数为C8000000H时，x的值可能是(  "
     },
     {
       "year": 2021,
@@ -968,7 +992,8 @@
       "slot_id": "Q13",
       "original_index": 157,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第13题]已知带符号整数用补码表示，变量x,y,z的机器数分别为FFFDH,FFDFH,7FFCH,下列结论中，正确的是(  )。\nA.若x,y和z为无符号整数，则z<x<y\n"
     },
     {
       "year": 2022,
@@ -1007,7 +1032,8 @@
       "slot_id": "Q13",
       "original_index": 170,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第13题]32位补码所能表示的整数范围是(  )。\nA.-2³²~2³¹-1             \nB.-23¹~2³¹\nC.-2³²~2³²-1\nD.-2³¹~2³²"
     },
     {
       "year": 2023,
@@ -1046,7 +1072,8 @@
       "slot_id": "Q13",
       "original_index": 183,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第13题]若short 型变量x=-8190,则x的机器数是()。\nA. E002H\nB. EOOIH \nC. 9FFFH \nD. 9FFEH"
     },
     {
       "year": 2009,
@@ -1085,7 +1112,8 @@
       "slot_id": "Q14",
       "original_index": 2,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第14题]某计算机的Cache 共有16块，采用2路组相联映射方式（即每组2块）。每个主存块大小为32B,按字节编址。主存129号单元所在主存块应装入到的Cache 组号是。\nA"
     },
     {
       "year": 2010,
@@ -1124,7 +1152,8 @@
       "slot_id": "Q14",
       "original_index": 15,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第14题]假定变量i、f、d数据类型分别为int、float 、double (int用补码表示，float 和double 分别用IEEE754单精度和双精度浮点数据格式表示)，"
     },
     {
       "year": 2011,
@@ -1162,7 +1191,8 @@
       "slot_id": "Q14",
       "original_index": 28,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第14题]下列各类存储器中，不采用随机存取方式的是()。\nA. EPROM \nB. CDROM \nC. DRAM\n D. SRAM"
     },
     {
       "year": 2012,
@@ -1201,7 +1231,8 @@
       "slot_id": "Q14",
       "original_index": 41,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第14题]float 类型（即IEEE754单精度浮点数格式）能表示的最大正整数是\nA.2^126-2^103\nB.2^127-2^104\nC.2^127-2^103\nD.2"
     },
     {
       "year": 2013,
@@ -1240,7 +1271,8 @@
       "slot_id": "Q14",
       "original_index": 54,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第14题]某字长为8位的计算机中，已知整型变量x、y的机器数分别为[x]=11110100,[y]=10110000。若整型变量z=2*x+y/2,则的机器数为\nA.1100000"
     },
     {
       "year": 2014,
@@ -1278,7 +1310,8 @@
       "slot_id": "Q14",
       "original_index": 67,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第14题]float 型数据常用IEEE754单精度浮点格式表示。假设两个float 型变量x和y分别存放在32位寄存器f1和f2中，若(f)=CC900000H,(f2)=B0C"
     },
     {
       "year": 2015,
@@ -1317,7 +1350,8 @@
       "slot_id": "Q14",
       "original_index": 80,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第14题]下列有关浮点数加减运算的叙述中，正确的是______。\n I.对阶操作不会引起阶码上溢或下溢\n II.右规和尾数舍入都可能引起阶码上溢\n IⅢI.左规时可能引起阶码"
     },
     {
       "year": 2016,
@@ -1356,7 +1390,8 @@
       "slot_id": "Q14",
       "original_index": 93,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第14题]某计算机字长为32位，按字节编址，采用小端(Little Endian)方式存放数据。假定 有一个double型变量，其机器数表示为1122334455667788H,存"
     },
     {
       "year": 2017,
@@ -1394,7 +1429,8 @@
       "slot_id": "Q14",
       "original_index": 107,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第14题]某C语言程序段如下：\n for(i=0;i<=9;i++){\n temp =1\n for(j=0;j<=i;j++)temp *=a[j];\n sum十=temp"
     },
     {
       "year": 2018,
@@ -1433,7 +1469,8 @@
       "slot_id": "Q14",
       "original_index": 120,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第14题]IEEE754单精度浮点格式表示的数中，最小的规格化正数是。\nA.1.0×2^-126\nB.1.0×2^-127\nC.1.0×2^-128\nD.1.0×2^-149"
     },
     {
       "year": 2020,
@@ -1473,7 +1510,8 @@
       "slot_id": "Q14",
       "original_index": 146,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第14题]在按字节编址，采用小端方式的32位计算机中，按边界对齐方式为以下C语言结构型变量a分配存储空间。\nStruct recordt \nshort x1;\nint x27 \n}"
     },
     {
       "year": 2021,
@@ -1511,7 +1549,8 @@
       "slot_id": "Q14",
       "original_index": 158,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第14题]\t下列数值中，不能用IEEE 754浮点格式精确表示的是(  )。\nA.1.2\nB.1.25\nC.2.0\nD.2.5"
     },
     {
       "year": 2022,
@@ -1550,7 +1589,8 @@
       "slot_id": "Q14",
       "original_index": 171,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第14题]-0.4375的IEEE 754单精度浮点数表示为(  )\nA.BEE00000H\nB.BF600000H\nC.BF700000H\nD.COE00000H"
     },
     {
       "year": 2023,
@@ -1589,7 +1629,8 @@
       "slot_id": "Q14",
       "original_index": 184,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第14题]已知float 型变量用IEEE754单精度浮点数格式表示。若float 型变量x的机器数为80200000H,则x的值是()。\nA.-2-128\nB.-1.01×2"
     },
     {
       "year": 2009,
@@ -1628,7 +1669,8 @@
       "slot_id": "Q15",
       "original_index": 3,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第15题]某计算机主存容量为64KB,其中ROM区为4KB,其余为RAM区，按字节编址。现要用2K×8位的ROM芯片和4K×4位的RAM芯片来设计该存储器，则需要上述规格的ROM芯"
     },
     {
       "year": 2010,
@@ -1667,7 +1709,8 @@
       "slot_id": "Q15",
       "original_index": 16,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第15题]假定用若干个2K×4位芯片组成一个8K×8位的存储器，则地址0B1FH所在芯片的最小地址是()。\nA.0000H\nB.0600H\nC.0700H\nD.0800H"
     },
     {
       "year": 2011,
@@ -1706,7 +1749,8 @@
       "slot_id": "Q15",
       "original_index": 29,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第15题]某计算机存储器按字节编址，主存地址空间大小为64MB,现用4Mx8位的RAM芯片组成32MB的主存储器，则存储器地址寄存器MAR的位数至少是()。\nA.22位\nB.2"
     },
     {
       "year": 2012,
@@ -1745,7 +1789,8 @@
       "slot_id": "Q15",
       "original_index": 42,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第15题]某计算机存储器按字节编址，采用小端方式存放数据。假定编译器规定int型和shon型长度分别为32位和16位，并且数据按边界对齐存储。某C语言程序段如下：\nstruct \n"
     },
     {
       "year": 2013,
@@ -1784,7 +1829,8 @@
       "slot_id": "Q15",
       "original_index": 55,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第15题]用海明码对长度为8位的数据进行检/纠错时，若能纠正一位错。则校验位数至少为\nA.2\nB.3\nC.4\nD.5"
     },
     {
       "year": 2014,
@@ -1822,7 +1868,8 @@
       "slot_id": "Q15",
       "original_index": 68,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第15题]某容量为256MB的存储器由若干4M×8位的DRAM芯片构成，该DRAM芯片的地址引脚和数据引脚总数是。\nA.19\nB.22\nC.30\nD.36"
     },
     {
       "year": 2015,
@@ -1861,7 +1908,8 @@
       "slot_id": "Q15",
       "original_index": 81,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第15题]假定主存地址为32位，按字节编址，主存和Cache之间采用直接映射方式，主存块 大小为4个字，每字32位，采用回写(Write Back)方式，则能存放4K字数据的Cac"
     },
     {
       "year": 2016,
@@ -1900,7 +1948,8 @@
       "slot_id": "Q15",
       "original_index": 94,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第15题]有如下C语言程序段：\n for(k=0;k<1000;k++) a[k]=a[k]+32;\n 若数组a及变量k均为int型，int型数据占4B,数据Cache采用直接"
     },
     {
       "year": 2017,
@@ -1938,7 +1987,8 @@
       "slot_id": "Q15",
       "original_index": 108,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第15题]下列寻址方式中，最适合按下标顺序访问一维数组元素的是______。\n A.相对寻址\n B.寄存器寻址\n C.直接寻址\n \n D.变址寻址\n"
     },
     {
       "year": 2018,
@@ -1977,7 +2027,8 @@
       "slot_id": "Q15",
       "original_index": 121,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第15题]某32位计算机按字节编址，采用小端(Little Endian )方式。若语令“inti=0;”对应指令的机器代码为“C745FC00000000”,则语句“inti=-"
     },
     {
       "year": 2021,
@@ -2016,7 +2067,8 @@
       "slot_id": "Q15",
       "original_index": 159,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第15题]\t某计算机的存储器总线中有24位地址线和32位数据线，按字编址，字长为32位。如果000000H～3F FFFFH为RAM区，那么需要512K×8位的RAM芯片数为(  "
     },
     {
       "year": 2023,
@@ -2053,7 +2105,8 @@
       "slot_id": "Q15",
       "original_index": 185,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第15题]某计算机的CPU有30根地址线，按字节编址，CPU和主存芯片连接时，要求主存芯片占满所有可能存储地址空间，并且RAM区和ROM区所分配的空间大小比为3：1。若RAM在连续"
     },
     {
       "year": 2009,
@@ -2092,7 +2145,8 @@
       "slot_id": "Q16",
       "original_index": 4,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第16题]某机器字长为16位，主存按字节编址，转移指令采用相对寻址，由两个字节组成，第一个字节为操作码字段，第二个字节为相对位移量字段。假定取指令时，每取一个字节PC自动加1。若某"
     },
     {
       "year": 2010,
@@ -2131,7 +2185,8 @@
       "slot_id": "Q16",
       "original_index": 17,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第16题]下列有关RAM和ROM的叙述中，正确的是()。\nI.RAM是易失性存储器，ROM是非易失性存储器\nⅡ。RAM和ROM都是采用随机存取方式进行信息访问的\nⅢ。RAM和"
     },
     {
       "year": 2011,
@@ -2169,7 +2224,8 @@
       "slot_id": "Q16",
       "original_index": 30,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第16题]偏移寻址通过将某个寄存器内容与一个形式地址相加而生成有效地址。下列寻址方式中，不属于偏移寻址方式的是()。\nA.间接寻址\nB.基址寻址\nC.相对寻址\nD.变址寻址"
     },
     {
       "year": 2012,
@@ -2207,7 +2263,8 @@
       "slot_id": "Q16",
       "original_index": 43,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第16题]下列关于闪存(Flash Memory )的叙述中，错误的是。\nA.信息可读可写，并且读、写速度一样快\nB.存储元由MOS管组成，是一种半导体存储器\nC.掉电后信息不"
     },
     {
       "year": 2014,
@@ -2245,7 +2302,8 @@
       "slot_id": "Q16",
       "original_index": 69,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第16题]采用指令Cache 与数据Cache 分离的主要目的是。\nA.降低Cache 的缺失损失\nB.提高Cache 的命中率\nC.降低CPU平均访存时间\nD.减少指令流水"
     },
     {
       "year": 2015,
@@ -2284,7 +2342,8 @@
       "slot_id": "Q16",
       "original_index": 82,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第16题]假定编译器将赋值语句“x=x+3;”转换为指令“add xaddr,3”,其中xaddr是x对应 的存储单元地址。若执行该指令的计算机采用页式虚拟存储管理方式，并配有相应"
     },
     {
       "year": 2016,
@@ -2323,7 +2382,8 @@
       "slot_id": "Q16",
       "original_index": 95,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第16题]某存储器容量为64KB,按字节编址，地址4000H～5FFFH位ROM区，其余为RAM 区。若采用8K×4位的SRAM芯片进行设计，则需要该芯片的数量是______。\n"
     },
     {
       "year": 2017,
@@ -2362,7 +2422,8 @@
       "slot_id": "Q16",
       "original_index": 109,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第16题]某计算机按字节编址，指令字长固定且只有两种指令格式，其中三地址指令29条， 二地址指令107条，每个地址字段为6位，则指令字长至少应该是_______。\n A.24位\\"
     },
     {
       "year": 2018,
@@ -2400,7 +2461,8 @@
       "slot_id": "Q16",
       "original_index": 122,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第16题]整数x的机器数为11011000，分别对x进行逻辑右移1位和算术右移1位操作，得到的机器数各是\nA.11101100、11101100\nB.01101100、11101"
     },
     {
       "year": 2020,
@@ -2439,7 +2501,8 @@
       "slot_id": "Q16",
       "original_index": 147,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第16题]某计算机采用16位定长指令字格式，操作码位数和寻址方式位数固定，指令系统有48条指令，支持直接、间接、立即、相对4种寻址方式。单地址指令中，直接寻址方式的可寻址范围是( "
     },
     {
       "year": 2021,
@@ -2479,7 +2542,8 @@
       "slot_id": "Q16",
       "original_index": 160,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第16题]\t若计算机主存地址为32位，按字节编址，Cache数据区大小为32KB,主存块大小为32B,采用直接映射方式和回写(Write Back)策略，则Cache行的位数至少是"
     },
     {
       "year": 2022,
@@ -2518,7 +2582,8 @@
       "slot_id": "Q16",
       "original_index": 173,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第16题]若计算机主存地址为32位，按字节编址，某Cache 的数据区容量为32 KB, 主存块大小为64 B, 采用8路组相联映射方式，该Cache 中比较器的个数和位数分别为("
     },
     {
       "year": 2023,
@@ -2557,7 +2622,8 @@
       "slot_id": "Q16",
       "original_index": 186,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第16题]己知x、y为int类型，当x=100y=200时，执行“x-y”指令得到的溢出标志OF和借位标志CF分别为0、1，那么当x+10,y=-20时，执行该指令得到的OF和CF"
     },
     {
       "year": 2009,
@@ -2596,7 +2662,8 @@
       "slot_id": "Q17",
       "original_index": 5,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第17题]下列关于RISC的叙述中，错误的是。\nA.RISC普遍采用微程序控制器\nB.RISC大多数指令在一个时钟周期内完成\nC.RISC的内部通用寄存器数量相对CISC多\\"
     },
     {
       "year": 2010,
@@ -2635,7 +2702,8 @@
       "slot_id": "Q17",
       "original_index": 18,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第17题]下列命中组合情况中，一次访存过程中不可能发生的是()。\nA.TLB未命中，Cache 未命中，Page未命中\nB.TLB未命中，Cache 命中，Page命中\nC."
     },
     {
       "year": 2011,
@@ -2674,7 +2742,8 @@
       "slot_id": "Q17",
       "original_index": 31,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第17题]某机器有一个标志寄存器，其中有进位/借位标志CF、零标志ZF、符号标志SF和溢出标志OF,条件转移指令bgt(无符号整数比较大于时转移)的转移条件是()。\nA. CF+"
     },
     {
       "year": 2012,
@@ -2713,7 +2782,8 @@
       "slot_id": "Q17",
       "original_index": 44,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第17题]假设某计算机按字编址，Cache 有4个行，Cache 和主存之间交换的块大小为1个字。若Cache 的内容初始为空，采用2路组相联映射方式和LRU替换策略。访问的主存地"
     },
     {
       "year": 2013,
@@ -2752,7 +2822,8 @@
       "slot_id": "Q17",
       "original_index": 57,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第17题]假设变址寄存器R的内容为1000H,指令中的形式地址为2000H;地址1000H中的内容为2000H,地址2000H中的内容为3000H,地址3000H中的内容为4000"
     },
     {
       "year": 2014,
@@ -2791,7 +2862,8 @@
       "slot_id": "Q17",
       "original_index": 70,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第17题]某计算机有16个通用寄存器，采用32位定长指令字，操作码字段（含寻址方式位）为8位，Store 指令的源操作数和目的操作数分别采用寄存器直接寻址和基址寻址方式。若基址寄存"
     },
     {
       "year": 2015,
@@ -2829,7 +2901,8 @@
       "slot_id": "Q17",
       "original_index": 83,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第17题]下列存储器中，在工作期间需要周期性刷新的是______。\n C.ROM\n A.SRAM\n B.SDRAM\n D.FLASH"
     },
     {
       "year": 2016,
@@ -2868,7 +2941,8 @@
       "slot_id": "Q17",
       "original_index": 96,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第17题]某指令格式如下所示。\n \n 其中M为寻址方式，I为变址寄存器编号，D为形式地址。若采用先变址后间址的寻址方式， 则操作数的有效地址是_______。\n A.I+D\\"
     },
     {
       "year": 2017,
@@ -2905,7 +2979,8 @@
       "slot_id": "Q17",
       "original_index": 110,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第17题]下列关于超标量流水线特性的叙述中，正确的是____。\n I.能缩短流水线功能段的处理时间\n II.能在一个时钟周期内同时发射多条指令\nⅢ.能结合动态调度技术提高指令"
     },
     {
       "year": 2018,
@@ -2944,7 +3019,8 @@
       "slot_id": "Q17",
       "original_index": 123,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第17题]假定DRAM芯片中存储阵列的行数为r、列数为c,对于一个2K×1位的DRAM芯片，为保证其地址引脚数最少，并尽量减少刷新开销，则r、c的取值分别是\nA.2048、1\nB"
     },
     {
       "year": 2020,
@@ -2982,7 +3058,8 @@
       "slot_id": "Q17",
       "original_index": 148,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第17题]下列给出的处理器类型中，理想情况下，CPI为1的是(  )。\nI.单周期CPU\nⅡ。多周期CPU\nⅢ。基本流水线CPU \nIV .超标量流水线CPU\nA.仅I、IIB.仅"
     },
     {
       "year": 2021,
@@ -3020,7 +3097,8 @@
       "slot_id": "Q17",
       "original_index": 161,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第17题]\t下列寄存器中，汇编语言程序员可见的是(  )。\nI.指令寄存器II.微指令寄存器II.基址寄存器IV.标志/状态寄存器\nA.仅I、Ⅱ\nB.仅I、IV\nC.仅Ⅱ、"
     },
     {
       "year": 2022,
@@ -3059,7 +3137,8 @@
       "slot_id": "Q17",
       "original_index": 174,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第17题]\t某内存条包含8个8192×8192×8位的DRAM芯片，按字节编址，支持突发(burst) 传送方式， 对应存储器总线宽度为64位，每个 DRAM芯片内有一个行缓冲区 "
     },
     {
       "year": 2023,
@@ -3095,7 +3174,8 @@
       "slot_id": "Q17",
       "original_index": 187,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第17题]某运算类型指令中有一个地址码为通用寄存器编号，对应通用寄存器中存放的是操作数或操作数的地址，CPU区分两者的依据是()。\nA.操作数的寻址方式\nB.操作数的编码方式"
     },
     {
       "year": 2009,
@@ -3132,7 +3212,8 @@
       "slot_id": "Q18",
       "original_index": 6,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第18题]某计算机的指令流水线由四个功能段组成，指令流经各功能段的时间（忽略各功能段之间的缓存时间)分别为90ns、80ns、70ns、和60ns,则该计算机的CPU时钟周期至少是"
     },
     {
       "year": 2010,
@@ -3169,7 +3250,8 @@
       "slot_id": "Q18",
       "original_index": 19,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第18题]下列寄存器中，汇编语言程序员可见的是()。\nA.存储器地址寄存器(MAR)\nB.程序计数器(PC)\nC.存储器数据寄存器(MDR)\nD.指令寄存器(IR)"
     },
     {
       "year": 2011,
@@ -3206,7 +3288,8 @@
       "slot_id": "Q18",
       "original_index": 32,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第18题]下列给出的指令系统特点中，有利于实现指令流水线的是()\nI.指令格式规整且长度一致\nⅡ。指令和数据按边界对齐存放\nⅢ。只有Load/Store 指令才能对操作数进行"
     },
     {
       "year": 2012,
@@ -3245,7 +3328,8 @@
       "slot_id": "Q18",
       "original_index": 45,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第18题]某计算机的控制器采用微程序控制方式，微指令中的操作控制字段采用字段直接编码法，共有33个微命令，构成5个互斥类，分别包含7、3、12、5和6个微命令，则操作控制字段至少有"
     },
     {
       "year": 2013,
@@ -3283,7 +3367,8 @@
       "slot_id": "Q18",
       "original_index": 58,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第18题]某CPU主频为1.03GHz,采用4级指令流水线，每个流水段的执行需要1个时钟周期。假定CPU执行了100条指令，在其执行过程中，没有发生任何流水线阻塞，此时流水线的吞吐"
     },
     {
       "year": 2014,
@@ -3321,7 +3406,8 @@
       "slot_id": "Q18",
       "original_index": 71,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第18题]某计算机采用微程序控制器，共有32条指令，公共的取指令微程序包含2条微指令，各指令对应的微程序平均由4条微指令组成，采用断定法（下地址字段法）确定下条微指令地址，则微指令"
     },
     {
       "year": 2015,
@@ -3359,7 +3445,8 @@
       "slot_id": "Q18",
       "original_index": 84,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第18题]某计算机使用4体交叉编址存储器，假定在存储器总线上出现的主存地址(十进制) 序列为8005,8006,8007,8008,8001,8002,8003,8004,8000"
     },
     {
       "year": 2016,
@@ -3397,7 +3484,8 @@
       "slot_id": "Q18",
       "original_index": 97,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第18题]某计算机主存空间为4GB,字长为32位，按字节编址，采用32位字长指令字格式。 若指令按字边界对齐存放，则程序计数器(PC)和指令寄存器(IR)的位数至少分别是_____"
     },
     {
       "year": 2017,
@@ -3434,7 +3522,8 @@
       "slot_id": "Q18",
       "original_index": 111,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第18题]下列关于主存储器(MM)和控制存储器(CS)的叙述中，错误的是______。\n A.MM在CPU外，CS在CPU内\n B.MM按地址访问，CS按内容访问\n C.MM"
     },
     {
       "year": 2018,
@@ -3472,7 +3561,8 @@
       "slot_id": "Q18",
       "original_index": 124,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第18题]按字节编址的计算机中，某double 型数组A的首地址为2000H,使用变址寻址和循环结构访问数组A,保存数组下标的变址寄存器初值为0，每次循环取一个数组元素，其偏移地址"
     },
     {
       "year": 2020,
@@ -3509,7 +3599,8 @@
       "slot_id": "Q18",
       "original_index": 149,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第18题]下列关于“自陷”(Trap,也称陷阱)的叙述中，错误的是(  )。\nA.自陷是通过陷阱指令预先设定的一类外部中断事件\nB.自陷可用于实现程序调试时的断点设置和单步跟踪\\"
     },
     {
       "year": 2021,
@@ -3546,7 +3637,8 @@
       "slot_id": "Q18",
       "original_index": 162,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第18题]\t下列关于数据通路的叙述中，错误的是(  )。\nA.数据通路包含ALU等组合逻辑(操作)元件\nB.数据通路包含寄存器等时序逻辑(状态)元件\nC.数据通路不包含用于异"
     },
     {
       "year": 2022,
@@ -3583,7 +3675,8 @@
       "slot_id": "Q18",
       "original_index": 175,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第18题]\t下列选项中，属于指令集体系结构(ISA) 规定的内容是(  )。\nI. 指令字格式和指令类型         \nII.CPU 的时钟周期\nⅢ.通用寄存器个数和位数"
     },
     {
       "year": 2023,
@@ -3620,7 +3713,8 @@
       "slot_id": "Q18",
       "original_index": 188,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第18题]数据通路由组合逻辑元件（操作元件）和时序逻辑元件组成（状态元件）组成，以下给出的元件中，属于操作元件的是()。\nI算术逻辑部件(ALU)\nII程序计数器(PC)\nI"
     },
     {
       "year": 2009,
@@ -3659,7 +3753,8 @@
       "slot_id": "Q19",
       "original_index": 7,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第19题]相对于微程序控制器，硬布线控制器的特点是。\nA.指令执行速度慢，指令功能的修改和扩展容易\nB.指令执行速度慢，指令功能的修改和扩展难\nC.指令执行速度快，指令功能的"
     },
     {
       "year": 2010,
@@ -3698,7 +3793,8 @@
       "slot_id": "Q19",
       "original_index": 20,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第19题]下列选项中，不会引起指令流水阻塞的是()。\nA.数据旁路（转发）\nB.数据相关\nC.条件转移\nD.资源冲突"
     },
     {
       "year": 2011,
@@ -3737,7 +3833,8 @@
       "slot_id": "Q19",
       "original_index": 33,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第19题]假定不采用Cache 和指令预取技术，且机器处于“开中断”状态，则在下列有关指令执行的叙述中，错误的是()。\nA.每个指令周期中CPU都至少访问内存一次\nB.每个指令"
     },
     {
       "year": 2012,
@@ -3776,7 +3873,8 @@
       "slot_id": "Q19",
       "original_index": 46,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第19题]某同步总线的时钟频率为100MHz,宽度为32位，地址/数据线复用，每传输一个地址或数据占用一个时钟周期。若该总线支持突发（猝发）传输方式，则一次“主存写”总线事务传输1"
     },
     {
       "year": 2013,
@@ -3814,7 +3912,8 @@
       "slot_id": "Q19",
       "original_index": 59,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第19题]下列选项中，用于设备和设备控制器(I/O接口)之间互连的接口标准是\nA. PCI \nB. USB \nC. AGP \nD. PCI-Express"
     },
     {
       "year": 2014,
@@ -3853,7 +3952,8 @@
       "slot_id": "Q19",
       "original_index": 72,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第19题]某同步总线采用数据线和地址线复用方式，其中地址/数据线有32根，总线时钟频率为66MHz,每个时钟周期传送两次数据（上升沿和下降沿各传送一次数据），该总线的最大数据传输率"
     },
     {
       "year": 2015,
@@ -3892,7 +3992,8 @@
       "slot_id": "Q19",
       "original_index": 85,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第19题]下列有关总线定时的叙述中，错误的是____。\n A.异步通信方式中，全互锁协议最慢\n B.异步通信方式中，非互锁协议的可靠性最差\n C.同步通信方式中，同步时钟信号"
     },
     {
       "year": 2016,
@@ -3931,7 +4032,8 @@
       "slot_id": "Q19",
       "original_index": 98,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第19题]在无转发机制的五段基本流水线(取指、译码/读寄存器、运算、访写回寄存器)中， 下列指令序列存在数据冒险的指令对是_____。\n I1:add R1,R2,R3;(R2)"
     },
     {
       "year": 2017,
@@ -3969,7 +4071,8 @@
       "slot_id": "Q19",
       "original_index": 112,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第19题]下列关于指令流水线数据通路的叙述中，错误的是_______。\n A.包含生成控制信号的控制部件 B.包含算术逻辑运算部件(ALU)\n C.包含通用寄存器组和取指部件 "
     },
     {
       "year": 2018,
@@ -4008,7 +4111,8 @@
       "slot_id": "Q19",
       "original_index": 125,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第19题]减法指令“subR1,R2,R3”的功能为“(R1)-(R2)→R3”,该指令执行后将生成进位/借位标志CF和溢出标志OF。若(R1)=FFFF FFFFH ,(R2)="
     },
     {
       "year": 2020,
@@ -4047,7 +4151,8 @@
       "slot_id": "Q19",
       "original_index": 150,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第19题]QPI总线是一种点对点全工同步串行总线，总线上的设备可同时接收和发送信息，每个方向可同时传输20位信息(16位数据+4位校验位)，每个QPI数据包有80位信息，分2个时钟"
     },
     {
       "year": 2021,
@@ -4086,7 +4191,8 @@
       "slot_id": "Q19",
       "original_index": 163,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第19题]\t下列关于总线的叙述中，错误的是(  )。\nA.总线是在两个或多个部件之间进行数据交换的传输介质\nB.同步总线由时钟信号定时，时钟频率不一定等于工作频率\nC.异步总"
     },
     {
       "year": 2022,
@@ -4125,7 +4231,8 @@
       "slot_id": "Q19",
       "original_index": 176,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第19题]\t设计某指令系统时，假设采用16位定长指令字格式，操作码使用扩展编码方式，地址码为6 位，包含零地址、一地址和二地址3种格式的指令。若二地址指令有12条，一地址指令有 2"
     },
     {
       "year": 2009,
@@ -4164,7 +4271,8 @@
       "slot_id": "Q20",
       "original_index": 8,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第20题]假设某系统总线在一个总线周期中并行传输4B信息，一个总线周期占用2个时钟周期，总线时钟频率为10MHz,则总线带宽是。\nA. 10MB/s \nB. 20MB/s \n"
     },
     {
       "year": 2010,
@@ -4202,7 +4310,8 @@
       "slot_id": "Q20",
       "original_index": 21,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第20题]下列选项中的英文缩写均为总线标准的是()。\nA.PCI、CRT、USB、EISA\nB.ISA、CPI、VESA、EISA\nC.ISA、SCSI、RAM、MIPS \\"
     },
     {
       "year": 2011,
@@ -4241,7 +4350,8 @@
       "slot_id": "Q20",
       "original_index": 34,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第20题]在系统总线的数据线上，不可能传输的是()。\nA.指令\nB.操作数\nC.握手（应答）信号\nD.中断类信号"
     },
     {
       "year": 2012,
@@ -4279,7 +4389,8 @@
       "slot_id": "Q20",
       "original_index": 47,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第20题]下列关于USB总线特性的描述中，错误的是。\nA.可实现外设的即插即用和热拔插\nB.可通过级联方式连接多台外设\nC.是一种通信总线，连接不同外设\nD.同时可传输2位数"
     },
     {
       "year": 2013,
@@ -4316,7 +4427,8 @@
       "slot_id": "Q20",
       "original_index": 60,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第20题]下列选项中，用于提高RAID可靠性的措施有\nI磁盘镜像I条带化\nⅢ奇偶校验\nIV增加Cache 机制\nA.仅I、IⅡ\nB.仅I、Ⅲ\nC.仅I、IⅢ和IⅣ\nD.仅II、I和"
     },
     {
       "year": 2014,
@@ -4354,7 +4466,8 @@
       "slot_id": "Q20",
       "original_index": 73,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第20题]一次总线事务中，主设备只需给出一个首地址，从设备就能从首地址开始的若干连续单元读出或写入多个数据。这种总线事务方式称为。\nA.并行传输\nB.串行传输C.突发传输\nD."
     },
     {
       "year": 2015,
@@ -4393,7 +4506,8 @@
       "slot_id": "Q20",
       "original_index": 86,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第20题]若磁盘转速为7200rpm,平均寻道时间为8ms,每个磁道包含1000个扇区，则访问一 个扇区的平均存取时间大约是_______。\n D.20.5ms\n A.8.1m"
     },
     {
       "year": 2016,
@@ -4431,7 +4545,8 @@
       "slot_id": "Q20",
       "original_index": 99,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第20题]单周期处理器中所有指令的指令周期为一个时钟周期。下列关于单周期处理器的叙述 中，错误的是_____。\n A.可以采用单总线结构数据通路 B.处理器时钟频率较低\n C."
     },
     {
       "year": 2017,
@@ -4469,7 +4584,8 @@
       "slot_id": "Q20",
       "original_index": 113,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第20题]下列关于多总线结构的叙述中，错误的是_______。\n A.靠近CPU的总线速度较快 B.存储器总线可支持突发传送方式\n D.PCI-Express×16采用并行传输"
     },
     {
       "year": 2018,
@@ -4507,7 +4623,8 @@
       "slot_id": "Q20",
       "original_index": 126,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第20题]D若某计算机最复杂指令的执行需要完成5个子功能，分别由功能部件A~E实现，各功能部件所需时间分别为80ps、50ps、50ps、70ps和50ps,采用流水线方式执行指令"
     },
     {
       "year": 2020,
@@ -4543,7 +4660,8 @@
       "slot_id": "Q20",
       "original_index": 151,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第20题]下列事件中，属于外部中断事件的是(  )。\nI.访存时缺页II.定时器到时Ⅲ.网络数据包到达\nA.仅I、Ⅱ\nB.仅I、Ⅲ\nC.仅II、Ⅲ\nD.I、II和Ⅲ\n"
     },
     {
       "year": 2021,
@@ -4581,7 +4699,8 @@
       "slot_id": "Q20",
       "original_index": 164,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2021年考研真题第20题]\t下列选项中，不属于I/O接口的是(  )。\nA.磁盘驱动器\n B.打印机适配器\nC.网络控制器\nD.可编程中断控制器"
     },
     {
       "year": 2022,
@@ -4619,7 +4738,8 @@
       "slot_id": "Q20",
       "original_index": 177,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第20题]\t将高级语言源程序转换为可执行目标文件的主要过程是()。\nA.预处理→编译→汇编→链接         \nB.预处理→汇编→编译→链接\nC.  预处理→编译→链接→"
     },
     {
       "year": 2023,
@@ -4658,7 +4778,8 @@
       "slot_id": "Q20",
       "original_index": 190,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第20题]某存储总线宽度为64b,总线时钟频率为1GHz,在总线上传输一个数据或地址需要一个时钟周期，不支持突发传送方式。若通过该总线连接CPU和主存，主存每次准备一个64b数据需"
     },
     {
       "year": 2009,
@@ -4697,7 +4818,8 @@
       "slot_id": "Q22",
       "original_index": 10,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第22题]下列选项中，能引起外部中断的事件是。\nA.键盘输入\nB.除数为0\nC.浮点运算下溢\nD.访存缺页"
     },
     {
       "year": 2010,
@@ -4736,7 +4858,8 @@
       "slot_id": "Q22",
       "original_index": 23,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第22题]假定一台计算机的显示存储器用DRAM芯片实现，若要求显示分辨率为1600×1200，颜色深度为24位，帧频为85Hz,显存总带宽的50%用来刷新屏幕，则需要的显存总带宽至"
     },
     {
       "year": 2011,
@@ -4775,7 +4898,8 @@
       "slot_id": "Q22",
       "original_index": 36,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第22题]某计算机处理器主频为50MHz,采用定时查询方式控制设备A的I/O,查询程序运行一次所用的时钟周期至少为500。在设备A工作期间，为保证数据不丢失，每秒需对其查询至少20"
     },
     {
       "year": 2012,
@@ -4814,7 +4938,8 @@
       "slot_id": "Q22",
       "original_index": 49,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第22题]响应外部中断的过程中，中断隐指令完成的操作，除保护断点外，还包括。\nI.关中断I.保存通用寄存器的内容II.形成中断服务程序入口地址并送PC\nA.仅I、IⅡ\nB.仅I、"
     },
     {
       "year": 2013,
@@ -4853,7 +4978,8 @@
       "slot_id": "Q22",
       "original_index": 62,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第22题]下列关于中断/O方式和DMA方式比较的叙述中，错误的是\nA.中断I/O方式请求的是CPU处理时间，DMA方式请求的是总线使用权\nB.中断响应发生在一条指令执行结束后，D"
     },
     {
       "year": 2014,
@@ -4892,7 +5018,8 @@
       "slot_id": "Q22",
       "original_index": 75,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第22题]若某设备中断请求的响应和处理时间为100ns,每400ns发出一次中断请求，中断响应所允许的最长延迟时间为50ns,则在该设备持续工作过程中，CPU用于该设备的I/O时间"
     },
     {
       "year": 2015,
@@ -4931,7 +5058,8 @@
       "slot_id": "Q22",
       "original_index": 88,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第22题]内部异常(内中断)可分为故障(fault)、陷阱(trap)和终止(abort)三类。下列有 关内部异常的叙述中，错误的是_______。\n A.内部异常的产生与当前执"
     },
     {
       "year": 2016,
@@ -4970,7 +5098,8 @@
       "slot_id": "Q22",
       "original_index": 101,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第22题]异常是指令执行过程中在处理器内部发生的特殊事件，中断是来自处理器外部的请求\n事件。下列关于中断或异常情况的叙述中，错误的是_______。\n B.“整数除以0”属于异"
     },
     {
       "year": 2017,
@@ -5009,7 +5138,8 @@
       "slot_id": "Q22",
       "original_index": 115,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第22题]下列关于多重中断系统的叙述中，错误的是_______。\n A.在一条指令执行结束时响应中断\n B.中断处理期间CPU处于关中断状态\n C.中断请求的产生与当前指令的"
     },
     {
       "year": 2018,
@@ -5049,7 +5179,8 @@
       "slot_id": "Q22",
       "original_index": 128,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第22题]下列关于外部I/O中断的叙述中，正确的是。\nA.中断控制器按所接收中断请求的先后次序进行中断优先级排队\nB.CPU响应中断时，通过执行中断隐指令完成通用寄存器的保护\n"
     },
     {
       "year": 2020,
@@ -5087,7 +5218,8 @@
       "slot_id": "Q22",
       "original_index": 153,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第22题]若设备采用周期挪用DMA方式进行输入和输出，每次DMA传送的数据块大小为512字节，相应的I/O接口中有一个32位数数据缓冲寄存器。对于数据输入过程，下列叙述中，错误的是"
     },
     {
       "year": 2022,
@@ -5126,7 +5258,8 @@
       "slot_id": "Q22",
       "original_index": 179,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第22题]\t下列关于并行处理技术的叙述中，不正确的是(  )。\nA. 多核处理器属于MIMD结构\nB. 向量处理器属于，SIMD 结构C.硬件多线程技术只可用于多核处理器\nD"
     },
     {
       "year": 2023,
@@ -5165,7 +5298,8 @@
       "slot_id": "Q22",
       "original_index": 192,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第22题]下列关于I/O控制方式的叙述中，错误的是()。\nA.查询方式下，通过CPU执行查询程序进行I/O操作\nB.中断方式下，通过CPU执行中断服务程序进行I/O操作\nC."
     },
     {
       "year": 2009,
@@ -5203,7 +5337,8 @@
       "slot_id": "Q43",
       "original_index": 11,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2009年考研真题第43题]某计算机的CPU主频为500MHz,CPI为5（即执行每条指令平均需5个时钟周期)。假定某外设的数据传输率为0.5MB/s,采用中断方式与主机进行数据传送，以32位为传输"
     },
     {
       "year": 2011,
@@ -5241,7 +5376,8 @@
       "slot_id": "Q43",
       "original_index": 37,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2011年考研真题第43题]假定在一个8位字长的计算机中运行如下类C程序段：\nunsigned int x =134;\nunsigned int y=246 int m=x \nInt n=y:uns"
     },
     {
       "year": 2012,
@@ -5279,7 +5415,8 @@
       "slot_id": "Q43",
       "original_index": 50,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2012年考研真题第43题] 假定某计算机的CPU主频为80MHz,CPI为4,平均每条指令访存1.5次，主存与Cache之间交换的块大小为 16B, Cache的命中率为99%, 存储器总线宽度为"
     },
     {
       "year": 2013,
@@ -5316,7 +5453,8 @@
       "slot_id": "Q43",
       "original_index": 63,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2013年考研真题第43题]某32位计算机，CPU主频为800MHz,Cache 命中时的CPI为4，Cache 块大小为32字节；主存采用8体交叉存储方式，每个体的存储字长为32位、存储周期为40"
     },
     {
       "year": 2016,
@@ -5353,7 +5491,8 @@
       "slot_id": "Q43",
       "original_index": 102,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2016年考研真题第43题]已知由n(n≥2)个正整数构成的集合A={a_k|0≤k<n},将其划分为两个不相交的子 集A_1和A_2,元素个数分别是n_1和n_2,A_1和A_2中元素之和分别为S"
     },
     {
       "year": 2017,
@@ -5391,7 +5530,8 @@
       "slot_id": "Q43",
       "original_index": 116,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2017年考研真题第43题]已知 ，计算f(n)的C语言函数f1如下：\n int f1(unsigned n){\n int sum=1,power=1;\n for(unsigned i=0;i"
     },
     {
       "year": 2018,
@@ -5429,7 +5569,8 @@
       "slot_id": "Q43",
       "original_index": 129,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2018年考研真题第43题]假定计算机的主频为500MHz,CPI为4。现有设备A和B,其数据传输率分别为2MB/s和40MB/s,对应I/O接口中各有一个32位数据缓冲寄存器。请回答下列问题，要求"
     },
     {
       "year": 2020,
@@ -5467,7 +5608,8 @@
       "slot_id": "Q43",
       "original_index": 154,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2020年考研真题第43题]有实现xxy的两个C语言函数如下：\n \n假定某计算机M中ALU只能进行加减运算和逻辑运算。请回答下列问题。\n(1)若M的指令系统中没有乘法指令，但有加法、减法和位移等指令"
     },
     {
       "year": 2021,
@@ -5505,7 +5647,8 @@
       "slot_id": "Q43",
       "original_index": 167,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2021年考研真题第43题]假定计算机M字长为16位，按字节编址，连接CPU和主存的系统总线中地址线为20位、数据线为8位，采用16位定长指令字，指令格式及其说明如下：\n\n \n其中，op1～op3"
     },
     {
       "year": 2023,
@@ -5543,7 +5686,8 @@
       "slot_id": "Q43",
       "original_index": 193,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2023年考研真题第43题]某机器字长为32位的计算机M，采用请求调页存储管理。虚拟地址32位，页面大小4KB。Cache采用4路组相联映射，内存块大小为32B，Cache数据区大小为8KB。二维数"
     },
     {
       "year": 2010,
@@ -5575,7 +5719,8 @@
       "slot_id": "Q44",
       "original_index": 25,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2010年考研真题第44题]某计算机的主存地址空间大小为256MB,按字节编址。指令Cache 和数据Cache 分离，均有8个Cache 行，每个Cache 行大小为64B,数据Cache 采用直"
     },
     {
       "year": 2011,
@@ -5607,7 +5752,8 @@
       "slot_id": "Q44",
       "original_index": 38,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2011年考研真题第44题]某计算机存储器按字节编址，虚拟（逻辑）地址空间大小为16MB,主存（物理)地址空间大小为1MB,页面大小为4KB:Cache 采用直接映射方式，共8行；主存与Cache "
     },
     {
       "year": 2016,
@@ -5639,7 +5785,8 @@
       "slot_id": "Q44",
       "original_index": 103,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2016年考研真题第44题]假定CPU主频为50MHz,CPI为4。设备D采用异步串行通信方式向主机传送7位 ASCII字符，通信规程中有1位奇校验位和1位停止位，从D接收启动命令到字符送入I/O端"
     },
     {
       "year": 2020,
@@ -5671,7 +5818,8 @@
       "slot_id": "Q44",
       "original_index": 155,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2020年考研真题第44题]假定主存地址为32位，按字节编址，指令Cache 和数据Cache 与主存之间均采用8路组相联映射方式，直写(Write Through )写策略和LRU替换算法，主存块"
     },
     {
       "year": 2021,
@@ -5703,7 +5851,8 @@
       "slot_id": "Q44",
       "original_index": 168,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2021年考研真题第44题]假设计算机M的主存地址为24位，按字节编址；采用分页存储管理方式，虚拟地址为30位，页大小为4 KB;TLB采用2路组相联方式和LRU替换策略，共8组。请回答下列问题。\\"
     },
     {
       "year": 2022,
@@ -5735,7 +5884,8 @@
       "slot_id": "Q44",
       "original_index": 181,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2022年考研真题第44题]假设某磁盘驱动器中有4个双面盘片，每个盘面有20000个磁道，每个磁道有500个 扇区，每个扇区可记录512字节的数据，盘片转速为7200 RPM (转/分),平均寻道时"
     },
     {
       "year": 2023,
@@ -5767,7 +5917,8 @@
       "slot_id": "Q44",
       "original_index": 194,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2023年考研真题第44题]43题中C程序段在计算机M上的部分机器级代码如下，每个机器级代码行中依次包含指令序号、虚拟地址、机器指令和汇编指令。\n\n```markdown\n1  for(int i"
     },
     {
       "year": 2016,
@@ -5806,7 +5957,8 @@
       "slot_id": "Q45",
       "original_index": 104,
       "section": "综合应用题",
-      "question_type": "comprehensive"
+      "question_type": "comprehensive",
+      "question_stem": "[2016年考研真题第45题]某计算机采用页式虚拟存储管理方式，按字节编址，虚拟地址为32位，物理地址为 24位，页大小为8KB;TLB采用全相联映射；Cache数据区大小为64KB,按2路组相联方式"
     },
     {
       "year": 2009,
@@ -5844,7 +5996,8 @@
       "slot_id": "Q21",
       "original_index": 9,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2009年考研真题第21题]假设某计算机的存储系统由Cache 和主存组成，某程序执行过程中访存1000次，其中访问Cache 缺失（未命中）50次，则Cache 的命中率是。\nA.5%\nB.9"
     },
     {
       "year": 2010,
@@ -5882,7 +6035,8 @@
       "slot_id": "Q21",
       "original_index": 22,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2010年考研真题第21题]单级中断系统中，中断服务程序执行顺序是()。\nI.保护现场\nⅡ。开中断\n\nⅢ。关中断\nⅣ。保存断点\nV.中断事件处理\nⅥ。恢复现场\nⅦ。中断返回\nA.I-"
     },
     {
       "year": 2011,
@@ -5921,7 +6075,8 @@
       "slot_id": "Q21",
       "original_index": 35,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2011年考研真题第21题]某计算机有五级中断L4~L0,中断屏蔽字为M4M3M2M1Mo,M=1(0≤i≤4)表示对L级中断进行屏蔽。若中断响应优先级从高到低的顺序是L0→L1→L2→L3→L4,"
     },
     {
       "year": 2012,
@@ -5959,7 +6114,8 @@
       "slot_id": "Q21",
       "original_index": 48,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2012年考研真题第21题]下列选项中，在I/O总线的数据线上传输的信息包括。\nI.I/O接口中的命令字I.I/O接口中的状态字Ⅲ。中断类型号\nA.仅I、IⅡ\nB.仅I、Ⅲ\nC.仅II、Ⅲ\nD"
     },
     {
       "year": 2013,
@@ -5998,7 +6154,8 @@
       "slot_id": "Q21",
       "original_index": 61,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2013年考研真题第21题]某磁盘的转速为10000转/分，平均寻道时间是6ms,磁盘传输速率是20MB/s,磁盘控制器延迟为0.2ms,读取一个4KB的扇区所需的平均时间约为\nA. 9 ms \n"
     },
     {
       "year": 2014,
@@ -6036,7 +6193,8 @@
       "slot_id": "Q21",
       "original_index": 74,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2014年考研真题第21题]下列有关I/O接口的叙述中，错误的是。\nA.状态端口和控制端口可以合用同一个寄存器\nB.I/O接口中CPU可访问的寄存器称为I/O端口\nC.采用独立编址方式时，I/O"
     },
     {
       "year": 2015,
@@ -6074,7 +6232,8 @@
       "slot_id": "Q21",
       "original_index": 87,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2015年考研真题第21题]在采用中断I/O方式控制打印输出的情况下，CPU和打印控制接口中的I/O端口之间 交换的信息不可能是______。\n A.打印字符\n B.主存地址\n C.设备状态\\"
     },
     {
       "year": 2016,
@@ -6112,7 +6271,8 @@
       "slot_id": "Q21",
       "original_index": 100,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2016年考研真题第21题]下列关于总线设计的叙述中，错误的是_______。\n A.并行总线传输比串行总线传输速度快\n B.采用信号线复用技术可减少信号线数量\n C.采用突发传输方式可提高总"
     },
     {
       "year": 2017,
@@ -6150,7 +6310,8 @@
       "slot_id": "Q21",
       "original_index": 114,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2017年考研真题第21题]I/O指令实现的数据传送通常发生在______。\n A.I/O设备和I/O端口之间 B.通用寄存器和I/O设备之间\n D.通用寄存器和I/O端口之间\n C.IO端口"
     },
     {
       "year": 2018,
@@ -6187,7 +6348,8 @@
       "slot_id": "Q21",
       "original_index": 127,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2018年考研真题第21题]下列选项中，可提高同步总线数据传输率的是\nI.增加总线宽度\nⅡ。提高总线工作频率\nIⅢ。支持突发传输\nⅣ采用地址/数据线复用\nA.仅I、Ⅱ\nB.仅I、Ⅱ、Ⅲ\nC.仅I"
     },
     {
       "year": 2020,
@@ -6225,7 +6387,8 @@
       "slot_id": "Q21",
       "original_index": 152,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2020年考研真题第21题]外部中断包括不可屏蔽中断(NMI)和可屏蔽中断，下列关于外部中断的叙述中，错误的是(  )。\nA.CPU处于关中断状态时，也能响应NMI请求\nB.一旦可屏蔽中断请求信号"
     },
     {
       "year": 2022,
@@ -6263,7 +6426,8 @@
       "slot_id": "Q21",
       "original_index": 178,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2022年考研真题第21题]\t下列关于中断I/O方式的叙述中，不正确的是(  )。\nA.适用于键盘、针式打印机等字符型设备\nB. 外设和主机之间的数据传送通过软件完成\nC. 外设准备数据的时间"
     },
     {
       "year": 2023,
@@ -6301,7 +6465,8 @@
       "slot_id": "Q21",
       "original_index": 191,
       "section": "选择题",
-      "question_type": "single_choice"
+      "question_type": "single_choice",
+      "question_stem": "[2023年考研真题第21题]下列关于硬件和异常/中断关系的叙述中，错误的是()。\nA.CPU在执行一条指令过程中检测异常事件\nB.CPU在执行完一条指令时检测中断请求信号\nC.开中断时CPU检"
     }
   ]
 }
