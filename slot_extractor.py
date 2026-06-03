@@ -198,6 +198,10 @@ def parse_eval_result(raw: str, obs: Dict) -> Dict:
     result["knowledge_points"] = kp_fields.get("知识点", obs.get("primary_target_name", ""))
     result["syllabus_mapping"] = kp_fields.get("考纲对应", "")
 
+    # Parse knowledge_tags from detailed syllabus
+    raw_tags = kp_fields.get("knowledge_tags", "")
+    result["knowledge_tags"] = [t.strip() for t in re.split(r"[,，]", raw_tags) if t.strip()] if raw_tags else []
+
     if q_type == "single_choice":
         # SC: option-level analysis, examination mode
         option_lines = parse_section_lines(raw, "选项级分析")
@@ -929,6 +933,49 @@ def save_outputs(
         with open(exp_path, "w", encoding="utf-8") as f:
             f.write(md)
     print(f"  Saved: {exp_dir}/ ({len(templates)} experience cards)")
+
+    # 6. knowledge_registry.json (program-computed KP frequency)
+    registry = build_knowledge_registry(all_evals)
+    reg_path = os.path.join(output_dir, "knowledge_registry.json")
+    with open(reg_path, "w", encoding="utf-8") as f:
+        json.dump(registry, f, ensure_ascii=False, indent=2)
+    print(f"  Saved: {reg_path} ({len(registry)} knowledge tags)")
+
+
+def build_knowledge_registry(all_evals: List[Dict]) -> Dict[str, Dict]:
+    """Build knowledge point registry from evaluations. Program-computed."""
+    from collections import defaultdict
+
+    tag_data: Dict[str, Dict] = {}
+
+    for ev in all_evals:
+        year = ev.get("year", "?")
+        slot_id = ev.get("slot_id", "?")
+        tags = ev.get("knowledge_tags", [])
+
+        for tag in tags:
+            if not tag:
+                continue
+            if tag not in tag_data:
+                tag_data[tag] = {
+                    "tag": tag,
+                    "frequency": 0,
+                    "slots": defaultdict(int),
+                    "questions": [],
+                    "is_high_freq": False,
+                }
+            tag_data[tag]["frequency"] += 1
+            tag_data[tag]["slots"][slot_id] += 1
+            tag_data[tag]["questions"].append(f"{year}_{slot_id}")
+
+    # Mark high-frequency tags (>= 3 occurrences)
+    total_questions = len(all_evals)
+    for tag, data in tag_data.items():
+        data["slots"] = dict(data["slots"])
+        data["is_high_freq"] = data["frequency"] >= 3
+
+    # Sort by frequency descending
+    return dict(sorted(tag_data.items(), key=lambda x: -x[1]["frequency"]))
 
 
 async def main():

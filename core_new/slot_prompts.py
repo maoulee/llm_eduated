@@ -159,14 +159,17 @@ K5 跨域联动需求（需要跨越不同子系统/模块传递状态的程度�
 # Per-question evaluation — Choice Questions (SC)
 # ═══════════════════════════════════════════════════════════════
 
-_SYLLABUS_REF = """## 考纲参考（计算机组成原理）
-
-第一章 计算机系统概述: 系统层次结构（基本组成/硬件结构/软硬件关系/存储程序/程序转换/指令执行）、性能指标（吞吐量/响应时间/CPU时钟周期/主频/CPI/CPU执行时间/MIPS/MFLOPS）
-第二章 数据的表示和运算: 数制与编码（进位计数制/定点数编码）、运算方法和电路（加法器/ALU/补码加减/标志位/乘除）、整数表示运算（无符号/带符号）、浮点数表示运算（IEEE 754/浮点加减）
-第三章 存储器层次结构: 分类、层次化结构、SRAM/DRAM/Flash、主存（芯片/多模块/CPU连接）、外存（磁盘/SSD）、Cache（原理/映射/替换/写策略）、虚拟存储器（页式/段式/段页式/页表/地址转换/TLB）
-第四章 指令系统: 基本概念、指令格式、寻址方式、对齐和大/小端、CISC和RISC、高级语言与机器级代码对应（编译器/汇编器/链接器/选择结构/循环结构/过程调用）
-第五章 中央处理器: 功能结构、指令执行过程、数据通路、控制器（功能/原理）、异常和中断（概念/分类/检测响应）、指令流水线（概念/实现/冒险处理/超标量/动态）、多处理器（SISD/SIMD/MIMD/向量/硬件多线程/多核/共享内存）
-第六章 总线: 基本概念/组成/性能/事务/定时、I/O接口（功能/端口编址）、I/O方式（查询/中断/DMA）"""
+# Load detailed syllabus (computer_organization.md) at module level
+import os as _os
+_DETAILED_SYLLABUS_PATH = _os.path.join(
+    _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+    "data", "computer_organization.md",
+)
+try:
+    with open(_DETAILED_SYLLABUS_PATH, encoding="utf-8") as _f:
+        _SYLLABUS_REF = _f.read().strip()
+except FileNotFoundError:
+    _SYLLABUS_REF = "（细纲文件未找到）"
 
 SLOT_SINGLE_EVAL_PROMPT_SC = """你是一位408考研教研专家。请对以下**选择题**进行深度分析，产出单题经验文档。
 
@@ -232,6 +235,7 @@ SLOT_SINGLE_EVAL_PROMPT_SC = """你是一位408考研教研专家。请对以下
 ## 知识点与考纲
 - **知识点**: 本题考察的核心知识点（1-3个，逗号分隔）
 - **考纲对应**: 考纲章节路径（如：第三章 存储器层次结构 → Cache → 映射方式）
+- **knowledge_tags**: 从上方细纲中选择本题考察的知识点标签（1-5个，用 > 表示层级路径，逗号分隔。如：CO-2 > 定点数的运算 > 补码加减运算 > 符号扩展, CO-2 > 定点数的运算 > 补码加减运算 > 溢出判断）
 
 ## 选项级分析
 - **选项A**: [正确/干扰] — 针对什么认知错误，哪类学生会选
@@ -316,6 +320,7 @@ SLOT_SINGLE_EVAL_PROMPT_COMP = """你是一位408考研教研专家。请对以�
 ## 知识点与考纲
 - **知识点**: 本题考察的核心知识点（1-3个，逗号分隔）
 - **考纲对应**: 考纲章节路径
+- **knowledge_tags**: 从上方细纲中选择本题考察的知识点标签（1-5个，用 > 表示层级路径，逗号分隔。如：CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > 组相联映射, CO-3 > 高速缓冲存储器 Cache > Cache替换算法 > LRU替换算法）
 
 ## 子问依赖
 - **sub_q_count**: 子问数量
