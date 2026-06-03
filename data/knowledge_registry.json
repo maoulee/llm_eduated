@@ -1,0 +1,3631 @@
+{
+  "CO-7 > I/O方式 > 中断方式 > 中断响应": {
+    "tag": "CO-7 > I/O方式 > 中断方式 > 中断响应",
+    "frequency": 9,
+    "slots": {
+      "Q20": 1,
+      "Q21": 1,
+      "Q22": 6,
+      "Q44": 1
+    },
+    "questions": [
+      "2011_Q20",
+      "2020_Q21",
+      "2009_Q22",
+      "2012_Q22",
+      "2014_Q22",
+      "2016_Q22",
+      "2017_Q22",
+      "2018_Q22",
+      "2016_Q44"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 单精度浮点格式": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 单精度浮点格式",
+    "frequency": 8,
+    "slots": {
+      "Q13": 3,
+      "Q14": 5
+    },
+    "questions": [
+      "2011_Q13",
+      "2013_Q13",
+      "2020_Q13",
+      "2012_Q14",
+      "2014_Q14",
+      "2018_Q14",
+      "2022_Q14",
+      "2023_Q14"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > 组相联映射": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > 组相联映射",
+    "frequency": 6,
+    "slots": {
+      "Q14": 1,
+      "Q16": 1,
+      "Q17": 1,
+      "Q43": 1,
+      "Q44": 1,
+      "Q45": 1
+    },
+    "questions": [
+      "2009_Q14",
+      "2022_Q16",
+      "2012_Q17",
+      "2023_Q43",
+      "2020_Q44",
+      "2016_Q45"
+    ],
+    "is_high_freq": true
+  },
+  "CO-6 > 总线概述 > 总线性能指标 > 总线带宽": {
+    "tag": "CO-6 > 总线概述 > 总线性能指标 > 总线带宽",
+    "frequency": 6,
+    "slots": {
+      "Q19": 3,
+      "Q20": 2,
+      "Q21": 1
+    },
+    "questions": [
+      "2012_Q19",
+      "2014_Q19",
+      "2020_Q19",
+      "2009_Q20",
+      "2023_Q20",
+      "2018_Q21"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的表示 > 补码表示": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的表示 > 补码表示",
+    "frequency": 5,
+    "slots": {
+      "Q12": 1,
+      "Q17": 1,
+      "Q43": 3
+    },
+    "questions": [
+      "2009_Q12",
+      "2014_Q17",
+      "2011_Q43",
+      "2017_Q43",
+      "2020_Q43"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 定点数的表示 > 补码表示": {
+    "tag": "CO-2 > 定点数的表示 > 补码表示",
+    "frequency": 5,
+    "slots": {
+      "Q13": 5
+    },
+    "questions": [
+      "2010_Q13",
+      "2014_Q13",
+      "2016_Q13",
+      "2018_Q13",
+      "2020_Q13"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 阶码偏置值": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 阶码偏置值",
+    "frequency": 5,
+    "slots": {
+      "Q13": 3,
+      "Q14": 2
+    },
+    "questions": [
+      "2011_Q13",
+      "2013_Q13",
+      "2020_Q13",
+      "2018_Q14",
+      "2022_Q14"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 容量计算": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 容量计算",
+    "frequency": 5,
+    "slots": {
+      "Q15": 4,
+      "Q16": 1
+    },
+    "questions": [
+      "2009_Q15",
+      "2011_Q15",
+      "2014_Q15",
+      "2021_Q15",
+      "2016_Q16"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > 直接映射": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > 直接映射",
+    "frequency": 5,
+    "slots": {
+      "Q15": 2,
+      "Q16": 1,
+      "Q44": 2
+    },
+    "questions": [
+      "2015_Q15",
+      "2016_Q15",
+      "2021_Q16",
+      "2010_Q44",
+      "2011_Q44"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 命中率": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 命中率",
+    "frequency": 5,
+    "slots": {
+      "Q15": 1,
+      "Q17": 1,
+      "Q21": 1,
+      "Q43": 1,
+      "Q44": 1
+    },
+    "questions": [
+      "2016_Q15",
+      "2010_Q17",
+      "2009_Q21",
+      "2012_Q43",
+      "2020_Q44"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 虚拟存储器 > 页式虚拟存储器 > 地址转换": {
+    "tag": "CO-3 > 虚拟存储器 > 页式虚拟存储器 > 地址转换",
+    "frequency": 5,
+    "slots": {
+      "Q16": 1,
+      "Q43": 1,
+      "Q44": 2,
+      "Q45": 1
+    },
+    "questions": [
+      "2015_Q16",
+      "2023_Q43",
+      "2021_Q44",
+      "2023_Q44",
+      "2016_Q45"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 定点数的运算 > 补码加减运算 > 溢出判断": {
+    "tag": "CO-2 > 定点数的运算 > 补码加减运算 > 溢出判断",
+    "frequency": 4,
+    "slots": {
+      "Q12": 1,
+      "Q14": 1,
+      "Q16": 1,
+      "Q19": 1
+    },
+    "questions": [
+      "2009_Q12",
+      "2013_Q14",
+      "2023_Q16",
+      "2018_Q19"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 数制与编码 > 字符与字符串 > 小端方式": {
+    "tag": "CO-2 > 数制与编码 > 字符与字符串 > 小端方式",
+    "frequency": 4,
+    "slots": {
+      "Q14": 2,
+      "Q15": 2
+    },
+    "questions": [
+      "2016_Q14",
+      "2020_Q14",
+      "2012_Q15",
+      "2018_Q15"
+    ],
+    "is_high_freq": true
+  },
+  "CO-4 > 指令寻址方式 > 数据寻址 > 变址寻址": {
+    "tag": "CO-4 > 指令寻址方式 > 数据寻址 > 变址寻址",
+    "frequency": 4,
+    "slots": {
+      "Q15": 1,
+      "Q17": 2,
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q15",
+      "2013_Q17",
+      "2016_Q17",
+      "2018_Q18"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 虚拟存储器 > 页式虚拟存储器 > 缺页": {
+    "tag": "CO-3 > 虚拟存储器 > 页式虚拟存储器 > 缺页",
+    "frequency": 4,
+    "slots": {
+      "Q17": 1,
+      "Q20": 1,
+      "Q22": 1,
+      "Q43": 1
+    },
+    "questions": [
+      "2010_Q17",
+      "2020_Q20",
+      "2016_Q22",
+      "2012_Q43"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 虚拟存储器 > 快表 TLB > TLB命中": {
+    "tag": "CO-3 > 虚拟存储器 > 快表 TLB > TLB命中",
+    "frequency": 4,
+    "slots": {
+      "Q17": 1,
+      "Q44": 2,
+      "Q45": 1
+    },
+    "questions": [
+      "2010_Q17",
+      "2011_Q44",
+      "2021_Q44",
+      "2016_Q45"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache替换算法 > LRU替换算法": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache替换算法 > LRU替换算法",
+    "frequency": 4,
+    "slots": {
+      "Q17": 1,
+      "Q43": 1,
+      "Q44": 2
+    },
+    "questions": [
+      "2012_Q17",
+      "2023_Q43",
+      "2020_Q44",
+      "2021_Q44"
+    ],
+    "is_high_freq": true
+  },
+  "CO-7 > I/O方式 > 中断方式 > 中断请求": {
+    "tag": "CO-7 > I/O方式 > 中断方式 > 中断请求",
+    "frequency": 4,
+    "slots": {
+      "Q21": 1,
+      "Q22": 3
+    },
+    "questions": [
+      "2020_Q21",
+      "2009_Q22",
+      "2013_Q22",
+      "2016_Q22"
+    ],
+    "is_high_freq": true
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > CPU执行时间": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > CPU执行时间",
+    "frequency": 3,
+    "slots": {
+      "Q12": 3
+    },
+    "questions": [
+      "2010_Q12",
+      "2022_Q12",
+      "2023_Q12"
+    ],
+    "is_high_freq": true
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > CPU执行时间": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > CPU执行时间",
+    "frequency": 3,
+    "slots": {
+      "Q12": 3
+    },
+    "questions": [
+      "2012_Q12",
+      "2014_Q12",
+      "2017_Q12"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 定点数的表示 > 机器数表示 > 补码表示": {
+    "tag": "CO-2 > 定点数的表示 > 机器数表示 > 补码表示",
+    "frequency": 3,
+    "slots": {
+      "Q13": 3
+    },
+    "questions": [
+      "2015_Q13",
+      "2022_Q13",
+      "2023_Q13"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 程序访问局部性": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 程序访问局部性",
+    "frequency": 3,
+    "slots": {
+      "Q14": 1,
+      "Q15": 1,
+      "Q44": 1
+    },
+    "questions": [
+      "2017_Q14",
+      "2016_Q15",
+      "2010_Q44"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 字扩展": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 字扩展",
+    "frequency": 3,
+    "slots": {
+      "Q15": 2,
+      "Q17": 1
+    },
+    "questions": [
+      "2009_Q15",
+      "2010_Q15",
+      "2022_Q17"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 存储芯片地址分配与片选 > 地址范围计算": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 存储芯片地址分配与片选 > 地址范围计算",
+    "frequency": 3,
+    "slots": {
+      "Q15": 2,
+      "Q16": 1
+    },
+    "questions": [
+      "2010_Q15",
+      "2023_Q15",
+      "2016_Q16"
+    ],
+    "is_high_freq": true
+  },
+  "CO-3 > 半导体随机存储器 > DRAM > 地址复用": {
+    "tag": "CO-3 > 半导体随机存储器 > DRAM > 地址复用",
+    "frequency": 3,
+    "slots": {
+      "Q15": 1,
+      "Q17": 2
+    },
+    "questions": [
+      "2014_Q15",
+      "2018_Q17",
+      "2022_Q17"
+    ],
+    "is_high_freq": true
+  },
+  "CO-2 > 算术逻辑单元 ALU > 标志位 > 进位标志 CF": {
+    "tag": "CO-2 > 算术逻辑单元 ALU > 标志位 > 进位标志 CF",
+    "frequency": 3,
+    "slots": {
+      "Q16": 1,
+      "Q17": 1,
+      "Q19": 1
+    },
+    "questions": [
+      "2023_Q16",
+      "2011_Q17",
+      "2018_Q19"
+    ],
+    "is_high_freq": true
+  },
+  "CO-6 > 总线概述 > 总线性能指标 > 总线时钟频率": {
+    "tag": "CO-6 > 总线概述 > 总线性能指标 > 总线时钟频率",
+    "frequency": 3,
+    "slots": {
+      "Q19": 1,
+      "Q20": 1,
+      "Q21": 1
+    },
+    "questions": [
+      "2014_Q19",
+      "2009_Q20",
+      "2018_Q21"
+    ],
+    "is_high_freq": true
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > 中断方式": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > 中断方式",
+    "frequency": 3,
+    "slots": {
+      "Q20": 1,
+      "Q21": 1,
+      "Q43": 1
+    },
+    "questions": [
+      "2020_Q20",
+      "2022_Q21",
+      "2018_Q43"
+    ],
+    "is_high_freq": true
+  },
+  "CO-7 > I/O方式 > 中断方式 > 中断屏蔽": {
+    "tag": "CO-7 > I/O方式 > 中断方式 > 中断屏蔽",
+    "frequency": 3,
+    "slots": {
+      "Q21": 2,
+      "Q22": 1
+    },
+    "questions": [
+      "2011_Q21",
+      "2020_Q21",
+      "2017_Q22"
+    ],
+    "is_high_freq": true
+  },
+  "CO-7 > I/O方式 > 中断方式": {
+    "tag": "CO-7 > I/O方式 > 中断方式",
+    "frequency": 3,
+    "slots": {
+      "Q21": 1,
+      "Q22": 1,
+      "Q43": 1
+    },
+    "questions": [
+      "2015_Q21",
+      "2023_Q22",
+      "2009_Q43"
+    ],
+    "is_high_freq": true
+  },
+  "CO-7 > I/O方式 > DMA方式": {
+    "tag": "CO-7 > I/O方式 > DMA方式",
+    "frequency": 3,
+    "slots": {
+      "Q21": 1,
+      "Q22": 1,
+      "Q43": 1
+    },
+    "questions": [
+      "2015_Q21",
+      "2023_Q22",
+      "2009_Q43"
+    ],
+    "is_high_freq": true
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > 平均CPI": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > 平均CPI",
+    "frequency": 2,
+    "slots": {
+      "Q12": 2
+    },
+    "questions": [
+      "2010_Q12",
+      "2022_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 软件发展历程 > 高级语言": {
+    "tag": "CO-1 > 计算机系统概述 > 软件发展历程 > 高级语言",
+    "frequency": 2,
+    "slots": {
+      "Q12": 1,
+      "Q20": 1
+    },
+    "questions": [
+      "2016_Q12",
+      "2022_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > 主频": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > 主频",
+    "frequency": 2,
+    "slots": {
+      "Q12": 1,
+      "Q22": 1
+    },
+    "questions": [
+      "2017_Q12",
+      "2011_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 对阶": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 对阶",
+    "frequency": 2,
+    "slots": {
+      "Q13": 1,
+      "Q14": 1
+    },
+    "questions": [
+      "2009_Q13",
+      "2015_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 结果规格化": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 结果规格化",
+    "frequency": 2,
+    "slots": {
+      "Q13": 1,
+      "Q14": 1
+    },
+    "questions": [
+      "2009_Q13",
+      "2015_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 溢出判断": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 溢出判断",
+    "frequency": 2,
+    "slots": {
+      "Q13": 1,
+      "Q14": 1
+    },
+    "questions": [
+      "2009_Q13",
+      "2015_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 溢出判断": {
+    "tag": "CO-2 > 定点数的运算 > 溢出判断",
+    "frequency": 2,
+    "slots": {
+      "Q13": 2
+    },
+    "questions": [
+      "2010_Q13",
+      "2014_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数制与编码 > 进位计数制及相互转换": {
+    "tag": "CO-2 > 数制与编码 > 进位计数制及相互转换",
+    "frequency": 2,
+    "slots": {
+      "Q13": 2
+    },
+    "questions": [
+      "2010_Q13",
+      "2018_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 隐藏位": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 隐藏位",
+    "frequency": 2,
+    "slots": {
+      "Q13": 2
+    },
+    "questions": [
+      "2011_Q13",
+      "2013_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 强制类型转换 > 有符号数到无符号数转换": {
+    "tag": "CO-2 > 定点数的运算 > 强制类型转换 > 有符号数到无符号数转换",
+    "frequency": 2,
+    "slots": {
+      "Q13": 2
+    },
+    "questions": [
+      "2012_Q13",
+      "2016_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 补码加减运算": {
+    "tag": "CO-2 > 定点数的运算 > 补码加减运算",
+    "frequency": 2,
+    "slots": {
+      "Q13": 2
+    },
+    "questions": [
+      "2014_Q13",
+      "2018_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 双端口 RAM 和多模块存储器 > 低位交叉编址": {
+    "tag": "CO-3 > 双端口 RAM 和多模块存储器 > 低位交叉编址",
+    "frequency": 2,
+    "slots": {
+      "Q13": 1,
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q13",
+      "2015_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 移位运算 > 算术右移": {
+    "tag": "CO-2 > 定点数的运算 > 移位运算 > 算术右移",
+    "frequency": 2,
+    "slots": {
+      "Q14": 1,
+      "Q16": 1
+    },
+    "questions": [
+      "2013_Q14",
+      "2018_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 补码加减运算 > 补码加法": {
+    "tag": "CO-2 > 定点数的运算 > 补码加减运算 > 补码加法",
+    "frequency": 2,
+    "slots": {
+      "Q14": 1,
+      "Q19": 1
+    },
+    "questions": [
+      "2013_Q14",
+      "2018_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数制与编码 > 字符与字符串 > 字符串存放": {
+    "tag": "CO-2 > 数制与编码 > 字符与字符串 > 字符串存放",
+    "frequency": 2,
+    "slots": {
+      "Q14": 1,
+      "Q15": 1
+    },
+    "questions": [
+      "2016_Q14",
+      "2012_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 规格化数": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 规格化数",
+    "frequency": 2,
+    "slots": {
+      "Q14": 2
+    },
+    "questions": [
+      "2018_Q14",
+      "2021_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 位扩展": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 位扩展",
+    "frequency": 2,
+    "slots": {
+      "Q15": 2
+    },
+    "questions": [
+      "2009_Q15",
+      "2010_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > CPU与主存连接信号 > MAR位数与地址线": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > CPU与主存连接信号 > MAR位数与地址线",
+    "frequency": 2,
+    "slots": {
+      "Q15": 1,
+      "Q18": 1
+    },
+    "questions": [
+      "2011_Q15",
+      "2016_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache写策略 > 写回": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache写策略 > 写回",
+    "frequency": 2,
+    "slots": {
+      "Q15": 1,
+      "Q16": 1
+    },
+    "questions": [
+      "2015_Q15",
+      "2021_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 数据寻址 > 基址寻址": {
+    "tag": "CO-4 > 指令寻址方式 > 数据寻址 > 基址寻址",
+    "frequency": 2,
+    "slots": {
+      "Q15": 1,
+      "Q44": 1
+    },
+    "questions": [
+      "2017_Q15",
+      "2023_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 数据寻址 > 相对寻址": {
+    "tag": "CO-4 > 指令寻址方式 > 数据寻址 > 相对寻址",
+    "frequency": 2,
+    "slots": {
+      "Q16": 1,
+      "Q44": 1
+    },
+    "questions": [
+      "2009_Q16",
+      "2023_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念",
+    "frequency": 2,
+    "slots": {
+      "Q16": 2
+    },
+    "questions": [
+      "2010_Q16",
+      "2014_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 基址寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 基址寻址",
+    "frequency": 2,
+    "slots": {
+      "Q16": 1,
+      "Q17": 1
+    },
+    "questions": [
+      "2011_Q16",
+      "2014_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线冒险 > 结构冒险": {
+    "tag": "CO-5 > 指令流水线 > 流水线冒险 > 结构冒险",
+    "frequency": 2,
+    "slots": {
+      "Q16": 1,
+      "Q19": 1
+    },
+    "questions": [
+      "2014_Q16",
+      "2010_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 操作码编码": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 操作码编码",
+    "frequency": 2,
+    "slots": {
+      "Q16": 1,
+      "Q17": 1
+    },
+    "questions": [
+      "2020_Q16",
+      "2014_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > Cache行": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > Cache行",
+    "frequency": 2,
+    "slots": {
+      "Q16": 2
+    },
+    "questions": [
+      "2021_Q16",
+      "2022_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 算术逻辑单元 ALU > 标志位 > 溢出标志 OF": {
+    "tag": "CO-2 > 算术逻辑单元 ALU > 标志位 > 溢出标志 OF",
+    "frequency": 2,
+    "slots": {
+      "Q16": 1,
+      "Q19": 1
+    },
+    "questions": [
+      "2023_Q16",
+      "2018_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 数据寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 数据寻址",
+    "frequency": 2,
+    "slots": {
+      "Q17": 2
+    },
+    "questions": [
+      "2011_Q17",
+      "2023_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 有效地址计算": {
+    "tag": "CO-4 > 指令寻址方式 > 有效地址计算",
+    "frequency": 2,
+    "slots": {
+      "Q17": 2
+    },
+    "questions": [
+      "2013_Q17",
+      "2016_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 半导体随机存储器 > DRAM > DRAM刷新": {
+    "tag": "CO-3 > 半导体随机存储器 > DRAM > DRAM刷新",
+    "frequency": 2,
+    "slots": {
+      "Q17": 2
+    },
+    "questions": [
+      "2015_Q17",
+      "2018_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 高级流水线 > 超标量流水线": {
+    "tag": "CO-5 > 指令流水线 > 高级流水线 > 超标量流水线",
+    "frequency": 2,
+    "slots": {
+      "Q17": 2
+    },
+    "questions": [
+      "2017_Q17",
+      "2020_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线性能指标 > 吞吐率": {
+    "tag": "CO-5 > 指令流水线 > 流水线性能指标 > 吞吐率",
+    "frequency": 2,
+    "slots": {
+      "Q17": 1,
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q17",
+      "2013_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令执行方案 > 单指令周期": {
+    "tag": "CO-5 > 指令执行过程 > 指令执行方案 > 单指令周期",
+    "frequency": 2,
+    "slots": {
+      "Q17": 1,
+      "Q20": 1
+    },
+    "questions": [
+      "2020_Q17",
+      "2016_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令格式": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令格式",
+    "frequency": 2,
+    "slots": {
+      "Q18": 2
+    },
+    "questions": [
+      "2012_Q18",
+      "2014_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 内部总线": {
+    "tag": "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 内部总线",
+    "frequency": 2,
+    "slots": {
+      "Q18": 2
+    },
+    "questions": [
+      "2021_Q18",
+      "2023_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线冒险 > 数据冒险": {
+    "tag": "CO-5 > 指令流水线 > 流水线冒险 > 数据冒险",
+    "frequency": 2,
+    "slots": {
+      "Q19": 2
+    },
+    "questions": [
+      "2010_Q19",
+      "2016_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 同步定时方式": {
+    "tag": "CO-6 > 总线操作和定时 > 同步定时方式",
+    "frequency": 2,
+    "slots": {
+      "Q19": 2
+    },
+    "questions": [
+      "2012_Q19",
+      "2021_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线基本概念 > 总线共享": {
+    "tag": "CO-6 > 总线概述 > 总线基本概念 > 总线共享",
+    "frequency": 2,
+    "slots": {
+      "Q19": 1,
+      "Q20": 1
+    },
+    "questions": [
+      "2020_Q19",
+      "2017_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > 中断方式 > 中断优先级": {
+    "tag": "CO-7 > I/O方式 > 中断方式 > 中断优先级",
+    "frequency": 2,
+    "slots": {
+      "Q21": 1,
+      "Q22": 1
+    },
+    "questions": [
+      "2011_Q21",
+      "2018_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口概念 > I/O接口": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口概念 > I/O接口",
+    "frequency": 2,
+    "slots": {
+      "Q21": 2
+    },
+    "questions": [
+      "2012_Q21",
+      "2017_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘性能 > 平均存取时间": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘性能 > 平均存取时间",
+    "frequency": 2,
+    "slots": {
+      "Q21": 1,
+      "Q44": 1
+    },
+    "questions": [
+      "2013_Q21",
+      "2022_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 补码加减运算": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 补码加减运算",
+    "frequency": 2,
+    "slots": {
+      "Q43": 2
+    },
+    "questions": [
+      "2011_Q43",
+      "2020_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > DMA方式": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > DMA方式",
+    "frequency": 2,
+    "slots": {
+      "Q43": 2
+    },
+    "questions": [
+      "2012_Q43",
+      "2018_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 补码加减运算 > 符号扩展": {
+    "tag": "CO-2 > 定点数的运算 > 补码加减运算 > 符号扩展",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2009_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > MIPS": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > MIPS",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2011_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > MFLOPS": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > MFLOPS",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2011_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > 运算速度": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > 运算速度",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2012_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机发展历程 > 软件发展历程 > 机器语言": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机发展历程 > 软件发展历程 > 机器语言",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2015_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机发展历程 > 软件发展历程 > 汇编语言": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机发展历程 > 软件发展历程 > 汇编语言",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2015_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 软件发展历程 > 汇编语言": {
+    "tag": "CO-1 > 计算机系统概述 > 软件发展历程 > 汇编语言",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2016_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 软件发展历程 > 机器语言": {
+    "tag": "CO-1 > 计算机系统概述 > 软件发展历程 > 机器语言",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2016_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > CPU性能指标 > CPI": {
+    "tag": "CO-1 > 计算机性能指标 > CPU性能指标 > CPI",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2017_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 冯诺依曼结构 > 二进制表示": {
+    "tag": "CO-1 > 计算机系统概述 > 冯诺依曼结构 > 二进制表示",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2018_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机发展历程 > 硬件发展历程": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机发展历程 > 硬件发展历程",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2018_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > 机器字长": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > 机器字长",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2020_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 常用部件与寄存器 > ALU": {
+    "tag": "CO-1 > 计算机系统概述 > 常用部件与寄存器 > ALU",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2020_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 常用部件与寄存器 > 寄存器": {
+    "tag": "CO-1 > 计算机系统概述 > 常用部件与寄存器 > 寄存器",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2020_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 指令字长": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 指令字长",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2020_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > 运算速度": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > 运算速度",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2021_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > MFLOPS": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > MFLOPS",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2021_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > 主频": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > 主频",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2023_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > CPI": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标 > CPI",
+    "frequency": 1,
+    "slots": {
+      "Q12": 1
+    },
+    "questions": [
+      "2023_Q12"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 尾数加减": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 尾数加减",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2009_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 强制类型转换 > 零扩展": {
+    "tag": "CO-2 > 定点数的运算 > 强制类型转换 > 零扩展",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2012_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 数制与编码 > 进位计数制及相互转换": {
+    "tag": "CO-2 > 数据的表示和运算 > 数制与编码 > 进位计数制及相互转换",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2012_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的表示 > 机器数表示 > 补码与真值转换": {
+    "tag": "CO-2 > 定点数的表示 > 机器数表示 > 补码与真值转换",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2015_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 双端口 RAM 和多模块存储器 > 存储器带宽": {
+    "tag": "CO-3 > 双端口 RAM 和多模块存储器 > 存储器带宽",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2017_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 字符与字符串 > 大端方式(隐含地址结构理解)": {
+    "tag": "CO-2 > 数据的表示和运算 > 字符与字符串 > 大端方式(隐含地址结构理解)",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2017_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的表示 > 机器数表示": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的表示 > 机器数表示",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2021_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的表示 > 补码与真值转换": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的表示 > 补码与真值转换",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2021_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数制与编码 > 进位计数制及相互转换 > 整数部分除基取余": {
+    "tag": "CO-2 > 数制与编码 > 进位计数制及相互转换 > 整数部分除基取余",
+    "frequency": 1,
+    "slots": {
+      "Q13": 1
+    },
+    "questions": [
+      "2023_Q13"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > Cache组号": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > Cache组号",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2009_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 强制类型转换": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 强制类型转换",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2010_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数 > 尾数": {
+    "tag": "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数 > 尾数",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2010_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > 浮点数加减运算 > 对阶": {
+    "tag": "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > 浮点数加减运算 > 对阶",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2010_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储器层次结构 > 存储器分类 > 随机存取存储器": {
+    "tag": "CO-3 > 存储器层次结构 > 存储器分类 > 随机存取存储器",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2011_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 只读存储器 > ROM类型 > Flash Memory": {
+    "tag": "CO-3 > 只读存储器 > ROM类型 > Flash Memory",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2011_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 外部设备 > 磁盘存储器 (类比理解顺序存取)": {
+    "tag": "CO-7 > 外部设备 > 磁盘存储器 (类比理解顺序存取)",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2011_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 浮点数表示范围": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 浮点数表示范围",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2012_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数表示 > 隐藏位": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数表示 > 隐藏位",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2012_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 移位运算 > 算术左移": {
+    "tag": "CO-2 > 定点数的运算 > 移位运算 > 算术左移",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2013_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 阶码字段": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 阶码字段",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2014_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 尾数字段": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 尾数字段",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2014_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 舍入处理": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数加减运算 > 舍入处理",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2015_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 时间局部性": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 时间局部性",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2017_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 空间局部性": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 空间局部性",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2017_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的表示 > 机器数表示 > 原码表示（此处指代基本类型存储概念": {
+    "tag": "CO-2 > 定点数的表示 > 机器数表示 > 原码表示（此处指代基本类型存储概念",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2020_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "虽非原码但属同一层级基础）": {
+    "tag": "虽非原码但属同一层级基础）",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2020_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 指令系统 > 数据寻址（隐含内存地址映射）": {
+    "tag": "CO-5 > 中央处理器 > 指令系统 > 数据寻址（隐含内存地址映射）",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2020_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 浮点数表示精度": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 浮点数表示精度",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2021_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > 浮点数表示 > 规格化表示": {
+    "tag": "CO-2 > 浮点数的表示和运算 > 浮点数表示 > 规格化表示",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2022_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 非规格化数": {
+    "tag": "CO-2 > 浮点数的表示和运算 > IEEE 754浮点数 > 非规格化数",
+    "frequency": 1,
+    "slots": {
+      "Q14": 1
+    },
+    "questions": [
+      "2023_Q14"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 校验码 > 海明码 > 海明码校验位数计算": {
+    "tag": "CO-2 > 数据的表示和运算 > 校验码 > 海明码 > 海明码校验位数计算",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2013_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 平均访问时间": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 平均访问时间",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2015_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的表示 > 补码表示 > 补码与真值转换": {
+    "tag": "CO-2 > 定点数的表示 > 补码表示 > 补码与真值转换",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2018_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 地址线数量计算": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 地址线数量计算",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2021_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 数据线数量计算": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展 > 数据线数量计算",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2021_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 连接原理 > 地址总线连接": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 连接原理 > 地址总线连接",
+    "frequency": 1,
+    "slots": {
+      "Q15": 1
+    },
+    "questions": [
+      "2023_Q15"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 指令寻址 > PC自增": {
+    "tag": "CO-4 > 指令寻址方式 > 指令寻址 > PC自增",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2009_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 有效地址计算 > PC相对位移": {
+    "tag": "CO-4 > 指令寻址方式 > 有效地址计算 > PC相对位移",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2009_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 半导体随机存储器 > SRAM与DRAM比较": {
+    "tag": "CO-3 > 半导体随机存储器 > SRAM与DRAM比较",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2010_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 只读存储器 > ROM特点": {
+    "tag": "CO-3 > 只读存储器 > ROM特点",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2010_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 间接寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 间接寻址",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2011_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 相对寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 相对寻址",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2011_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 变址寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 变址寻址",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2011_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储器分类 > 只读存储器 > Flash Memory": {
+    "tag": "CO-3 > 存储器分类 > 只读存储器 > Flash Memory",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2012_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储器分类 > 非易失性存储器": {
+    "tag": "CO-3 > 存储器分类 > 非易失性存储器",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2012_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache写策略 > 写直达": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache写策略 > 写直达",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2015_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令执行数据流 > 取指/间址/执行": {
+    "tag": "CO-5 > 指令执行过程 > 指令执行数据流 > 取指/间址/执行",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2015_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 半导体随机存储器 > SRAM": {
+    "tag": "CO-3 > 半导体随机存储器 > SRAM",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2016_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 扩展操作码": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 扩展操作码",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2017_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 操作码位数计算": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 操作码位数计算",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2017_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 移位运算 > 逻辑右移": {
+    "tag": "CO-2 > 定点数的运算 > 移位运算 > 逻辑右移",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2018_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 地址码位数计算": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 地址码位数计算",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2020_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令寻址方式 > 直接寻址": {
+    "tag": "CO-4 > 指令系统 > 指令寻址方式 > 直接寻址",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2020_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 定点数的运算 > 补码加减运算 > 单符号位判溢出": {
+    "tag": "CO-2 > 定点数的运算 > 补码加减运算 > 单符号位判溢出",
+    "frequency": 1,
+    "slots": {
+      "Q16": 1
+    },
+    "questions": [
+      "2023_Q16"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > CISC 和 RISC > CISC与RISC比较 > 控制方式比较": {
+    "tag": "CO-4 > CISC 和 RISC > CISC与RISC比较 > 控制方式比较",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2009_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > CISC 和 RISC > CISC与RISC比较 > 指令执行周期比较": {
+    "tag": "CO-4 > CISC 和 RISC > CISC与RISC比较 > 指令执行周期比较",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2009_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > CISC 和 RISC > CISC与RISC比较 > 通用寄存器数量比较": {
+    "tag": "CO-4 > CISC 和 RISC > CISC与RISC比较 > 通用寄存器数量比较",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2009_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 算术逻辑单元 ALU > 标志位 > 零标志 ZF": {
+    "tag": "CO-2 > 算术逻辑单元 ALU > 标志位 > 零标志 ZF",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2011_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 半导体随机存储器 > SRAM与DRAM比较 > 刷新需求差异": {
+    "tag": "CO-3 > 半导体随机存储器 > SRAM与DRAM比较 > 刷新需求差异",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2015_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 数据寻址 > 间接寻址": {
+    "tag": "CO-4 > 指令寻址方式 > 数据寻址 > 间接寻址",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2016_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令执行方案 > 多指令周期": {
+    "tag": "CO-5 > 指令执行过程 > 指令执行方案 > 多指令周期",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2020_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 基本概念 > 流水线节拍": {
+    "tag": "CO-5 > 指令流水线 > 基本概念 > 流水线节拍",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2020_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 控制器结构 > IR": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 控制器结构 > IR",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2021_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 运算器结构 > 通用寄存器组": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 运算器结构 > 通用寄存器组",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2021_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 运算器结构 > 程序状态字PSW": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 运算器结构 > 程序状态字PSW",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2021_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令寄存器": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令寄存器",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2021_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 半导体随机存储器 > DRAM > DRAM存储单元": {
+    "tag": "CO-3 > 半导体随机存储器 > DRAM > DRAM存储单元",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2022_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 时间局部性 (关联行缓冲概念)": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > 时间局部性 (关联行缓冲概念)",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2022_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 地址码字段": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 地址码字段",
+    "frequency": 1,
+    "slots": {
+      "Q17": 1
+    },
+    "questions": [
+      "2023_Q17"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线基本概念 > 流水线节拍": {
+    "tag": "CO-5 > 指令流水线 > 流水线基本概念 > 流水线节拍",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2009_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > PC": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > PC",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2010_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > MAR": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > MAR",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2010_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > MDR": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > MDR",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2010_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > IR": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 常用部件与寄存器 > IR",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2010_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线基本概念": {
+    "tag": "CO-5 > 指令流水线 > 流水线基本概念",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2011_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > CISC 和 RISC > RISC特点": {
+    "tag": "CO-4 > CISC 和 RISC > RISC特点",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2011_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > CISC 和 RISC > Load/Store结构": {
+    "tag": "CO-4 > CISC 和 RISC > Load/Store结构",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2011_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微命令": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微命令",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2012_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线基本概念 > 流水线阶段": {
+    "tag": "CO-5 > 指令流水线 > 流水线基本概念 > 流水线阶段",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2013_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微地址形成": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微地址形成",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2014_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 双端口 RAM 和多模块存储器 > 模块冲突": {
+    "tag": "CO-3 > 双端口 RAM 和多模块存储器 > 模块冲突",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2015_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统结构 > 常用部件与寄存器 > PC": {
+    "tag": "CO-1 > 计算机系统结构 > 常用部件与寄存器 > PC",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2016_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统结构 > 常用部件与寄存器 > IR": {
+    "tag": "CO-1 > 计算机系统结构 > 常用部件与寄存器 > IR",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2016_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令格式 > 指令基本格式 > 指令字长": {
+    "tag": "CO-4 > 指令格式 > 指令基本格式 > 指令字长",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2016_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 控制存储器": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 控制存储器",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储器分类 > 相联存储器": {
+    "tag": "CO-3 > 存储器分类 > 相联存储器",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展": {
+    "tag": "CO-3 > 主存储器和 CPU 的连接 > 主存容量扩展",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2017_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令寻址方式 > 有效地址计算 > 变址寄存器IX": {
+    "tag": "CO-4 > 指令寻址方式 > 有效地址计算 > 变址寄存器IX",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2018_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能 > 中断处理": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能 > 中断处理",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2020_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 指令执行过程 > 中断周期": {
+    "tag": "CO-5 > 中央处理器 > 指令执行过程 > 中断周期",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2020_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 数据通路": {
+    "tag": "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 数据通路",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2021_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 算术逻辑单元 ALU > 标志位 > 状态标志生成": {
+    "tag": "CO-2 > 算术逻辑单元 ALU > 标志位 > 状态标志生成",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2021_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 指令基本格式": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 指令基本格式",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2022_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > CISC 和 RISC > 基本概念": {
+    "tag": "CO-4 > 指令系统 > CISC 和 RISC > 基本概念",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2022_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 控制信号": {
+    "tag": "CO-5 > 数据通路的功能和基本结构 > 数据通路基本概念 > 控制信号",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2023_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 算术逻辑单元 ALU > ALU基本功能 > 算术运算": {
+    "tag": "CO-2 > 算术逻辑单元 ALU > ALU基本功能 > 算术运算",
+    "frequency": 1,
+    "slots": {
+      "Q18": 1
+    },
+    "questions": [
+      "2023_Q18"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 硬布线控制器 > 组合逻辑控制": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 硬布线控制器 > 组合逻辑控制",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2009_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 微程序控制器 > 微指令",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2009_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 硬布线与微程序比较 > 速度比较": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 硬布线与微程序比较 > 速度比较",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2009_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 控制器的功能和工作原理 > 硬布线与微程序比较 > 扩展性比较": {
+    "tag": "CO-5 > 控制器的功能和工作原理 > 硬布线与微程序比较 > 扩展性比较",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2009_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线冒险处理 > 转发/旁路": {
+    "tag": "CO-5 > 指令流水线 > 流水线冒险处理 > 转发/旁路",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2010_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线冒险 > 控制冒险": {
+    "tag": "CO-5 > 指令流水线 > 流水线冒险 > 控制冒险",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2010_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令周期 > 取指周期": {
+    "tag": "CO-5 > 指令执行过程 > 指令周期 > 取指周期",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2011_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令周期 > 执行周期": {
+    "tag": "CO-5 > 指令执行过程 > 指令周期 > 执行周期",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2011_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > 控制器结构 > PC": {
+    "tag": "CO-5 > CPU的功能和基本结构 > 控制器结构 > PC",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2011_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 总线 > 总线标准 > 系统总线标准": {
+    "tag": "CO-7 > 总线 > 总线标准 > 系统总线标准",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2013_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 总线 > 总线标准 > 设备总线标准": {
+    "tag": "CO-7 > 总线 > 总线标准 > 设备总线标准",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2013_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 同步定时方式 > 统一时钟": {
+    "tag": "CO-6 > 总线操作和定时 > 同步定时方式 > 统一时钟",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2015_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 异步定时方式 > 全互锁方式": {
+    "tag": "CO-6 > 总线操作和定时 > 异步定时方式 > 全互锁方式",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2015_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 异步定时方式 > 半互锁方式": {
+    "tag": "CO-6 > 总线操作和定时 > 异步定时方式 > 半互锁方式",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2015_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 异步定时方式 > 不互锁方式": {
+    "tag": "CO-6 > 总线操作和定时 > 异步定时方式 > 不互锁方式",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2015_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线冒险 > 写后读 RAW": {
+    "tag": "CO-5 > 指令流水线 > 流水线冒险 > 写后读 RAW",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2016_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 指令周期 > 取指周期微操作": {
+    "tag": "CO-5 > 指令执行过程 > 指令周期 > 取指周期微操作",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2016_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > 运算器结构 > ALU": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > 运算器结构 > ALU",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2017_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > 控制器结构 > 控制器功能": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > 控制器结构 > 控制器功能",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2017_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 数据通路的功能和基本结构 > 数据通路基本概念": {
+    "tag": "CO-5 > 中央处理器 > 数据通路的功能和基本结构 > 数据通路基本概念",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2017_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线基本概念": {
+    "tag": "CO-6 > 总线概述 > 总线基本概念",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2021_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 异步定时方式": {
+    "tag": "CO-6 > 总线操作和定时 > 异步定时方式",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2021_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 操作码编码 > 扩展操作码": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 操作码编码 > 扩展操作码",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2022_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 操作码编码 > 操作码位数计算": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 操作码编码 > 操作码位数计算",
+    "frequency": 1,
+    "slots": {
+      "Q19": 1
+    },
+    "questions": [
+      "2022_Q19"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线标准 > 系统总线标准 > ISA": {
+    "tag": "CO-6 > 总线标准 > 系统总线标准 > ISA",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2010_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线标准 > 系统总线标准 > EISA": {
+    "tag": "CO-6 > 总线标准 > 系统总线标准 > EISA",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2010_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线标准 > 系统总线标准 > PCI": {
+    "tag": "CO-6 > 总线标准 > 系统总线标准 > PCI",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2010_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线标准 > 设备总线标准 > USB": {
+    "tag": "CO-6 > 总线标准 > 设备总线标准 > USB",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2010_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线分类 > 数据总线": {
+    "tag": "CO-6 > 总线概述 > 总线分类 > 数据总线",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2011_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线分类 > 控制总线": {
+    "tag": "CO-6 > 总线概述 > 总线分类 > 控制总线",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2011_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 总线 > 总线标准 > 设备总线标准 > USB": {
+    "tag": "CO-7 > 总线 > 总线标准 > 设备总线标准 > USB",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2012_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘阵列 RAID": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘阵列 RAID",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2013_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 0": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 0",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2013_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 1": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 1",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2013_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 5": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > RAID 5",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2013_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线 > 总线概述 > 总线传输": {
+    "tag": "CO-6 > 总线 > 总线概述 > 总线传输",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2014_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 平均存取时间": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 平均存取时间",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2015_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 旋转延迟": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 旋转延迟",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2015_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 传输时间": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 传输时间",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2015_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 数据通路的功能和基本结构 > 数据通路结构 > 单总线数据通路": {
+    "tag": "CO-5 > 数据通路的功能和基本结构 > 数据通路结构 > 单总线数据通路",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2016_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线标准 > 系统总线标准 > PCI Express": {
+    "tag": "CO-6 > 总线标准 > 系统总线标准 > PCI Express",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2017_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线性能指标 > 流水线节拍": {
+    "tag": "CO-5 > 指令流水线 > 流水线性能指标 > 流水线节拍",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2018_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 流水线基本概念 > 流水线填充": {
+    "tag": "CO-5 > 指令流水线 > 流水线基本概念 > 流水线填充",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2018_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > 中断处理": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > 中断处理",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2020_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口概念": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口概念",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2021_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > 输入/输出设备": {
+    "tag": "CO-7 > I/O系统基本概念 > 输入/输出设备",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2021_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机工作过程 > 指令流": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机工作过程 > 指令流",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2022_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线操作和定时 > 总线操作 > 总线传输周期": {
+    "tag": "CO-6 > 总线操作和定时 > 总线操作 > 总线传输周期",
+    "frequency": 1,
+    "slots": {
+      "Q20": 1
+    },
+    "questions": [
+      "2023_Q20"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > Cache缺失": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache基本概念 > Cache缺失",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2009_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 中断系统 > 中断处理过程": {
+    "tag": "CO-5 > 中央处理器 > 中断系统 > 中断处理过程",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2010_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 中断系统 > 中断隐指令": {
+    "tag": "CO-5 > 中央处理器 > 中断系统 > 中断隐指令",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2010_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口概念 > 中断请求": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口概念 > 中断请求",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2011_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O接口 > I/O接口功能 > 数据缓冲": {
+    "tag": "CO-7 > I/O接口 > I/O接口功能 > 数据缓冲",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2012_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O接口 > I/O接口功能 > 传送控制": {
+    "tag": "CO-7 > I/O接口 > I/O接口功能 > 传送控制",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2012_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O接口 > I/O编址方式 > 统一编址": {
+    "tag": "CO-7 > I/O接口 > I/O编址方式 > 统一编址",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2014_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O接口 > I/O编址方式 > 独立编址": {
+    "tag": "CO-7 > I/O接口 > I/O编址方式 > 独立编址",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2014_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O接口 > I/O端口及地址 > 数据端口地址": {
+    "tag": "CO-7 > I/O接口 > I/O端口及地址 > 数据端口地址",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2014_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口功能": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口功能",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2015_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线性能指标": {
+    "tag": "CO-6 > 总线概述 > 总线性能指标",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2016_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线复用": {
+    "tag": "CO-6 > 总线概述 > 总线复用",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2016_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口概念 > I/O端口": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口概念 > I/O端口",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2017_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线基本概念 > 总线复用": {
+    "tag": "CO-6 > 总线概述 > 总线基本概念 > 总线复用",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2018_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > I/O方式比较": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > I/O方式比较",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2022_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 控制器的功能和工作原理 > 硬布线控制器 > 指令译码信号": {
+    "tag": "CO-5 > 中央处理器 > 控制器的功能和工作原理 > 硬布线控制器 > 指令译码信号",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2023_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > 中断方式 > 中断请求": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > 中断方式 > 中断请求",
+    "frequency": 1,
+    "slots": {
+      "Q21": 1
+    },
+    "questions": [
+      "2023_Q21"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 外部设备 > 显示设备 > 分辨率": {
+    "tag": "CO-7 > 外部设备 > 显示设备 > 分辨率",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2010_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 外部设备 > 显示设备 > VRAM显存": {
+    "tag": "CO-7 > 外部设备 > 显示设备 > VRAM显存",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2010_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机性能指标 > 数据通路带宽": {
+    "tag": "CO-1 > 计算机性能指标 > 数据通路带宽",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2010_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > 程序查询方式 > CPU忙等": {
+    "tag": "CO-7 > I/O方式 > 程序查询方式 > CPU忙等",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2011_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > DMA方式 > DMA请求": {
+    "tag": "CO-7 > I/O方式 > DMA方式 > DMA请求",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2013_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > DMA方式 > DMA响应": {
+    "tag": "CO-7 > I/O方式 > DMA方式 > DMA响应",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2013_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > DMA方式 > DMA传送": {
+    "tag": "CO-7 > I/O方式 > DMA方式 > DMA传送",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2013_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > I/O方式比较 > 中断与DMA比较": {
+    "tag": "CO-7 > I/O方式 > I/O方式比较 > 中断与DMA比较",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2013_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > 中断方式 > 中断服务程序": {
+    "tag": "CO-7 > I/O方式 > 中断方式 > 中断服务程序",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2014_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > I/O方式比较 > CPU干预程度比较": {
+    "tag": "CO-7 > I/O方式 > I/O方式比较 > CPU干预程度比较",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2014_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > 中断方式 > 中断响应": {
+    "tag": "CO-7 > I/O系统基本概念 > 中断方式 > 中断响应",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2015_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > 中断方式 > 中断服务程序": {
+    "tag": "CO-7 > I/O系统基本概念 > 中断方式 > 中断服务程序",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2015_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > 中断方式 > 中断返回": {
+    "tag": "CO-7 > I/O系统基本概念 > 中断方式 > 中断返回",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2015_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > 控制器的功能和工作原理 > 硬布线控制器": {
+    "tag": "CO-5 > 中央处理器 > 控制器的功能和工作原理 > 硬布线控制器",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2018_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > DMA方式 > 周期挪用": {
+    "tag": "CO-7 > I/O方式 > DMA方式 > 周期挪用",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2020_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > DMA方式 > DMA控制器": {
+    "tag": "CO-7 > I/O方式 > DMA方式 > DMA控制器",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2020_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线概述 > 总线仲裁 > 独立请求方式": {
+    "tag": "CO-6 > 总线概述 > 总线仲裁 > 独立请求方式",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2020_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令流水线 > 高级流水线": {
+    "tag": "CO-5 > 指令流水线 > 高级流水线",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2022_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机发展历程 > 计算机分类与发展方向 > 并行处理": {
+    "tag": "CO-1 > 计算机发展历程 > 计算机分类与发展方向 > 并行处理",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2022_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口类型 > 程序查询接口": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口类型 > 程序查询接口",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2023_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口类型 > 中断接口": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口类型 > 中断接口",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2023_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O系统基本概念 > I/O接口类型 > DMA接口": {
+    "tag": "CO-7 > I/O系统基本概念 > I/O接口类型 > DMA接口",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2023_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > I/O方式 > 程序查询方式": {
+    "tag": "CO-7 > I/O方式 > 程序查询方式",
+    "frequency": 1,
+    "slots": {
+      "Q22": 1
+    },
+    "questions": [
+      "2023_Q22"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU性能指标 > CPU执行时间": {
+    "tag": "CO-5 > CPU性能指标 > CPU执行时间",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2009_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 溢出判断": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 溢出判断",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2011_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 进位标志CF": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 进位标志CF",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2011_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 溢出标志OF": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 溢出标志OF",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2011_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标": {
+    "tag": "CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2012_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > CPU性能指标": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > CPU性能指标",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2012_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线 > 总线性能指标 > 总线带宽": {
+    "tag": "CO-6 > 总线 > 总线性能指标 > 总线带宽",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2013_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储系统 > 双端口 RAM 和多模块存储器 > 多体并行存储器 > 低位交叉编址": {
+    "tag": "CO-3 > 存储系统 > 双端口 RAM 和多模块存储器 > 多体并行存储器 > 低位交叉编址",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2013_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 存储系统 > 高速缓冲存储器 Cache > Cache基本概念 > 平均访问时间": {
+    "tag": "CO-3 > 存储系统 > 高速缓冲存储器 Cache > Cache基本概念 > 平均访问时间",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2013_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > CPU性能指标 > CPU执行时间": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > CPU性能指标 > CPU执行时间",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2013_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "N/A (本题属于数据结构/算法领域": {
+    "tag": "N/A (本题属于数据结构/算法领域",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2016_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "提供的计算机组成原理思维导图中无对应标签。若强行关联": {
+    "tag": "提供的计算机组成原理思维导图中无对应标签。若强行关联",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2016_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "可视为“指令系统”中ALU的算术逻辑运算的基础": {
+    "tag": "可视为“指令系统”中ALU的算术逻辑运算的基础",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2016_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "但非考点。)": {
+    "tag": "但非考点。)",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2016_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数": {
+    "tag": "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2017_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > 浮点数加减运算": {
+    "tag": "CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > 浮点数加减运算",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2017_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > 程序查询方式": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > 程序查询方式",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2018_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 定点数的运算 > 移位运算": {
+    "tag": "CO-2 > 数据的表示和运算 > 定点数的运算 > 移位运算",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2020_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-4 > 指令系统 > 指令格式 > 定长指令字结构": {
+    "tag": "CO-4 > 指令系统 > 指令格式 > 定长指令字结构",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2021_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 中央处理器 > CPU的功能和基本结构 > 常用部件与寄存器": {
+    "tag": "CO-5 > 中央处理器 > CPU的功能和基本结构 > 常用部件与寄存器",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2021_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-6 > 总线 > 总线概述 > 总线性能指标": {
+    "tag": "CO-6 > 总线 > 总线概述 > 总线性能指标",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2021_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > 平均访问时间 > 命中率": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > 平均访问时间 > 命中率",
+    "frequency": 1,
+    "slots": {
+      "Q43": 1
+    },
+    "questions": [
+      "2023_Q43"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > 命中率 > 平均访问时间": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > 命中率 > 平均访问时间",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2010_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 虚拟存储器 > 快表 TLB > 地址转换": {
+    "tag": "CO-3 > 虚拟存储器 > 快表 TLB > 地址转换",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2011_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > Cache标记Tag": {
+    "tag": "CO-3 > 高速缓冲存储器 Cache > Cache地址映射 > Cache标记Tag",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2011_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 外部设备 > 显示设备/输入设备(隐含串口通信原理)": {
+    "tag": "CO-7 > 外部设备 > 显示设备/输入设备(隐含串口通信原理)",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2016_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > CPU的功能和基本结构 > CPU性能指标 > CPI": {
+    "tag": "CO-5 > CPU的功能和基本结构 > CPU性能指标 > CPI",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2016_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-5 > 指令执行过程 > 中断周期 > 中断响应": {
+    "tag": "CO-5 > 指令执行过程 > 中断周期 > 中断响应",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2016_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-3 > 虚拟存储器 > 快表 TLB > TLB缺失": {
+    "tag": "CO-3 > 虚拟存储器 > 快表 TLB > TLB缺失",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2021_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘结构 > 磁道": {
+    "tag": "CO-7 > 输入输出系统 > 外部设备 > 磁盘存储器 > 磁盘结构 > 磁道",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2022_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-7 > 输入输出系统 > I/O方式 > DMA方式 > DMA控制器": {
+    "tag": "CO-7 > 输入输出系统 > I/O方式 > DMA方式 > DMA控制器",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2022_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 字符与字符串 > 大端方式": {
+    "tag": "CO-2 > 数据的表示和运算 > 字符与字符串 > 大端方式",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2023_Q44"
+    ],
+    "is_high_freq": false
+  },
+  "CO-2 > 数据的表示和运算 > 字符与字符串 > 小端方式": {
+    "tag": "CO-2 > 数据的表示和运算 > 字符与字符串 > 小端方式",
+    "frequency": 1,
+    "slots": {
+      "Q44": 1
+    },
+    "questions": [
+      "2023_Q44"
+    ],
+    "is_high_freq": false
+  }
+}
