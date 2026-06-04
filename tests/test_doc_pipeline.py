@@ -14,6 +14,7 @@ import pytest
 
 from core_new.doc_pipeline.write_file_tool import WriteFileTool
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
+from core_new.doc_pipeline.context import ContextRegistry, FileProvider, InlineProvider, ProviderDef
 from core_new.doc_pipeline.agents import AGENT_PROMPTS as _AGENT_PROMPTS_LEGACY, AGENT_OUTPUT_FILES as _AGENT_OUTPUT_FILES_LEGACY, MULTI_TURN_AGENTS as _MULTI_TURN_LEGACY
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
@@ -59,6 +60,22 @@ class FakeStreamClient:
                 yield chunk
 
         return _stream()
+
+
+class FakeChatCallProvider:
+    model_name = "fake-chat-model"
+    sampling_params = {}
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.calls = []
+
+    async def _chat_call(self, messages, **kwargs):
+        self.calls.append({"messages": messages, **kwargs})
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
 
 def _stream_chunk(*, content="", reasoning="", tool_calls=None, finish_reason=None):
@@ -221,11 +238,11 @@ class TestDocParser:
 
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
+        expected_roles = {"design", "question", "analysis", "coding", "review", "fix"}
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
     def test_all_roles_have_output_files(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
+        expected_roles = {"design", "question", "analysis", "coding", "review", "fix"}
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
     def test_output_files_have_extensions(self):
@@ -430,8 +447,8 @@ class TestDocPipelineOrchestrator:
 
         result = run_async(orchestrator.run_pipeline("S5", {"slot_id": "S5"}))
 
-        assert result["ok"] is True
-        assert result["code_exec_ok"] is True
+        assert result.ok is True
+        assert result.code_exec_ok is True
         assert [c["role"] for c in scheduler.calls] == [
             "design",
             "question",
@@ -442,6 +459,188 @@ class TestDocPipelineOrchestrator:
         final_text = (tmp_path / "S5" / "final.md").read_text(encoding="utf-8")
         assert "## 题目" in final_text
         assert "42" in final_text
+
+    def test_resume_refreshes_assembled_doc_and_requires_solve_output(self, tmp_path):
+        slot_dir = tmp_path / "S6"
+        slot_dir.mkdir()
+        (slot_dir / "blueprint.md").write_text("old blueprint", encoding="utf-8")
+        (slot_dir / "question.md").write_text(
+            "## status\ndraft\n\n## 题干\n计算题。\n\n## 答案\n42",
+            encoding="utf-8",
+        )
+
+        scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
+        orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline(
+            "S6",
+            {"slot_id": "S6"},
+            assembled_experience_doc="fresh assembled blueprint",
+            start_layer=4,
+        ))
+
+        assert result.ok is False
+        assert "solve_output.txt not found" in result.error
+        assert (slot_dir / "blueprint.md").read_text(encoding="utf-8") == "fresh assembled blueprint"
+        assert scheduler.calls == []
+
+    def test_resume_layer4_uses_existing_outputs(self, tmp_path):
+        slot_dir = tmp_path / "S7"
+        slot_dir.mkdir()
+        (slot_dir / "blueprint.md").write_text("old blueprint", encoding="utf-8")
+        (slot_dir / "question.md").write_text(
+            "## status\ndraft\n\n## 题干\n计算题。\n\n## 答案\n42",
+            encoding="utf-8",
+        )
+        (slot_dir / "solve_output.txt").write_text("ANSWER: 42", encoding="utf-8")
+
+        scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
+        orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline(
+            "S7",
+            {"slot_id": "S7"},
+            assembled_experience_doc="fresh assembled blueprint",
+            start_layer=4,
+        ))
+
+        assert result.ok is True
+        assert (slot_dir / "blueprint.md").read_text(encoding="utf-8") == "fresh assembled blueprint"
+        assert [c["role"] for c in scheduler.calls] == ["review"]
+
+
+class TestContextRegistry:
+    def test_resolve_for_role_honors_provider_phases(self, tmp_path):
+        slot_dir = tmp_path / "S8"
+        slot_dir.mkdir()
+        (slot_dir / "review.md").write_text("review", encoding="utf-8")
+
+        registry = ContextRegistry()
+        registry.register(FileProvider(ProviderDef(
+            name="review_comments",
+            type="file",
+            label="审核意见",
+            phases=[4],
+            path_pattern="{workspace}/{slot_id}/review.md",
+        )))
+        registry.register(InlineProvider(ProviderDef(
+            name="experience_doc",
+            type="inline",
+            label="经验文档",
+            phases=[1, 2],
+        )))
+        registry.set_role_binding("debug", ["review_comments", "experience_doc"])
+
+        phase2 = run_async(registry.resolve_for_role(
+            "debug",
+            tmp_path,
+            "S8",
+            2,
+            runtime_args={"experience_doc": "inline"},
+        ))
+        phase4 = run_async(registry.resolve_for_role(
+            "debug",
+            tmp_path,
+            "S8",
+            4,
+            runtime_args={"experience_doc": "inline"},
+        ))
+
+        assert phase2 == {"经验文档": "inline"}
+        assert phase4 == {"审核意见": str(slot_dir / "review.md")}
+
+
+class TestRunSlotCompositionArtifacts:
+    def test_run_composition_passes_slot_filter_to_generate(self, monkeypatch, tmp_path):
+        import compose.compose_runner as compose_runner
+        import compose.generate_runner as generate_runner
+        import compose.cli as cli_mod
+
+        captured = {}
+
+        async def fake_compose(
+            gateway,
+            slot_templates,
+            experience_cards,
+            user_requirements,
+            slot_ids=None,
+            output_dir="docs",
+            model_routing=None,
+        ):
+            captured["compose_slot_ids"] = slot_ids
+            return {"status": "ok", "compose_dir": str(tmp_path / "compose")}
+
+        async def fake_generate(
+            gateway,
+            compose_dir,
+            output_dir="docs",
+            model_routing=None,
+            slot_filter=None,
+            resume_from=1,
+            run_id=None,
+        ):
+            captured["generate_slot_filter"] = slot_filter
+            return {"status": "ok"}
+
+        monkeypatch.setattr(compose_runner, "run_compose", fake_compose)
+        monkeypatch.setattr(generate_runner, "run_generate", fake_generate)
+
+        result = run_async(cli_mod.run_composition(
+            None,
+            {"Q12": {}},
+            {},
+            "requirements",
+            slot_ids=["Q12"],
+            output_dir=str(tmp_path),
+        ))
+
+        assert result["status"] == "ok"
+        assert captured["compose_slot_ids"] == ["Q12"]
+        assert captured["generate_slot_filter"] == ["Q12"]
+
+    def test_run_compose_removes_stale_assembled_docs(self, monkeypatch, tmp_path):
+        import compose.compose_runner as compose_runner
+        import compose.artifact_store as artifact_store
+
+        compose_dir = tmp_path / "compose"
+        compose_dir.mkdir()
+        stale = compose_dir / "Q99_assembled.md"
+        stale.write_text("stale", encoding="utf-8")
+
+        async def fake_compose_paper(gateway, templates, user_requirements, model_routing=None):
+            return "# outline", {
+                "total_questions": 1,
+                "slots": [
+                    {
+                        "slot_id": "Q12",
+                        "target_subject": "计算机组成原理",
+                        "target_family": "CO-1",
+                        "primary_target_name": "性能指标",
+                        "target_difficulty": 3,
+                        "examination_mode": "计算型",
+                    }
+                ],
+            }
+
+        monkeypatch.setattr(compose_runner, "compose_paper", fake_compose_paper)
+        monkeypatch.setattr(
+            artifact_store,
+            "assemble_slot_experience_doc",
+            lambda *args, **kwargs: "assembled Q12",
+        )
+
+        result = run_async(compose_runner.run_compose(
+            None,
+            {"Q12": {"question_type": "single_choice"}},
+            {},
+            "requirements",
+            slot_ids=["Q12"],
+            output_dir=str(tmp_path),
+        ))
+
+        assert result["status"] == "ok"
+        assert not stale.exists()
+        assert (compose_dir / "Q12_assembled.md").read_text(encoding="utf-8") == "assembled Q12"
 
 
 # ── Gateway streaming infrastructure ────────────────────────────
@@ -504,13 +703,44 @@ class TestGatewayStreamChat:
         assert len(provider.client.calls) == 2
 
 
+class TestGatewayGenerateWithTools:
+    def test_generate_with_tools_retries_retryable_chat_error(self):
+        provider = FakeChatCallProvider([
+            httpx.ReadError("chat dropped"),
+            {"content": "ok", "reasoning_content": "", "tool_calls": None},
+        ])
+        gateway = LLMGateway.from_provider(
+            provider,
+            name="api_vllm",
+            transport_retry=TransportRetryPolicy(max_attempts=2),
+        )
+
+        async def no_wait(attempt):
+            return None
+
+        gateway._wait_with_backoff = no_wait
+
+        result = run_async(gateway.generate_with_tools(
+            [{"role": "user", "content": "hello"}],
+            tools=[],
+            tool_executor=SimpleNamespace(),
+            max_tokens=50,
+            enable_thinking=False,
+            max_rounds=1,
+        ))
+
+        assert result.ok is True
+        assert result.content == "ok"
+        assert len(provider.calls) == 2
+
+
 # ── AgentMD loader tests ────────────────────────────────────────
 
 
 class TestAgentLoader:
-    def test_loads_all_seven_agents(self):
+    def test_loads_online_runtime_agents(self):
         specs = load_agents()
-        expected = {"design", "question", "analysis", "coding", "review", "fix", "format", "experience"}
+        expected = {"design", "question", "analysis", "coding", "review", "fix"}
         assert set(specs.keys()) == expected
 
     def test_each_spec_has_required_fields(self):
@@ -526,23 +756,24 @@ class TestAgentLoader:
             assert spec.output_file in spec.prompt, f"{name} missing filename in suffix"
 
     def test_multi_turn_agents(self):
-        _, _, multi_turn, _, _ = get_agent_dicts()
+        _, _, multi_turn, _, _, _ = get_agent_dicts()
         assert multi_turn == {"question", "analysis"}
 
     def test_thinking_budget_loaded(self):
-        _, _, _, thinking, _ = get_agent_dicts()
+        _, _, _, thinking, _, _ = get_agent_dicts()
         assert thinking["design"] == 8000
         assert thinking["coding"] == 10000
-        # format has no thinking_budget → not in dict
+        # format is a system hook, not an AgentMD runtime role.
         assert "format" not in thinking
 
     def test_compat_dicts_match_legacy(self):
-        """AgentMD-loaded dicts should contain same keys as legacy agents.py (plus experience)."""
-        prompts, output_files, multi_turn, _, _ = get_agent_dicts()
-        # experience is new (not in legacy); everything else must match
-        md_keys = set(prompts.keys()) - {"experience"}
-        assert md_keys == set(_AGENT_PROMPTS_LEGACY.keys())
-        assert set(output_files.keys()) - {"experience"} == set(_AGENT_OUTPUT_FILES_LEGACY.keys())
+        """AgentMD runtime roles should stay compatible with legacy online roles."""
+        prompts, output_files, multi_turn, _, _, _ = get_agent_dicts()
+        runtime_roles = {"design", "question", "analysis", "coding", "review", "fix"}
+        assert set(prompts.keys()) == runtime_roles
+        assert set(output_files.keys()) == runtime_roles
+        assert runtime_roles.issubset(set(_AGENT_PROMPTS_LEGACY.keys()))
+        assert runtime_roles.issubset(set(_AGENT_OUTPUT_FILES_LEGACY.keys()))
         assert multi_turn == _MULTI_TURN_LEGACY
 
     def test_parse_custom_agent_md(self, tmp_path):
@@ -563,7 +794,9 @@ class TestAgentLoader:
         assert spec.phase == 1
         assert spec.output_file == "out.md"
         assert spec.thinking_budget == 5000
-        assert "You are a test agent." in spec.prompt
+        # Prompt is now built from behavior layer, not MD body
+        assert "工具调用智能体" in spec.prompt
+        assert "out.md" in spec.prompt
 
     def test_parse_rejects_missing_frontmatter(self, tmp_path):
         bad_file = tmp_path / "bad.md"

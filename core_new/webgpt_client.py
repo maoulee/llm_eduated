@@ -9,6 +9,12 @@ from typing import Dict
 import httpx
 
 
+DEFAULT_WEBGPT_BASE_URL = "http://localhost:3000"
+DEFAULT_WEBGPT_MODEL = "gpt-thinking"
+DEFAULT_WEBGPT_MAX_TOKENS = 12000
+DEFAULT_WEBGPT_TIMEOUT_S = 180.0
+
+
 class WebGPTClient:
     """Manages per-slot GPT conversations via WebGPT gateway.
 
@@ -20,9 +26,20 @@ class WebGPTClient:
     within the same slot.
     """
 
-    def __init__(self, base_url: str, api_key: str) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str,
+        *,
+        model: str = DEFAULT_WEBGPT_MODEL,
+        max_tokens: int = DEFAULT_WEBGPT_MAX_TOKENS,
+        timeout_s: float = DEFAULT_WEBGPT_TIMEOUT_S,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
+        self.model = model.strip() or DEFAULT_WEBGPT_MODEL
+        self.max_tokens = max_tokens
+        self.timeout_s = timeout_s
         self._sessions: Dict[str, str] = {}  # slot_id → conversation_url
         self._http: httpx.AsyncClient | None = None
         self._locks: Dict[str, asyncio.Lock] = {}  # Per-session locks
@@ -34,7 +51,7 @@ class WebGPTClient:
         if self._http is None or self._http.is_closed:
             self._http = httpx.AsyncClient(
                 headers={"Authorization": f"Bearer {self.api_key}"},
-                timeout=httpx.Timeout(120.0),
+                timeout=httpx.Timeout(self.timeout_s),
             )
         return self._http
 
@@ -63,6 +80,8 @@ class WebGPTClient:
         slot_id: str,
         system_prompt: str,
         content: str,
+        model: str | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """POST /v1/chat/completions with conversation continuity.
 
@@ -80,9 +99,9 @@ class WebGPTClient:
             existing_url = self._sessions.get(slot_id)
 
             payload: dict = {
-                "model": "chatgpt_text/gpt-thinking",
+                "model": self._resolve_model(agent_name, model),
                 "stream": False,
-                "max_tokens": 4096,
+                "max_tokens": self._resolve_max_tokens(agent_name, max_tokens),
             }
             messages: list[dict[str, str]] = []
 
@@ -108,6 +127,26 @@ class WebGPTClient:
                 self._sessions[slot_id] = new_url
 
             return data["choices"][0]["message"]["content"]
+
+    def _resolve_model(self, agent_name: str, explicit: str | None = None) -> str:
+        if explicit:
+            return explicit
+        suffix = _agent_env_suffix(agent_name)
+        if suffix:
+            override = os.getenv(f"WEBGPT_MODEL_{suffix}", "").strip()
+            if override:
+                return override
+        return self.model
+
+    def _resolve_max_tokens(self, agent_name: str, explicit: int | None = None) -> int:
+        if explicit:
+            return explicit
+        suffix = _agent_env_suffix(agent_name)
+        if suffix:
+            override = _parse_int_env(f"WEBGPT_MAX_TOKENS_{suffix}", 0)
+            if override > 0:
+                return override
+        return self.max_tokens
 
     async def cleanup(self, slot_id: str = "") -> None:
         """Remove local session tracking AND delete ChatGPT cloud conversations.
@@ -171,10 +210,19 @@ def get_webgpt_client() -> WebGPTClient | None:
     """Get or create singleton. Returns None if env vars not set."""
     global _client
     if _client is None:
-        base_url = os.getenv("WEBGPT_BASE_URL", "").strip()
+        base_url = os.getenv("WEBGPT_BASE_URL", DEFAULT_WEBGPT_BASE_URL).strip()
         api_key = os.getenv("WEBGPT_API_KEY", "").strip()
         if base_url and api_key:
-            _client = WebGPTClient(base_url, api_key)
+            model = os.getenv("WEBGPT_MODEL", DEFAULT_WEBGPT_MODEL).strip()
+            max_tokens = _parse_int_env("WEBGPT_MAX_TOKENS", DEFAULT_WEBGPT_MAX_TOKENS)
+            timeout_s = _parse_float_env("WEBGPT_TIMEOUT_S", DEFAULT_WEBGPT_TIMEOUT_S)
+            _client = WebGPTClient(
+                base_url,
+                api_key,
+                model=model,
+                max_tokens=max_tokens,
+                timeout_s=timeout_s,
+            )
     return _client
 
 
@@ -182,3 +230,21 @@ def reset_webgpt_client() -> None:
     """Reset singleton (for testing)."""
     global _client
     _client = None
+
+
+def _parse_int_env(name: str, default: int) -> int:
+    try:
+        return int(os.getenv(name, "").strip() or default)
+    except ValueError:
+        return default
+
+
+def _parse_float_env(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, "").strip() or default)
+    except ValueError:
+        return default
+
+
+def _agent_env_suffix(agent_name: str) -> str:
+    return "".join(ch if ch.isalnum() else "_" for ch in agent_name.upper()).strip("_")

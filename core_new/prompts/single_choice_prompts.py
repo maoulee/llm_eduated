@@ -391,3 +391,67 @@ QUESTION_SUMMARY_PROMPT = """你是一位408考研题目整理专家。请将以
 - **difficulty_summary**: 难度评价
 - **quality_notes**: 质量备注
 """
+
+# ═══════════════════════════════════════════════════════════════
+# Merged Review + Fix + Format: one-stop quality gate
+# ═══════════════════════════════════════════════════════════════
+
+SC_MERGED_REVIEW_FIX_PROMPT = """你是一位408考研出题审核与修复专家。你需要审查一道选择题，如果发现问题则直接修复，并编写最终解析。
+
+## 题干
+{stem}
+
+## 选项
+- A: {option_A}
+- B: {option_B}
+- C: {option_C}
+- D: {option_D}
+
+## 求解器结果
+{solver_result_json}
+
+## 工具
+你有 `python_exec` 工具 — 可以执行 Python 代码来验证计算。如果你对求解器的计算结果有疑问，用代码独立验证。
+
+## 审查流程
+
+### 步骤1：验证答案正确性
+用 python_exec 独立计算正确答案，与求解器结果和 correct_answer 对比。如果发现不一致，以你的代码计算结果为准。
+
+### 步骤2：审查题目质量
+- 题干条件是否自洽、无矛盾？
+- 正确答案是否唯一确定？
+- 干扰项是否有合理迷惑性？
+- 是否存在歧义表述导致答案不唯一？
+
+### 步骤3：修复（如有问题）
+如果发现问题，直接在输出中给出修正后的内容。如果无需修复，保持原文。
+
+### 步骤4：编写解析
+基于最终确认的正确答案，编写清晰规范的解析。
+
+## 判定规则
+- 答案正确且无实质问题 → pass
+- 答案错误或存在实质问题 → needs_fix（同时给出修复内容）
+- 不要把润色建议判为问题
+
+请严格按以下markdown格式输出：
+
+## 审查结果
+- **status**: pass 或 needs_fix
+- **overall_quality**: 1-10
+- **issues**: 发现的问题（无问题写"无"）
+- **verified_answer**: 经代码验证的正确答案（选项字母）
+
+## 修复内容（status=pass 时保持原文）
+- **fix_target**: stem / options / answer / none
+- **fixed_stem**: 修正后的题干（无修正写原文）
+- **fixed_options**: JSON格式修正后的选项（无修正写{{}}）
+- **fixed_answer**: 修正后的答案（无修正写原答案）
+
+## 解析
+- **correct_answer**: 最终确认的正确答案
+- **explanation**: 完整解析（先结论后分析，语言简洁规范）
+- **key_steps**: 步骤1; 步骤2; 步骤3（分号分隔）
+- **difficulty_self_assessment**: 1-5
+"""

@@ -198,9 +198,16 @@ def parse_eval_result(raw: str, obs: Dict) -> Dict:
     result["knowledge_points"] = kp_fields.get("知识点", obs.get("primary_target_name", ""))
     result["syllabus_mapping"] = kp_fields.get("考纲对应", "")
 
-    # Parse knowledge_tags from detailed syllabus
+    # Parse knowledge_tags from detailed syllabus — strip parenthetical annotations
     raw_tags = kp_fields.get("knowledge_tags", "")
-    result["knowledge_tags"] = [t.strip() for t in re.split(r"[,，]", raw_tags) if t.strip()] if raw_tags else []
+    tags = [t.strip() for t in re.split(r"[,，]", raw_tags) if t.strip()] if raw_tags else []
+    cleaned = []
+    for tag in tags:
+        # Remove trailing parenthetical annotations like "(隐含...)"
+        tag = re.sub(r"\s*[(\（].+?[)\）]\s*$", "", tag).strip()
+        if tag:
+            cleaned.append(tag)
+    result["knowledge_tags"] = cleaned
 
     if q_type == "single_choice":
         # SC: option-level analysis, examination mode
@@ -465,6 +472,36 @@ def compute_slot_template(slot_id: str, synthesis: Dict, evals: List[Dict], obs_
     }
 
 
+def _extract_syllabus_sections(co_ids: List[str]) -> str:
+    """Extract relevant CO-X sections from the detailed syllabus."""
+    syllabus_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "computer_organization.md")
+    try:
+        with open(syllabus_path, encoding="utf-8") as f:
+            all_lines = f.readlines()
+    except FileNotFoundError:
+        return "（细纲文件未找到）"
+
+    result_lines = []
+    capture = False
+    current_co = None
+    for line in all_lines:
+        stripped = line.rstrip("\n")
+        if stripped.startswith("## CO-"):
+            co_id = stripped.lstrip("#").strip().split(" ")[0]  # e.g. "CO-1"
+            current_co = co_id
+            if co_id in co_ids:
+                capture = True
+                result_lines.append(stripped)
+            else:
+                capture = False
+        elif stripped.startswith("## ") and not stripped.startswith("## CO-"):
+            capture = False
+        elif capture:
+            result_lines.append(stripped)
+
+    return "\n".join(result_lines) if result_lines else "（未找到相关细纲内容）"
+
+
 def generate_slot_md(slot_id: str, template: Dict, evals: List[Dict], raw_synthesis: str = "") -> str:
     """Generate a slot analysis markdown file.
 
@@ -490,12 +527,56 @@ def generate_slot_md(slot_id: str, template: Dict, evals: List[Dict], raw_synthe
         f"- **题型**: {'选择题' if q_type == 'single_choice' else '综合应用题'}",
     ]
 
-    # Knowledge domain distribution
-    family_dist = template.get("target_family_distribution", {})
-    if family_dist:
+    # Aggregated knowledge domains + per-year simplified tags
+    sorted_evals_for_kp = sorted(evals, key=lambda x: x.get("year", 0))
+    if sorted_evals_for_kp:
+        # Collect unique domains (first 2 levels of each tag)
+        domain_counts = {}
+        for ev in sorted_evals_for_kp:
+            for tag in ev.get("knowledge_tags", []):
+                parts = tag.split(" > ")
+                domain = " > ".join(parts[:2]) if len(parts) >= 2 else tag
+                domain_counts[domain] = domain_counts.get(domain, 0) + 1
+
+        lines.extend(["", "### 核心知识域", ""])
+        sorted_domains = sorted(domain_counts.items(), key=lambda x: -x[1])
+        for domain, count in sorted_domains:
+            pct = count / len(sorted_evals_for_kp) * 100
+            lines.append(f"- **{domain}**: {count}次 ({pct:.0f}%)")
+
+        # Per-year with simplified tags (deduplicated to unique domains per year)
         lines.extend(["", "### 往年知识点分布", ""])
-        for domain, pct in family_dist.items():
-            lines.append(f"- {domain}: {pct:.0%}")
+        for ev in sorted_evals_for_kp:
+            year = ev.get("year", "?")
+            tags = ev.get("knowledge_tags", [])
+            kp = ev.get("knowledge_points", "")
+            if tags:
+                year_domains = []
+                seen = set()
+                for t in tags:
+                    parts = t.split(" > ")
+                    d = " > ".join(parts[:2]) if len(parts) >= 2 else t
+                    if d not in seen:
+                        seen.add(d)
+                        year_domains.append(d)
+                tag_str = "、".join(year_domains)
+            else:
+                tag_str = kp
+            lines.append(f"- **{year}年**: {tag_str}")
+
+    # Relevant detailed syllabus section
+    co_ids_set = set()
+    for ev in evals:
+        for tag in ev.get("knowledge_tags", []):
+            parts = tag.split(" > ")
+            if parts:
+                co_ids_set.add(parts[0].split(" ")[0])
+    if co_ids_set:
+        syllabus_section = _extract_syllabus_sections(sorted(co_ids_set))
+        lines.extend(["", "## 细纲参考", ""])
+        lines.append("以下为本题位涉及的详细知识点大纲，出题时可从中选择具体的考察点。")
+        lines.append("")
+        lines.append(syllabus_section)
 
     # K-value anchors
     lines.extend(["", "## 认知雷达锚点", ""])
@@ -519,7 +600,7 @@ def generate_slot_md(slot_id: str, template: Dict, evals: List[Dict], raw_synthe
             stripped = bl.strip()
             if stripped.startswith("# ") and not stripped.startswith("## "):
                 continue
-            if stripped.startswith("## 基本信息") or stripped.startswith("## 考察模式分布"):
+            if stripped.startswith("## 基本信息") or stripped.startswith("## 考察模式分布") or stripped.startswith("## K值锚点"):
                 skip_until_next_section = True
                 continue
             if skip_until_next_section and stripped.startswith("## "):

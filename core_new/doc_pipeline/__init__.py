@@ -15,11 +15,13 @@ from typing import Any
 from core_new.llm_gateway import LLMGateway
 from core_new.provider_router import get_routed_gateway
 
-from .config import DEFAULT_MAX_TOKENS
+from .config import DEFAULT_MAX_TOKENS, PIPELINE_CONFIG
+from .contracts import PipelineResult
 from .orchestrator import DocPipelineOrchestrator
+from .pipeline_config import PipelineConfig
 from .scheduler import DocScheduler
 
-__all__ = ["DocPipeline", "DocPipelineOrchestrator", "DocScheduler"]
+__all__ = ["DocPipeline", "DocPipelineOrchestrator", "DocScheduler", "PipelineResult"]
 
 
 class DocPipeline:
@@ -36,12 +38,14 @@ class DocPipeline:
         max_tokens: int = DEFAULT_MAX_TOKENS,
         enable_thinking: bool | None = None,
         model_routing: dict[str, str] | None = None,
+        pipeline_config: PipelineConfig | None = None,
     ):
         self.gateway = gateway or get_routed_gateway("doc_design")
         self.workspace = Path(workspace)
         self.max_tokens = max_tokens
         self.enable_thinking = enable_thinking
         self.model_routing = model_routing
+        self._pipeline_config = pipeline_config or PIPELINE_CONFIG
 
     async def run(
         self,
@@ -50,7 +54,9 @@ class DocPipeline:
         *,
         experience_card: str = "",
         k_definitions: str = "",
-    ) -> dict[str, Any]:
+        assembled_experience_doc: str = "",
+        start_layer: int = 1,
+    ) -> PipelineResult:
         """Run the full document pipeline for one slot.
 
         Args:
@@ -58,9 +64,11 @@ class DocPipeline:
             slot_data: Raw slot data dict
             experience_card: Past exam stems for style reference
             k_definitions: K1-K5 difficulty definitions text
+            assembled_experience_doc: Pre-assembled experience doc (outline + exp card + syllabus).
+                When provided, skips Layer 1 (Design) and uses this doc directly.
 
         Returns:
-            Result dict with ok, final_content, files, timing, etc.
+            PipelineResult with ok, final_content, files, timing, etc.
         """
         scheduler = DocScheduler(
             gateway=self.gateway,
@@ -73,10 +81,16 @@ class DocPipeline:
             scheduler=scheduler,
             workspace=self.workspace,
             max_tokens=self.max_tokens,
+            context_registry=self._pipeline_config.context_registry,
         )
-        return await orchestrator.run_pipeline(
-            slot_id,
-            slot_data,
-            experience_card=experience_card,
-            k_definitions=k_definitions,
-        )
+        try:
+            return await orchestrator.run_pipeline(
+                slot_id,
+                slot_data,
+                experience_card=experience_card,
+                k_definitions=k_definitions,
+                assembled_experience_doc=assembled_experience_doc,
+                start_layer=start_layer,
+            )
+        finally:
+            await scheduler.cleanup_webgpt(slot_id)

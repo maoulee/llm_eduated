@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 0,
+  "timestamp": "2026-05-31T03:37:08",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "平均主存访问延迟为 0.595 ns；应用执行的总时间为 0.1345 s",
+      "sub_q2": "单次磁盘块读取的总I/O响应时间为 8.224 ms；中断消耗CPU总周期为 $8 \times 10^5$ 周期，占比 0.32%"
+    },
+    "total_score": "15\n"
+  }
+}

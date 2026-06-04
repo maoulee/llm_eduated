@@ -1,6 +1,6 @@
 {
   "version": "3.0",
-  "generated_at": "2026-06-03T14:58:06",
+  "generated_at": "2026-06-03T17:15:06",
   "templates": {
     "Q12": {
       "slot_id": "Q12",
@@ -29,27 +29,27 @@
       "difficulty_anchor": {
         "K1_mode": 1,
         "K1_range": [
-          3,
+          1,
           5
         ],
         "K2_mode": 1,
         "K2_range": [
-          2,
-          4
+          1,
+          3
         ],
         "K3_mode": 1,
         "K3_range": [
-          0,
+          1,
           2
         ],
         "K4_mode": 1,
         "K4_range": [
-          1,
+          2,
           4
         ],
         "K5_mode": 1,
         "K5_range": [
-          0,
+          1,
           2
         ]
       },
@@ -58,12 +58,12 @@
         "reasoning_shape": "elimination",
         "stem_length": "short"
       },
-      "radar_shape": "典型K1/K4双高或K2/K4中等偏高",
-      "reasoning_shape_mode": "直接映射（概念）或 公式代入（计算）",
+      "radar_shape": "K1-K2平衡型（概念与计算并重，近年偏向计算细节与单位换算）",
+      "reasoning_shape_mode": "公式代入计算 / 概念排除法",
       "reasoning_shape_distribution": {
         "elimination": 0.46,
-        "one_formula": 0.38,
-        "multi_step": 0.15
+        "one_formula": 0.31,
+        "multi_step": 0.23
       },
       "pattern_count": "3",
       "should_be": "",
@@ -96,30 +96,30 @@
         "cross_topic_integration": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 3,
+        "K1_mode": 1,
         "K1_range": [
-          3,
+          1,
           5
         ],
-        "K2_mode": 3,
+        "K2_mode": 1,
         "K2_range": [
           1,
-          5
+          4
         ],
-        "K3_mode": 2,
+        "K3_mode": 1,
         "K3_range": [
           1,
-          5
-        ],
-        "K4_mode": 3,
-        "K4_range": [
-          1,
           4
+        ],
+        "K4_mode": 1,
+        "K4_range": [
+          2,
+          5
         ],
         "K5_mode": 1,
         "K5_range": [
           1,
-          1
+          2
         ]
       },
       "style_mode": {
@@ -127,15 +127,15 @@
         "reasoning_shape": "multi_step",
         "stem_length": "short"
       },
-      "radar_shape": "K4陷阱型 / K1概念细节型",
-      "reasoning_shape_mode": "计算推导+陷阱识别",
+      "radar_shape": "K3/K4 复合推演陷阱型",
+      "reasoning_shape_mode": "选项级考察，针对特定认知错误设计干扰项",
       "reasoning_shape_distribution": {
-        "multi_step": 0.43,
+        "multi_step": 0.36,
+        "one_formula": 0.29,
         "elimination": 0.21,
-        "one_formula": 0.21,
         "simulation": 0.14
       },
-      "pattern_count": "3",
+      "pattern_count": "4",
       "should_be": "",
       "should_not_be": "",
       "stability_assessment": "基于14道真题分析"
@@ -170,30 +170,30 @@
         "cross_topic_integration": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 1,
+        "K1_mode": 3,
         "K1_range": [
-          1,
-          2
-        ],
-        "K2_mode": 1,
-        "K2_range": [
           2,
-          3
-        ],
-        "K3_mode": 1,
-        "K3_range": [
-          3,
           4
         ],
-        "K4_mode": 1,
+        "K2_mode": 3,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 4,
         "K4_range": [
-          4,
+          3,
           5
         ],
         "K5_mode": 1,
         "K5_range": [
-          5,
-          6
+          1,
+          2
         ]
       },
       "style_mode": {
@@ -201,12 +201,12 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "K4陷阱型 / K2计算型",
-      "reasoning_shape_mode": "Calculation_Competition",
+      "radar_shape": "K2/K3 计算推演型 与 K4 概念陷阱型 并存",
+      "reasoning_shape_mode": "计算型（多步数值推导）与 概念辨析型（机制误解辨析）",
       "reasoning_shape_distribution": {
         "elimination": 0.43,
-        "multi_step": 0.29,
-        "one_formula": 0.14,
+        "multi_step": 0.21,
+        "one_formula": 0.21,
         "simulation": 0.14
       },
       "pattern_count": "3",
@@ -249,8 +249,8 @@
       "difficulty_anchor": {
         "K1_mode": 1,
         "K1_range": [
-          1,
-          2
+          3,
+          4
         ],
         "K2_mode": 1,
         "K2_range": [
@@ -259,18 +259,18 @@
         ],
         "K3_mode": 1,
         "K3_range": [
-          3,
-          4
+          2,
+          3
         ],
         "K4_mode": 1,
         "K4_range": [
-          4,
+          3,
           5
         ],
         "K5_mode": 1,
         "K5_range": [
-          5,
-          5
+          2,
+          2
         ]
       },
       "style_mode": {
@@ -278,13 +278,13 @@
         "reasoning_shape": "multi_step",
         "stem_length": "medium"
       },
-      "radar_shape": "K4陷阱型",
-      "reasoning_shape_mode": "计算型推导+陷阱排除",
+      "radar_shape": "K4陷阱型为主，辅以K3推演型",
+      "reasoning_shape_mode": "参数提取 -> 规则匹配（位扩展/地址复用/对齐/字节序） -> 数值计算/状态映射 -> 陷阱排除",
       "reasoning_shape_distribution": {
         "multi_step": 0.58,
-        "one_formula": 0.17,
-        "elimination": 0.17,
-        "simulation": 0.08
+        "one_formula": 0.25,
+        "simulation": 0.08,
+        "elimination": 0.08
       },
       "pattern_count": "3",
       "should_be": "",
@@ -334,18 +334,18 @@
       "difficulty_anchor": {
         "K1_mode": 1,
         "K1_range": [
-          3,
+          1,
           5
         ],
         "K2_mode": 1,
         "K2_range": [
           1,
-          4
+          3
         ],
         "K3_mode": 1,
         "K3_range": [
           1,
-          4
+          3
         ],
         "K4_mode": 1,
         "K4_range": [
@@ -363,15 +363,15 @@
         "reasoning_shape": "multi_step",
         "stem_length": "medium"
       },
-      "radar_shape": "K4陷阱型",
-      "reasoning_shape_mode": "计算型",
+      "radar_shape": "K4陷阱型 (最常见)",
+      "reasoning_shape_mode": "计算型陷阱 (核心逻辑错误导致数值偏差)",
       "reasoning_shape_distribution": {
         "multi_step": 0.38,
         "elimination": 0.31,
         "simulation": 0.15,
         "one_formula": 0.15
       },
-      "pattern_count": "3",
+      "pattern_count": "4",
       "should_be": "",
       "should_not_be": "",
       "stability_assessment": "基于13道真题分析"
@@ -412,29 +412,29 @@
         "calculation_stability": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 1,
+        "K1_mode": 5,
         "K1_range": [
           3,
           5
         ],
         "K2_mode": 1,
         "K2_range": [
-          0,
+          1,
           2
         ],
-        "K3_mode": 3,
+        "K3_mode": 2,
         "K3_range": [
-          2,
+          1,
           5
         ],
-        "K4_mode": 4,
+        "K4_mode": 3,
         "K4_range": [
           2,
-          5
+          4
         ],
         "K5_mode": 1,
         "K5_range": [
-          0,
+          1,
           2
         ]
       },
@@ -443,15 +443,15 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "概念型/陷阱型",
-      "reasoning_shape_mode": "辨析式推理 (Discriminative Reasoning)",
+      "radar_shape": "K1主导，K3/K4伴随",
+      "reasoning_shape_mode": "概念辨析与逻辑推理",
       "reasoning_shape_distribution": {
         "elimination": 0.71,
         "multi_step": 0.14,
         "simulation": 0.07,
         "one_formula": 0.07
       },
-      "pattern_count": "5",
+      "pattern_count": "4",
       "should_be": "",
       "should_not_be": "",
       "stability_assessment": "基于14道真题分析"
@@ -495,30 +495,30 @@
         "pattern_execution": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 4,
+        "K1_mode": 1,
         "K1_range": [
-          3,
-          5
-        ],
-        "K2_mode": 3,
-        "K2_range": [
           1,
+          2
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          2,
           3
         ],
-        "K3_mode": 2,
+        "K3_mode": 1,
         "K3_range": [
-          1,
+          3,
           4
         ],
-        "K4_mode": 3,
+        "K4_mode": 1,
         "K4_range": [
-          2,
-          4
+          4,
+          5
         ],
         "K5_mode": 1,
         "K5_range": [
-          1,
-          3
+          4,
+          5
         ]
       },
       "style_mode": {
@@ -526,15 +526,15 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "K1概念型/K4陷阱型为主",
-      "reasoning_shape_mode": "概念辨析与数值推导",
+      "radar_shape": "典型雷达形状为K1概念辨析或K4陷阱型，近年来倾向于考察细微差别的概念辨析和带有隐含条件的计算。",
+      "reasoning_shape_mode": "选项级排除法，针对特定认知错误设计的并行或嵌套干扰。",
       "reasoning_shape_distribution": {
         "elimination": 0.5,
         "one_formula": 0.29,
         "multi_step": 0.14,
         "simulation": 0.07
       },
-      "pattern_count": "5",
+      "pattern_count": "4",
       "should_be": "",
       "should_not_be": "",
       "stability_assessment": "基于14道真题分析"
@@ -577,22 +577,22 @@
         "pattern_execution": 0.08
       },
       "difficulty_anchor": {
-        "K1_mode": 3,
+        "K1_mode": 1,
         "K1_range": [
           3,
           5
         ],
-        "K2_mode": 2,
+        "K2_mode": 1,
         "K2_range": [
-          2,
-          4
+          3,
+          5
         ],
-        "K3_mode": 3,
+        "K3_mode": 1,
         "K3_range": [
           3,
           4
         ],
-        "K4_mode": 4,
+        "K4_mode": 1,
         "K4_range": [
           3,
           5
@@ -600,7 +600,7 @@
         "K5_mode": 1,
         "K5_range": [
           1,
-          2
+          3
         ]
       },
       "style_mode": {
@@ -608,13 +608,13 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "K1概念型 / K4陷阱型",
-      "reasoning_shape_mode": "特征辨析 / 多系数计算",
+      "radar_shape": "K1概念型 与 K4陷阱型 为主",
+      "reasoning_shape_mode": "辨析排除法 / 错误路径映射",
       "reasoning_shape_distribution": {
         "elimination": 0.54,
         "one_formula": 0.23,
-        "simulation": 0.15,
-        "multi_step": 0.08
+        "multi_step": 0.15,
+        "simulation": 0.08
       },
       "pattern_count": "3",
       "should_be": "",
@@ -671,30 +671,30 @@
         "difficulty_separator": 0.07
       },
       "difficulty_anchor": {
-        "K1_mode": 5,
+        "K1_mode": 1,
         "K1_range": [
           3,
           5
         ],
-        "K2_mode": 3,
+        "K2_mode": 1,
         "K2_range": [
-          3,
+          1,
           3
         ],
         "K3_mode": 1,
         "K3_range": [
-          1,
-          1
+          4,
+          5
         ],
-        "K4_mode": 4,
+        "K4_mode": 1,
         "K4_range": [
-          2,
+          1,
           4
         ],
         "K5_mode": 1,
         "K5_range": [
-          1,
-          3
+          0,
+          1
         ]
       },
       "style_mode": {
@@ -702,8 +702,8 @@
         "reasoning_shape": "elimination",
         "stem_length": "short"
       },
-      "radar_shape": "K1概念辨析型 / K4陷阱型",
-      "reasoning_shape_mode": "概念边界识别与细节陷阱排查",
+      "radar_shape": "K1主导，K4伴随 (Concept-heavy with traps)",
+      "reasoning_shape_mode": "概念映射与干扰排除",
       "reasoning_shape_distribution": {
         "elimination": 0.64,
         "one_formula": 0.21,
@@ -745,30 +745,30 @@
         "calculation_stability": 0.08
       },
       "difficulty_anchor": {
-        "K1_mode": 5,
+        "K1_mode": 1,
         "K1_range": [
           3,
-          5
+          4
         ],
         "K2_mode": 1,
         "K2_range": [
           1,
           2
         ],
-        "K3_mode": 2,
+        "K3_mode": 1,
         "K3_range": [
           1,
+          3
+        ],
+        "K4_mode": 1,
+        "K4_range": [
+          2,
           4
         ],
-        "K4_mode": 4,
-        "K4_range": [
-          3,
-          5
-        ],
-        "K5_mode": 2,
+        "K5_mode": 1,
         "K5_range": [
           1,
-          2
+          3
         ]
       },
       "style_mode": {
@@ -776,12 +776,12 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "K4陷阱型为主，K1概念型为辅",
-      "reasoning_shape_mode": "概念辨析（排除法/找错法）",
+      "radar_shape": "K4陷阱型 / K1概念型",
+      "reasoning_shape_mode": "概念辨析（选非）",
       "reasoning_shape_distribution": {
-        "elimination": 0.85,
-        "one_formula": 0.08,
-        "multi_step": 0.08
+        "elimination": 0.77,
+        "multi_step": 0.15,
+        "one_formula": 0.08
       },
       "pattern_count": "4",
       "should_be": "",
@@ -818,30 +818,30 @@
         "calculation_stability": 0.15
       },
       "difficulty_anchor": {
-        "K1_mode": 3,
+        "K1_mode": 5,
         "K1_range": [
-          1,
+          3,
           5
         ],
-        "K2_mode": 1,
+        "K2_mode": 3,
         "K2_range": [
           1,
-          1
+          4
         ],
-        "K3_mode": 1,
+        "K3_mode": 2,
         "K3_range": [
           1,
-          2
+          3
         ],
-        "K4_mode": 3,
+        "K4_mode": 4,
         "K4_range": [
-          3,
+          2,
           5
         ],
         "K5_mode": 1,
         "K5_range": [
           1,
-          1
+          2
         ]
       },
       "style_mode": {
@@ -849,12 +849,11 @@
         "reasoning_shape": "elimination",
         "stem_length": "medium"
       },
-      "radar_shape": "概念辨析型 (K1高, K4高) / 陷阱型",
-      "reasoning_shape_mode": "概念辨析 -> 陷阱排除",
+      "radar_shape": "K1/K4 双峰型（概念辨析与陷阱并存）",
+      "reasoning_shape_mode": "概念对比与纠错",
       "reasoning_shape_distribution": {
         "elimination": 0.85,
-        "one_formula": 0.08,
-        "multi_step": 0.08
+        "one_formula": 0.15
       },
       "pattern_count": "3",
       "should_be": "",
@@ -898,27 +897,27 @@
       "difficulty_anchor": {
         "K1_mode": 3,
         "K1_range": [
-          2,
+          3,
           5
         ],
         "K2_mode": 3,
         "K2_range": [
-          2,
-          4
+          1,
+          3
         ],
         "K3_mode": 4,
         "K3_range": [
-          3,
-          5
-        ],
-        "K4_mode": 3,
-        "K4_range": [
           2,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          3,
           5
         ],
-        "K5_mode": 4,
+        "K5_mode": 3,
         "K5_range": [
-          3,
+          2,
           5
         ]
       },
@@ -927,11 +926,11 @@
         "reasoning_shape": "multi_step",
         "stem_length": "medium"
       },
-      "radar_shape": "跨域联动型 / 机制推演型",
-      "reasoning_shape_mode": "参数推导 → 机制模拟 → 系统评估",
+      "radar_shape": "机制推演型 / 跨域联动型",
+      "reasoning_shape_mode": "串行推导为主，混合对比为辅",
       "reasoning_shape_distribution": {
-        "multi_step": 0.9,
-        "simulation": 0.1
+        "multi_step": 0.7,
+        "simulation": 0.3
       },
       "pattern_count": "3",
       "should_be": "",
@@ -974,24 +973,24 @@
         "K1_mode": 3,
         "K1_range": [
           3,
-          5
+          4
         ],
         "K2_mode": 3,
         "K2_range": [
           2,
           4
         ],
-        "K3_mode": 4,
+        "K3_mode": 3,
         "K3_range": [
-          2,
+          3,
           5
         ],
         "K4_mode": 4,
         "K4_range": [
-          2,
+          3,
           5
         ],
-        "K5_mode": 3,
+        "K5_mode": 4,
         "K5_range": [
           2,
           5
@@ -1002,11 +1001,11 @@
         "reasoning_shape": "multi_step",
         "stem_length": "medium"
       },
-      "radar_shape": "机制推演型 / 跨域耦合型",
-      "reasoning_shape_mode": "串行状态机模拟 (Serial State Machine Simulation)",
+      "radar_shape": "跨域联动推演型 / 机制陷阱型",
+      "reasoning_shape_mode": "串行状态模拟 (Serial State Simulation)",
       "reasoning_shape_distribution": {
-        "simulation": 0.57,
-        "multi_step": 0.29,
+        "multi_step": 0.43,
+        "simulation": 0.43,
         "one_formula": 0.14
       },
       "pattern_count": "3",
@@ -1036,27 +1035,27 @@
         "K1_mode": 3,
         "K1_range": [
           3,
-          3
-        ],
-        "K2_mode": 2,
-        "K2_range": [
-          2,
-          2
-        ],
-        "K3_mode": 4,
-        "K3_range": [
-          4,
           4
+        ],
+        "K2_mode": 3,
+        "K2_range": [
+          3,
+          4
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          3,
+          5
         ],
         "K4_mode": 3,
         "K4_range": [
           3,
-          3
+          5
         ],
-        "K5_mode": 4,
+        "K5_mode": 5,
         "K5_range": [
           4,
-          4
+          5
         ]
       },
       "style_mode": {
@@ -1064,8 +1063,8 @@
         "reasoning_shape": "multi_step",
         "stem_length": "long"
       },
-      "radar_shape": "跨域联动型",
-      "reasoning_shape_mode": "串行推导 (Serial Deduction)",
+      "radar_shape": "跨域耦合型 (Cross-Domain Coupling)",
+      "reasoning_shape_mode": "参数推导 -> 地址映射 -> 状态追踪",
       "reasoning_shape_distribution": {
         "multi_step": 1.0
       },

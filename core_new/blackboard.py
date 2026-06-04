@@ -68,6 +68,15 @@ class Blackboard:
     def get(self, key: str, default=None) -> Any:
         return self.get_parsed(key, default=default)
 
+    def set(self, key: str, value: Any) -> None:
+        """Directly set a value on the blackboard state."""
+        if isinstance(value, str):
+            self._raw[key] = value
+        else:
+            self._state[key] = copy.deepcopy(value)
+            self._parsed_cache[key] = copy.deepcopy(value)
+        self._version += 1
+
     def read(self, key: str, default: str = "") -> str:
         """Return raw Markdown/text for a blackboard key."""
         if key in self._raw:

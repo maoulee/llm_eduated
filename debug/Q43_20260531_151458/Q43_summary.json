@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T15:18:29",
+  "total_time_s": 194.02,
+  "rounds": 2,
+  "final_stem": "某计算机系统采用异步突发传输（Asynchronous Burst Transfer）机制，用于在处理器与主存之间高效传输数据。该系统的总线及存储相关参数如下：\n1. 总线时钟频率为 100 MHz。\n2. 总线数据宽度为 64 位（8 字节），每个总线时钟周期可传输 8 字节数据。\n3. 系统使用集中式仲裁，每次总线请求需经历以下三个阶段：\n- **仲裁阶段**：固定开销为 5 个总线时钟周期。\n- **准备阶段**：用于建立传输握手及发送传输长度信息，固定开销为 3 个总线时钟周期。\n- **数据传输阶段**：按照突发模式连续传输数据，每个数据总线时钟周期传输一个总线字。\n4. 系统的 Cache 块（Block）大小为 64 字节。当发生 Cache 缺失时，处理器需通过总线从主存获取一个完整的 Cache 块数据。",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": 2,
+  "review_raw_text_length": 0
+}

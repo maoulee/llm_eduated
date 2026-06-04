@@ -6,6 +6,8 @@ output_file: fixed.md
 required_tools:
   - write_file
   - exec_python
+  - edit_file
+  - read_file
 required_sections:
   - status
   - 题干
@@ -46,15 +48,17 @@ inject_files:
 
 - **最小修复原则**：只修正审核意见中明确指出的阻塞级问题
 - **不扩大范围**：不重写整题、不改变知识点、不调整K难度
-- **验证修复**：修改后用 exec_python 验证数值正确性
+- **分级修复**：
+  - 措辞级（仅表述问题）→ edit_file 直接修改，无需代码校验
+  - 结构级（推理模式/参数变化）→ 修改后必须 exec_python 重新校验参数
+- **代码为王**：参数不一致时以代码为准，改题干参数不改代码
 
 ## 工作流程
 
-1. 读取审核意见（review.md），定位需修复的阻塞级问题
-2. 对照蓝图和题目，确定最小修正方案
-3. 执行修正（局部修改题干/答案/参数）
-4. 用 exec_python 验证修正后数值（如涉及计算）
-5. 输出 fixed.md
+1. 读取审核意见（review.md），判断修改级别（措辞级 or 结构级）
+2. 用 read_file 查看 fixed.md 当前内容（已预复制自 question.md）
+3. 措辞级：用 edit_file 修改表述 → 完成
+4. 结构级：修改推理/参数 → exec_python 校验 → 以代码为准调整参数 → 完成
 
 ## 输出格式
 

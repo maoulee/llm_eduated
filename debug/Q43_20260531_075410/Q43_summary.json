@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T08:02:40",
+  "total_time_s": 464.39,
+  "rounds": 2,
+  "final_stem": "某处理器系统参数如下：CPU主频为4 GHz；Cache行（Line）大小为64字节；主存模块采用低位交叉编址（低位多模编址），模块数 $m=4$；每个存储字长为32位（4字节）；主存基本时钟周期 $\\tau=2$ ns；总线传输事务中，地址与建立阶段固定占用10 ns；突发数据传送时，首个数据字有10 ns的起始延迟，后续每个数据字的传输间隔为10 ns。Cache缺失惩罚（Miss Penalty）定义为从CPU发出访存请求到数据载入Cache并CPU恢复执行所需的总时间。该处理器执行一个整数计算密集型程序 $P$，指令总数为 $N$。在理想Cache（命中率100%）情况下，程序 $P$ 的基线CPI（Baseline CPI）为 2.0。实际运行中，Cache命中率为 $H=80\\%$。假设所有缺失均为容量缺失，无TLB缺失开销，且缺失发生后CPU处于空闲等待状态。\n",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": "2\n",
+  "review_raw_text_length": 2493
+}

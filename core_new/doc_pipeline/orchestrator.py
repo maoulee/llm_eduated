@@ -21,6 +21,8 @@ from .config import (
     MAX_ANALYSIS_ITERATIONS,
     PYTHON_EXEC_TIMEOUT,
 )
+from .contracts import PipelineResult
+from .context import ContextRegistry
 from .doc_parser import get_doc_status, parse_doc_section
 
 logger = logging.getLogger(__name__)
@@ -52,11 +54,28 @@ class DocPipelineOrchestrator:
         *,
         max_tokens: int = DEFAULT_MAX_TOKENS,
         max_analysis_iterations: int = MAX_ANALYSIS_ITERATIONS,
+        context_registry: ContextRegistry | None = None,
     ) -> None:
         self.scheduler = scheduler
         self.workspace = Path(workspace).resolve()
         self.max_tokens = max_tokens
         self.max_analysis_iterations = max_analysis_iterations
+        self._registry = context_registry
+
+    async def _resolve_inject(
+        self,
+        role: str,
+        slot_id: str,
+        phase: int,
+        fallback: dict[str, str] | None = None,
+    ) -> dict[str, str]:
+        """Resolve context injection for a role via registry, or use fallback."""
+        if self._registry is not None:
+            return await self._registry.resolve_for_role(
+                role, self.workspace, slot_id, phase,
+                runtime_args=self._runtime_args,
+            )
+        return dict(fallback or {})
 
     async def run_pipeline(
         self,
@@ -65,108 +84,173 @@ class DocPipelineOrchestrator:
         *,
         experience_card: str = "",
         k_definitions: str = "",
-    ) -> dict[str, Any]:
-        """Run the full 4-layer document pipeline for one slot."""
+        assembled_experience_doc: str = "",
+        start_layer: int = 1,
+    ) -> PipelineResult:
+        """Run the full document pipeline for one slot.
+
+        When assembled_experience_doc is provided, skips Layer 1 (Design)
+        and uses the assembled doc as the reference for the Question agent.
+        Otherwise runs the full 4-layer pipeline with Design.
+
+        start_layer: Resume from a specific layer (1-4). Earlier layers must
+        have their output files already present in workspace.
+        """
         ws = self.workspace / slot_id
         ws.mkdir(parents=True, exist_ok=True)
         total_start = time.monotonic()
 
-        # Layer 1: Design
-        logger.info("[%s] Layer 1: Design", slot_id)
-        design_task = self._build_design_task(slot_data, k_definitions)
-        await self.scheduler.run_agent("design", design_task, slot_id=slot_id)
+        # Runtime args for inline providers (experience_doc, k_definitions)
+        self._runtime_args: dict[str, Any] = {
+            "experience_doc": assembled_experience_doc,
+            "k_definitions": k_definitions,
+        }
+
+        # Layer 1: Design (skip if assembled doc is provided or resuming from layer 2+)
         blueprint_path = ws / "blueprint.md"
+        if assembled_experience_doc:
+            # Write the assembled doc as blueprint.md for downstream compatibility
+            if start_layer > 1:
+                logger.info(
+                    "[%s] Layer 1: Design SKIPPED (resume from layer %d, refreshing assembled doc)",
+                    slot_id,
+                    start_layer,
+                )
+            else:
+                logger.info("[%s] Layer 1: Design SKIPPED (using assembled experience doc)", slot_id)
+            blueprint_path.write_text(assembled_experience_doc, encoding="utf-8")
+        elif start_layer > 1:
+            if not blueprint_path.exists():
+                return self._fail_result(slot_id, f"Cannot resume from layer {start_layer}: blueprint.md not found")
+            logger.info("[%s] Layer 1: Design SKIPPED (resume from layer %d)", slot_id, start_layer)
+        else:
+            logger.info("[%s] Layer 1: Design", slot_id)
+            design_task = self._build_design_task(slot_data, k_definitions)
+            await self.scheduler.run_agent("design", design_task, slot_id=slot_id)
 
-        if not blueprint_path.exists():
-            return self._fail_result(slot_id, "Design agent did not write blueprint.md")
+            if not blueprint_path.exists():
+                return self._fail_result(slot_id, "Design agent did not write blueprint.md")
 
-        # Layer 2: Question <-> Analysis
-        logger.info("[%s] Layer 2: Question ↔ Analysis", slot_id)
+        # Layer 2: Question <-> Analysis (skip if resuming from layer 3+)
         question_path = ws / "question.md"
         feedback_path = ws / "feedback.md"
         final_iteration = 0
 
-        for iteration in range(self.max_analysis_iterations):
-            final_iteration = iteration + 1
-
-            q_task = self._build_question_task(
-                slot_id,
-                iteration,
-                experience_card=experience_card,
-            )
-            q_inject = {"蓝图": str(blueprint_path)}
-            if iteration > 0 and feedback_path.exists():
-                feedback_body = parse_doc_section(str(feedback_path), "detailed_feedback")
-                q_task += f"\n\n## 审核反馈（第{iteration}轮）\n{feedback_body}"
-
-            await self.scheduler.run_agent(
-                "question",
-                q_task,
-                slot_id=slot_id,
-                inject_files=q_inject,
-                continue_session=False,
-            )
-
+        if start_layer > 2:
             if not question_path.exists():
-                return self._fail_result(slot_id, f"Question agent did not write question.md (iter {iteration})")
-
-            a_task = "请审核以下题目，检查参数一致性和难度对标。"
-            await self.scheduler.run_agent(
-                "analysis",
-                a_task,
-                slot_id=slot_id,
-                inject_files={
-                    "蓝图": str(blueprint_path),
-                    "题目": str(question_path),
-                },
-            )
-
-            if not feedback_path.exists():
-                return self._fail_result(slot_id, f"Analysis agent did not write feedback.md (iter {iteration})")
-
-            status = get_doc_status(str(feedback_path))
-            logger.info("[%s] Analysis iter %d: status=%s", slot_id, iteration, status)
-            if status == "pass":
-                break
+                return self._fail_result(slot_id, f"Cannot resume from layer {start_layer}: question.md not found")
+            logger.info("[%s] Layer 2: Question/Analysis SKIPPED (resume from layer %d)", slot_id, start_layer)
         else:
-            logger.warning(
-                "[%s] Analysis max iterations reached (%d), proceeding anyway",
-                slot_id,
-                self.max_analysis_iterations,
-            )
+            logger.info("[%s] Layer 2: Question ↔ Analysis", slot_id)
+            for iteration in range(self.max_analysis_iterations):
+                final_iteration = iteration + 1
 
-        # Layer 3: Coding
-        logger.info("[%s] Layer 3: Coding", slot_id)
-        solve_task = "请编写完整的 Python 求解代码。"
-        await self.scheduler.run_agent(
-            "coding",
-            solve_task,
-            slot_id=slot_id,
-            inject_files={"题目": str(question_path)},
-            max_tokens=self.max_tokens,
-        )
+                q_task = self._build_question_task(
+                    slot_id,
+                    iteration,
+                    experience_card=experience_card,
+                )
+                q_inject = await self._resolve_inject("question", slot_id, 2, {"蓝图": str(blueprint_path)})
+                if iteration > 0 and feedback_path.exists():
+                    feedback_body = parse_doc_section(str(feedback_path), "detailed_feedback")
+                    q_task += f"\n\n## 审核反馈（第{iteration}轮）\n{feedback_body}"
+
+                await self.scheduler.run_agent(
+                    "question",
+                    q_task,
+                    slot_id=slot_id,
+                    inject_files=q_inject,
+                    continue_session=False,
+                )
+
+                if not question_path.exists():
+                    return self._fail_result(slot_id, f"Question agent did not write question.md (iter {iteration})")
+
+                a_task = "请审核以下题目，检查参数一致性和难度对标。"
+                await self.scheduler.run_agent(
+                    "analysis",
+                    a_task,
+                    slot_id=slot_id,
+                    inject_files=await self._resolve_inject("analysis", slot_id, 2, {
+                        "蓝图": str(blueprint_path),
+                        "题目": str(question_path),
+                    }),
+                )
+
+                if not feedback_path.exists():
+                    return self._fail_result(slot_id, f"Analysis agent did not write feedback.md (iter {iteration})")
+
+                status = get_doc_status(str(feedback_path))
+                logger.info("[%s] Analysis iter %d: status=%s", slot_id, iteration, status)
+                if status in ("pass", "pass_with_warnings"):
+                    break
+            else:
+                logger.warning(
+                    "[%s] Analysis max iterations reached (%d), proceeding anyway",
+                    slot_id,
+                    self.max_analysis_iterations,
+                )
+
+        # Layer 3: Coding (skip if resuming from layer 4+ or pure conceptual)
+        needs_coding = parse_doc_section(str(question_path), "needs_coding")
+        skip_coding = needs_coding.strip().lower() == "false"
         solve_path = ws / "solve.py"
         output_path = ws / "solve_output.txt"
 
-        if not solve_path.exists():
-            return self._fail_result(slot_id, "Coding agent did not write solve.py")
+        if start_layer > 3:
+            logger.info("[%s] Layer 3: Coding SKIPPED (resume from layer %d)", slot_id, start_layer)
+            if not skip_coding and not output_path.exists():
+                return self._fail_result(
+                    slot_id,
+                    f"Cannot resume from layer {start_layer}: solve_output.txt not found",
+                )
+            exec_result = {
+                "ok": output_path.exists() or skip_coding,
+                "skipped": True,
+                "reused_output": output_path.exists(),
+            }
+        elif skip_coding:
+            logger.info("[%s] Layer 3: Coding SKIPPED (pure conceptual question)", slot_id)
+            exec_result = {"ok": True, "skipped": True}
+        else:
+            logger.info("[%s] Layer 3: Coding", slot_id)
+            solve_task = "请编写完整的 Python 求解代码。"
+            await self.scheduler.run_agent(
+                "coding",
+                solve_task,
+                slot_id=slot_id,
+                inject_files=await self._resolve_inject("coding", slot_id, 3, {"题目": str(question_path)}),
+                max_tokens=self.max_tokens,
+            )
 
-        exec_result = await self.exec_python(solve_path, output_path)
-        if not exec_result["ok"]:
-            logger.warning("[%s] Code execution failed: %s", slot_id, exec_result.get("stderr", "")[:200])
+            if not solve_path.exists():
+                return self._fail_result(slot_id, "Coding agent did not write solve.py")
+
+            exec_result = await self.exec_python(solve_path, output_path)
+            if not exec_result["ok"]:
+                logger.warning("[%s] Code execution failed: %s", slot_id, exec_result.get("stderr", "")[:200])
 
         # Layer 4: Review -> Fix? -> Format
         logger.info("[%s] Layer 4: Review", slot_id)
-        review_task = "请全局审核题目和求解结果。"
+        if skip_coding:
+            review_task = "请全局审核题目。本题为纯概念题，无需代码验证，请从概念正确性、选项干扰质量、表述精确性角度审核。"
+            review_fallback = {
+                "蓝图": str(blueprint_path),
+                "题目": str(question_path),
+            }
+        else:
+            review_task = "请全局审核题目和求解结果。"
+            review_fallback = {
+                "蓝图": str(blueprint_path),
+                "题目": str(question_path),
+                "求解结果": str(output_path),
+            }
+        review_inject = await self._resolve_inject("review", slot_id, 4, review_fallback)
         await self.scheduler.run_agent(
             "review",
             review_task,
             slot_id=slot_id,
-            inject_files={
-                "蓝图": str(blueprint_path),
-                "题目": str(question_path),
-                "求解结果": str(output_path),
-            },
+            inject_files=review_inject,
         )
         review_path = ws / "review.md"
 
@@ -177,18 +261,19 @@ class DocPipelineOrchestrator:
         review_status = get_doc_status(str(review_path))
         if review_status == "needs_fix":
             logger.info("[%s] Review: needs_fix -> running fix agent", slot_id)
-            fix_task = "请根据审核意见修复题目中的问题。"
+            fixed_path = ws / "fixed.md"
+            fix_task = "请根据审核意见修复题目中的问题。优先使用 edit_file 做局部修改。"
             await self.scheduler.run_agent(
                 "fix",
                 fix_task,
                 slot_id=slot_id,
-                inject_files={
+                inject_files=await self._resolve_inject("fix", slot_id, 4, {
                     "题目": str(question_path),
                     "求解结果": str(output_path),
                     "审核意见": str(review_path),
-                },
+                }),
+                pre_copy_source=str(question_path),
             )
-            fixed_path = ws / "fixed.md"
             if not fixed_path.exists():
                 return self._fail_result(slot_id, "Fix agent did not write fixed.md")
 
@@ -204,15 +289,20 @@ class DocPipelineOrchestrator:
         final_path = ws / "final.md"
         total_time = time.monotonic() - total_start
 
-        result = {
-            "slot_id": slot_id,
-            "pipeline_type": "doc_4layer",
-            "ok": final_path.exists(),
-            "total_time_s": round(total_time, 1),
-            "analysis_iterations": final_iteration,
-            "review_status": review_status,
-            "code_exec_ok": exec_result.get("ok", False),
-            "files": {
+        final_content = ""
+        if final_path.exists():
+            final_content = final_path.read_text(encoding="utf-8")
+
+        result = PipelineResult(
+            slot_id=slot_id,
+            ok=final_path.exists(),
+            pipeline_type="doc_4layer",
+            total_time_s=round(total_time, 1),
+            analysis_iterations=final_iteration,
+            review_status=review_status,
+            code_exec_ok=exec_result.get("ok", False) and not exec_result.get("skipped", False),
+            code_skipped=skip_coding,
+            files={
                 "blueprint": str(blueprint_path),
                 "question": str(question_path),
                 "feedback": str(feedback_path),
@@ -222,16 +312,14 @@ class DocPipelineOrchestrator:
                 "fixed": str(fixed_path) if fixed_path and fixed_path.exists() else "",
                 "final": str(final_path) if final_path.exists() else "",
             },
-        }
-
-        if final_path.exists():
-            result["final_content"] = final_path.read_text(encoding="utf-8")
+            final_content=final_content,
+        )
 
         logger.info(
             "[%s] Pipeline done: %.1fs, review=%s, iters=%d",
             slot_id,
             total_time,
-            result["review_status"],
+            result.review_status,
             final_iteration,
         )
         return result
@@ -289,7 +377,7 @@ class DocPipelineOrchestrator:
         sub_questions = sections.get("子问题", "")
         options = sections.get("选项", "")
         answer = sections.get("答案", "")
-        solve_output = output_path.read_text(encoding="utf-8") if output_path.exists() else "（无求解输出）"
+        solve_output = output_path.read_text(encoding="utf-8") if output_path.exists() else "（纯概念题，无需代码验证）"
 
         review_summary = ""
         if review_path and review_path.exists():
@@ -334,11 +422,9 @@ class DocPipelineOrchestrator:
         return "\n".join(parts)
 
     @staticmethod
-    def _fail_result(slot_id: str, reason: str) -> dict[str, Any]:
-        return {
-            "slot_id": slot_id,
-            "pipeline_type": "doc_4layer",
-            "ok": False,
-            "error": reason,
-            "total_time_s": 0,
-        }
+    def _fail_result(slot_id: str, reason: str) -> PipelineResult:
+        return PipelineResult(
+            slot_id=slot_id,
+            ok=False,
+            error=reason,
+        )

@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 1,
+  "timestamp": "2026-05-31T08:34:06",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "访问0: 缺失, 新填入, Cache块:[0], LRU:[0]; 访问1: 命中, Cache块:[0], LRU:[0]; 访问32: 缺失, 新填入, Cache块:[2,0], LRU:[2,0]; 访问33: 命中, Cache块:[2,0], LRU:[2,0]; 访问64: 缺失, 新填入, Cache块:[4,2,0], LRU:[4,2,0]; 访问65: 命中, Cache块:[4,2,0], LRU:[4,2,0]",
+      "sub_q2": "60ns"
+    },
+    "total_score": "10\n"
+  }
+}

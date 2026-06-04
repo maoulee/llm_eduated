@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-02T04:11:56",
+  "total_time_s": 705.22,
+  "rounds": 2,
+  "final_stem": "某嵌入式处理器采用两级存储层次结构：L1 Cache 和主存。L1 Cache 总容量为 16 KB，数据块大小（Block Size）为 64 B，采用组相联映射（Set-Associative Mapping），每组包含 4 个相联行（4-way）。主存访问时间为 $T_m = 100$ ns，L1 Cache 访问时间为 $T_c = 1$ ns。系统采用写直达（Write-Through）策略，且配备一个全缓冲（Fully Buffered）写缓冲器（Write Buffer），写操作在发出后即刻返回，无需等待主存写入完成。\n\n现有一段测试程序执行特定的访存序列。该程序使用一个大小为 128 KB 的字符数组 `char buffer[128*1024]`（假设 `buffer` 起始地址对齐到 128 KB 边界，即基地址为 `0x00000000` 或更高阶对齐，确保不与其他数据冲突）。\n\n程序执行逻辑如下：\n1. **初始化阶段**：按顺序向 `buffer` 中写入 128 KB 数据（即执行 $128 \\times 1024$ 次写操作，每次写入 1 个字节，地址从 ",
+  "solver_execs": 1,
+  "review_status": "needs_fix",
+  "review_quality": "4",
+  "review_raw_text_length": 13509
+}

@@ -1,0 +1,18 @@
+{
+  "slot_id": "Q43",
+  "step": "solve",
+  "round": 0,
+  "timestamp": "2026-05-31T01:43:05",
+  "timing_s": null,
+  "output": {
+    "slot_id": "Q43",
+    "code_files": [],
+    "outputs": [],
+    "computed_results": {
+      "raw_text": "我将逐步分析这道Cache和补码运算的综合题，编写Python求解脚本。\n\n首先分析题目关键信息：\n- Cache直接映射，4行，每行8字节\n- 物理地址32位\n- 需要计算Tag、Index、Offset的位数划分\n- 三条LOAD指令和一条ADD指令\n\n让我先计算地址结构：\n- Cache行数 = 4 = 2^2，所以 Index 需要 2 位\n- Block大小 = 8字节 = 2^3，所以 Offset 需要 3 位\n- Tag = 32 - 2 - 3 = 27 位\n\n现在编写完整的求解脚本：\n\n```json\n{\"tool\": \"code_exec_408\", \"arguments\": {\"code\": \"# -*- coding: utf-8 -*-\\n\\\"\\\"\\\"\\n408 Cache直接映射 + 补码加法综合题求解\\n\\\"\\\"\\\"\\n\\nprint(\\\"=\\\" * 60)\\nprint(\\\"408 Cache直接映射 + 补码加法求解\\\")\\nprint(\\\"=\\\" * 60)\\n\\n# ============================================\\n# 基本参数定义\\n# ============================================\\nprint(\\\"\\\\n【基本参数】\\\")\\ncache_lines = 4          # Cache行数\\nblock_size = 8           # 每行（Block）大小，字节\\naddr_bits = 32           # 物理地址位数\\n\\n# ============================================\\n# 第(1)问：地址结构划分\\n# ============================================\\nprint(\\\"\\\\n\\\" + \\\"=\\\" * 60)\\nprint(\\\"第(1)问：Tag/Index/Offset 位数划分\\\")\\nprint(\\\"=\\\" * 60)\\n\\n# Offset位数：block_size = 2^offset_bits\\noffset_bits = block_size.bit_length() - 1\\nprint(f\\\"\\\\nBlock大小 = {block_size} 字节 = 2^{offset_bits} 字节\\\")\\nprint(f\\\"Offset 位数 = {offset_bits} 位\\\")\\n\\n# Index位数：cache_lines = 2^index_bits\\nindex_bits = cache_lines.bit_length() - 1\\nprint(f\\\"Cache行数 = {cache_lines} = 2^{index_bits}\\\")\\nprint(f\\\"Index 位数 = {index_bits} 位\\\")\\n\\n# Tag位数\\ntag_bits = addr_bits - index_bits - offset_bits\\nprint(f\\\"Tag 位数 = {addr_bits} - {index_bits} - {offset_bits} = {tag_bits} 位\\\")\\n\\nprint(f\\\"\\\\n【地址结构】\\\")\\nprint(f\\\"Tag: {tag_bits} 位 | Index: {index_bits} 位 | Offset: {offset_bits} 位\\\")\\nprint(f\\\"总位数: {tag_bits} + {index_bits} + {offset_bits} = {tag_bits + index_bits + offset_bits} 位\\\")\\n\\n# ============================================\\n# 辅助函数：解析物理地址\\n# ============================================\\ndef parse_address(addr, tag_bits, index_bits, offset_bits):\\n    \\\"\\\"\\\"解析物理地址，返回 Tag, Index, Offset\\\"\\\"\\\"\\n    # Offset: 最低 offset_bits 位\\n    offset = addr & ((1 << offset_bits) - 1)\\n    # Index: 接下来的 index_bits 位\\n    index = (addr >> offset_bits) & ((1 << index_bits) - 1)\\n    # Tag: 剩余高位\\n    tag = addr >> (offset_bits + index_bits)\\n    return tag, index, offset\\n\\n# ============================================\\n# 第(1)问：地址 0x00000014 的 Tag 和 Index\\n# ============================================\\nprint(\\\"\\\\n【地址 0x00000014 的解析】\\\")\\naddr1 = 0x00000014\\nprint(f\\\"地址: 0x{addr1:08X} = {addr1} (十进制)\\\")\\n\\n# 二进制表示（低16位即可看清结构）\\nbin_addr1 = format(addr1, '032b')\\nprint(f\\\"二进制: {bin_addr1}\\\")\\n\\n# 用竖线分隔 Tag | Index | Offset\\n# Tag: 27位, Index: 2位, Offset: 3位\\nbin_tag1 = bin_addr1[:tag_bits]\\nbin_index1 = bin_addr1[tag_bits:tag_bits+index_bits]\\nbin_offset1 = bin_addr1[tag_bits+index_bits:]\\nprint(f\\\"二进制分割: {bin_tag1} | {bin_index1} | {bin_offset1}\\\")\\nprint(f\\\"           (Tag{tag_bits}位) | (Index{index_bits}位) | (Offset{offset_bits}位)\\\")\\n\\ntag1, index1, offset1 = parse_address(addr1, tag_bits, index_bits, offset_bits)\\nprint(f\\\"\\\\nTag  = 0x{tag1:07X} (十进制: {tag1})\\\")\\nprint(f\\\"Index = 0x{index1:X} (十进制: {index1}, 二进制: {bin(index1)})\\\")\\nprint(f\\\"Offset = 0x{"
+    },
+    "python_exec_count": 0,
+    "total_time_s": 46.4,
+    "error": ""
+  }
+}

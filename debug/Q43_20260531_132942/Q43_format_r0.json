@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 0,
+  "timestamp": "2026-05-31T13:38:13",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "T_mem_access = 180 ns, T_avg_local = 18.50 ns",
+      "sub_q2": "T_disk_read = 7.08 ms, T_global_avg = 7100.42 ns"
+    },
+    "total_score": "15\n"
+  }
+}

@@ -749,3 +749,690 @@ class SingleChoiceAssemblerAgent(BaseAgent):
         return assembled
 
 
+# ═══════════════════════════════════════════════════════════════
+# Merged SC Design Agent (replaces Draft + Options + Gate)
+# ═══════════════════════════════════════════════════════════════
+
+
+def _dump_sc_blueprint_md(blueprint: dict) -> str:
+    """Convert SC blueprint to readable Markdown (3 core fields only)."""
+    if not blueprint:
+        return "（无特殊蓝图要求）"
+
+    lines = []
+    lines.append(f"- **核心考点**: {blueprint.get('primary_target_name', '未指定')}")
+    lines.append(f"- **知识域**: {blueprint.get('target_family', '未指定')}")
+    lines.append(f"- **目标难度**: {blueprint.get('difficulty_level', blueprint.get('target_difficulty', '未指定'))}")
+    lines.append(f"- **K值目标**: {blueprint.get('k_target', '未指定')}")
+    lines.append(f"- **难度说明**: {blueprint.get('difficulty_rationale', '无')}")
+    lines.append(f"- **考察模式**: {blueprint.get('examination_mode', '未指定')}")
+
+    return "\n".join(lines)
+
+
+def _extract_sc_philosophy(slot_id: str) -> str:
+    """Extract slot philosophy for SC merged design prompt."""
+    import os as _os
+    path = _os.path.join("data", "slots", f"{slot_id}_slot.md")
+    if not _os.path.exists(path):
+        return ""
+
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # Extract key sections
+    targets = ["认知雷达锚点", "考察理念", "设计理念", "出题指导"]
+    lines = content.split("\n")
+    parts = []
+
+    for target in targets:
+        capturing = False
+        match_level = 0
+        result = []
+        for line in lines:
+            hl = 0
+            if line.startswith("# "):
+                hl = 1
+            elif line.startswith("## "):
+                hl = 2
+            elif line.startswith("### "):
+                hl = 3
+
+            if not capturing and hl >= 2 and target in line:
+                capturing = True
+                match_level = hl
+                result.append(line)
+                continue
+            if capturing:
+                if hl > 0 and hl <= match_level:
+                    break
+                result.append(line)
+
+        text = "\n".join(result).strip()
+        if text and len(text) > 20:
+            parts.append(text)
+
+    return "\n\n---\n\n".join(parts) if parts else ""
+
+
+class MergedSCDesignAgent(BaseAgent):
+    """Merged SC design: stem + 4 options + answer + self-check in one LLM call.
+
+    Replaces SingleChoiceDraftAgent + OptionAndDistractorAgent + StemBlueprintGate.
+    Pure NL — no tools. Parameter verification delegated to solver downstream.
+    """
+
+    def __init__(self, llm_backend, *, max_tokens: int = 16384):
+        super().__init__(
+            AgentConfig(
+                name="merged_sc_design",
+                phase="design",
+                step_name="merged_sc_design",
+                output_format="markdown",
+                output_key="sc_merged_design",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                max_retries=2,
+                required_fields=["stem", "option_A", "option_B", "option_C", "option_D", "correct_answer"],
+                repair_on_parse_failure=True,
+                repair_max_retries=1,
+                role_type=RoleType.GENERATOR,
+                tools=[],
+                max_tool_rounds=0,
+                expected_output_format=(
+                    "## 题目\n"
+                    "- **stem**: ...\n"
+                    "- **given_conditions**: [...]\n\n"
+                    "## 选项\n"
+                    "- **option_A**: ...\n"
+                    "- **option_B**: ...\n"
+                    "- **option_C**: ...\n"
+                    "- **option_D**: ...\n"
+                    "- **correct_answer**: A/B/C/D\n\n"
+                    "## 干扰策略\n"
+                    "- **distractor_intent_A**: ...\n\n"
+                    "## 自检清单\n"
+                    "- **blueprint_compliance**: PASS/FAIL"
+                ),
+                system_prompt=(
+                    "你是一位408考研出题专家。你一次完成选择题的题干、选项和干扰策略设计。"
+                    "严格按markdown格式输出，自检清单全部PASS后再输出。"
+                ),
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import SC_MERGED_DESIGN_PROMPT, K_RADAR_DEFINITIONS
+
+        blueprint = blackboard.get("current_blueprint", {})
+        slot_id = blueprint.get("slot_id", "unknown")
+        blueprint_md = _dump_sc_blueprint_md(blueprint)
+        slot_philosophy = _extract_sc_philosophy(slot_id)
+
+        prompt = SC_MERGED_DESIGN_PROMPT.format(
+            slot_id=slot_id,
+            blueprint_md=blueprint_md,
+            k_definitions=K_RADAR_DEFINITIONS,
+            slot_philosophy=slot_philosophy or "（未找到题位设计哲学）",
+        )
+
+        fix_instruction = blackboard.get("stem_fix_instruction", "")
+        has_fix = bool(self._memory and any(
+            m.get("role") == "review" for m in self._memory
+        ))
+        if fix_instruction:
+            has_fix = True
+
+        if has_fix:
+            prompt += (
+                "\n\n## 重要提示\n"
+                "你正在**修改**前一轮生成的题目，不是重新出一道不同的题。\n"
+                "请查看下方历史记录中的审查反馈，针对审核指出的具体问题进行精确修改。\n"
+                "保持题目整体结构和考察方向不变，仅修正被指出的问题。\n"
+            )
+            if fix_instruction:
+                prompt += f"\n补充修复指令：{fix_instruction}\n"
+
+        return prompt
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        # Strip code fences
+        stripped = re.sub(r"^```(?:\w+)?\s*\n?", "", text)
+        stripped = re.sub(r"\n?```\s*$", "", stripped)
+        if len(stripped.strip()) > 50:
+            text = stripped
+
+        result = parse_structured_output(text, md_sections=("题目", "选项", "干扰策略", "自检清单"))
+        if not result:
+            all_sections = parse_md_sections(text)
+            for _name, sec in all_sections.items():
+                if isinstance(sec, dict) and sec.get("stem"):
+                    result.update(sec)
+                    break
+        if not result:
+            data = try_parse_json_object(text)
+            if data and isinstance(data, dict):
+                result = data
+
+        return result
+
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        stem = str(parsed.get("stem", ""))
+        if "```" in stem or re.search(r"\b(int\s+main|#include|def\s+\w+\(|print\s*\()", stem):
+            return False, "stem contains code instead of a question"
+        if len(stem.strip()) < 8:
+            return False, "stem is too short"
+        answer = str(parsed.get("correct_answer", "")).strip().upper()
+        if answer not in ("A", "B", "C", "D"):
+            return False, f"correct_answer must be A/B/C/D, got '{answer}'"
+        return True, ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# Merged Review + Fix Agent (replaces verify + format + final_review + final_fixer)
+# ═══════════════════════════════════════════════════════════════
+
+
+class MergedReviewFixAgent(BaseAgent):
+    """Merged SC review + fix + format: one agent call with python_exec tool.
+
+    Reviews the question, verifies answer with code, fixes issues, writes explanation.
+    Replaces _run_solver_verify + _format_sc + _run_final_review + _run_final_fixer.
+    """
+
+    def __init__(self, llm_backend, *, max_tokens: int = 12288):
+        from core_new.agent_tools import PYTHON_EXEC_TOOL
+        super().__init__(
+            AgentConfig(
+                name="merged_review_fix",
+                phase="review_fix",
+                step_name="merged_review_fix",
+                output_format="markdown",
+                output_key="sc_review_fix_result",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                max_retries=1,
+                required_fields=["status", "verified_answer", "correct_answer", "explanation"],
+                repair_max_retries=1,
+                role_type=RoleType.AUDIT,
+                tools=[PYTHON_EXEC_TOOL],
+                max_tool_calls=3,
+                max_tool_rounds=3,
+                expected_output_format=(
+                    "## 审查结果\n"
+                    "- **status**: pass|needs_fix\n"
+                    "- **verified_answer**: A/B/C/D\n\n"
+                    "## 修复内容\n"
+                    "- **fix_target**: none|stem|options|answer\n\n"
+                    "## 解析\n"
+                    "- **correct_answer**: A/B/C/D\n"
+                    "- **explanation**: ...\n"
+                    "- **key_steps**: ..."
+                ),
+                system_prompt=(
+                    "你是一位408考研审核与修复专家。你用python_exec验证答案，审查题目质量，"
+                    "直接修复问题并编写解析。严格按markdown格式输出。"
+                ),
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.prompts.single_choice_prompts import SC_MERGED_REVIEW_FIX_PROMPT
+
+        design = blackboard.get("design", {})
+        options = blackboard.get("options", {})
+        solver_dict = blackboard.get("solver_dict", {})
+
+        prompt = SC_MERGED_REVIEW_FIX_PROMPT.format(
+            stem=design.get("stem", ""),
+            option_A=options.get("option_A", ""),
+            option_B=options.get("option_B", ""),
+            option_C=options.get("option_C", ""),
+            option_D=options.get("option_D", ""),
+            solver_result_json=json.dumps(solver_dict, ensure_ascii=False, indent=2) if solver_dict else "{}",
+        )
+
+        return prompt
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        sections = parse_md_sections(text)
+
+        result: Dict[str, Any] = {}
+        for section_name, section_data in sections.items():
+            if isinstance(section_data, dict):
+                result.update(section_data)
+
+        # Normalize status
+        status = result.get("status", "pass")
+        if isinstance(status, str):
+            status = status.strip().lower()
+        result["status"] = status
+
+        # Parse fixed_options if string
+        fixed_opts = result.get("fixed_options", "{}")
+        if isinstance(fixed_opts, str):
+            try:
+                result["fixed_options"] = json.loads(fixed_opts)
+            except json.JSONDecodeError:
+                result["fixed_options"] = {}
+
+        # Parse key_steps from semicolon-separated string
+        key_steps = result.get("key_steps", "")
+        if isinstance(key_steps, str) and key_steps:
+            result["key_steps_list"] = [s.strip() for s in key_steps.split(";") if s.strip()]
+
+        # Fallback regex for critical fields
+        if "status" not in result or not result["status"]:
+            m = re.search(r"\*\*status\*\*[:：]\s*(\w+)", text)
+            if m:
+                result["status"] = m.group(1).strip().lower()
+
+        return result
+
+    def validate_parsed(self, parsed: Any) -> tuple[bool, str]:
+        ok, detail = super().validate_parsed(parsed)
+        if not ok:
+            return ok, detail
+        status = str(parsed.get("status", "")).strip().lower()
+        if status not in ("pass", "needs_fix"):
+            return False, "status must be pass or needs_fix"
+        return True, ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# V2: Outline-driven 3-stage pipeline agents
+# ═══════════════════════════════════════════════════════════════
+
+
+def _extract_available_patterns(experience_card_md: str) -> str:
+    """Extract pattern names and frequency from experience card."""
+    if not experience_card_md:
+        return "（无经验卡）"
+    patterns = []
+    for line in experience_card_md.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("## 模式") or stripped.startswith("## 考察模式分布"):
+            patterns.append(stripped.lstrip("# ").strip())
+        elif "出现频率" in stripped and "**" in stripped:
+            patterns.append(f"  {stripped}")
+    return "\n".join(patterns) if patterns else "（未找到考察模式）"
+
+
+def _read_experience_pattern(experience_card_md: str, pattern_name: str) -> str:
+    """Extract a specific pattern's details from experience card."""
+    if not experience_card_md:
+        return "（无经验卡数据）"
+    lines = experience_card_md.split("\n")
+    capturing = False
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        # Check if this is the start of the target pattern
+        if stripped.startswith("## 模式") and pattern_name.lower() in stripped.lower():
+            capturing = True
+            result.append(stripped)
+            continue
+        # Check if this is a year-based lookup
+        if pattern_name.isdigit() and stripped.startswith("### " + pattern_name):
+            capturing = True
+            result.append(stripped)
+            continue
+        # Stop at next ## section
+        if capturing and stripped.startswith("## ") and not stripped.startswith("## 模式"):
+            break
+        if capturing:
+            result.append(line)
+    return "\n".join(result) if result else f"（未找到模式: {pattern_name}）"
+
+
+class SCQuestionAgent(BaseAgent):
+    """Stage 1: Analyze experience + Design + Generate question (uses read_workspace_file for experience)."""
+
+    ALLOWED_TOOLS = ["python_exec"]
+
+    def __init__(self, llm_backend, *, experience_card_path: str = "", max_tokens: int = 16384):
+        self._experience_card_path = experience_card_path
+        super().__init__(
+            AgentConfig(
+                name="sc_question",
+                phase="question",
+                output_format="markdown",
+                output_key="sc_question",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                required_fields=["stem", "option_A", "option_B", "option_C", "option_D", "correct_answer"],
+                role_type=RoleType.GENERATOR,
+                system_prompt=(
+                    "你是一位408考研出题专家。按三步流程出题：1.选知识点 2.设计题目 3.代码验证并调整。"
+                    "使用python_exec工具验证数值计算，代码结果优先。严格按markdown格式输出最终题目。"
+                ),
+            ),
+            llm_backend,
+        )
+
+    async def execute(self, blackboard: Blackboard):
+        start = time.monotonic()
+
+        for attempt in range(self.config.max_retries + 1):
+            try:
+                prompt = self.build_input(blackboard)
+                loop = Edu408AgentLoop(
+                    self.llm,
+                    build_408_tools(),
+                    workspace=DEFAULT_WORKSPACE,
+                    max_iterations=8,
+                    max_tokens=self.config.max_tokens,
+                    enable_thinking=self.config.enable_thinking,
+                    execution_policy=self.execution_policy,
+                )
+                result = await asyncio.wait_for(
+                    loop.run(
+                        self._runtime_task(prompt),
+                        allowed_tools=self.ALLOWED_TOOLS,
+                        skill_names=["solve-408"],
+                        extra_system=self._runtime_system(),
+                    ),
+                    timeout=self.config.timeout_s,
+                )
+
+                if result.final.lower().startswith("error:"):
+                    raise RuntimeError(result.final)
+
+                parsed = self.parse_output(result.final)
+
+                ok, detail = self.validate_parsed(parsed)
+                if not ok:
+                    logger.warning("SCQuestion validation failed (attempt %d): %s", attempt + 1, detail)
+                    last_error = detail
+                    continue
+
+                elapsed = time.monotonic() - start
+                parsed["_elapsed_s"] = round(elapsed, 1)
+                parsed["_attempts"] = attempt + 1
+                blackboard.set(self.config.output_key, parsed)
+                return parsed
+
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning("SCQuestion error (attempt %d): %s", attempt + 1, exc)
+
+        blackboard.set(self.config.output_key, {"error": last_error})
+        return {"error": last_error}
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import SC_QUESTION_PROMPT
+
+        outline_entry = blackboard.get("outline_entry", {})
+        slot_id = outline_entry.get("slot_id", "unknown")
+
+        # Single merged document: outline requirements + mode details + experience
+        reference_doc = blackboard.get("assembled_experience_doc", "")
+        if not reference_doc:
+            reference_doc = "（无参考文档）"
+
+        prompt = SC_QUESTION_PROMPT.format(
+            slot_id=slot_id,
+            reference_doc=reference_doc,
+        )
+
+        return prompt
+
+    def _runtime_task(self, prompt: str) -> str:
+        return (
+            f"{prompt}\n\n"
+            "Runtime requirements:\n"
+            "1. You may use python_exec to verify calculations.\n"
+            "2. The final answer must be markdown, not a tool call.\n"
+            "3. Follow the three-step workflow: select knowledge → design question → code verify.\n"
+        )
+
+    @staticmethod
+    def _runtime_system() -> str:
+        return (
+            "You are running as a question generation agent inside the Edu408 runtime. "
+            "Use python_exec for any calculation verification. "
+            "Output final markdown when done."
+        )
+
+    def _summarize_contract(self, contract: dict) -> str:
+        """Create a compact summary of slot contract for the prompt."""
+        if not contract:
+            return "（无题位约束）"
+        lines = []
+        for key in ("preferred_subject", "preferred_target_families", "preferred_paper_roles",
+                     "should_be", "should_not_be", "slot_guidance"):
+            val = contract.get(key)
+            if val and val != "无":
+                lines.append(f"- **{key}**: {val}")
+        # K-value anchors
+        for k in ("K1", "K2", "K3", "K4", "K5"):
+            mode = contract.get(f"{k}_mode")
+            rng = contract.get(f"{k}_range")
+            if mode:
+                lines.append(f"- **{k}**: mode={mode}, range={rng or '?'}")
+        return "\n".join(lines) if lines else "（无特殊约束）"
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+
+        # Strategy 1: parse structured markdown sections
+        parsed = parse_structured_output(
+            text,
+            md_sections=("题目", "选项", "干扰策略", "验证结果"),
+        )
+
+        # Flatten section dicts
+        result: Dict[str, Any] = {}
+        for section_name, section_data in parsed.items():
+            if isinstance(section_data, dict):
+                result.update(section_data)
+            else:
+                result[section_name] = section_data
+
+        # If structured parse got nothing, try all ## sections
+        if not result:
+            all_sections = parse_md_sections(text)
+            for _name, sec in all_sections.items():
+                if isinstance(sec, dict):
+                    result.update(sec)
+
+        # Fallback regex for critical fields
+        for field in ("stem", "option_A", "option_B", "option_C", "option_D",
+                       "correct_answer", "code_verified", "verified_answer",
+                       "adjustment_summary", "difficulty_self_assessment",
+                       "knowledge_points", "selected_knowledge_rationale",
+                       "option_style_used"):
+            if field not in result or not result[field]:
+                m = re.search(rf"\*\*{field}\*\*[:：]\s*(.+?)(?=\n-\s+\*\*|\n##|\Z)", text, re.DOTALL)
+                if m:
+                    result[field] = m.group(1).strip()
+
+        # Fallback regex for distractor intents
+        for letter in "ABCD":
+            key = f"distractor_intent_{letter}"
+            if key not in result or not result[key]:
+                m = re.search(rf"\*\*{key}\*\*[:：]\s*(.+?)(?=\n-\s+\*\*|\n##|\Z)", text, re.DOTALL)
+                if m:
+                    result[key] = m.group(1).strip()
+
+        return result
+
+
+class SCCodeVerifyAgent(BaseAgent):
+    """Stage 2: Code verification — python_exec to verify answer, code takes precedence."""
+
+    ALLOWED_TOOLS = ["python_exec"]
+
+    def __init__(self, llm_backend, *, max_tokens: int = 4096):
+        super().__init__(
+            AgentConfig(
+                name="sc_code_verify",
+                phase="code_verify",
+                output_format="markdown",
+                output_key="sc_code_verify",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                required_fields=["status", "verified_answer"],
+                role_type=RoleType.VERIFIER,
+                system_prompt="你是一位408考研题目校验专家。用代码独立验证答案，代码结果优先。",
+            ),
+            llm_backend,
+        )
+
+    async def execute(self, blackboard: Blackboard):
+        start = time.monotonic()
+        prompt = self.build_input(blackboard)
+
+        loop = Edu408AgentLoop(
+            self.llm,
+            build_408_tools(),
+            workspace=DEFAULT_WORKSPACE,
+            max_iterations=3,
+            max_tokens=self.config.max_tokens,
+            enable_thinking=self.config.enable_thinking,
+            execution_policy=self.execution_policy,
+        )
+        result = await asyncio.wait_for(
+            loop.run(
+                self._runtime_task(prompt),
+                allowed_tools=self.ALLOWED_TOOLS,
+                extra_system=self._runtime_system(),
+            ),
+            timeout=self.config.timeout_s,
+        )
+
+        parsed = self.parse_output(result.final)
+        parsed["_elapsed_s"] = round(time.monotonic() - start, 1)
+        blackboard.set(self.config.output_key, parsed)
+        return parsed
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import SC_CODE_VERIFY_PROMPT
+
+        question = blackboard.get("sc_question", {})
+        return SC_CODE_VERIFY_PROMPT.format(
+            stem=question.get("stem", ""),
+            option_A=question.get("option_A", ""),
+            option_B=question.get("option_B", ""),
+            option_C=question.get("option_C", ""),
+            option_D=question.get("option_D", ""),
+            claimed_answer=question.get("correct_answer", "?"),
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        parsed = parse_structured_output(text)
+        result: Dict[str, Any] = {}
+        for section_name, section_data in parsed.items():
+            if isinstance(section_data, dict):
+                result.update(section_data)
+        # Fallback
+        if "status" not in result:
+            m = re.search(r"\*\*status\*\*[:：]\s*(\w+)", text)
+            if m:
+                result["status"] = m.group(1).strip().lower()
+        if "verified_answer" not in result:
+            m = re.search(r"\*\*verified_answer\*\*[:：]\s*([A-D])", text)
+            if m:
+                result["verified_answer"] = m.group(1)
+        return result
+
+
+class SCReviewAgent(BaseAgent):
+    """Stage 3: Adversarial review — pass/needs_fix with final explanation."""
+
+    ALLOWED_TOOLS = ["python_exec"]
+
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
+        super().__init__(
+            AgentConfig(
+                name="sc_review",
+                phase="review",
+                output_format="markdown",
+                output_key="sc_review",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                required_fields=["status", "verified_answer"],
+                role_type=RoleType.REVIEWER,
+                system_prompt="你是一位408考研出题对抗审核员。主动寻找题目缺陷，无法攻破时才判pass。",
+            ),
+            llm_backend,
+        )
+
+    async def execute(self, blackboard: Blackboard):
+        start = time.monotonic()
+        prompt = self.build_input(blackboard)
+
+        loop = Edu408AgentLoop(
+            self.llm,
+            build_408_tools(),
+            workspace=DEFAULT_WORKSPACE,
+            max_iterations=3,
+            max_tokens=self.config.max_tokens,
+            enable_thinking=self.config.enable_thinking,
+            execution_policy=self.execution_policy,
+        )
+        result = await asyncio.wait_for(
+            loop.run(
+                self._runtime_task(prompt),
+                allowed_tools=self.ALLOWED_TOOLS,
+                extra_system=self._runtime_system(),
+            ),
+            timeout=self.config.timeout_s,
+        )
+
+        parsed = self.parse_output(result.final)
+        parsed["_elapsed_s"] = round(time.monotonic() - start, 1)
+        blackboard.set(self.config.output_key, parsed)
+        return parsed
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import SC_REVIEW_PROMPT
+
+        question = blackboard.get("sc_question", {})
+        verify_result = blackboard.get("sc_code_verify", {})
+        outline_md = blackboard.get("outline_entry_md", "")
+
+        return SC_REVIEW_PROMPT.format(
+            outline_entry_md=outline_md,
+            stem=question.get("stem", ""),
+            option_A=question.get("option_A", ""),
+            option_B=question.get("option_B", ""),
+            option_C=question.get("option_C", ""),
+            option_D=question.get("option_D", ""),
+            code_verify_result=(
+                f"status={verify_result.get('status', '?')}, "
+                f"verified_answer={verify_result.get('verified_answer', '?')}, "
+                f"code_summary={verify_result.get('code_summary', '?')}"
+            ),
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        text = str(raw)
+        parsed = parse_structured_output(text)
+        result: Dict[str, Any] = {}
+        for section_name, section_data in parsed.items():
+            if isinstance(section_data, dict):
+                result.update(section_data)
+        # Normalize status
+        status = result.get("status", "pass")
+        if isinstance(status, str):
+            status = status.strip().lower()
+        result["status"] = status
+        # Parse key_steps
+        key_steps = result.get("key_steps", "")
+        if isinstance(key_steps, str) and key_steps:
+            result["key_steps_list"] = [s.strip() for s in key_steps.split(";") if s.strip()]
+        # Fallback
+        if "status" not in result:
+            m = re.search(r"\*\*status\*\*[:：]\s*(\w+)", text)
+            if m:
+                result["status"] = m.group(1).strip().lower()
+        return result

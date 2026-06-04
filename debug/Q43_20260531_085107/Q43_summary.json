@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T09:01:37",
+  "total_time_s": 610.23,
+  "rounds": 2,
+  "final_stem": "\n某32位处理器系统采用以下存储与I/O架构：\n1. **Cache系统**：L1数据Cache为直接映射（Direct Mapping）结构，容量64KB，块大小（Block Size）为64字节，写回法（Write-Back），LRU行内替换。Cache行状态包含Valid位、Dirty位和Tag字段。\n2. **内存系统**：物理地址空间32位。内存按字节编址。\n3. **DMA子系统**：支持突发传输（Burst Transfer），总线宽度32位（4字节/次）。DMA控制器每启动一次突发传输，需消耗50个CPU时钟周期进行初始化（设置MAR/MDR及控制寄存器）；传输结束后，需消耗10个CPU时钟周期进行中断通知与上下文清理。数据传输过程中不占用CPU执行资源，但占用系统总线。\n4. **中断机制**：CPU支持外部中断。当中断请求到达时，CPU在完成当前指令后进入中断响应阶段。中断响应期间，CPU会自动将PC（程序计数器，4字节）和PSW（程序状态字，4字节）压入栈中保存，共占用8字节内存空间。中断服务程序（ISR）执行完毕后，弹出PC和PSW恢复现场并返回。\n5. **工",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": "2\n",
+  "review_raw_text_length": 6330
+}

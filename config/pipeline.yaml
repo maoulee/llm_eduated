@@ -1,0 +1,134 @@
+# Pipeline configuration — routing, params, context injection
+# Loaded by core_new/doc_pipeline/pipeline_config.py
+
+# ── Pipeline parameters ──────────────────────────────────────
+pipeline:
+  max_analysis_iterations: 3
+  max_agent_attempts: 30
+  default_max_tokens: 20000
+  default_thinking_budget: 10000
+  python_exec_timeout: 30
+  slot_concurrency: 2          # env PIPELINE_SLOT_CONCURRENCY overrides this
+
+  sampling:
+    temperature: 0.2
+    top_p: 0.9
+
+  thinking_budget:
+    design: 8000
+    question: 10000
+    analysis: 10000
+    coding: 10000
+    review: 8000
+    fix: 10000
+
+# ── Routing profiles ─────────────────────────────────────────
+routing:
+  default_profile: all_local
+
+  providers:
+    fallback: "glm5.1"
+    local: "api_vllm"
+    health_check_ttl: 60
+
+  profiles:
+    all_local:
+      _default: local
+      model_routing: {}
+
+    all_remote:
+      _default: remote
+      model_routing: {}
+
+    mixed:
+      _default: local
+      doc_review: remote
+      doc_fix: remote
+      review: remote
+      model_routing:
+        review: "{fallback}"
+        fix: "{fallback}"
+
+    glm_gen_qwen_review:
+      _default: remote
+      doc_review: local
+      doc_format: local
+      review: local
+      model_routing:
+        question: "{fallback}"
+        coding: "{fallback}"
+        fix: "{fallback}"
+        analysis: "{local}"
+        review: "{local}"
+
+    qwen_gpt_core:
+      _default: local
+      model_routing:
+        question: webgpt
+        analysis: "{local}"
+        coding: webgpt
+        review: webgpt
+        fix: webgpt
+
+    hybrid:
+      _default: local
+      model_routing:
+        paper_composer: hybrid
+        question: hybrid
+        coding: hybrid
+        review: hybrid
+
+# ── Context providers ────────────────────────────────────────
+context_providers:
+  builtins:
+    - name: blueprint
+      type: file
+      path_pattern: "{workspace}/{slot_id}/blueprint.md"
+      label: "蓝图"
+      phases: [2, 3, 4]
+
+    - name: question
+      type: file
+      path_pattern: "{workspace}/{slot_id}/question.md"
+      label: "题目"
+      phases: [2, 3, 4]
+
+    - name: solve_output
+      type: file
+      path_pattern: "{workspace}/{slot_id}/solve_output.txt"
+      label: "求解结果"
+      phases: [3, 4]
+      optional: true
+
+    - name: feedback
+      type: file
+      path_pattern: "{workspace}/{slot_id}/feedback.md"
+      label: "审核反馈"
+      phases: [2]
+      optional: true
+
+    - name: review_comments
+      type: file
+      path_pattern: "{workspace}/{slot_id}/review.md"
+      label: "审核意见"
+      phases: [4]
+
+    - name: experience_doc
+      type: inline
+      label: "经验文档"
+      phases: [1, 2]
+      optional: true
+
+    - name: k_definitions
+      type: inline
+      label: "K值定义"
+      phases: [1]
+      optional: true
+
+  role_bindings:
+    design: []
+    question: [blueprint, feedback]
+    analysis: [blueprint, question]
+    coding: [question]
+    review: [blueprint, question, solve_output]
+    fix: [question, solve_output, review_comments]

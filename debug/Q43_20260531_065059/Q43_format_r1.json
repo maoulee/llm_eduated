@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 1,
+  "timestamp": "2026-05-31T06:53:43",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "10.24",
+      "sub_q2": "总线占用时间：163.84 ms；CPU管理开销：0.05 ms"
+    },
+    "total_score": "10\n"
+  }
+}

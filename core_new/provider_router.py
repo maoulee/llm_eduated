@@ -19,46 +19,53 @@ from core_new.llm_gateway import LLMGateway, get_gateway
 logger = logging.getLogger(__name__)
 
 # ── Configuration ──────────────────────────────────────────────
+# Lazy-loaded from PIPELINE_CONFIG (single source of truth)
 
-FALLBACK_PROVIDER = "glm5.1"
-LOCAL_PROVIDER = "api_vllm"
-HEALTH_CHECK_TTL = 60  # seconds to cache health check result
+_active_routing: dict[str, str] = {}
+_default_routing: str = "remote"
+_routing_initialized = False
+_config_cache: dict | None = None
 
-# Agent role → "local" (prefer Qwen) or "remote" (always GLM).
-AGENT_ROUTING = {
-    # All local — Qwen3-32B when available, GLM 5.1 fallback
-    "architecture":     "local",
-    "sc_draft":         "local",
-    "options":          "local",
-    "design_comp":      "local",
-    "solver":           "local",
-    "paper_composer":   "local",
-    "gate":             "local",
-    "stem_verify":      "local",
-    "review":           "local",
-    "post_review":      "local",
-    "rubric":           "local",
-    "formatter":        "local",
-    "summary":          "local",
-    "blueprint_review": "local",
-    "paper_review":     "local",
-    "fixer":            "local",
-    "minor_fix":        "local",
-    "format_fix":       "local",
-    "verify":           "local",
-    "param_verify":     "local",
-    "solver_verify":    "local",
-    "final_review":     "local",
-    "final_fixer":      "local",
-    # Doc pipeline agents
-    "doc_design":       "local",
-    "doc_question":     "local",
-    "doc_analysis":     "local",
-    "doc_coding":       "local",
-    "doc_review":       "local",
-    "doc_fix":          "local",
-    "doc_format":       "local",
-}
+
+def _get_config() -> dict:
+    """Get PIPELINE_CONFIG values with deferred import to avoid circular deps."""
+    global _config_cache
+    if _config_cache is None:
+        from core_new.doc_pipeline.config import PIPELINE_CONFIG
+        _config_cache = {
+            "fallback_provider": PIPELINE_CONFIG.fallback_provider,
+            "local_provider": PIPELINE_CONFIG.local_provider,
+            "health_check_ttl": PIPELINE_CONFIG.health_check_ttl,
+        }
+    return _config_cache
+
+
+def _discover_all_roles() -> set[str]:
+    """Collect all unique role names from all routing profiles."""
+    from core_new.doc_pipeline.config import PIPELINE_CONFIG
+    roles: set[str] = set()
+    for prof in PIPELINE_CONFIG.routing_profiles.values():
+        roles.update(prof.role_routing.keys())
+        if prof.model_routing:
+            roles.update(prof.model_routing.keys())
+    return roles
+
+
+def _ensure_routing_initialized():
+    """Initialize routing from PIPELINE_CONFIG default profile."""
+    global _active_routing, _default_routing, _routing_initialized
+    if _routing_initialized:
+        return
+
+    from core_new.doc_pipeline.config import PIPELINE_CONFIG
+
+    default_profile = PIPELINE_CONFIG.default_profile
+    prof = PIPELINE_CONFIG.routing_profiles.get(default_profile)
+    if prof:
+        _default_routing = prof.default_routing
+        for role in _discover_all_roles():
+            _active_routing[role] = prof.role_routing.get(role, prof.default_routing)
+    _routing_initialized = True
 
 # ── Health Check ───────────────────────────────────────────────
 
@@ -70,7 +77,9 @@ async def _check_local_available() -> bool:
     """Async health check: can we reach the local vLLM server?"""
     global _local_available, _last_health_check
 
-    if _local_available is not None and (time.monotonic() - _last_health_check) < HEALTH_CHECK_TTL:
+    cfg = _get_config()
+    ttl = cfg["health_check_ttl"]
+    if _local_available is not None and (time.monotonic() - _last_health_check) < ttl:
         return _local_available
 
     try:
@@ -91,7 +100,9 @@ def _check_local_available_sync() -> bool:
     """Sync health check for non-async contexts."""
     global _local_available, _last_health_check
 
-    if _local_available is not None and (time.monotonic() - _last_health_check) < HEALTH_CHECK_TTL:
+    cfg = _get_config()
+    ttl = cfg["health_check_ttl"]
+    if _local_available is not None and (time.monotonic() - _last_health_check) < ttl:
         return _local_available
 
     try:
@@ -131,26 +142,22 @@ def get_routed_gateway(agent_role: str) -> LLMGateway:
 
     Routes "local" roles to Qwen when available, otherwise falls back to GLM.
     """
-    routing = AGENT_ROUTING.get(agent_role, "remote")
+    _ensure_routing_initialized()
+    cfg = _get_config()
+
+    routing = _active_routing.get(agent_role, _default_routing)
 
     if routing == "local" and _check_local_available_sync():
-        logger.debug("Routing '%s' → local (api_vllm)", agent_role)
-        return _get_or_create_gateway(LOCAL_PROVIDER)
+        logger.debug("Routing '%s' → local (%s)", agent_role, cfg["local_provider"])
+        return _get_or_create_gateway(cfg["local_provider"])
 
-    provider = FALLBACK_PROVIDER
+    provider = cfg["fallback_provider"]
     if routing == "local" and not _check_local_available_sync():
         logger.debug("Routing '%s' → %s (local unavailable, fallback)", agent_role, provider)
     return _get_or_create_gateway(provider)
 
 
-# ── Routing Profiles ─────────────────────────────────────────────
-
-_REVIEW_FIXER_ROLES = frozenset({
-    "paper_review", "fixer", "minor_fix", "format_fix",
-    "final_review", "final_fixer",
-    "doc_review", "doc_fix", "doc_format",
-})
-
+# ── Routing Profiles (config-driven) ────────────────────────────────
 
 def set_routing_profile(profile: str) -> dict[str, str] | None:
     """Set the routing profile for all agents.
@@ -158,71 +165,35 @@ def set_routing_profile(profile: str) -> dict[str, str] | None:
     Returns a model_routing dict for DocPipeline (role → provider name),
     or None if no per-role override is needed.
 
-    Profiles:
-        all_local:  All → local Qwen
-        all_remote: All → remote GLM
-        mixed:      Generation → local Qwen, review/fixer → remote GLM
+    Profiles are loaded from config/pipeline.yaml. See routing.profiles section.
     """
-    if profile == "all_local":
-        for k in AGENT_ROUTING:
-            AGENT_ROUTING[k] = "local"
-        clear_cache()
-        logger.info("Routing profile: all_local")
-        return None
-    elif profile == "all_remote":
-        for k in AGENT_ROUTING:
-            AGENT_ROUTING[k] = "remote"
-        clear_cache()
-        logger.info("Routing profile: all_remote")
-        return None
-    elif profile == "mixed":
-        for k in AGENT_ROUTING:
-            AGENT_ROUTING[k] = "remote" if k in _REVIEW_FIXER_ROLES else "local"
-        clear_cache()
-        logger.info("Routing profile: mixed (%d remote roles)", len(_REVIEW_FIXER_ROLES))
-        # DocPipeline model_routing: review/fix/format → GLM
-        return {"review": FALLBACK_PROVIDER, "fix": FALLBACK_PROVIDER}
-    elif profile == "glm_gen_qwen_review":
-        # GLM generates content, Qwen reviews — best quality + speed tradeoff
-        _GENERATOR_ROLES = frozenset({
-            "design", "question", "coding", "fix", "format",
-        })
-        _REVIEWER_ROLES = frozenset({
-            "analysis", "review",
-        })
-        for k in AGENT_ROUTING:
-            if k in _GENERATOR_ROLES:
-                AGENT_ROUTING[k] = "remote"
-            elif k in _REVIEWER_ROLES:
-                AGENT_ROUTING[k] = "local"
-            else:
-                AGENT_ROUTING[k] = "remote"
-        clear_cache()
-        logger.info(
-            "Routing profile: glm_gen_qwen_review (%d gen→remote, %d review→local)",
-            len(_GENERATOR_ROLES), len(_REVIEWER_ROLES),
-        )
-        # DocPipeline model_routing: generation → GLM, review → local
-        return {
-            "design": FALLBACK_PROVIDER,
-            "question": FALLBACK_PROVIDER,
-            "coding": FALLBACK_PROVIDER,
-            "fix": FALLBACK_PROVIDER,
-            "analysis": LOCAL_PROVIDER,
-            "review": LOCAL_PROVIDER,
-        }
-    else:
+    global _active_routing, _default_routing, _routing_initialized
+    from core_new.doc_pipeline.config import PIPELINE_CONFIG
+
+    prof = PIPELINE_CONFIG.routing_profiles.get(profile)
+    if prof is None:
         raise ValueError(f"Unknown routing profile: {profile}")
+
+    _default_routing = prof.default_routing
+    for role in _discover_all_roles():
+        _active_routing[role] = prof.role_routing.get(role, prof.default_routing)
+    _routing_initialized = True
+    clear_cache()
+    logger.info("Routing profile: %s", profile)
+    return prof.model_routing if prof.model_routing else None
 
 
 async def get_routed_gateway_async(agent_role: str) -> LLMGateway:
     """Async variant — uses async health check."""
-    routing = AGENT_ROUTING.get(agent_role, "remote")
+    _ensure_routing_initialized()
+    cfg = _get_config()
+
+    routing = _active_routing.get(agent_role, _default_routing)
 
     if routing == "local" and await _check_local_available():
-        logger.debug("Routing '%s' → local (api_vllm)", agent_role)
-        return _get_or_create_gateway(LOCAL_PROVIDER)
+        logger.debug("Routing '%s' → local (%s)", agent_role, cfg["local_provider"])
+        return _get_or_create_gateway(cfg["local_provider"])
 
-    provider = FALLBACK_PROVIDER
+    provider = cfg["fallback_provider"]
     logger.debug("Routing '%s' → %s", agent_role, provider)
     return _get_or_create_gateway(provider)

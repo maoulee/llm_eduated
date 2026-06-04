@@ -1,0 +1,19 @@
+{
+  "slot_id": "Q43",
+  "step": "rubric",
+  "round": 1,
+  "timestamp": "2026-05-31T08:20:42",
+  "timing_s": null,
+  "output": {
+    "point_1": "正确计算Load指令数量及存在Load-Use Hazard的指令数量（1分）\n- Load指令数：$100 \\times 20\\% = 20$ 条\n- 存在Hazard的Load指令数：$20 \\times 50\\% = 10$ 条",
+    "point_2": "正确得出第一问答案：Load-Use Hazard导致的停顿周期总数为10个时钟周期（2分）\n- 计算公式：$10 \\times 1 = 10$ 周期",
+    "point_3": "正确计算指令Cache未命中次数及对应的停顿周期（1分）\n- I-Miss次数：$100 \\times 2\\% = 2$ 次\n- I-Miss停顿：$2 \\times 4 = 8$ 周期",
+    "point_4": "正确计算数据Cache访问总次数及未命中次数（1分）\n- 访问D-Cache指令包括Load和Store：$20 (\\text{Load}) + 10 (\\text{Store}) = 30$ 次\n- *注意：若考生仅计算Load指令访问（20次），导致D-Miss计算错误，本步不得分，但后续若逻辑自洽可酌情给部分分，标准答案基于30次计算*\n- D-Miss次数：$30 \\times 10\\% = 3$ 次",
+    "point_5": "正确得出第二问答案：Cache未命中导致的流水线停顿周期总数为20个时钟周期（1分）\n- D-Miss停顿：$3 \\times 4 = 12$ 周期\n- 总Cache停顿：$8 (\\text{I-Miss}) + 12 (\\text{D-Miss}) = 20$ 周期",
+    "point_6": "正确计算流水线基础执行周期（Base Cycles）（1分）\n- 公式：$N + k - 1$ 或 $100 + 4 = 104$ 周期\n- *注：此处需体现对5段流水线启动开销（4周期）的理解*",
+    "point_7": "正确利用总周期公式反推分支预测失败导致的冲刷周期总数（1分）\n- 总周期公式：$Total = Base + DataStalls + CacheStalls + BranchStalls$\n- $142 = 104 + 10 + 20 + BranchStalls$\n- 解得 Branch Stalls = $142 - 134 = 8$ 周期",
+    "point_8": "正确得出第三问答案：分支预测失败导致的冲刷周期为8个，失败次数为4次（2分）\n- 失败次数：$8 / 2 = 4$ 次\n",
+    "总分": "10分",
+    "评分要点概述": "本题主要考察流水线性能的综合计算。第一问重点在于识别Load-Use Hazard的具体数量；第二问关键在于准确统计访问数据Cache的指令总数（Load+Store）并计算未命中开销；第三问核心在于建立正确的流水线总周期模型（Base+冒险+Cache+分支），通过逆向求解得出分支预测失败的开销与次数。忽略流水线启动开销（+4）或漏算Store指令对D-Cache的访问为常见失分点。"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-06-01T16:49:07",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "conflicts": [],
+    "summary": "All artifacts consistent"
+  }
+}

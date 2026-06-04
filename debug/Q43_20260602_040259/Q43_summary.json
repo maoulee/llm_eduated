@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-02T04:46:17",
+  "total_time_s": 462.28,
+  "rounds": 2,
+  "final_stem": "某计算机系统的存储层次由 Cache 和主存组成。Cache 容量为 256 B，行大小为 16 B，采用 4 路组相联映射方式。Cache 访问时间为 $t_c = 1$ ns，主存访问时间为 $t_m = 100$ ns。当 Cache 缺失时，从主存读取一行数据填入 Cache，同时将缺失的数据块复制到 CPU 寄存器，此过程耗时等于主存访问时间。写策略采用写直达（Write-Through）并配备全缓冲写缓冲区（Full Write Buffer），假设写缓冲器的访问可忽略不计，且写操作不会阻塞后续读操作或写操作。\n\n现有一段长度为 256 B 的代码被加载到内存，其地址范围从 0x0000 开始。CPU 对该代码段执行了以下连续的指令序列（假设每条指令占用 4 B，且指令流是顺序执行的）：\n1. 指令 1：读取地址 0x0000 处的字\n2. 指令 2：读取地址 0x0004 处的字\n3. 指令 3：读取地址 0x0008 处的字\n4. 指令 4：读取地址 0x000C 处的字\n5. 指令 5：读取地址 0x0010 处的字\n6. 指令 6：读取地址 0x0014 处的字\n\n",
+  "solver_execs": 1,
+  "review_status": "needs_fix",
+  "review_quality": "3",
+  "review_raw_text_length": 5904
+}

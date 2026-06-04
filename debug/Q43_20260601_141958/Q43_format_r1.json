@@ -1,0 +1,15 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 1,
+  "timestamp": "2026-06-01T14:26:41",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "L1 Index位数: 8位; L1 Tag位数: 18位; A0访问L1: 未命中; 加载到L1组号: Set 64",
+      "sub_q2": "A0在L2组号: Set 64; A0在L2标记位: 0; 访问A1时L2命中: 未命中",
+      "sub_q3": "1453.22 MB/s"
+    },
+    "total_score": "15\n"
+  }
+}

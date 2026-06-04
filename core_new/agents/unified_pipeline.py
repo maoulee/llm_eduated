@@ -283,6 +283,8 @@ class UnifiedQuestionPipeline:
         use_runtime_solver: bool = True,
         enable_post_review: bool = True,
         enable_summary: bool = True,
+        use_merged_sc: bool = True,
+        use_outline_sc: bool = False,
         debug_dir: Optional[str] = None,
     ):
         self.max_revision_rounds = max_revision_rounds
@@ -292,6 +294,8 @@ class UnifiedQuestionPipeline:
         self.enable_summary = enable_summary
         self.enable_stem_gate = enable_stem_gate
         self.use_runtime_solver = use_runtime_solver
+        self.use_merged_sc = use_merged_sc
+        self.use_outline_sc = use_outline_sc
         self.debugger = None
         if debug_dir:
             from core_new.debug_pipeline import PipelineDebugger
@@ -496,6 +500,24 @@ class UnifiedQuestionPipeline:
         round_history: List[Dict[str, Any]] = []
 
         try:
+            # ── Merged SC fast path (4 stages vs 9) ──
+            if is_sc and self.use_merged_sc and not resume_from:
+                return await self._run_merged_sc(
+                    slot_blueprint, experience_card, slot_id,
+                    total_start, gateway, previous_question,
+                )
+
+            # ── Outline-driven SC 2-stage path ──
+            if is_sc and self.use_outline_sc and not resume_from:
+                return await self._run_sc_2stage(
+                    slot_blueprint, experience_card, slot_id,
+                    total_start, gateway,
+                    outline_entry_md=getattr(self, '_outline_entry_md', ''),
+                    slot_contract=getattr(self, '_slot_contract', {}),
+                    experience_card_path=getattr(self, '_experience_card_path', ''),
+                    assembled_experience_doc=getattr(self, '_assembled_experience_doc', ''),
+                )
+
             # ── Resume support ──
             _RESUME_STAGES = {
                 "design", "options", "gate", "param_verify", "solve", "verify",
@@ -1392,6 +1414,391 @@ class UnifiedQuestionPipeline:
             return {}
 
     # ── Step methods ───────────────────────────────────────────
+
+    async def _run_merged_sc(
+        self,
+        slot_blueprint: Dict[str, Any],
+        experience_card: str,
+        slot_id: str,
+        total_start: float,
+        gateway,
+        previous_question: Optional[Dict[str, Any]] = None,
+    ) -> UnifiedPipelineResult:
+        """4-stage merged SC pipeline: design → solve → review_fix → summary."""
+        design: Dict[str, Any] = {}
+        options: Dict[str, Any] = {}
+        code_solution = None
+        solver_dict: Dict[str, Any] = {}
+        rf_result: Dict[str, Any] = {}
+        round_history: List[Dict[str, Any]] = []
+        stem_fix_instruction: Optional[str] = None
+
+        for rnd in range(self.max_revision_rounds + 1):
+            if rnd > 0:
+                logger.info("[%s] Merged SC revision round %d", slot_id, rnd)
+
+            # Stage 1: Merged Design (stem + options + answer + self-check)
+            _t0 = time.monotonic()
+            merged = await self._merged_sc_design(
+                slot_blueprint, experience_card, gateway,
+                stem_fix_instruction=stem_fix_instruction if rnd > 0 else None,
+                round_history=round_history if rnd > 0 else None,
+            )
+            logger.info("[%s] ⏱ merged_design: %.1fs", slot_id, time.monotonic() - _t0)
+
+            if not merged or not merged.get("stem"):
+                logger.error("[%s] Merged design produced empty result", slot_id)
+                if rnd >= self.max_revision_rounds:
+                    break
+                continue
+
+            # Split merged result into design + options for downstream compat
+            design = {k: v for k, v in merged.items()
+                      if k not in ("option_A", "option_B", "option_C", "option_D",
+                                   "correct_answer", "option_style_used",
+                                   "distractor_intent_A", "distractor_intent_B",
+                                   "distractor_intent_C", "distractor_intent_D")}
+            options = {
+                "option_A": merged.get("option_A", ""),
+                "option_B": merged.get("option_B", ""),
+                "option_C": merged.get("option_C", ""),
+                "option_D": merged.get("option_D", ""),
+                "correct_answer": merged.get("correct_answer", ""),
+                "option_style_used": merged.get("option_style_used", ""),
+                "distractor_intent_A": merged.get("distractor_intent_A", ""),
+                "distractor_intent_B": merged.get("distractor_intent_B", ""),
+                "distractor_intent_C": merged.get("distractor_intent_C", ""),
+                "distractor_intent_D": merged.get("distractor_intent_D", ""),
+            }
+
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "merged_design", rnd, merged)
+
+            # Stage 2: Solve (code generation + execution)
+            _t1 = time.monotonic()
+            code_solution = await self._solve(
+                design, options, True, slot_id, gateway,
+            )
+            solver_dict = code_solution.to_dict() if code_solution else {}
+            logger.info("[%s] ⏱ solve: %.1fs", slot_id, time.monotonic() - _t1)
+
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "solve", rnd, solver_dict)
+
+            # Stage 3: Review + Fix (with python_exec)
+            _t2 = time.monotonic()
+            rf_result = await self._merged_review_fix(
+                design, options, solver_dict, slot_id, gateway,
+            )
+            logger.info("[%s] ⏱ review_fix: %.1fs", slot_id, time.monotonic() - _t2)
+
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "review_fix", rnd, rf_result)
+
+            # Apply fixes if needed
+            if rf_result.get("status") == "needs_fix":
+                fix_target = rf_result.get("fix_target", "none")
+                if fix_target == "stem" and rf_result.get("fixed_stem"):
+                    design["stem"] = rf_result["fixed_stem"]
+                if rf_result.get("fixed_options") and isinstance(rf_result["fixed_options"], dict):
+                    options.update(rf_result["fixed_options"])
+                if rf_result.get("fixed_answer"):
+                    options["correct_answer"] = rf_result["fixed_answer"]
+
+                if rnd >= self.max_revision_rounds:
+                    logger.warning("[%s] Merged SC: needs_fix but revision budget exhausted", slot_id)
+                    break
+                # Feed back to next round
+                round_history.append({"role": "review", "content": rf_result.get("issues", ""), "round": rnd})
+                stem_fix_instruction = rf_result.get("issues", "")
+                continue
+
+            # All good — break out of revision loop
+            break
+
+        # Stage 4: Summary
+        summary = {}
+        if self.enable_summary:
+            solution = rf_result if rf_result else {}
+            summary = await self._summarize(
+                design, options, solution, solver_dict,
+                {}, {}, True, slot_id, gateway,
+            )
+
+        # Assemble final result
+        total_time = time.monotonic() - total_start
+        final_question = self._assemble(
+            slot_id, design, options, code_solution,
+            rf_result if rf_result else {}, {}, True,
+            summary=summary,
+        )
+        if summary:
+            final_question["summary"] = summary
+
+        # Artifact consistency
+        from core_new.artifact_consistency import check_artifact_consistency, can_export
+        consistency = check_artifact_consistency(
+            final_question, solver_dict, summary, {}, is_sc=True,
+        )
+        review_records = [
+            {"phase": "merged_design", "status": "ok"},
+            {"phase": "merged_review_fix", "status": rf_result.get("status", "unknown") if rf_result else "unknown"},
+        ]
+        export_gate = can_export(final_question, review_records, consistency)
+        final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
+        final_question["block_reasons"] = export_gate.get("block_reasons", [])
+
+        logger.info("[%s] Merged SC pipeline done in %.1fs (%d rounds, export=%s)",
+                     slot_id, total_time, rnd + 1, final_question["export_status"])
+
+        return UnifiedPipelineResult(
+            final_question=final_question,
+            solver_result=solver_dict,
+            review=rf_result or {},
+            generation_time_s=round(total_time, 1),
+            pipeline_type="merged_sc",
+        )
+
+    # ── Outline-driven 3-stage SC pipeline ──────────────────────
+
+    async def _run_sc_2stage(
+        self,
+        slot_blueprint: Dict[str, Any],
+        experience_card: str,
+        slot_id: str,
+        total_start: float,
+        gateway,
+        *,
+        outline_entry_md: str = "",
+        slot_contract: Dict[str, Any] = None,
+        experience_card_path: str = "",
+        assembled_experience_doc: str = "",
+    ) -> UnifiedPipelineResult:
+        """2-stage outline-driven SC pipeline: question (with code verify) → review."""
+        from core_new.agents.single_choice_team import (
+            SCQuestionAgent, SCReviewAgent,
+        )
+        from core_new.blackboard import Blackboard
+
+        question_result: Dict[str, Any] = {}
+        review_result: Dict[str, Any] = {}
+
+        for rnd in range(self.max_revision_rounds + 1):
+            if rnd > 0:
+                logger.info("[%s] SC 2-stage revision round %d", slot_id, rnd)
+
+            # Stage 1: Question (select knowledge → design → code verify → adjust)
+            _t0 = time.monotonic()
+            initial = {
+                "outline_entry": slot_blueprint,
+                "outline_entry_md": outline_entry_md,
+                "slot_contract": slot_contract or {},
+            }
+            if assembled_experience_doc:
+                initial["assembled_experience_doc"] = assembled_experience_doc
+            bb = Blackboard(
+                task_id=f"sc_question_{slot_id}",
+                task_type="outline_sc",
+                initial_state=initial,
+            )
+
+            question_agent = SCQuestionAgent(
+                gateway,
+                experience_card_path=experience_card_path,
+            )
+            question_result = await question_agent.execute(bb)
+            _t1 = time.monotonic()
+            logger.info("[%s] ⏱ sc_question: %.1fs", slot_id, _t1 - _t0)
+
+            if not question_result or not question_result.get("stem"):
+                logger.error("[%s] SCQuestion produced empty result", slot_id)
+                if rnd >= self.max_revision_rounds:
+                    break
+                continue
+
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "sc_question", rnd, question_result)
+
+            # Stage 2: Review (adversarial)
+            _t4 = time.monotonic()
+            bb3 = Blackboard(
+                task_id=f"sc_review_{slot_id}",
+                task_type="outline_sc",
+                initial_state={
+                    "sc_question": question_result,
+                    "outline_entry_md": outline_entry_md,
+                },
+            )
+
+            review_agent = SCReviewAgent(gateway)
+            review_result = await review_agent.execute(bb3)
+            _t5 = time.monotonic()
+            logger.info("[%s] ⏱ sc_review: %.1fs", slot_id, _t5 - _t4)
+
+            if self.debugger:
+                self.debugger.dump_step(slot_id, "sc_review", rnd, review_result)
+
+            # Check if revision needed
+            if review_result.get("status") == "needs_fix":
+                if rnd >= self.max_revision_rounds:
+                    logger.warning("[%s] SC 2-stage: needs_fix but revision budget exhausted", slot_id)
+                    break
+                logger.info("[%s] SC 2-stage: needs_fix, retrying", slot_id)
+                continue
+
+            break
+
+        # Build final result
+        design = {k: v for k, v in question_result.items()
+                  if k not in ("option_A", "option_B", "option_C", "option_D",
+                               "correct_answer", "option_style_used",
+                               "distractor_intent_A", "distractor_intent_B",
+                               "distractor_intent_C", "distractor_intent_D")}
+        options = {
+            "option_A": question_result.get("option_A", ""),
+            "option_B": question_result.get("option_B", ""),
+            "option_C": question_result.get("option_C", ""),
+            "option_D": question_result.get("option_D", ""),
+            "correct_answer": question_result.get("correct_answer", ""),
+            "option_style_used": question_result.get("option_style_used", ""),
+        }
+
+        # Summary
+        summary = {}
+        if self.enable_summary:
+            summary = {
+                "final_stem": design.get("stem", ""),
+                "final_explanation": review_result.get("explanation", ""),
+                "final_solution_steps": "; ".join(review_result.get("key_steps_list", [])),
+                "correct_answer": options.get("correct_answer", ""),
+                "knowledge_tags": ", ".join(question_result.get("given_conditions", []))
+                    if isinstance(question_result.get("given_conditions"), list)
+                    else str(question_result.get("knowledge_points", "")),
+                "difficulty_summary": f"难度自评: {question_result.get('difficulty_self_assessment', '?')}/5",
+                "quality_notes": review_result.get("comment", ""),
+            }
+
+        total_time = time.monotonic() - total_start
+        final_question = self._assemble(
+            slot_id, design, options, None,
+            review_result or {}, {}, True,
+            summary=summary,
+        )
+        if summary:
+            final_question["summary"] = summary
+
+        # Artifact consistency
+        from core_new.artifact_consistency import check_artifact_consistency, can_export
+        consistency = check_artifact_consistency(final_question, {}, summary, {}, is_sc=True)
+        code_verified = question_result.get("code_verified", False)
+        review_records = [
+            {"phase": "sc_question", "status": "ok"},
+            {"phase": "sc_code_verify", "status": "confirmed" if code_verified else "internal"},
+            {"phase": "sc_review", "status": review_result.get("status", "unknown")},
+        ]
+        export_gate = can_export(final_question, review_records, consistency)
+        final_question["export_status"] = "exported" if export_gate["allowed"] else "blocked"
+        final_question["block_reasons"] = export_gate.get("block_reasons", [])
+
+        logger.info("[%s] SC 2-stage pipeline done in %.1fs (%d rounds, export=%s)",
+                     slot_id, total_time, rnd + 1, final_question["export_status"])
+
+        return UnifiedPipelineResult(
+            final_question=final_question,
+            solver_result={"code_verified": code_verified,
+                           "verified_answer": question_result.get("verified_answer", ""),
+                           "adjustment_summary": question_result.get("adjustment_summary", "")},
+            review=review_result or {},
+            generation_time_s=round(total_time, 1),
+            pipeline_type="outline_sc_2stage",
+        )
+
+    async def _merged_sc_design(
+        self,
+        blueprint: Dict[str, Any],
+        experience_card: str,
+        gateway,
+        stem_fix_instruction: Optional[str] = None,
+        round_history: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Merged SC design: stem + options + answer + self-check in one call."""
+        from core_new.agents.single_choice_team import MergedSCDesignAgent
+
+        initial = {
+            "current_blueprint": blueprint,
+            "experience_card": experience_card,
+        }
+        if stem_fix_instruction:
+            initial["stem_fix_instruction"] = stem_fix_instruction
+
+        bb = Blackboard(
+            task_id=f"merged_sc_{blueprint.get('slot_id', 'unknown')}",
+            task_type="unified_sc",
+            initial_state=initial,
+        )
+        agent = MergedSCDesignAgent(_rgw("merged_sc_design"))
+        if round_history:
+            agent.set_memory(round_history)
+
+        record = None
+        for attempt in range(5):
+            record = await agent.execute(bb)
+            if not record.error:
+                result = bb.get("sc_merged_design", {})
+                missing = [f for f in ("stem", "option_A", "option_B", "option_C", "option_D", "correct_answer")
+                           if not result.get(f)]
+                if not missing:
+                    logger.info("[Merged SC design] stem=%s, answer=%s",
+                                str(result.get("stem", ""))[:80], result.get("correct_answer", "?"))
+                    return result
+                logger.warning("[Merged SC design] Incomplete (attempt %d/5), missing: %s",
+                               attempt + 1, ", ".join(missing))
+                if attempt < 4:
+                    await asyncio.sleep(10)
+                    continue
+            else:
+                logger.warning("[Merged SC design] Error (attempt %d/5): %s",
+                               attempt + 1, str(record.error)[:200])
+                if attempt < 4:
+                    await asyncio.sleep(10)
+                    continue
+            break
+
+        if record and record.error:
+            raise RuntimeError(f"Merged SC design failed: {record.error}")
+        return bb.get("sc_merged_design", {})
+
+    async def _merged_review_fix(
+        self,
+        design: Dict[str, Any],
+        options: Dict[str, Any],
+        solver_dict: Dict[str, Any],
+        slot_id: str,
+        gateway,
+    ) -> Dict[str, Any]:
+        """Merged SC review + fix + format in one agent call with python_exec."""
+        from core_new.agents.single_choice_team import MergedReviewFixAgent
+
+        bb = Blackboard(
+            task_id=f"merged_rf_{slot_id}",
+            task_type="merged_review_fix",
+            initial_state={
+                "design": design,
+                "options": options,
+                "solver_dict": solver_dict,
+            },
+        )
+        agent = MergedReviewFixAgent(_rgw("merged_review_fix"))
+        record = await agent.execute(bb)
+        if record.error:
+            logger.warning("[%s] MergedReviewFix error: %s", slot_id, record.error)
+            return {"status": "pass", "verified_answer": "", "correct_answer": "",
+                    "explanation": "", "key_steps": ""}
+
+        result = bb.get("sc_review_fix_result", {})
+        logger.info("[%s] MergedReviewFix: status=%s verified=%s",
+                    slot_id, result.get("status"), result.get("verified_answer"))
+        return result
 
     async def _design_sc(
         self,

@@ -1,0 +1,20 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-06-01T13:24:37",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "conflicts": [
+      {
+        "field_a": "summary.correct_answer",
+        "field_b": "final_question.answer",
+        "value_a": "(1) 组数32，Index位数5，Tag位数6；两者映射到同一组。(2) Step 1 Miss, Step 3 Hit, Step 4 Miss, Step 5 Hit; 第5步后0x1000所在...",
+        "value_b": "============================================================\n子问(1): 数据Cache参数计算\n====================...",
+        "severity": "critical"
+      }
+    ],
+    "summary": "1 conflicts found"
+  }
+}

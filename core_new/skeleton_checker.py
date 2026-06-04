@@ -2,8 +2,12 @@
 
 Validates structural constraints that should not require LLM judgment:
 - Question type field protocols (choice vs comprehensive)
-- Budget consistency (distribution sums = total_questions)
+- Budget consistency (distribution sums = total_questions) — only for V1 blueprints
 - Required field presence
+
+V1 blueprints (PAPER_COMPOSER_PROMPT) include design-level fields (option_style,
+reasoning_shape, budget distributions). V2 outlines (PAPER_OUTLINE_PROMPT) do not —
+the checker skips those checks when the fields are absent.
 """
 
 from __future__ import annotations
@@ -16,6 +20,8 @@ def check_blueprint_skeleton(blueprint: Dict[str, Any]) -> List[Dict[str, str]]:
 
     Each violation: {"slot_id": ..., "rule": ..., "detail": ...}
     Empty list = all checks pass.
+
+    Silently skips checks for fields that don't exist in V2 outline format.
     """
     violations: List[Dict[str, str]] = []
 
@@ -26,16 +32,15 @@ def check_blueprint_skeleton(blueprint: Dict[str, Any]) -> List[Dict[str, str]]:
         except ValueError:
             total = 0
 
-    # ── Budget consistency ──────────────────────────────────
+    # ── Budget consistency (V1 only — skip if not present) ──────
     _check_budget_sum(violations, "primary_role_distribution", blueprint.get("primary_role_distribution"), total)
     _check_budget_sum(violations, "difficulty_distribution", blueprint.get("difficulty_distribution"), total)
     _check_budget_sum(violations, "calculation_load_distribution", blueprint.get("calculation_load_distribution"), total)
     _check_budget_sum(violations, "reasoning_steps_distribution", blueprint.get("reasoning_steps_distribution"), total)
 
-    # ── Per-slot field protocol ─────────────────────────────
+    # ── Per-slot field protocol ─────────────────────────────────
     for slot in blueprint.get("slots", []):
         slot_id = slot.get("slot_id", "??")
-        # Determine question type from contract or option_style hint
         qtype = _infer_question_type(slot)
 
         if qtype == "comprehensive":
@@ -48,6 +53,14 @@ def check_blueprint_skeleton(blueprint: Dict[str, Any]) -> List[Dict[str, str]]:
 
 def _infer_question_type(slot: Dict[str, Any]) -> str:
     """Infer question type from slot fields."""
+    # V2 outline format: use question_type field directly
+    qt = slot.get("question_type", "")
+    if qt == "comprehensive":
+        return "comprehensive"
+    if qt == "single_choice":
+        return "single_choice"
+
+    # V1 blueprint format: infer from option_style
     opt = slot.get("option_style", "")
     if opt == "none":
         return "comprehensive"
@@ -60,17 +73,18 @@ def _check_comprehensive_slot(
     violations: List[Dict[str, str]], slot_id: str, slot: Dict[str, Any]
 ) -> None:
     """Comprehensive questions must not have choice-only fields."""
-    opt = slot.get("option_style", "MISSING")
-    shape = slot.get("reasoning_shape", "MISSING")
+    opt = slot.get("option_style")
+    shape = slot.get("reasoning_shape")
 
-    if opt != "none":
+    # Only check if fields are present (V1 format)
+    if opt is not None and opt != "none":
         violations.append({
             "slot_id": slot_id,
             "rule": "comprehensive_option_style",
             "detail": f"option_style must be 'none', got '{opt}'",
         })
 
-    if shape != "none":
+    if shape is not None and shape != "none":
         violations.append({
             "slot_id": slot_id,
             "rule": "comprehensive_reasoning_shape",
@@ -102,7 +116,11 @@ def _check_comprehensive_slot(
 def _check_choice_slot(
     violations: List[Dict[str, str]], slot_id: str, slot: Dict[str, Any]
 ) -> None:
-    """Choice questions must have required style fields."""
+    """Choice questions: check required style fields (V1 only — skip if absent)."""
+    # V2 outline format doesn't have option_style/reasoning_shape — skip silently
+    if "option_style" not in slot and "reasoning_shape" not in slot:
+        return
+
     if not slot.get("option_style") or slot.get("option_style") == "none":
         violations.append({
             "slot_id": slot_id,
@@ -124,7 +142,13 @@ def _check_budget_sum(
     distribution: Any,
     expected_total: int,
 ) -> None:
-    """Check that a distribution dict sums to expected_total."""
+    """Check that a distribution dict sums to expected_total.
+
+    Silently skips if distribution is None (V2 outline format doesn't have budgets).
+    """
+    if distribution is None:
+        return
+
     if not isinstance(distribution, dict):
         violations.append({
             "slot_id": "GLOBAL",

@@ -1,0 +1,27 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-06-01T19:18:13",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "conflicts": [
+      {
+        "field_a": "summary.correct_answer",
+        "field_b": "final_question.answer",
+        "value_a": "(1) x的机器数：0100 0100 1000 0000 0000 0000 0000 0001，阶码真值：10，尾数真值：1.00000000000000000000001；y的机器数：0011 ...",
+        "value_b": "{'sub_q1': 'x的机器数：0 10001001 00000000000000000000001，阶码真值：10，尾数真值：1.00000000000000000000001；y的机器数：0 ...",
+        "severity": "critical"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "2",
+        "value_b": "no match in ['0', '10001001', '00000000000000000000001', '10', '1.00000000000000000000001']",
+        "severity": "warning"
+      }
+    ],
+    "summary": "2 conflicts found"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T14:09:32",
+  "total_time_s": 778.63,
+  "rounds": 2,
+  "final_stem": "某计算机系统采用全相联映射（Fully Associative）的Cache结构，具体参数如下：\n- 系统采用32位物理地址。\n- Cache容量为 4 KB，块大小（Block Size）为 64 B。\n- 主存访问时间为 200 ns，Cache访问时间为 2 ns。\n- 数据写入采用 Write-back（写回）策略。\n- 当发生写缺失（Write Miss）时，若从主存加载的块被标记为“脏”（Dirty），则需要先将该脏块写回主存（耗时等于主存访问时间 200 ns），然后再加载新块（耗时等于主存访问时间 200 ns）；若被替换的块是“干净”的（Clean），则直接加载新块（耗时 200 ns）。\n- 写命中时，仅更新Cache中的数据及脏位，耗时等于Cache访问时间（2 ns）。\n- 读命中时，耗时等于Cache访问时间（2 ns）。\n- 系统执行一段程序，访存操作中 80% 为读操作（Read），20% 为写操作（Write）。\n- 读操作的命中率为 90%。\n- 写操作的命中率为 95%。\n- 在写缺失（Write Miss）被替换出的块中，有 30% 的块是“脏”（",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

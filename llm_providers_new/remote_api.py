@@ -22,6 +22,7 @@ Supported online API protocols:
 import asyncio
 import json
 import logging
+import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -65,12 +66,32 @@ class RemoteAPIProvider(BaseLLMProvider):
         self.api_key = api_key or "EMPTY"
         self.request_timeout = float(kwargs.get("request_timeout", 300.0))
         self.max_retries = int(kwargs.get("max_retries", 0))
+        self.max_connections = int(kwargs.get("max_connections", os.getenv("LLM_HTTP_MAX_CONNECTIONS", "20")))
+        self.max_keepalive_connections = int(
+            kwargs.get("max_keepalive_connections", os.getenv("LLM_HTTP_MAX_KEEPALIVE", "10"))
+        )
+        self.keepalive_expiry = float(kwargs.get("keepalive_expiry", os.getenv("LLM_HTTP_KEEPALIVE_EXPIRY", "120")))
+
+        timeout = httpx.Timeout(
+            timeout=self.request_timeout,
+            connect=min(30.0, self.request_timeout),
+            read=self.request_timeout,
+            write=min(120.0, self.request_timeout),
+            pool=min(30.0, self.request_timeout),
+        )
+        limits = httpx.Limits(
+            max_connections=self.max_connections,
+            max_keepalive_connections=self.max_keepalive_connections,
+            keepalive_expiry=self.keepalive_expiry,
+        )
+        self.http_client = httpx.AsyncClient(timeout=timeout, limits=limits)
 
         self.client = AsyncOpenAI(
             api_key=self.api_key,
             base_url=self.api_base_url,
-            timeout=self.request_timeout,
+            timeout=timeout,
             max_retries=self.max_retries,
+            http_client=self.http_client,
         )
 
         self.api_protocol = kwargs.get("api_protocol", "openai_chat")

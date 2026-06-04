@@ -700,7 +700,7 @@ class LLMGateway:
 
             start_time = time.monotonic()
             try:
-                raw = await self._provider._chat_call(
+                raw = await self._chat_call_with_policy(
                     conversation,
                     stop_sequences=None,
                     max_tokens=max_tokens,
@@ -724,6 +724,16 @@ class LLMGateway:
 
             tool_calls = raw.get("tool_calls")
             content = raw.get("content", "")
+            if content.startswith("Error:"):
+                error_code = _classify_error_content(content)
+                return LLMResult.failure(
+                    error_code=error_code,
+                    error_message=content,
+                    provider=self._provider_name,
+                    model=self._model_name,
+                    latency_ms=total_latency,
+                    content=content,
+                )
 
             if tool_calls:
                 # Build assistant message with tool_calls
@@ -753,7 +763,7 @@ class LLMGateway:
                             "content": "工具调用次数已达上限。请立即基于已有信息输出最终结果，不要再调用工具。",
                         })
                         # Force one more LLM turn to get the final output
-                        force_raw = await self._provider._chat_call(
+                        force_raw = await self._chat_call_with_policy(
                             conversation,
                             stop_sequences=None,
                             max_tokens=max_tokens,
@@ -764,6 +774,16 @@ class LLMGateway:
                         force_latency = int((time.monotonic() - start_time) * 1000)
                         total_latency += force_latency
                         force_content = force_raw.get("content", "")
+                        if force_content.startswith("Error:"):
+                            error_code = _classify_error_content(force_content)
+                            return LLMResult.failure(
+                                error_code=error_code,
+                                error_message=force_content,
+                                provider=self._provider_name,
+                                model=self._model_name,
+                                latency_ms=total_latency,
+                                content=force_content,
+                            )
                         force_reasoning = force_raw.get("reasoning") or force_raw.get("reasoning_content", "")
                         return LLMResult.success(
                             content=force_content,
@@ -848,6 +868,72 @@ class LLMGateway:
             content=content,
         )
 
+    async def _chat_call_with_policy(
+        self,
+        messages: List[Dict[str, Any]],
+        *,
+        stop_sequences: Optional[List[str]] = None,
+        max_tokens: Optional[int] = None,
+        enable_thinking: bool = True,
+        json_mode: bool = False,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Run provider._chat_call through gateway concurrency and retry policy."""
+        attempts = max(1, self._transport_retry.max_attempts)
+        last_error: Exception | None = None
+        last_error_content = ""
+
+        for attempt in range(attempts):
+            retry_error_code: str | None = None
+            async with self._get_sem():
+                try:
+                    raw = await self._provider._chat_call(
+                        messages,
+                        stop_sequences=stop_sequences,
+                        max_tokens=max_tokens,
+                        enable_thinking=enable_thinking,
+                        json_mode=json_mode,
+                        tools=tools,
+                        tool_choice=tool_choice,
+                    )
+                except Exception as exc:
+                    error_code = _classify_exception(exc)
+                    if not self._should_retry(error_code) or attempt >= attempts - 1:
+                        raise
+                    last_error = exc
+                    retry_error_code = error_code
+
+            if retry_error_code:
+                logger.warning(
+                    "_chat_call retryable error (attempt %d/%d): [%s] %s",
+                    attempt + 1,
+                    attempts,
+                    retry_error_code,
+                    last_error,
+                )
+                await self._wait_with_backoff(attempt)
+                continue
+
+            content = raw.get("content", "") if isinstance(raw, dict) else ""
+            if content.startswith("Error:"):
+                error_code = _classify_error_content(content)
+                if self._should_retry(error_code) and attempt < attempts - 1:
+                    last_error_content = content
+                    logger.warning(
+                        "_chat_call retryable content error (attempt %d/%d): [%s]",
+                        attempt + 1,
+                        attempts,
+                        error_code,
+                    )
+                    await self._wait_with_backoff(attempt)
+                    continue
+            return raw
+
+        if last_error is not None:
+            raise last_error
+        return {"content": last_error_content or "Error: chat call failed", "reasoning_content": ""}
+
     # ── Properties ────────────────────────────────────────
 
     @property
@@ -882,6 +968,20 @@ def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _classify_exception(error: Exception) -> str:
+    if isinstance(error, httpx.HTTPStatusError):
+        status = error.response.status_code
+        if status == 429:
+            return "rate_limit"
+        if status in {408, 425}:
+            return "timeout"
+        if status in {500, 502, 503, 504}:
+            return "server_error"
+        return "api_error"
+    if isinstance(error, httpx.TimeoutException):
+        return "timeout"
+    if isinstance(error, httpx.TransportError):
+        return "connection_error"
+
     s = str(error).lower()
     if "timeout" in s or "timed out" in s:
         return "timeout"

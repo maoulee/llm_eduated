@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T01:50:00",
+  "total_time_s": 569.9,
+  "rounds": 2,
+  "final_stem": "假设某计算机系统的存储器层次结构中，Cache采用直接映射（Direct-Mapped）方式，主存按字节编址。Cache总共有 4 行（Line），每行（Block）大小为 8 字节。物理地址长度为 32 位。\nCache初始状态为空（所有有效位 Valid = 0）。现有如下三条数据加载指令依次执行，将主存中指定地址的数据加载到通用寄存器中：\n1. `LOAD R1, [0x00000014]`\n2. `LOAD R2, [0x00000034]`\n3. `LOAD R3, [0x00000054]`\n\n已知主存中上述三个地址处存放的 8 位数据（补码表示）如下：\n- 地址 `0x00000014` 处的数据为 `0xF5`\n- 地址 `0x00000034` 处的数据为 `0x10`\n- 地址 `0x00000054` 处的数据为 `0x08`\n\n最后执行一条加法运算指令：\n4. `ADD R4, R1, R2`\n（说明：该指令将寄存器 R1 和 R2 中的 8 位补码数据相加，结果存入 R4，并更新相应的状态标志位。运算时符号位参与运算，结果截断为 8 位。）\n",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": "4",
+  "review_raw_text_length": 1999
+}

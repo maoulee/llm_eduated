@@ -107,6 +107,237 @@ class PaperComposerAgent(BaseAgent):
         return result
 
 
+def _validate_mode_against_card(slot_id: str, mode: str) -> str:
+    """Validate examination_mode against the slot's experience card mode list.
+
+    Strict validation: must match a mode from the experience card.
+    No invented or partial modes allowed.
+    """
+    # Comprehensive questions always use "综合型"
+    if slot_id.startswith("Q4") or mode == "综合型":
+        return mode
+
+    # Load experience card and extract available modes
+    card_path = f"data/slot_experiences/{slot_id}_experience.md"
+    if not os.path.exists(card_path):
+        return mode
+
+    with open(card_path, encoding="utf-8") as f:
+        card = f.read()
+
+    # Extract mode names from ## 考察模式分布 section
+    available_modes = []
+    in_dist = False
+    for line in card.split("\n"):
+        if line.startswith("## 考察模式分布"):
+            in_dist = True
+            continue
+        if in_dist and line.startswith("## "):
+            break
+        if in_dist:
+            m = re.match(r"-\s*\*\*(.+?)\*\*", line)
+            if m:
+                # Strip "模式X：" prefix if present
+                cleaned = re.sub(r"^模式[A-Z][：:]\s*", "", m.group(1))
+                available_modes.append(cleaned)
+
+    if not available_modes:
+        return mode
+
+    # 1. Exact match
+    if mode in available_modes:
+        return mode
+
+    # 2. Strip English parenthetical from both sides, try exact match
+    def _strip_english(s):
+        return re.sub(r"\s*\([A-Za-z/\s]+\)\s*$", "", s).strip()
+
+    mode_stripped = _strip_english(mode)
+    for am in available_modes:
+        if _strip_english(am) == mode_stripped:
+            return am
+
+    # 3. Extract Chinese type prefix (e.g., "计算型", "概念辨析型")
+    #    and match against available modes with the same prefix
+    prefix_match = re.match(r"^([一-鿿型]+)", mode)
+    if prefix_match:
+        cn_prefix = prefix_match.group(1)
+        for am in available_modes:
+            if am.startswith(cn_prefix):
+                return am
+        # Also try matching against stripped available modes
+        for am in available_modes:
+            am_stripped = _strip_english(am)
+            if am_stripped.startswith(cn_prefix):
+                return am
+
+    # 4. No match found — use first available mode (safest fallback)
+    return available_modes[0]
+
+
+class PaperOutlineComposerAgent(BaseAgent):
+    """Generate paper outline (MD format) — only planning, no question design."""
+
+    def __init__(self, llm_backend, *, max_tokens: int = 8192):
+        super().__init__(
+            AgentConfig(
+                name="paper_outline_composer",
+                phase="compose",
+                output_format="markdown",
+                output_key="paper_outline",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                required_fields=["slots"],
+                role_type=RoleType.PLANNER,
+                system_prompt="你是一位408考研组卷专家，擅长规划试卷大纲（考点+难度+考察模式）。严格按markdown格式输出。",
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import PAPER_OUTLINE_PROMPT
+        from core_new.slot_contract import build_slot_contract
+
+        templates = blackboard.get("slot_templates", {})
+        requirements = blackboard.read("user_requirements", "出一套标准难度的408模拟卷")
+
+        # Build SlotContracts for each slot
+        contracts = []
+        for slot_id, tpl in templates.items():
+            card = _load_experience_card(slot_id)
+            contract = build_slot_contract(slot_id, tpl, card)
+            contracts.append(contract)
+        slot_contracts_md = "\n\n---\n\n".join(contracts) if contracts else "（无题位信息）"
+
+        return PAPER_OUTLINE_PROMPT.format(
+            user_requirements=requirements,
+            slot_contracts_md=slot_contracts_md,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        sections = parse_md_sections_with_aliases(raw)
+
+        # Extract overall planning section
+        result = {}
+        overall_keys = ("整体规划", "整体", "规划")
+        for ok in overall_keys:
+            if ok in sections:
+                result = dict(sections[ok])
+                break
+
+        # Extract per-slot outline entries
+        slots = []
+        for name, kv in sections.items():
+            if _is_slot_id(name):
+                slot_id_match = re.match(r"^(Q\d+)", name)
+                kv["slot_id"] = slot_id_match.group(1)
+                # Normalize field names to match downstream expectations
+                if "考点" in kv and "primary_target_name" not in kv:
+                    kv["primary_target_name"] = kv.pop("考点")
+                if "知识域" in kv and "target_family" not in kv:
+                    kv["target_family"] = kv.pop("知识域")
+                if "难度" in kv and "difficulty_level" not in kv:
+                    kv["difficulty_level"] = kv.pop("难度")
+                if "认知雷达" in kv and "k_target" not in kv:
+                    kv["k_target"] = kv.pop("认知雷达")
+                if "难度说明" in kv and "difficulty_rationale" not in kv:
+                    kv["difficulty_rationale"] = kv.pop("难度说明")
+                if "考察模式" in kv and "examination_mode" not in kv:
+                    kv["examination_mode"] = kv.pop("考察模式")
+                # Legacy compatibility: ensure target_difficulty exists
+                if "difficulty_level" in kv and "target_difficulty" not in kv:
+                    kv["target_difficulty"] = kv["difficulty_level"]
+
+                # Validate examination_mode against experience card
+                sid = kv.get("slot_id", "")
+                mode = kv.get("examination_mode", "")
+                if sid and mode:
+                    validated = _validate_mode_against_card(sid, mode)
+                    if validated != mode:
+                        kv["examination_mode"] = validated
+                slots.append(kv)
+        result["slots"] = slots
+
+        # Store raw MD for downstream consumption
+        result["outline_md"] = raw
+
+        return result
+
+
+class OutlineReviewerAgent(BaseAgent):
+    """Review paper outline — focus on planning quality, not design."""
+
+    def __init__(self, llm_backend, *, max_tokens: int = 4096):
+        super().__init__(
+            AgentConfig(
+                name="outline_reviewer",
+                phase="review_outline",
+                output_format="markdown",
+                output_key="outline_review",
+                max_tokens=max_tokens,
+                enable_thinking=False,
+                required_fields=["status"],
+                role_type=RoleType.AUDIT,
+                system_prompt="你是一位408考研组卷审核专家，专注于审核试卷大纲的规划质量。严格按markdown格式输出。",
+                max_retries=1,
+                repair_max_retries=1,
+            ),
+            llm_backend,
+        )
+
+    def build_input(self, blackboard: Blackboard) -> str:
+        from core_new.slot_prompts import BLUEPRINT_OUTLINE_REVIEW_PROMPT
+        from core_new.slot_contract import build_slot_contract
+
+        outline = blackboard.get("paper_outline", {})
+        outline_md = outline.get("outline_md", "")
+        templates = blackboard.get("slot_templates", {})
+        requirements = blackboard.read("user_requirements", "")
+
+        # Build contracts for reference
+        contracts = []
+        for slot_id, tpl in templates.items():
+            card = _load_experience_card(slot_id)
+            contract = build_slot_contract(slot_id, tpl, card)
+            contracts.append(contract)
+        slot_contracts_md = "\n\n---\n\n".join(contracts) if contracts else "（无题位信息）"
+
+        return BLUEPRINT_OUTLINE_REVIEW_PROMPT.format(
+            user_requirements=requirements,
+            outline_md=outline_md,
+            slot_contracts_md=slot_contracts_md,
+        )
+
+    def parse_output(self, raw: Any) -> Any:
+        sections = parse_md_sections_with_aliases(raw)
+
+        overall = sections.get("总体", sections.get("审核结论", {}))
+        result = dict(overall)
+
+        slot_reviews = []
+        for name, kv in sections.items():
+            if _is_slot_id(name):
+                kv["slot_id"] = name
+                slot_reviews.append(kv)
+        result["slot_reviews"] = slot_reviews
+
+        if "建议" in sections:
+            result["suggestions"] = sections["建议"]
+
+        # Ensure status field exists (required_field check)
+        if "status" not in result:
+            # Try to infer from content
+            raw_lower = str(raw).lower()
+            if "pass" in raw_lower or "通过" in raw_lower:
+                result["status"] = "pass"
+            elif "revise" in raw_lower or "修订" in raw_lower or "需修改" in raw_lower:
+                result["status"] = "revise"
+            else:
+                result["status"] = "pass"  # Default to pass for outline review
+
+        return result
+
+
 # ── BlueprintReviewerAgent ──────────────────────────────────────
 
 

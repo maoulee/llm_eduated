@@ -138,10 +138,27 @@ def build_slot_contract(
 
     # Attach experience card guidance sections if available
     if experience_card_md:
-        lines.append("## 出题类型-难度指导（来自经验卡）")
-        lines.append("")
+        # Extract mode distribution (fine-grained mode names for outline composer)
+        mode_lines = []
+        in_mode_dist = False
+        for line in experience_card_md.split("\n"):
+            if line.startswith("## 考察模式分布"):
+                in_mode_dist = True
+                continue
+            if in_mode_dist and line.startswith("## "):
+                in_mode_dist = False
+            if in_mode_dist and line.strip():
+                mode_lines.append(line)
+        if mode_lines:
+            lines.append("## 可选考察模式（从以下模式中选择 examination_mode）")
+            lines.append("")
+            lines.extend(mode_lines)
+            lines.append("")
+
+        # Legacy: attach 出题类型-难度指导 section if it exists
         in_guide = False
         in_detail = False
+        guide_lines = []
         for line in experience_card_md.split("\n"):
             if line.startswith("## 出题类型-难度指导"):
                 in_guide = True
@@ -155,7 +172,11 @@ def build_slot_contract(
             if in_guide and line.startswith("## "):
                 in_guide = False
             if in_guide:
-                lines.append(line)
+                guide_lines.append(line)
+        if guide_lines:
+            lines.append("## 出题类型-难度指导（来自经验卡）")
+            lines.append("")
+            lines.extend(guide_lines)
 
     # ── Knowledge base retrieval ────────────────────────────────
     kb_text = _retrieve_kb_for_slot(slot_id, template)

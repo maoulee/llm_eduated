@@ -1,0 +1,15 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 1,
+  "timestamp": "2026-05-31T07:41:47",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "0x40400002",
+      "sub_q2": "168086",
+      "sub_q3": "0.540972"
+    },
+    "total_score": "15\n"
+  }
+}
