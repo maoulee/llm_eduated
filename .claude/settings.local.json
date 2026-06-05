@@ -101,7 +101,10 @@
       "Bash(python3 -c ' *)",
       "Bash(python -u run_slot_composition.py --slots Q43 --pipeline doc)",
       "Bash(nohup python -m vllm.entrypoints.openai.api_server \\\\ *)",
-      "Bash(rm -f /zhaoshu/llm_eduated/docs/batch_*_progress.log /zhaoshu/llm_eduated/docs/batch_offline_progress.log)"
+      "Bash(rm -f /zhaoshu/llm_eduated/docs/batch_*_progress.log /zhaoshu/llm_eduated/docs/batch_offline_progress.log)",
+      "Bash(mv /root/.codex /zhaoshu/root/.codex)",
+      "Bash(npm ls *)",
+      "Bash(mkdir -p /zhaoshu/root/.codex/tmp /zhaoshu/root/.codex/.tmp)"
     ],
     "additionalDirectories": [
       "/zhaoshu/node/v24.14.1/lib/node_modules/@openai/codex",

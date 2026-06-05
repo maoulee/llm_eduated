@@ -787,8 +787,8 @@ class DocScheduler:
         hybrid_spec = self._load_hybrid_spec(role)
         qwen_system = hybrid_spec if hybrid_spec else AGENT_PROMPTS.get(role, "")
 
-        # Include a truncated version of the original task for terminology alignment
-        task_ref = task[:2000] if len(task) > 2000 else task
+        # Include the full original task for terminology alignment
+        task_ref = task
 
         qwen_user = (
             f"## GPT 产出的原始内容\n\n{gpt_content}\n\n"

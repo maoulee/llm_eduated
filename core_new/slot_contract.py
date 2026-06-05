@@ -21,8 +21,16 @@ def build_slot_contract(
     slot_id: str,
     template: Dict,
     experience_card_md: Optional[str] = None,
+    slot_md_content: Optional[str] = None,
 ) -> str:
-    """Build a SlotContract markdown from template and experience data."""
+    """Build a SlotContract markdown from template and experience data.
+
+    Args:
+        slot_id: Slot identifier (e.g. "Q12").
+        template: Slot template dict from slot_templates.json.
+        experience_card_md: Raw experience card markdown (from data/slot_experiences/).
+        slot_md_content: Raw slot knowledge doc markdown (from data/slots/).
+    """
     lines = []
     lines.append(f"# slot_contract {slot_id}")
     lines.append("")
@@ -178,24 +186,101 @@ def build_slot_contract(
             lines.append("")
             lines.extend(guide_lines)
 
-    # ── Knowledge base retrieval ────────────────────────────────
-    kb_text = _retrieve_kb_for_slot(slot_id, template)
-    if kb_text:
-        lines.append("## 大纲知识点参考（来自知识库）")
+    # ── Historical topic distribution (from slot.md) ───────────
+    slot_summary = _extract_slot_summary(slot_md_content)
+    if slot_summary:
+        lines.append("## 历史考点分布")
         lines.append("")
-        lines.append("> 以下是从知识点库中检索到的与本题位相关的考点，供出题时参考。")
-        lines.append("> 这些是大纲覆盖的考点名词，不是定义或公式。")
+        lines.append("> 以下是该题位历年考察的知识点分布，供选择考点时参考。")
         lines.append("")
-        lines.append(kb_text)
+        lines.append(slot_summary)
         lines.append("")
+
+    # ── Mode → knowledge mapping (from experience card) ────────
+    if experience_card_md:
+        mode_kp_map = _extract_mode_knowledge_map(experience_card_md)
+        if mode_kp_map:
+            lines.append("## 模式与知识点对应")
+            lines.append("")
+            lines.append("> 各考察模式适合考察的知识点范围，帮助选择知识点后确定考察模式。")
+            lines.append("")
+            lines.extend(mode_kp_map)
+            lines.append("")
 
     return "\n".join(lines)
 
 
-def _retrieve_kb_for_slot(slot_id: str, template: Dict) -> str:
-    """Retrieve relevant knowledge base sections for a slot."""
-    try:
-        from core_new.knowledge_retrieval import retrieve_for_slot
-        return retrieve_for_slot(slot_id, template)
-    except Exception:
+def _extract_slot_summary(slot_md_content: Optional[str]) -> str:
+    """Extract concise topic distribution from slot.md for compose decisions.
+
+    Returns a formatted string with core knowledge domains and yearly topic
+    distribution, or empty string if unavailable.
+    """
+    import re
+
+    if not slot_md_content:
         return ""
+
+    parts: list[str] = []
+
+    # Extract core knowledge domains
+    m = re.search(r"### 核心知识域\n(.*?)(?=\n###|\n## )", slot_md_content, re.DOTALL)
+    if m:
+        domain_lines = [l.strip() for l in m.group(1).strip().split("\n") if l.strip().startswith("-")]
+        if domain_lines:
+            parts.append("### 核心知识域")
+            parts.append("")
+            parts.extend(domain_lines)
+            parts.append("")
+
+    # Extract yearly topic distribution
+    m = re.search(r"### 往年知识点分布\n(.*?)(?=\n###|\n## )", slot_md_content, re.DOTALL)
+    if m:
+        year_lines = [l.strip() for l in m.group(1).strip().split("\n") if l.strip().startswith("-")]
+        if year_lines:
+            parts.append("### 往年考点")
+            parts.append("")
+            parts.extend(year_lines)
+
+    return "\n".join(parts)
+
+
+def _extract_mode_knowledge_map(experience_card_md: str) -> list[str]:
+    """Extract mode→knowledge mapping from experience card.
+
+    For each examination mode in the card, extract its "适用知识点范围"
+    field to show which knowledge points suit each mode.
+    Returns a list of formatted lines, or empty list if unavailable.
+    """
+    import re
+
+    result: list[str] = []
+    # Match mode headings: ## 模式A: ... or ## 模式A — ...
+    mode_pattern = re.compile(r"^## 模式([A-Z])[：:]\s*(.+?)$", re.MULTILINE)
+    mode_starts = list(mode_pattern.finditer(experience_card_md))
+
+    for i, m in enumerate(mode_starts):
+        mode_name = m.group(2).strip()
+        start = m.end()
+        end = mode_starts[i + 1].start() if i + 1 < len(mode_starts) else len(experience_card_md)
+
+        # Also stop at --- separator
+        sep_match = re.search(r"\n---\n", experience_card_md[start:])
+        if sep_match and start + sep_match.start() < end:
+            end = start + sep_match.start()
+
+        section = experience_card_md[start:end]
+
+        # Extract 适用知识点范围
+        kp_match = re.search(
+            r"\*?\*?适用知识点范围\*?\*?[:：]\s*(.+?)(?:\n\*|\n-|\n\n|$)",
+            section, re.DOTALL,
+        )
+        if kp_match:
+            kp_text = kp_match.group(1).strip()
+            # Truncate to keep concise
+            if len(kp_text) > 120:
+                kp_text = kp_text[:117] + "..."
+            result.append(f"- **{mode_name}**: {kp_text}")
+
+    return result

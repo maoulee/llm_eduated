@@ -44,10 +44,20 @@ def _build_slot_contracts_md(templates: dict) -> str:
         sid = path.stem.replace("_experience", "")
         experience_cards[sid] = path.read_text(encoding="utf-8")
 
+    slot_dir = Path("data/slots")
+    slot_contents = {}
+    for path in sorted(slot_dir.glob("*_slot.md")):
+        sid = path.stem.replace("_slot", "")
+        slot_contents[sid] = path.read_text(encoding="utf-8")
+
     contracts = {}
     for sid, tpl in templates.items():
         try:
-            contract = build_slot_contract(sid, tpl, experience_cards.get(sid, ""))
+            contract = build_slot_contract(
+                sid, tpl,
+                experience_cards.get(sid, ""),
+                slot_contents.get(sid, ""),
+            )
             if contract:
                 contracts[sid] = contract
         except Exception:
