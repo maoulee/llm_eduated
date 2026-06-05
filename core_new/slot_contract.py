@@ -1,10 +1,10 @@
 # core_new/slot_contract.py
-"""SlotContract: layered constraint system for slot-template driven composition.
+"""SlotContract: concise slot info for the compose (outline) agent.
 
-Converts SlotTemplate JSON into a structured Markdown contract with three layers:
-- L0 Hard constraints: objective exam structure (question type, score, option count)
-- L1 Strong soft constraints: statistical patterns with deviation policy
-- L2 Preference constraints: scoring/ranking guidance
+Builds a streamlined markdown per slot with:
+- 考点定位 (subject + radar shape)
+- 可选考察模式 (mode name + frequency + 3-line summary for SC / full for COMP)
+- 出题指导 (should_be / should_not_be / suggested distribution)
 
 Usage:
     from core_new.slot_contract import build_slot_contract
@@ -14,6 +14,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 from typing import Dict, Optional
 
 
@@ -23,264 +24,266 @@ def build_slot_contract(
     experience_card_md: Optional[str] = None,
     slot_md_content: Optional[str] = None,
 ) -> str:
-    """Build a SlotContract markdown from template and experience data.
+    """Build concise slot contract markdown for the compose agent.
 
     Args:
         slot_id: Slot identifier (e.g. "Q12").
         template: Slot template dict from slot_templates.json.
         experience_card_md: Raw experience card markdown (from data/slot_experiences/).
-        slot_md_content: Raw slot knowledge doc markdown (from data/slots/).
+        slot_md_content: Unused (kept for API compatibility).
     """
-    lines = []
-    lines.append(f"# slot_contract {slot_id}")
+    lines: list[str] = []
+
+    qtype = template.get("question_type", "single_choice")
+    qtype_label = "选择题" if qtype == "single_choice" else "综合应用题"
+    score = template.get("typical_score", 2)
+
+    lines.append(f"# {slot_id} — {qtype_label} · {score}分")
     lines.append("")
 
-    # ── L0: Hard constraints ──────────────────────────────────
-    lines.append("## 硬约束（必须遵守，违反直接拦截）")
+    # ── 考点定位 ──────────────────────────────────────────────
+    lines.append("## 考点定位")
     lines.append("")
-    lines.append(f"- **slot_id**: {slot_id}")
-    lines.append(f"- **section**: {template.get('section', '?')}")
-    qtype = template.get('question_type', 'single_choice')
-    lines.append(f"- **question_type**: {qtype}")
-    lines.append(f"- **score**: {template.get('typical_score', 2)}")
-
-    if qtype == 'single_choice':
-        lines.append("- **option_count**: 4")
-        lines.append("- **answer_rule**: 只能有一个正确答案")
-        lines.append("- **output_format**: stem, option_A, option_B, option_C, option_D, correct_answer, explanation")
-    else:
-        lines.append("- **answer_rule**: 需要完整的解答过程和最终结果")
-        lines.append("- **output_format**: stem, standard_answer, solution_steps, explanation")
-        lines.append("- **option_style**: none")
-        lines.append("- **reasoning_shape**: none")
-    lines.append("")
-
-    # ── L1: Strong soft constraints ───────────────────────────
-    lines.append("## 强软约束（默认遵守，偏离需说明理由）")
-    lines.append("")
-
-    # Subject
     subj = template.get("subject_stability", "未知")
-    lines.append(f"- **preferred_subject**: {subj}")
-
-    # Difficulty — K1-K5 cognitive radar anchors
-    da = template.get("difficulty_anchor", {})
-    if isinstance(da, dict):
-        for k_dim in ("K1", "K2", "K3", "K4", "K5"):
-            mode_key = f"{k_dim}_mode"
-            range_key = f"{k_dim}_range"
-            mode_val = da.get(mode_key)
-            range_val = da.get(range_key)
-            if mode_val is not None:
-                lines.append(f"- **{k_dim}_mode**: {mode_val}")
-            if isinstance(range_val, list) and len(range_val) == 2:
-                lines.append(f"- **{k_dim}_range**: {range_val[0]}-{range_val[1]}")
-        # Fallback: if old-style difficulty_anchor present but no K1-K5, emit legacy
-        if not any(f"{k}_mode" in da for k in ("K1", "K2", "K3", "K4", "K5")):
-            lines.append(f"- **difficulty_mode**: {da.get('overall_mode', '?')}")
-            r = da.get("overall_range", [])
-            if isinstance(r, list) and len(r) == 2:
-                lines.append(f"- **difficulty_reasonable_range**: {r[0]}-{r[1]}")
-            lines.append(f"- **knowledge_depth_mode**: {da.get('knowledge_depth_mode', '?')}")
-            lines.append(f"- **calculation_load_mode**: {da.get('calculation_load_mode', '?')}")
-            lines.append(f"- **reasoning_steps_mode**: {da.get('reasoning_steps_mode', '?')}")
+    # Map subject_stability to display subject
+    if subj == "跨领域":
+        lines.append("- **科目**: 计算机组成原理（跨知识域）")
+    else:
+        lines.append(f"- **科目**: 计算机组成原理（{subj}）")
+    radar = template.get("radar_shape", "")
+    if radar:
+        lines.append(f"- **典型雷达**: {radar}")
     lines.append("")
 
-    # ── L2: Preference constraints ─────────────────────────────
-    lines.append("## 偏好约束（尽量满足，用于排序打分）")
-    lines.append("")
-
-    # Target families
-    tfd = template.get("target_family_distribution", {})
-    if isinstance(tfd, dict) and tfd:
-        sorted_families = sorted(tfd.items(), key=lambda x: -x[1] if isinstance(x[1], (int, float)) else 0)
-        preferred = ", ".join(f"{k}({v:.0%})" if isinstance(v, float) else f"{k}({v})" for k, v in sorted_families[:3])
-        lines.append(f"- **preferred_target_families**: {preferred}")
-
-    # Paper roles
-    prd = template.get("paper_role_distribution", {})
-    if isinstance(prd, dict) and prd:
-        sorted_roles = sorted(prd.items(), key=lambda x: -x[1] if isinstance(x[1], (int, float)) else 0)
-        top_roles = [k for k, v in sorted_roles[:3]]
-        lines.append(f"- **preferred_paper_roles**: {', '.join(top_roles)}")
-
-    # Depth
-    tdd = template.get("target_depth_distribution", {})
-    if isinstance(tdd, dict) and tdd:
-        sorted_depths = sorted(tdd.items(), key=lambda x: -x[1] if isinstance(x[1], (int, float)) else 0)
-        lines.append(f"- **preferred_target_depths**: {', '.join(k for k, v in sorted_depths[:2])}")
-
-    # Style mode
-    sm = template.get("style_mode", {})
-    if isinstance(sm, dict):
-        parts = [f"{k}={v}" for k, v in sm.items()]
-        if parts:
-            lines.append(f"- **typical_style**: {', '.join(parts)}")
-
-    lines.append("")
-
-    # ── Deviation policy ──────────────────────────────────────
-    lines.append("## 偏离策略")
-    lines.append("")
-    lines.append("- **allowed_deviation**: yes")
-    lines.append("- **deviation_requires_reason**: yes")
-    lines.append("- **major_deviation_requires_review**: yes")
-    lines.append("- **hard_fail_only_if**: 题型错误, 分值错误, 多个正确答案, 无法作答, 输出格式缺失, 综合题出现选项字段, 综合题option_style不为none, 综合题reasoning_shape不为none")
-    lines.append("")
-
-    # ── Evidence ──────────────────────────────────────────────
-    lines.append("## 历年证据")
-    lines.append("")
-    should_be = template.get("should_be", "无")
-    should_not = template.get("should_not_be", "无")
-    guidance = template.get("slot_guidance", "无")
-    stability = template.get("stability_assessment", "无")
-    gen_style = template.get("generation_style", "无")
-
-    lines.append(f"- **should_be**: {should_be}")
-    lines.append(f"- **should_not_be**: {should_not}")
-    lines.append(f"- **slot_guidance**: {guidance}")
-    lines.append(f"- **generation_style**: {gen_style}")
-    lines.append(f"- **stability_assessment**: {stability}")
-    lines.append("")
-
-    # Attach experience card guidance sections if available
+    # ── 可选考察模式 ──────────────────────────────────────────
     if experience_card_md:
-        # Extract mode distribution (fine-grained mode names for outline composer)
-        mode_lines = []
-        in_mode_dist = False
-        for line in experience_card_md.split("\n"):
-            if line.startswith("## 考察模式分布"):
-                in_mode_dist = True
-                continue
-            if in_mode_dist and line.startswith("## "):
-                in_mode_dist = False
-            if in_mode_dist and line.strip():
-                mode_lines.append(line)
-        if mode_lines:
-            lines.append("## 可选考察模式（从以下模式中选择 examination_mode）")
-            lines.append("")
-            lines.extend(mode_lines)
-            lines.append("")
+        is_comp = qtype == "comprehensive"
+        if is_comp:
+            _append_comp_modes(lines, experience_card_md)
+        else:
+            _append_sc_modes(lines, experience_card_md)
 
-        # Legacy: attach 出题类型-难度指导 section if it exists
-        in_guide = False
-        in_detail = False
-        guide_lines = []
-        for line in experience_card_md.split("\n"):
-            if line.startswith("## 出题类型-难度指导"):
-                in_guide = True
-                in_detail = False
-                continue
-            elif line.startswith("## 逐题分析"):
-                in_detail = True
-                continue
-            if in_detail:
-                continue
-            if in_guide and line.startswith("## "):
-                in_guide = False
-            if in_guide:
-                guide_lines.append(line)
-        if guide_lines:
-            lines.append("## 出题类型-难度指导（来自经验卡）")
-            lines.append("")
-            lines.extend(guide_lines)
-
-    # ── Historical topic distribution (from slot.md) ───────────
-    slot_summary = _extract_slot_summary(slot_md_content)
-    if slot_summary:
-        lines.append("## 历史考点分布")
-        lines.append("")
-        lines.append("> 以下是该题位历年考察的知识点分布，供选择考点时参考。")
-        lines.append("")
-        lines.append(slot_summary)
-        lines.append("")
-
-    # ── Mode → knowledge mapping (from experience card) ────────
+    # ── 出题指导 ──────────────────────────────────────────────
     if experience_card_md:
-        mode_kp_map = _extract_mode_knowledge_map(experience_card_md)
-        if mode_kp_map:
-            lines.append("## 模式与知识点对应")
+        guidance = _extract_guidance(experience_card_md)
+        if guidance:
+            lines.append("## 出题指导")
             lines.append("")
-            lines.append("> 各考察模式适合考察的知识点范围，帮助选择知识点后确定考察模式。")
-            lines.append("")
-            lines.extend(mode_kp_map)
+            lines.extend(guidance)
             lines.append("")
 
     return "\n".join(lines)
 
 
-def _extract_slot_summary(slot_md_content: Optional[str]) -> str:
-    """Extract concise topic distribution from slot.md for compose decisions.
+# ── SC mode extraction ────────────────────────────────────────
 
-    Returns a formatted string with core knowledge domains and yearly topic
-    distribution, or empty string if unavailable.
+def _append_sc_modes(lines: list[str], exp_card: str) -> None:
+    """Append concise mode sections for single-choice slots."""
+    # 1. Get mode distribution (name → frequency)
+    dist = _extract_mode_distribution(exp_card)
+
+    # 2. Get full mode sections
+    mode_sections = _extract_mode_sections(exp_card)
+
+    if not mode_sections:
+        return
+
+    lines.append("## 可选考察模式")
+    lines.append("")
+
+    for mode_letter, mode_heading_name, content in mode_sections:
+        # Find frequency from distribution
+        freq_str = _match_frequency(mode_heading_name, dist)
+
+        # Build heading
+        if freq_str:
+            lines.append(f"### 模式{mode_letter}: {mode_heading_name} ({freq_str})")
+        else:
+            lines.append(f"### 模式{mode_letter}: {mode_heading_name}")
+        lines.append("")
+
+        # Extract 3 key fields: 考察方式, 适用知识点范围, 难度范围
+        for field in ("考察方式", "适用知识点范围", "难度范围"):
+            val = _extract_field_from_section(content, field)
+            if val:
+                display_name = "适用知识点" if field == "适用知识点范围" else (
+                    "难度" if field == "难度范围" else field)
+                if len(val) > 150:
+                    val = val[:147] + "..."
+                lines.append(f"- **{display_name}**: {val}")
+        lines.append("")
+
+
+def _extract_mode_distribution(exp_card: str) -> list[tuple[str, str]]:
+    """Extract mode distribution entries as (name, freq_str) pairs.
+
+    Returns list of ("计算型——单结果/多结果竞争", "7/13, 53.8%") etc.
     """
-    import re
-
-    if not slot_md_content:
-        return ""
-
-    parts: list[str] = []
-
-    # Extract core knowledge domains
-    m = re.search(r"### 核心知识域\n(.*?)(?=\n###|\n## )", slot_md_content, re.DOTALL)
-    if m:
-        domain_lines = [l.strip() for l in m.group(1).strip().split("\n") if l.strip().startswith("-")]
-        if domain_lines:
-            parts.append("### 核心知识域")
-            parts.append("")
-            parts.extend(domain_lines)
-            parts.append("")
-
-    # Extract yearly topic distribution
-    m = re.search(r"### 往年知识点分布\n(.*?)(?=\n###|\n## )", slot_md_content, re.DOTALL)
-    if m:
-        year_lines = [l.strip() for l in m.group(1).strip().split("\n") if l.strip().startswith("-")]
-        if year_lines:
-            parts.append("### 往年考点")
-            parts.append("")
-            parts.extend(year_lines)
-
-    return "\n".join(parts)
+    results: list[tuple[str, str]] = []
+    in_dist = False
+    for line in exp_card.split("\n"):
+        if line.strip().startswith("## 考察模式分布"):
+            in_dist = True
+            continue
+        if in_dist and line.startswith("## "):
+            in_dist = False
+        if in_dist and line.strip().startswith("- **"):
+            m = re.match(r"- \*\*(.+?)\*\*[：:]\s*(.+)", line.strip())
+            if m:
+                results.append((m.group(1).strip(), m.group(2).strip()))
+    return results
 
 
-def _extract_mode_knowledge_map(experience_card_md: str) -> list[str]:
-    """Extract mode→knowledge mapping from experience card.
+def _extract_mode_sections(exp_card: str) -> list[tuple[str, str, str]]:
+    """Extract full mode sections from experience card.
 
-    For each examination mode in the card, extract its "适用知识点范围"
-    field to show which knowledge points suit each mode.
-    Returns a list of formatted lines, or empty list if unavailable.
+    Returns list of (letter, heading_name, content_text).
+    E.g. ("A", "计算型——公式应用与单位换算", "- **考察方式**: ...\n...")
     """
-    import re
-
-    result: list[str] = []
-    # Match mode headings: ## 模式A: ... or ## 模式A — ...
+    results: list[tuple[str, str, str]] = []
     mode_pattern = re.compile(r"^## 模式([A-Z])[：:]\s*(.+?)$", re.MULTILINE)
-    mode_starts = list(mode_pattern.finditer(experience_card_md))
+    mode_starts = list(mode_pattern.finditer(exp_card))
 
     for i, m in enumerate(mode_starts):
-        mode_name = m.group(2).strip()
+        letter = m.group(1)
+        heading_name = m.group(2).strip()
         start = m.end()
-        end = mode_starts[i + 1].start() if i + 1 < len(mode_starts) else len(experience_card_md)
+        end = mode_starts[i + 1].start() if i + 1 < len(mode_starts) else len(exp_card)
 
-        # Also stop at --- separator
-        sep_match = re.search(r"\n---\n", experience_card_md[start:])
-        if sep_match and start + sep_match.start() < end:
-            end = start + sep_match.start()
+        # Stop at --- separator
+        sep = re.search(r"\n---\n", exp_card[start:])
+        if sep and start + sep.start() < end:
+            end = start + sep.start()
 
-        section = experience_card_md[start:end]
+        content = exp_card[start:end].strip()
+        results.append((letter, heading_name, content))
 
-        # Extract 适用知识点范围
-        kp_match = re.search(
-            r"\*?\*?适用知识点范围\*?\*?[:：]\s*(.+?)(?:\n\*|\n-|\n\n|$)",
-            section, re.DOTALL,
-        )
-        if kp_match:
-            kp_text = kp_match.group(1).strip()
-            # Truncate to keep concise
-            if len(kp_text) > 120:
-                kp_text = kp_text[:117] + "..."
-            result.append(f"- **{mode_name}**: {kp_text}")
+    return results
+
+
+def _match_frequency(mode_heading_name: str, dist: list[tuple[str, str]]) -> str:
+    """Match a mode section heading to its frequency in the distribution.
+
+    The distribution uses names like "计算型——单结果/多结果竞争",
+    while mode sections use names like "计算型——公式应用与单位换算".
+    We match on shared prefix (before ——) + shared keywords.
+    """
+    if not dist:
+        return ""
+
+    # Strategy 1: exact match
+    for name, freq in dist:
+        if name == mode_heading_name:
+            return freq
+
+    # Strategy 2: match by prefix (before —— or —)
+    def prefix(s: str) -> str:
+        return s.split("——")[0].split("—")[0].strip()
+
+    mode_prefix = prefix(mode_heading_name)
+    for name, freq in dist:
+        if prefix(name) == mode_prefix:
+            return freq
+
+    # Strategy 3: keyword overlap
+    mode_words = set(re.findall(r"[一-鿿]+", mode_heading_name))
+    best_match = None
+    best_score = 0
+    for name, freq in dist:
+        name_words = set(re.findall(r"[一-鿿]+", name))
+        score = len(mode_words & name_words)
+        if score > best_score:
+            best_score = score
+            best_match = freq
+
+    return best_match or ""
+
+
+def _extract_field_from_section(section: str, field_name: str) -> str:
+    """Extract a single field value from a mode section."""
+    # Match patterns like: - **考察方式**: value  or  - **考察方式**: value
+    patterns = [
+        rf"\*?\*?{re.escape(field_name)}\*?\*?\s*[：:]\s*(.+?)(?:\n- \*\*|\n\n|\Z)",
+        rf"\*?\*?{re.escape(field_name)}\*?\*?\s*[：:]\s*(.+?)(?:\n|$)",
+    ]
+    for pat in patterns:
+        m = re.search(pat, section, re.DOTALL)
+        if m:
+            val = m.group(1).strip()
+            # If empty after colon, try next line (nested bullet)
+            if not val:
+                rest = section[m.end():]
+                next_line = rest.split("\n")[1] if "\n" in rest else ""
+                if next_line.strip():
+                    val = next_line.strip()
+            # Clean up multiline values — take first meaningful line
+            val = val.split("\n")[0].strip()
+            # Strip leading "- " from nested bullets
+            if val.startswith("- "):
+                val = val[2:].strip()
+            return val
+    return ""
+
+
+# ── COMP mode extraction ──────────────────────────────────────
+
+def _append_comp_modes(lines: list[str], exp_card: str) -> None:
+    """Append full mode sections for comprehensive slots."""
+    # Extract from ## 考察结构模式 → ### 模式A/B/C
+    struct_match = re.search(
+        r"## 考察结构模式\n(.*?)(?=\n## |\Z)", exp_card, re.DOTALL
+    )
+    if not struct_match:
+        return
+
+    struct_text = struct_match.group(1).strip()
+    if not struct_text:
+        return
+
+    lines.append("## 可选考察模式")
+    lines.append("")
+    lines.append(struct_text)
+    lines.append("")
+
+
+# ── Guidance extraction ───────────────────────────────────────
+
+def _extract_guidance(exp_card: str) -> list[str]:
+    """Extract 出题指导 section as a list of formatted lines."""
+    m = re.search(r"## 出题指导\n(.*?)(?=\n## |\Z)", exp_card, re.DOTALL)
+    if not m:
+        return []
+
+    content = m.group(1).strip()
+    result: list[str] = []
+
+    for line in content.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip the slot_synthesis program-parsed section
+        if stripped.startswith("- **K1_mode**"):
+            break
+        if stripped.startswith("## slot_synthesis"):
+            break
+        # Clean up nested bullet formatting
+        if stripped.startswith("- **should_be**:") or stripped.startswith("- **should_not_be**:"):
+            # Extract the value after the colon
+            val_m = re.match(r"- \*\*(should_be|should_not_be)\*\*[：:]\s*", stripped)
+            if val_m:
+                val = stripped[val_m.end():]
+                label = "应该" if "should_be" in val_m.group(0) else "避免"
+                # Handle nested list
+                if val:
+                    result.append(f"- **{label}**: {val.lstrip('- ').strip()}")
+        elif stripped.startswith("- **建议"):
+            result.append(stripped)
+        elif stripped.startswith("- "):
+            result.append(stripped)
+        elif stripped.startswith("  "):
+            # Nested item under should_be / should_not_be
+            result.append(stripped)
+        else:
+            result.append(stripped)
 
     return result

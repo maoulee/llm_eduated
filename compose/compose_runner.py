@@ -19,6 +19,10 @@ from . import artifact_store
 _OUTLINE_SYSTEM_PROMPT = (
     "# 408考研组卷专家\n\n"
     "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲是给下游出题智能体的'命题指令'。\n\n"
+    "## 输入结构\n"
+    "你将收到：\n"
+    "1. 共享参考信息：K1-K5认知雷达评分标准 + 计算机组成原理知识点图谱\n"
+    "2. 各题位信息：考点定位 + 可选考察模式（含适用知识点和频率）+ 出题指导\n\n"
     "## 输出格式\n"
     "Markdown格式，包含：\n"
     "- `# 试卷大纲` 标题\n"
@@ -26,8 +30,10 @@ _OUTLINE_SYSTEM_PROMPT = (
     "- 每个题位一个 `## Qxx` 段落，包含：target_subject, target_family, primary_target_name, "
     "difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
     "## 核心约束\n"
-    "- examination_mode 必须精确复制自题位的'可选考察模式'列表，不得缩写、翻译或自创\n"
-    "- 综合应用题（Q43-Q45）的 examination_mode 写'综合型'\n"
+    "- examination_mode 必须精确复制自题位的'可选考察模式'标题（从 ### 后复制完整名称，不含频率）\n"
+    "- target_family 使用知识点图谱中的层级路径（如 CO-1 > 计算机系统概述）\n"
+    "- 知识点选择应参考模式中的'适用知识点'字段，确保选的知识点适合该考察模式\n"
+    "- 综合应用题（Q43-Q45）的 examination_mode 写模式标题（如'存储层次地址翻译与映射模拟'）\n"
     "- 不要输出选项风格、干扰策略等设计级决策\n"
     "- 确保知识点覆盖主要知识域，避免连续多题考同一知识点\n\n"
     "直接输出 Markdown 内容，不要用代码块包裹。"
@@ -35,7 +41,7 @@ _OUTLINE_SYSTEM_PROMPT = (
 
 
 def _build_slot_contracts_md(templates: dict) -> str:
-    """Build concatenated slot contracts markdown for compose prompts."""
+    """Build shared header + concatenated slot contracts for compose prompts."""
     from core_new.slot_contract import build_slot_contract
 
     exp_dir = Path("data/slot_experiences")
@@ -44,26 +50,92 @@ def _build_slot_contracts_md(templates: dict) -> str:
         sid = path.stem.replace("_experience", "")
         experience_cards[sid] = path.read_text(encoding="utf-8")
 
-    slot_dir = Path("data/slots")
-    slot_contents = {}
-    for path in sorted(slot_dir.glob("*_slot.md")):
-        sid = path.stem.replace("_slot", "")
-        slot_contents[sid] = path.read_text(encoding="utf-8")
-
+    # Build per-slot contracts
     contracts = {}
     for sid, tpl in templates.items():
         try:
             contract = build_slot_contract(
                 sid, tpl,
                 experience_cards.get(sid, ""),
-                slot_contents.get(sid, ""),
+                slot_md_content=None,
             )
             if contract:
                 contracts[sid] = contract
         except Exception:
             pass
 
-    return "\n\n---\n\n".join(contracts[sid] for sid in sorted(contracts.keys()))
+    # Shared header + per-slot contracts
+    header = _build_shared_header()
+    slot_sections = "\n\n---\n\n".join(
+        contracts[sid] for sid in sorted(contracts.keys())
+    )
+    return header + "\n\n---\n\n" + slot_sections
+
+
+def _build_shared_header() -> str:
+    """Build shared header: K-radar definitions + knowledge point graph."""
+    from core_new.slot_prompts import K_RADAR_DEFINITIONS
+
+    parts: list[str] = []
+
+    # 1. K-radar definitions
+    parts.append("# 共享参考信息（所有题位公用）")
+    parts.append("")
+    # K_RADAR_DEFINITIONS already has its own ## heading, use it directly
+    parts.append(K_RADAR_DEFINITIONS.strip())
+    parts.append("")
+
+    # 2. Knowledge point graph (title hierarchy from computer_organization.md)
+    kg = _extract_knowledge_graph()
+    if kg:
+        parts.append("## 计算机组成原理知识点图谱")
+        parts.append("")
+        parts.append("> 以下是完整的知识点层级结构，供规划知识点覆盖时参考。")
+        parts.append("")
+        parts.append(kg)
+
+    return "\n".join(parts)
+
+
+def _extract_knowledge_graph() -> str:
+    """Extract title hierarchy tree from computer_organization.md.
+
+    Keeps only heading lines (##/###/####) and leaf node names (- item),
+    removes '属性:' descriptions and '来源页' info.
+    """
+    import re as _re
+
+    kg_path = Path("data/computer_organization.md")
+    if not kg_path.exists():
+        return ""
+
+    text = kg_path.read_text(encoding="utf-8")
+    lines: list[str] = []
+
+    for line in text.split("\n"):
+        stripped = line.rstrip()
+        # Keep headings
+        if _re.match(r"^#{1,4}\s", stripped):
+            lines.append(stripped)
+        # Keep leaf node names (top-level bullets), skip sub-bullets with 属性/来源
+        elif stripped.startswith("- ") and not stripped.startswith("  "):
+            # Skip "来源页" and "属性:" lines
+            name = stripped[2:].strip()
+            if name and "来源页" not in stripped and "属性:" not in stripped:
+                lines.append(stripped)
+        # Skip everything else (sub-bullets with 属性, blank lines, etc.)
+
+    # Collapse consecutive blank lines
+    result: list[str] = []
+    prev_blank = False
+    for line in lines:
+        is_blank = not line.strip()
+        if is_blank and prev_blank:
+            continue
+        result.append(line)
+        prev_blank = is_blank
+
+    return "\n".join(result)
 
 
 async def _compose_hybrid(templates, user_requirements) -> tuple[str, dict]:

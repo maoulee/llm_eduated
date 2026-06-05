@@ -77,10 +77,13 @@ def assemble_slot_experience_doc(
     else:
         mode_years = []
 
-    # ── 4. 相关细纲 ──
-    syllabus = _extract_relevant_syllabus(slot_md)
+    # ── 4. 相关知识点细纲 ──
+    target_family = ""
+    if outline_entry:
+        target_family = outline_entry.get("target_family", "")
+    syllabus = _extract_knowledge_graph_section(target_family)
     if syllabus:
-        parts.append(f"## 相关细纲\n\n{syllabus}")
+        parts.append(f"## 相关知识点细纲\n\n{syllabus}")
 
     # ── 5. 往年真题经验 ──
     if mode_years:
@@ -169,6 +172,7 @@ def _extract_matching_mode(exp_card: str, examination_mode: str) -> str:
 
 
 def _extract_relevant_syllabus(slot_md: str) -> str:
+    """Legacy: extract syllabus from slot.md. Kept for backward compatibility."""
     if not slot_md:
         return ""
     m = re.search(r"## 细纲参考\n(.*?)(?=\n## (?:认知雷达|往年题干)|$)", slot_md, re.DOTALL)
@@ -186,6 +190,100 @@ def _extract_relevant_syllabus(slot_md: str) -> str:
         elif stripped.startswith("- ") and "属性:" not in stripped and "来源" not in stripped:
             compact.append("  " + stripped)
     return "\n".join(compact) if compact else ""
+
+
+def _extract_knowledge_graph_section(target_family: str) -> str:
+    """Extract relevant knowledge graph section from computer_organization.md.
+
+    Given a target_family like "CO-1 > 计算机系统概述" or "CO-3 > 高速缓冲存储器 Cache",
+    finds the corresponding section in the knowledge graph and returns its full subtree.
+    """
+    kg_path = os.path.join("data", "computer_organization.md")
+    if not os.path.exists(kg_path):
+        return ""
+
+    with open(kg_path, encoding="utf-8") as f:
+        text = f.read()
+
+    if not target_family:
+        return ""
+
+    # Parse target_family: "CO-1 > 计算机系统概述" or just "CO-1"
+    parts = [p.strip() for p in target_family.split(">")]
+    top_level = parts[0] if parts else ""  # e.g. "CO-1"
+    sub_level = parts[1] if len(parts) > 1 else ""  # e.g. "计算机系统概述"
+
+    if not top_level:
+        return ""
+
+    # Find the top-level section: "## CO-1 计算机系统概述"
+    top_pattern = re.compile(
+        rf"^## {re.escape(top_level)}\b", re.MULTILINE
+    )
+    top_match = top_pattern.search(text)
+    if not top_match:
+        return ""
+
+    # Find the end of this top-level section (next ## or end of file)
+    next_top = re.search(r"\n## (?!#)", text[top_match.end():])
+    top_end = top_match.end() + next_top.start() if next_top else len(text)
+    top_section = text[top_match.start():top_end]
+
+    # If there's a sub-level, try to find it within the top section
+    if sub_level:
+        # Try to match ### or #### heading containing the sub-level name
+        sub_pattern = re.compile(
+            rf"^(#{2,4})\s+.*{re.escape(sub_level)}", re.MULTILINE
+        )
+        sub_match = sub_pattern.search(top_section)
+        if sub_match:
+            sub_level_heading = len(sub_match.group(1))  # e.g. 3 for ###
+            sub_start = sub_match.start()
+
+            # Find the end of this sub-section (next heading at same or higher level)
+            sub_end = len(top_section)
+            heading_pattern = re.compile(rf"^(#{2,{sub_level_heading}})\s+", re.MULTILINE)
+            for hm in heading_pattern.finditer(top_section[sub_match.end():]):
+                sub_end = sub_match.end() + hm.start()
+                break
+
+            result = top_section[sub_start:sub_end]
+            return _clean_knowledge_section(result)
+
+    # Return the entire top-level section
+    return _clean_knowledge_section(top_section)
+
+
+def _clean_knowledge_section(section: str) -> str:
+    """Clean a knowledge graph section: keep headings and leaf names, remove attributes/sources."""
+    lines: list[str] = []
+    for line in section.split("\n"):
+        stripped = line.rstrip()
+        # Keep headings
+        if re.match(r"^#{1,4}\s", stripped):
+            lines.append(stripped)
+        # Keep top-level bullet items (not sub-bullets with 属性/来源)
+        elif stripped.startswith("- ") and not stripped.startswith("  "):
+            if "来源页" not in stripped and "属性:" not in stripped:
+                lines.append(stripped)
+        elif stripped.startswith("  - ") and "属性:" not in stripped and "来源" not in stripped:
+            lines.append(stripped)
+        # Add blank lines for readability between heading groups
+        elif not stripped.strip():
+            if lines and lines[-1].strip():
+                lines.append("")
+
+    # Collapse consecutive blank lines
+    result: list[str] = []
+    prev_blank = False
+    for line in lines:
+        is_blank = not line.strip()
+        if is_blank and prev_blank:
+            continue
+        result.append(line)
+        prev_blank = is_blank
+
+    return "\n".join(result).strip()
 
 
 def _build_question_entries(slot_id: str, years: list) -> list:
