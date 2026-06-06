@@ -108,16 +108,33 @@ class SessionManager:
         """IDLE: classify intent, either start collection or synthesize."""
         result: IntentResult = await self.intent_router.route(user_message)
 
-        if result.intent == "clarify" or result.missing_params:
-            session.mode = result.params.get("mode", "")
-            session.collected_params.update(result.params)
+        session.collected_params.update(result.params)
+
+        # Fully ambiguous — no direction at all
+        if result.intent == "clarify" and not result.params:
             session.missing_params = result.missing_params or ["subject", "difficulty", "question_count"]
             session.state = SessionState.COLLECTING
             return result.response or self._ask_missing(session)
 
-        # Intent is compose or knowledge_point with sufficient params
-        session.mode = result.intent
-        session.collected_params.update(result.params)
+        # Compose mode — needs compose_runner, not blueprint_synthesizer
+        if result.intent == "compose":
+            session.mode = "compose"
+            if result.missing_params:
+                session.missing_params = result.missing_params
+                session.state = SessionState.COLLECTING
+                return result.response or self._ask_missing(session)
+            # TODO: integrate with compose_runner for full-paper generation
+            return "组卷模式已确认，正在规划试卷结构...\n（组卷功能对接中，当前版本请使用知识点出题模式）"
+
+        # Knowledge point mode with partial params — collect more
+        if result.missing_params:
+            session.mode = "knowledge_point"
+            session.missing_params = result.missing_params
+            session.state = SessionState.COLLECTING
+            return result.response or self._ask_missing(session)
+
+        # Knowledge point mode with all params — synthesize blueprint
+        session.mode = "knowledge_point"
         return await self._synthesize_blueprint(session)
 
     async def _handle_collecting(self, session: SessionData, user_message: str) -> str:

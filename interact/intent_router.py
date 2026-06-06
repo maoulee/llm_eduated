@@ -36,12 +36,16 @@ INTENT_ROUTER_SYSTEM_PROMPT = """\
 - question_type: 题型（"选择题" 或 "综合应用题"）
 - difficulty: 难度（easy / medium / hard）
 
-### 3. clarify — 需要澄清
-用户输入不够明确，无法判断意图或缺少关键参数。
+### 3. clarify — 完全无法判断
+用户输入完全没有方向，无法提取任何参数。
 
 字段：
 - missing_params: 缺少的参数名列表
 - clarification_question: 向用户提出的追问
+
+## 关键规则
+
+**如果用户提到了具体知识点（如"TCP拥塞控制"、"二叉树"），即使缺少数量/难度等参数，也必须使用 knowledge_point 意图，把已知的 knowledge_topic 填入 params，未知参数列入 missing_params。只有完全无法判断方向时才用 clarify。**
 
 ## 输出格式
 
@@ -69,6 +73,12 @@ INTENT_ROUTER_SYSTEM_PROMPT = """\
 
 用户: "操作系统页面置换相关内容"
 输出: {"intent": "knowledge_point", "params": {"knowledge_topic": "页面置换算法", "subject": "操作系统", "question_count": 1, "question_type": "选择题", "difficulty": "medium"}, "missing_params": [], "response": ""}
+
+用户: "我想出几道关于TCP拥塞控制的题"
+输出: {"intent": "knowledge_point", "params": {"knowledge_topic": "TCP拥塞控制", "subject": "计算机网络"}, "missing_params": ["question_count", "question_type", "difficulty"], "response": "请问您需要几道题？什么题型和难度？"}
+
+用户: "出几道Cache的题"
+输出: {"intent": "knowledge_point", "params": {"knowledge_topic": "Cache"}, "missing_params": ["subject", "question_count", "question_type", "difficulty"], "response": "请问Cache属于哪个科目？需要几道题？什么题型和难度？"}
 """
 
 
