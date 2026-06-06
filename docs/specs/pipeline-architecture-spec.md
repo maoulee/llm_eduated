@@ -565,8 +565,21 @@ IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATI
 | 组卷 "出一张CO试卷" | compose 模式确认 |
 | 多轮 TCP | 2 轮收集，知识点正确解析 |
 
-### 12.7 待完成
+### 12.7 批注循环 (Annotation Loop)
 
-- 批注循环（用户修改蓝图后重新合成）
+```
+用户反馈 → BLUEPRINT_READY → ANNOTATING
+                ↑                    ↓
+                │           synthesizer(revision mode)
+                │                    ↓
+                └────────── BLUEPRINT_READY (修订版)
+```
+
+- `BlueprintSynthesizer.synthesize()` 检测 `existing_blueprint` + `feedback` → 使用 `BLUEPRINT_REVISION_SYSTEM_PROMPT`
+- 修订模式：LLM 收到当前蓝图 + 统计数据 + 教师反馈，只修改被指出的部分
+- 最多 3 轮批注，超过自动批准
+- 任意轮次说"确认" → 立即进入 APPROVED → 触发生成
+
+### 12.8 待完成
+
 - compose_runner 实际调用
-- 生成管线实际执行
