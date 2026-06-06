@@ -21,6 +21,45 @@ if TYPE_CHECKING:
 
 # ── System prompt for the LLM teaching designer ───────────────
 
+BLUEPRINT_REVISION_SYSTEM_PROMPT = """\
+你是一位408考研教学设计师（instructional designer）。教师对当前的出题蓝图提出了修改意见，你需要根据反馈修订教学决策。
+
+## 你的任务
+
+根据教师的批注反馈，修订当前的出题决策。保留教师认可的部分，只修改被指出的问题。
+
+## 输出要求
+
+输出修订后的完整决策（格式与原始蓝图一致），不要只输出差异。严格按以下Markdown格式：
+
+## 本次出题要求
+- **考点**: ...
+- **知识域**: ...
+- **难度**: ...
+- **K目标**: ...
+- **难度说明**: ...
+- **考察模式**: ...
+- **出题数量**: ...
+- **题型**: ...
+
+## 出题策略
+- **examination_angles**: ...
+- **difficulty_gradient**: ...
+- **should_be**: ...
+- **should_not_be**: ...
+- **question_type_recommendation**: ...
+
+## 模式概览
+- **recommended_mode**: ...
+- **mode_rationale**: ...
+- **alternative_modes**: ...
+
+## 约束
+- 只修改与反馈相关的部分，其他保持不变
+- 修订后的决策仍需基于统计数据
+- 不要凭空想象新的考察角度
+"""
+
 BLUEPRINT_DESIGNER_SYSTEM_PROMPT = """\
 你是一位408考研教学设计师（instructional designer）。你的任务是基于历史统计数据，为特定知识点做出出题策略决策。
 
@@ -119,12 +158,24 @@ class BlueprintSynthesizer:
         # ── Step 2: Compute statistics summary for LLM context ──
         stats_summary = self._build_stats_summary(stats, request)
 
-        # ── Step 3: LLM teaching decisions ──
-        llm_result = await self._gateway.generate_text(
-            messages=[
+        # ── Step 3: LLM teaching decisions (fresh or revision) ──
+        if request.existing_blueprint and request.feedback:
+            llm_messages = [
+                {"role": "system", "content": BLUEPRINT_REVISION_SYSTEM_PROMPT},
+                {"role": "user", "content": (
+                    f"## 当前蓝图（教师已批注）\n\n{request.existing_blueprint}\n\n"
+                    f"## 统计数据\n\n{stats_summary}\n\n"
+                    f"## 教师反馈\n\n{request.feedback}"
+                )},
+            ]
+        else:
+            llm_messages = [
                 {"role": "system", "content": BLUEPRINT_DESIGNER_SYSTEM_PROMPT},
                 {"role": "user", "content": stats_summary},
-            ],
+            ]
+
+        llm_result = await self._gateway.generate_text(
+            messages=llm_messages,
             max_tokens=2048,
         )
 
