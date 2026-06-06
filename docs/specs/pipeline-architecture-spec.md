@@ -1,6 +1,6 @@
 # Doc Pipeline 架构 Spec — 智能体、路由与协作模式
 
-> 最后更新: 2026-06-06
+> 最后更新: 2026-06-06 (v2: Codex hardening)
 > 本文档固化流水线核心设计，避免跨会话信息丢失。
 
 ---
@@ -409,3 +409,83 @@ pass / needs_fix
 | 大纲 | `data/dagang.md` | 2025 408 考研大纲 |
 
 路由: `artifact_store.py._KG_FILE_MAP` 和 `compose_runner.py.subject_files` 均指向英文文件名。
+
+---
+
+## 11. 安全加固与修复 (2026-06-06 v2)
+
+### 11.1 Solve 智能体隔离
+
+```
+问题: Solve Agent (L4) 能看到 question.md 中的「设计说明」和「参数选择理由」，
+      导致求解不是独立推导而是"自圆其说"。
+
+修复: orchestrator 在调用 solve 前生成 question_public.md:
+      - 仅保留: 题干、选项（SC）/ 子问题（COMP）
+      - 剥离: 设计说明、参数选择理由、K值对齐说明
+      - Solve Agent 读取 question_public.md 而非 question.md
+```
+
+### 11.2 Review / Final Review fail-closed
+
+```
+问题: doc_parser 解析 status 失败时默认返回 "pass"，导致质量门失效。
+
+修复: 白名单校验:
+      - review:      合法值 = ["pass", "needs_fix"]
+      - final_review: 合法值 = ["pass", "expression_fix", "question_error", "solution_error"]
+      - 不在白名单 → 视为解析失败 → 重试（不默认 pass）
+```
+
+### 11.3 知识图谱抽取修复
+
+```
+问题: artifact_store 的 translate_code() 污染大纲机器契约内容；
+      DS/OS/CN 知识图谱以数字编号为章节标题，正则无法匹配。
+
+修复:
+      - translate_code() 不再应用到大纲契约文本
+      - KG 抽取支持数字章节标题（如 "## 3. 数据链路层"）
+```
+
+### 11.4 final.md 导出结构化
+
+```
+问题: final.md 导出时题目内容为空，排版器拿到空字段。
+
+修复: doc_parser 新增 parse_final_sections()，将 question.md 解析为:
+      - stem (题干)
+      - options (选项，SC)
+      - sub_questions (子问题，COMP)
+      - answer (答案)
+      - explanation (解析)
+      排版器使用解析后的结构化字段。
+```
+
+### 11.5 混合模式路由补全
+
+```
+新增 agents_gpt/ 中继提示:
+      - question_sc.md     — GPT→Qwen SC 出题中继
+      - question_comp.md   — GPT→Qwen COMP 出题中继
+      - solve.md           — GPT→Qwen 求解中继
+      - final_review.md    — GPT→Qwen 终审中继（已有，更新）
+      - review.md          — GPT→Qwen 审核中继（已有，更新）
+
+删除:
+      - agents_gpt/question.md — 被拆分为 question_sc + question_comp
+      - agents.py — 完全由 agent_loader.py 替代，不再需要
+```
+
+### 11.6 关键文件索引更新
+
+**已删除文件**:
+- `core_new/doc_pipeline/agents.py` — 被 `agent_loader.py` + `agents/*.md` 替代
+- `core_new/doc_pipeline/agents_gpt/question.md` — 被拆分为 question_sc/question_comp
+
+**新增文件**:
+- `core_new/doc_pipeline/agents_gpt/question_sc.md` — SC 混合中继
+- `core_new/doc_pipeline/agents_gpt/question_comp.md` — COMP 混合中继
+- `core_new/doc_pipeline/agents_gpt/solve.md` — 求解混合中继
+
+**验证状态**: 51 pipeline tests passed, 244 total tests passed。
