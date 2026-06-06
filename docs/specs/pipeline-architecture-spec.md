@@ -580,6 +580,10 @@ IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATI
 - 最多 3 轮批注，超过自动批准
 - 任意轮次说"确认" → 立即进入 APPROVED → 触发生成
 
-### 12.8 待完成
+### 12.8 组卷模式对接
 
-- compose_runner 实际调用
+交互层 compose 模式完整对接两阶段流程：
+- Phase A: `compose_runner.run_compose()` — 大纲生成 + 经验文档组装
+- Phase B: `generate_runner.run_generate()` — 批量出题 + 格式化导出
+- `_build_compose_requirements()` 将收集的参数转为用户需求字符串
+- `_load_compose_assets()` 从 `data/slot_templates.json` + `data/slot_experiences/` 加载数据
