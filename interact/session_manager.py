@@ -275,7 +275,7 @@ class SessionManager:
             feedback=feedback,
         )
         result = await self.blueprint_synthesizer.synthesize(request)
-        return result.blueprint_md
+        return result.assembled_md
 
     # ------------------------------------------------------------------
     # Helpers
