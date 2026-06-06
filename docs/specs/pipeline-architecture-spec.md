@@ -1,6 +1,6 @@
 # Doc Pipeline 架构 Spec — 智能体、路由与协作模式
 
-> 最后更新: 2026-06-06 (v3: 交互式出题层 + 批注循环 + 组卷对接)
+> 最后更新: 2026-06-06 (v3.1: Codex review fixes (approval negation, candidate selection, compose feedback, GPT behavioral injection))
 > 本文档固化流水线核心设计，避免跨会话信息丢失。
 
 ---
@@ -569,6 +569,9 @@ IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATI
 - **GENERATING**: 5 层流水线执行中
 - **COMPLETE**: 出题完成
 
+- **Compose 模式特殊处理**: BLUEPRINT_READY 状态下反馈不进入 ANNOTATING，而是通过 _handle_compose_feedback() 重新提取参数后展示更新确认
+- **歧义消解**: pending_candidates 存储候选列表，用户输入编号直接映射
+
 ### 12.6 交互测试结果 (2026-06-06, Qwen 本地模型)
 
 | 场景 | 结果 |
@@ -594,6 +597,11 @@ IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATI
 - 最多 3 轮批注，超过自动批准
 - 任意轮次说"确认" → 立即进入 APPROVED → 触发生成
 
+### 审批判断
+- 函数式两步检查：先匹配审批词，再扫描前1-2字符检查否定词（不/别/未），后缀检查问句语气词（吗/的）
+- 正确拒绝：不能通过、不要批准、可以吗、别同意
+- 正确接受：确认、通过、可以、好的、OK
+
 ### 12.8 组卷模式对接
 
 交互层 compose 模式完整对接两阶段流程：
@@ -601,3 +609,15 @@ IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATI
 - Phase B: `generate_runner.run_generate()` — 批量出题 + 格式化导出
 - `_build_compose_requirements()` 将收集的参数转为用户需求字符串
 - `_load_compose_assets()` 从 `data/slot_templates.json` + `data/slot_experiences/` 加载数据
+- compose 模式反馈通过 `_handle_compose_feedback()` 处理，重新提取参数而非调用蓝图修订
+
+### 12.9 Agent 行为约束分层
+
+| 层 | 文件 | 职责 |
+|----|------|------|
+| Agent 行为 (agents/*.md) | 核心行为约束：契约忠实、格式红线、工作流规则、禁止行为 |
+| Skill 领域 (skills/*.md) | 408领域模板：题干风格、选项模式、经验卡消费 |
+| GPT 提示 (_GPT_SYSTEM_PROMPTS) | GPT 生成时的行为约束注入 |
+| GPT 中继 (agents_gpt/*.md) | Qwen 校验 GPT 输出时的行为合规检查 |
+
+所有路径的行为约束对齐：本地模型、GPT生成、GPT中继校验使用同一套规则定义。
