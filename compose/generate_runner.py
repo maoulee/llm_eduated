@@ -14,9 +14,9 @@ import time
 from pathlib import Path
 
 from core_new.doc_pipeline.contracts import ComposeArtifact
+from core_new.doc_pipeline.doc_parser import extract_h2_section
 
 
-_H2_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
 _OPTION_RE = re.compile(r"^\s*(?:[-*]\s*)?([A-D])\s*[.、:：)]\s*(.+?)\s*$")
 _SUBQ_RE = re.compile(r"^\s*(?:[-*]\s*)?(\(?\d+\)|\d+[.、])\s*(.+?)\s*$")
 
@@ -277,13 +277,13 @@ def _extract_structured_fields_from_final_md(final_md: str, slot_id: str) -> dic
     if not final_md:
         return {}
 
-    stem = _extract_h2_section(final_md, "题目")
-    options_text = _extract_h2_section(final_md, "选项")
-    subq_text = _extract_h2_section(final_md, "子问题")
-    process_text = _extract_h2_section(final_md, "求解过程")
-    code_output = _extract_h2_section(final_md, "代码验证输出")
-    answer_text = _extract_h2_section(final_md, "答案")
-    design_notes = _extract_h2_section(final_md, "设计说明")
+    stem = extract_h2_section(final_md, "题目")
+    options_text = extract_h2_section(final_md, "选项")
+    subq_text = extract_h2_section(final_md, "子问题")
+    process_text = extract_h2_section(final_md, "求解过程")
+    code_output = extract_h2_section(final_md, "代码验证输出")
+    answer_text = extract_h2_section(final_md, "答案")
+    design_notes = extract_h2_section(final_md, "设计说明")
 
     slot_num = int(re.sub(r"[^\d]", "", slot_id) or "99")
     is_comp = slot_num >= 43 or (subq_text and not options_text)
@@ -315,17 +315,6 @@ def _extract_structured_fields_from_final_md(final_md: str, slot_id: str) -> dic
         data["parameter_notes"] = design_notes.strip()
 
     return data
-
-
-def _extract_h2_section(text: str, heading: str) -> str:
-    """Extract content under a ## heading, preserving ### subsections."""
-    matches = list(_H2_RE.finditer(text or ""))
-    for i, match in enumerate(matches):
-        if match.group(1).strip() == heading:
-            start = match.end()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-            return text[start:end].strip()
-    return ""
 
 
 def _parse_option_fields(options_text: str) -> dict[str, str]:

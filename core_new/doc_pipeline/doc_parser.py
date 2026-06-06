@@ -8,6 +8,24 @@ from typing import Any
 
 from core_new.markdown_parser import _strip_thinking, _extract_sections
 
+_H2_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+
+
+def extract_h2_section(text: str | None, heading: str) -> str:
+    """Extract content under a ## heading, preserving ### subsections.
+
+    Returns empty string if the heading is not found or *text* is None/empty.
+    """
+    text = text or ""
+    matches = list(_H2_RE.finditer(text))
+    for i, m in enumerate(matches):
+        if m.group(1).strip() == heading:
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+            return text[start:end].strip()
+    return ""
+
+
 REVIEW_STATUSES = frozenset({"pass", "needs_fix"})
 FINAL_REVIEW_STATUSES = frozenset({"pass", "expression_fix", "question_error", "solution_error"})
 DOC_STATUS_VALUES = frozenset({

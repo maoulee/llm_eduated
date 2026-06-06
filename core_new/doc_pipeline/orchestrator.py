@@ -24,19 +24,6 @@ from typing import Any, Protocol
 
 from core_new.markdown_parser import _extract_sections
 
-_H2_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
-
-
-def _extract_h2_section(text: str, heading: str) -> str:
-    """Extract content under a ## heading, preserving ### subsections."""
-    matches = list(_H2_RE.finditer(text))
-    for i, m in enumerate(matches):
-        if m.group(1).strip() == heading:
-            start = m.end()
-            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-            return text[start:end].strip()
-    return ""
-
 from .config import (
     DEFAULT_MAX_TOKENS,
     MAX_ANALYSIS_ITERATIONS,
@@ -44,7 +31,13 @@ from .config import (
 )
 from .contracts import PipelineResult
 from .context import ContextRegistry
-from .doc_parser import FINAL_REVIEW_STATUSES, REVIEW_STATUSES, get_doc_status, parse_doc_section
+from .doc_parser import (
+    FINAL_REVIEW_STATUSES,
+    REVIEW_STATUSES,
+    extract_h2_section,
+    get_doc_status,
+    parse_doc_section,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -508,9 +501,9 @@ class DocPipelineOrchestrator:
         public_path = question_path.with_name("question_public.md")
         question_text = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
 
-        stem = _extract_h2_section(question_text, "题干")
-        options = _extract_h2_section(question_text, "选项")
-        sub_questions = _extract_h2_section(question_text, "子问题")
+        stem = extract_h2_section(question_text, "题干")
+        options = extract_h2_section(question_text, "选项")
+        sub_questions = extract_h2_section(question_text, "子问题")
 
         parts = ["## status\ndraft"]
         if stem:
@@ -554,7 +547,7 @@ class DocPipelineOrchestrator:
         solution_text = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
         s_sections = _extract_sections(solution_text)
         # Use ##-level extraction so ### subsections stay intact
-        process = _extract_h2_section(solution_text, "求解过程") or solution_text
+        process = extract_h2_section(solution_text, "求解过程") or solution_text
         answer = s_sections.get("最终答案", "")
 
         # If solve_output exists (numerical question), append it
