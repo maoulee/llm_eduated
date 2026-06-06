@@ -70,40 +70,118 @@ class InteractiveOrchestrator:
         """After approval, trigger the generation pipeline.
 
         For knowledge_point mode:
-          - Parse blueprint into slot-like entries
-          - Call doc_pipeline for each question in parallel
+          - Write assembled.md to a workspace directory
+          - Call DocPipeline with the assembled doc
+          - Return generation results
 
         For compose mode:
           - Call compose_runner.run_compose() + generate_runner.run_generate()
 
         Returns generation result metadata.
-
-        TODO: Integrate with actual generation pipeline after interaction layer
-              is tested. Currently returns a placeholder result.
         """
         session = self.session_manager.get_or_create(session_id)
         session.state = SessionState.GENERATING
 
-        # TODO: Wire up actual generation pipeline
-        # if session.mode == "knowledge_point":
-        #     entries = _parse_blueprint_to_slots(session.blueprint_md)
-        #     results = await asyncio.gather(*[
-        #         doc_pipeline.generate(entry) for entry in entries
-        #     ])
-        # elif session.mode == "compose":
-        #     from compose.compose_runner import run_compose
-        #     result = await run_compose(...)
-        #     results = [result]
-
-        logger.info(
-            "Generation triggered for session %s mode=%s (stub)",
-            session_id,
-            session.mode,
-        )
+        if session.mode == "knowledge_point":
+            return await self._generate_knowledge_point(session)
+        elif session.mode == "compose":
+            # TODO: Wire up compose_runner.run_compose() + generate_runner.run_generate()
+            logger.info(
+                "Compose generation not yet wired for session %s", session_id,
+            )
+            return {
+                "session_id": session_id,
+                "mode": "compose",
+                "blueprint_id": session.blueprint_id,
+                "results": [],
+                "status": "pending_compose_wiring",
+            }
 
         return {
             "session_id": session_id,
             "mode": session.mode,
             "blueprint_id": session.blueprint_id,
             "results": [],
+        }
+
+    async def _generate_knowledge_point(self, session) -> dict:
+        """Generate questions for knowledge_point mode using DocPipeline."""
+        import hashlib
+        import os
+        from datetime import datetime
+
+        from core_new.doc_pipeline import DocPipeline
+
+        p = session.collected_params
+        knowledge_tag = p.get("knowledge_tag", "")
+        if not knowledge_tag and p.get("knowledge_topic"):
+            knowledge_tag = (
+                self.knowledge_retriever.resolve_knowledge_tag(
+                    p["knowledge_topic"]
+                )
+                or ""
+            )
+
+        # Build a synthetic slot_id from knowledge_tag
+        tag_hash = hashlib.md5(knowledge_tag.encode("utf-8")).hexdigest()[:8] if knowledge_tag else "untagged"
+        slot_id = f"KP-{tag_hash}"
+
+        # Prepare workspace directory
+        run_id = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
+        workspace = os.path.join("docs", "workspace", run_id, slot_id)
+        os.makedirs(workspace, exist_ok=True)
+
+        # Write assembled doc to workspace
+        assembled_path = os.path.join(workspace, "assembled.md")
+        with open(assembled_path, "w", encoding="utf-8") as f:
+            f.write(session.blueprint_md)
+
+        # Build minimal slot_data for DocPipeline
+        slot_data = {
+            "slot_id": slot_id,
+            "subject": p.get("subject", ""),
+            "knowledge_tag": knowledge_tag,
+            "difficulty": p.get("difficulty", "medium"),
+            "question_type": p.get("question_type", ""),
+            "question_count": int(p.get("question_count", 1) or 1),
+        }
+
+        question_type = p.get("question_type") or None
+
+        logger.info(
+            "DocPipeline for session %s slot_id=%s (TODO: actual execution)",
+            session.session_id,
+            slot_id,
+        )
+
+        # TODO: Uncomment to run the actual pipeline (takes minutes)
+        # dp = DocPipeline(
+        #     workspace=workspace,
+        #     model_routing=self.model_routing,
+        # )
+        # result = await dp.run(
+        #     slot_id=slot_id,
+        #     slot_data=slot_data,
+        #     assembled_experience_doc=session.blueprint_md,
+        #     question_type=question_type,
+        # )
+        # return {
+        #     "session_id": session.session_id,
+        #     "mode": "knowledge_point",
+        #     "blueprint_id": session.blueprint_id,
+        #     "slot_id": slot_id,
+        #     "workspace": workspace,
+        #     "ok": result.ok,
+        #     "results": [result.final_content] if result.ok else [],
+        # }
+
+        return {
+            "session_id": session.session_id,
+            "mode": "knowledge_point",
+            "blueprint_id": session.blueprint_id,
+            "slot_id": slot_id,
+            "workspace": workspace,
+            "assembled_path": assembled_path,
+            "results": [],
+            "status": "wired_not_executed",
         }

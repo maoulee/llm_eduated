@@ -47,6 +47,14 @@ class KnowledgeRetriever:
         # Build lookup index: stripped tag segments -> full tag
         self._tag_index: list[str] = list(self._registry.keys())
 
+        # Knowledge graph files for fallback heading search
+        self._kg_files: dict[str, str] = {
+            "CO": os.path.join(data_root, "computer_organization.md"),
+            "DS": os.path.join(data_root, "data_structure.md"),
+            "OS": os.path.join(data_root, "operating_system_knowledge.md"),
+            "CN": os.path.join(data_root, "computer_network.md"),
+        }
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -86,7 +94,7 @@ class KnowledgeRetriever:
         if result and len(parts) > 2:
             sub_level = parts[-1].strip()
             sub_pattern = re.compile(
-                rf"^(#{2,6})\s+.*{re.escape(sub_level)}", re.MULTILINE
+                rf"^(#{{2,6}})\s+.*{re.escape(sub_level)}", re.MULTILINE
             )
             sub_match = sub_pattern.search(result)
             if sub_match:
@@ -94,7 +102,7 @@ class KnowledgeRetriever:
                 sub_start = sub_match.start()
                 sub_end = len(result)
                 end_pattern = re.compile(
-                    rf"^(#{2,{heading_level}})\s+", re.MULTILINE
+                    rf"^(#{{2,{heading_level}}})\s+", re.MULTILINE
                 )
                 for hm in end_pattern.finditer(result[sub_match.end():]):
                     sub_end = sub_match.end() + hm.start()
@@ -172,7 +180,14 @@ class KnowledgeRetriever:
         K-value distributions, examination mode frequencies, slot distribution.
         Pure calculation, no LLM.
         """
-        entry = self._registry.get(knowledge_tag, {})
+        entry = self._registry.get(knowledge_tag)
+        if not entry:
+            return KnowledgeStatistics(
+                k_distributions={},
+                mode_frequencies={},
+                question_count=0,
+                slot_distribution={},
+            )
 
         slot_distribution: dict[str, int] = dict(entry.get("slots", {}))
         question_ids: list[str] = entry.get("questions", [])
@@ -218,6 +233,7 @@ class KnowledgeRetriever:
 
         Returns list of matching tag strings for disambiguation.
         Uses substring matching supporting Chinese text.
+        Falls back to knowledge graph heading search when registry has no match.
         """
         query = query.strip()
         if not query:
@@ -239,11 +255,68 @@ class KnowledgeRetriever:
                     matches.append(tag)
                     break
 
+        # Fallback: search knowledge graph markdown files for heading matches
+        if not matches:
+            matches = self._search_knowledge_graphs(query)
+
         return matches
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _search_knowledge_graphs(self, query: str) -> list[str]:
+        """Search knowledge graph markdown files for headings matching query.
+
+        Builds a full tag path (e.g. "CN-5 > TCP协议 > TCP拥塞控制")
+        by collecting parent headings from ## (chapter) down to the match.
+        Returns list of tag strings.
+        """
+        results: list[str] = []
+        q_lower = query.lower()
+
+        for domain, filepath in self._kg_files.items():
+            if not os.path.exists(filepath):
+                continue
+            with open(filepath, encoding="utf-8") as f:
+                text = f.read()
+
+            # Walk headings and maintain a stack of current parent headings
+            heading_re = re.compile(r"^(#{2,6})\s+(.+)$", re.MULTILINE)
+            # stack entries: (level, heading_text)
+            stack: list[tuple[int, str]] = []
+
+            for m in heading_re.finditer(text):
+                level = len(m.group(1))
+                heading_text = m.group(2).strip()
+
+                # Pop stack to find parent level
+                while stack and stack[-1][0] >= level:
+                    stack.pop()
+                stack.append((level, heading_text))
+
+                if q_lower in heading_text.lower():
+                    # Build tag path from stack
+                    # ## headings contain "N. Title" — extract chapter number
+                    parts: list[str] = []
+                    chapter_no = None
+                    for slevel, stext in stack:
+                        if slevel == 2:
+                            # Parse chapter number from "## 5. 传输层" or "## CO-3 ..."
+                            ch_m = re.match(r"(\d+)\.\s+", stext)
+                            if ch_m:
+                                chapter_no = ch_m.group(1)
+                                parts.append(f"{domain}-{chapter_no}")
+                            else:
+                                parts.append(stext)
+                        else:
+                            parts.append(stext)
+
+                    if parts:
+                        tag = " > ".join(parts)
+                        results.append(tag)
+
+        return results
 
     @staticmethod
     def _slugify(name: str) -> str:

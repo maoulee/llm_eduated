@@ -123,8 +123,8 @@ class SessionManager:
                 session.missing_params = result.missing_params
                 session.state = SessionState.COLLECTING
                 return result.response or self._ask_missing(session)
-            # TODO: integrate with compose_runner for full-paper generation
-            return "组卷模式已确认，正在规划试卷结构...\n（组卷功能对接中，当前版本请使用知识点出题模式）"
+            # Params complete — confirm understanding before compose_runner call
+            return self._format_compose_confirmation(session)
 
         # Knowledge point mode with partial params — collect more
         if result.missing_params:
@@ -282,6 +282,25 @@ class SessionManager:
         }
         labels = [param_labels.get(p, p) for p in session.missing_params]
         return f"请补充以下信息：{', '.join(labels)}"
+
+    def _format_compose_confirmation(self, session: SessionData) -> str:
+        """Format a confirmation message for compose mode params."""
+        p = session.collected_params
+        subject = p.get("subject", "未指定")
+        q_count = p.get("question_count", "未指定")
+        q_types = p.get("question_types") or p.get("question_type", "未指定")
+        difficulty = p.get("difficulty", "未指定")
+
+        lines = [
+            "组卷模式已确认，已理解您的需求：",
+            f"  - 科目：{subject}",
+            f"  - 题目数量：{q_count}",
+            f"  - 题型：{q_types}",
+            f"  - 难度：{difficulty}",
+            "",
+            "（组卷功能对接中，当前版本请使用知识点出题模式）",
+        ]
+        return "\n".join(lines)
 
     def _format_blueprint_summary(self, blueprint_md: str) -> str:
         """Extract key info from blueprint for user display."""
