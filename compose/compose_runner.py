@@ -18,17 +18,24 @@ from . import artifact_store
 
 _OUTLINE_SYSTEM_PROMPT = (
     "# 408考研组卷专家\n\n"
-    "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲是给下游出题智能体的'命题指令'。\n\n"
+    "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲同时面向教师阅读和下游出题智能体。\n\n"
     "## 输入结构\n"
     "你将收到：\n"
     "1. 共享参考信息：K1-K5认知雷达评分标准 + 计算机组成原理知识点图谱\n"
     "2. 各题位信息：考点定位 + 可选考察模式（含适用知识点和频率）+ 出题指导\n\n"
-    "## 输出格式\n"
-    "Markdown格式，包含：\n"
+    "## 输出格式（混合大纲）\n"
+    "Markdown格式，包含以下部分：\n\n"
+    "### 全局部分\n"
     "- `# 试卷大纲` 标题\n"
     "- `## 整体规划` — difficulty_target 和 composition_rationale\n"
-    "- 每个题位一个 `## Qxx` 段落，包含：target_subject, target_family, primary_target_name, "
-    "difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
+    "- `## 1. 教师阅读版总览` — 自然语言描述整卷定位、知识点覆盖策略；附题位总览表格\n\n"
+    "### 每个题位（`## Qxx（题型）`）包含三个子节：\n"
+    "1. `### 教师可读说明` — 用自然语言描述：考查什么知识点、定位什么难度、"
+    "对学生的能力要求、可能的风险点。面向教师阅读。\n"
+    "2. `### 教师批注区` — 固定格式 `> [教师] ` 后留空，供后续教师填写意见。\n"
+    "3. `### 机器契约` — 用 ```yaml 代码块包裹以下字段：\n"
+    "   target_subject, target_family, primary_target_name, difficulty_level, "
+    "k_target, difficulty_rationale, examination_mode\n\n"
     "## 核心约束\n"
     "- examination_mode 必须精确复制自题位的'可选考察模式'标题（从 ### 后复制完整名称，不含频率）\n"
     "- target_family 使用知识点图谱中的层级路径（如 CO-1 > 计算机系统概述）\n"
@@ -40,13 +47,13 @@ _OUTLINE_SYSTEM_PROMPT = (
 )
 
 
-def _build_slot_contracts_md(templates: dict) -> str:
+def _build_slot_contracts_md(templates: dict, exp_dir: str = "data/slot_experiences") -> str:
     """Build shared header + concatenated slot contracts for compose prompts."""
     from core_new.slot_contract import build_slot_contract
 
-    exp_dir = Path("data/slot_experiences")
+    _exp_dir = Path(exp_dir)
     experience_cards = {}
-    for path in sorted(exp_dir.glob("*_experience.md")):
+    for path in sorted(_exp_dir.glob("*_experience.md")):
         sid = path.stem.replace("_experience", "")
         experience_cards[sid] = path.read_text(encoding="utf-8")
 
@@ -69,11 +76,13 @@ def _build_slot_contracts_md(templates: dict) -> str:
     slot_sections = "\n\n---\n\n".join(
         contracts[sid] for sid in sorted(contracts.keys())
     )
-    return header + "\n\n---\n\n" + slot_sections
+    # Translate all abbreviated codes in the combined output
+    combined = header + "\n\n---\n\n" + slot_sections
+    return _translate_kg(combined)
 
 
 def _build_shared_header() -> str:
-    """Build shared header: K-radar definitions + knowledge point graph."""
+    """Build shared header: K-radar definitions + knowledge point graphs for all subjects."""
     from core_new.slot_prompts import K_RADAR_DEFINITIONS
 
     parts: list[str] = []
@@ -81,31 +90,38 @@ def _build_shared_header() -> str:
     # 1. K-radar definitions
     parts.append("# 共享参考信息（所有题位公用）")
     parts.append("")
-    # K_RADAR_DEFINITIONS already has its own ## heading, use it directly
     parts.append(K_RADAR_DEFINITIONS.strip())
     parts.append("")
 
-    # 2. Knowledge point graph (title hierarchy from computer_organization.md)
-    kg = _extract_knowledge_graph()
-    if kg:
-        parts.append("## 计算机组成原理知识点图谱")
-        parts.append("")
-        parts.append("> 以下是完整的知识点层级结构，供规划知识点覆盖时参考。")
-        parts.append("")
-        parts.append(kg)
+    # 2. Knowledge point graphs for all subjects
+    subject_files = {
+        "计算机组成原理": "computer_organization.md",
+        "数据结构": "data_structure.md",
+        "操作系统": "operating_system_knowledge.md",
+        "计算机网络": "computer_network.md",
+    }
+    for subject_name, filename in subject_files.items():
+        kg = _extract_knowledge_graph(filename)
+        if kg:
+            kg = _translate_kg(kg)
+            parts.append(f"## {subject_name}知识点图谱")
+            parts.append("")
+            parts.append(f"> 以下是{subject_name}的完整知识点层级结构，供规划知识点覆盖时参考。")
+            parts.append("")
+            parts.append(kg)
 
     return "\n".join(parts)
 
 
-def _extract_knowledge_graph() -> str:
-    """Extract title hierarchy tree from computer_organization.md.
+def _extract_knowledge_graph(filename: str = "computer_organization.md") -> str:
+    """Extract title hierarchy tree from a knowledge graph file.
 
     Keeps only heading lines (##/###/####) and leaf node names (- item),
     removes '属性:' descriptions and '来源页' info.
     """
     import re as _re
 
-    kg_path = Path("data/computer_organization.md")
+    kg_path = Path("data") / filename
     if not kg_path.exists():
         return ""
 
@@ -138,7 +154,13 @@ def _extract_knowledge_graph() -> str:
     return "\n".join(result)
 
 
-async def _compose_hybrid(templates, user_requirements) -> tuple[str, dict]:
+def _translate_kg(text: str) -> str:
+    """Translate abbreviated codes (DS-1, CO-1 etc.) to full chapter names."""
+    from core_new.subject_map import translate_code
+    return translate_code(text)
+
+
+async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_experiences") -> tuple[str, dict]:
     """Hybrid composition: GPT generates outline via WebGPT.
 
     Returns (outline_md, blueprint_dict).
@@ -151,7 +173,7 @@ async def _compose_hybrid(templates, user_requirements) -> tuple[str, dict]:
         print("  ERROR: WebGPT not configured for hybrid composition")
         return "", {}
 
-    slot_md = _build_slot_contracts_md(templates)
+    slot_md = _build_slot_contracts_md(templates, exp_dir)
     prompt = PAPER_OUTLINE_PROMPT.format(
         user_requirements=user_requirements,
         slot_contracts_md=slot_md,
@@ -178,14 +200,14 @@ async def _compose_hybrid(templates, user_requirements) -> tuple[str, dict]:
     return raw, blueprint
 
 
-async def _compose_local(gateway, templates, user_requirements) -> tuple[str, dict]:
+async def _compose_local(gateway, templates, user_requirements, exp_dir="data/slot_experiences") -> tuple[str, dict]:
     """Local composition: Qwen generates outline via gateway.
 
     Returns (outline_md, blueprint_dict).
     """
     from core_new.slot_prompts import PAPER_OUTLINE_PROMPT
 
-    slot_md = _build_slot_contracts_md(templates)
+    slot_md = _build_slot_contracts_md(templates, exp_dir)
     prompt = PAPER_OUTLINE_PROMPT.format(
         user_requirements=user_requirements,
         slot_contracts_md=slot_md,
@@ -228,8 +250,34 @@ def _print_blueprint_summary(blueprint: dict) -> None:
         )
 
 
+def _extract_yaml_contract(content: str) -> dict:
+    """Extract YAML contract from ```yaml block under ### 机器契约.
+
+    Returns empty dict if no YAML block found (old-style outline).
+    """
+    m = re.search(r"###\s*机器契约\s*\n```ya?m?l?\s*\n(.*?)```", content, re.DOTALL)
+    if not m:
+        return {}
+    try:
+        import yaml
+        return yaml.safe_load(m.group(1)) or {}
+    except Exception:
+        return {}
+
+
 def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
-    """Parse GPT/Qwen outline MD into blueprint dict format."""
+    """Parse hybrid or legacy outline MD into blueprint dict format.
+
+    Supports two formats:
+    - **Hybrid**: each slot has `### 机器契约` with a ```yaml block
+    - **Legacy**: each slot uses `**field**: value` lines
+
+    YAML block takes priority when present.
+    """
+    # Translate abbreviated codes in LLM output
+    from core_new.subject_map import translate_code
+    outline_md = translate_code(outline_md)
+
     slots = []
     pattern = r"## (Q\d+)"
     parts = re.split(pattern, outline_md)
@@ -249,7 +297,14 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
         slot_id = parts[i]
         content = parts[i + 1] if i + 1 < len(parts) else ""
 
+        # Try YAML contract first (hybrid format)
+        yaml_data = _extract_yaml_contract(content)
+
         def _extract(field: str, default: str = "") -> str:
+            # YAML contract takes priority
+            if yaml_data and field in yaml_data:
+                return str(yaml_data[field])
+            # Fallback to legacy **field**: value regex
             m = re.search(rf"\* *{field}[*:\s]*(.+?)(?:\n|$)", content)
             return m.group(1).strip() if m else default
 
@@ -286,7 +341,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
     }
 
 
-async def compose_paper(gateway, templates, user_requirements, model_routing=None) -> tuple[str, dict]:
+async def compose_paper(gateway, templates, user_requirements, model_routing=None, exp_dir="data/slot_experiences") -> tuple[str, dict]:
     """Step 1: Generate paper outline/blueprint.
 
     Routes to hybrid (GPT via WebGPT) or local (Qwen via gateway).
@@ -298,11 +353,11 @@ async def compose_paper(gateway, templates, user_requirements, model_routing=Non
     if is_hybrid:
         print("Step 1: Compose — 规划试卷蓝图 (hybrid: GPT→Qwen)")
         print("=" * 60)
-        return await _compose_hybrid(templates, user_requirements)
+        return await _compose_hybrid(templates, user_requirements, exp_dir)
     else:
         print("Step 1: Compose — 规划试卷蓝图 (local: Qwen)")
         print("=" * 60)
-        return await _compose_local(gateway, templates, user_requirements)
+        return await _compose_local(gateway, templates, user_requirements, exp_dir)
 
 
 def _write_manifest(compose_dir: str, run_id: str, routing_profile: str, slot_info: list, compose_time: float) -> None:
@@ -364,6 +419,7 @@ async def run_compose(
     slot_ids: list | None = None,
     output_dir: str = "docs",
     model_routing: dict[str, str] | None = None,
+    exp_dir: str = "data/slot_experiences",
 ) -> dict:
     """Phase A: Compose outline + assemble experience docs → save to compose/.
 
@@ -386,7 +442,7 @@ async def run_compose(
         routing_profile = model_routing.get("paper_composer", "all_local")
 
     # Step 1: Compose
-    outline_md, blueprint = await compose_paper(gateway, templates, user_requirements, model_routing=model_routing)
+    outline_md, blueprint = await compose_paper(gateway, templates, user_requirements, model_routing=model_routing, exp_dir=exp_dir)
     if not blueprint:
         return {"status": "error", "step": "compose"}
 
@@ -441,7 +497,7 @@ async def run_compose(
         mode = sb.examination_mode
         difficulty = sb.target_difficulty
         slot_md_path = os.path.join("data", "slots", f"{sid}_slot.md")
-        exp_path = os.path.join("data", "slot_experiences", f"{sid}_experience.md")
+        exp_path = os.path.join(exp_dir, f"{sid}_experience.md")
         sb_dict = asdict(sb)
         doc = artifact_store.assemble_slot_experience_doc(sid, mode, slot_md_path, exp_path, outline_entry=sb_dict)
         print(f"  [{sid}] 经验文档已组装: {mode} ({len(doc)} chars)")
@@ -485,3 +541,250 @@ async def run_compose(
         "skeleton_violations": skeleton_violations,
         "run_id": run_id,
     }
+
+
+async def revise_outline(
+    gateway,
+    slot_templates: dict,
+    experience_cards: dict,
+    base_outline_path: str,
+    annotated_outline_path: str | None = None,
+    output_dir: str = "docs",
+    model_routing: dict[str, str] | None = None,
+    exp_dir: str = "data/slot_experiences",
+) -> dict:
+    """Revise outline based on teacher annotations and/or field changes.
+
+    Dual-channel detection:
+    1. Diff: YAML contract field changes between base and annotated
+    2. Annotation: non-empty teacher annotations in annotated
+
+    Pure YAML changes (no annotations) are applied deterministically.
+    Annotation changes trigger LLM revision.
+
+    Returns dict with revision metadata.
+    """
+    from core_new.slot_prompts import OUTLINE_REVISION_PROMPT
+    from .outline_diff import (
+        compute_outline_diff,
+        validate_changes,
+        format_diff_summary,
+    )
+
+    revise_start = time.monotonic()
+    print("=" * 60)
+    print("Step: Revise — 修订大纲")
+    print("=" * 60)
+
+    # If no annotated path, use base (teacher edited in-place)
+    if annotated_outline_path is None:
+        annotated_outline_path = base_outline_path
+
+    base_md = Path(base_outline_path).read_text(encoding="utf-8")
+    annotated_md = Path(annotated_outline_path).read_text(encoding="utf-8")
+
+    # Detect changes
+    diff = compute_outline_diff(base_md, annotated_md)
+    if not diff.has_any_changes:
+        print("  未检测到变更，跳过修订")
+        return {"status": "unchanged", "changed_slots": []}
+
+    changed_ids = [sd.slot_id for sd in diff.changed_slots]
+    print(f"  检测到变更题位: {', '.join(changed_ids)}")
+    for sd in diff.changed_slots:
+        if sd.field_changes:
+            for fc in sd.field_changes:
+                print(f"    [{sd.slot_id}] {fc.field}: {fc.old_value!r} → {fc.new_value!r}")
+        if sd.annotation:
+            print(f"    [{sd.slot_id}] 批注: {sd.annotation[:60]}...")
+
+    # Validate changes
+    warnings = validate_changes(diff.changed_slots, slot_templates)
+    if warnings:
+        print("  验证警告:")
+        for w in warnings:
+            print(f"    ⚠ {w}")
+
+    # Decide revision path
+    has_annotations = any(sd.annotation for sd in diff.changed_slots)
+    slot_md = _build_slot_contracts_md(slot_templates, exp_dir)
+
+    if has_annotations:
+        # Need LLM to interpret annotations
+        print("  路径: LLM 修订（含批注意见）")
+        changes_summary = format_diff_summary(diff, warnings)
+        prompt = OUTLINE_REVISION_PROMPT.format(
+            original_outline=base_md,
+            detected_changes=changes_summary,
+            slot_contracts_md=slot_md,
+        )
+
+        is_hybrid = model_routing and str(model_routing.get("paper_composer", "")).lower() == "hybrid"
+        if is_hybrid:
+            revised_md = await _revise_hybrid(prompt)
+        else:
+            revised_md = await _revise_local(gateway, prompt)
+
+        if not revised_md:
+            print("  ERROR: LLM 修订失败")
+            return {"status": "error", "step": "revise"}
+    else:
+        # Pure YAML changes — apply deterministically (just use annotated version)
+        print("  路径: 确定性修订（纯字段变更）")
+        revised_md = annotated_md
+
+    # Parse revised outline
+    blueprint = _parse_outline_to_blueprint(revised_md, slot_templates)
+    if not blueprint.get("slots"):
+        print("  ERROR: 修订后大纲解析失败")
+        return {"status": "error", "step": "revise", "error": "parse failed"}
+
+    # Skeleton check
+    from core_new.skeleton_checker import check_blueprint_skeleton
+    raw_slots = blueprint.get("slots", [])
+    slots_as_dicts = [asdict(sb) if isinstance(sb, SlotBlueprint) else sb for sb in raw_slots]
+    blueprint_for_check = {**blueprint, "slots": slots_as_dicts}
+    skeleton_violations = check_blueprint_skeleton(blueprint_for_check)
+    if skeleton_violations:
+        print(f"  骨架检查: {len(skeleton_violations)} violations")
+        for v in skeleton_violations:
+            print(f"    [{v['slot_id']}] {v['rule']}: {v['detail']}")
+    else:
+        print("  骨架检查: pass")
+
+    # Convert to SlotBlueprint instances
+    slot_blueprints: list[SlotBlueprint] = []
+    for sb in raw_slots:
+        if isinstance(sb, SlotBlueprint):
+            slot_blueprints.append(sb)
+        else:
+            slot_blueprints.append(SlotBlueprint(**{k: v for k, v in sb.items() if k in SlotBlueprint.__dataclass_fields__}))
+
+    # Inherit question_type
+    for sb in slot_blueprints:
+        if not sb.question_type:
+            tpl = slot_templates.get(sb.slot_id, {})
+            if tpl.get("question_type"):
+                sb.question_type = tpl["question_type"]
+
+    # Re-assemble only affected slots
+    compose_dir = os.path.join(output_dir, "compose")
+    compose_path = Path(compose_dir)
+
+    assembled_paths = {}
+    for sb in slot_blueprints:
+        if sb.slot_id not in changed_ids:
+            continue
+        sid = sb.slot_id
+        mode = sb.examination_mode
+        slot_md_path = os.path.join("data", "slots", f"{sid}_slot.md")
+        exp_path = os.path.join(exp_dir, f"{sid}_experience.md")
+        sb_dict = asdict(sb)
+        doc = artifact_store.assemble_slot_experience_doc(sid, mode, slot_md_path, exp_path, outline_entry=sb_dict)
+        print(f"  [{sid}] 重新组装: {mode} ({len(doc)} chars)")
+
+        assembled_path = os.path.join(compose_dir, f"{sid}_assembled.md")
+        with open(assembled_path, "w", encoding="utf-8") as f:
+            f.write(doc)
+        assembled_paths[sid] = assembled_path
+
+    # Save revised outline
+    outline_path = os.path.join(compose_dir, "outline.md")
+    with open(outline_path, "w", encoding="utf-8") as f:
+        f.write(revised_md)
+
+    # Write revision report
+    report_path = os.path.join(compose_dir, "revision_report.md")
+    report = _build_revision_report(diff, warnings, has_annotations, time.monotonic() - revise_start)
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(report)
+    print(f"  revision_report.md 已写入")
+
+    print(f"\n大纲修订完成: {len(changed_ids)} 个题位已更新")
+    return {
+        "status": "ok",
+        "compose_dir": compose_dir,
+        "outline_path": outline_path,
+        "assembled_paths": assembled_paths,
+        "changed_slots": changed_ids,
+        "skeleton_violations": skeleton_violations,
+        "revision_report_path": report_path,
+    }
+
+
+async def _revise_hybrid(prompt: str) -> str:
+    """Revise outline via hybrid (GPT) mode."""
+    from core_new.webgpt_client import get_webgpt_client
+    client = get_webgpt_client()
+    if client is None:
+        return ""
+    try:
+        raw = await client.delegate(
+            agent_name="hybrid_paper_reviser",
+            slot_id="revise",
+            system_prompt=_OUTLINE_SYSTEM_PROMPT,
+            content=prompt,
+        )
+    except Exception as e:
+        print(f"  ERROR: GPT revise failed: {e}")
+        return ""
+    print(f"  GPT 修订完成 ({len(raw)} chars)")
+    return raw
+
+
+async def _revise_local(gateway, prompt: str) -> str:
+    """Revise outline via local Qwen."""
+    messages = [
+        {"role": "system", "content": _OUTLINE_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    try:
+        result = await gateway.generate_text(messages, max_tokens=8192)
+        raw = result.content or ""
+    except Exception as e:
+        print(f"  ERROR: Local revise failed: {e}")
+        return ""
+    print(f"  Local Qwen 修订完成 ({len(raw)} chars)")
+    return raw
+
+
+def _build_revision_report(
+    diff: "OutlineDiff",
+    warnings: list[str],
+    used_llm: bool,
+    elapsed: float,
+) -> str:
+    """Build revision_report.md content."""
+    lines = [
+        "# 大纲修订报告",
+        "",
+        f"- 修订方式: {'LLM 修订' if used_llm else '确定性修订（纯字段变更）'}",
+        f"- 修订题位数: {len(diff.changed_slots)}",
+        f"- 未变题位: {len(diff.unchanged_slots)}",
+        f"- 耗时: {elapsed:.1f}s",
+        "",
+        "## 已采纳变更",
+        "",
+    ]
+
+    for sd in diff.changed_slots:
+        lines.append(f"### {sd.slot_id}")
+        if sd.field_changes:
+            for fc in sd.field_changes:
+                lines.append(f"- {fc.field}: {fc.old_value!r} → {fc.new_value!r}")
+        if sd.annotation:
+            lines.append(f"- 教师批注: {sd.annotation}")
+        lines.append("")
+
+    if warnings:
+        lines.append("## 验证警告")
+        lines.append("")
+        for w in warnings:
+            lines.append(f"- ⚠ {w}")
+        lines.append("")
+
+    lines.append("## 未采纳")
+    lines.append("无。")
+    lines.append("")
+
+    return "\n".join(lines)

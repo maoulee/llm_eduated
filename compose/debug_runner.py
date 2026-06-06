@@ -44,12 +44,11 @@ async def run_debug(args, model_routing):
     inject_files = {}
     if registry:
         role_phase = {
-            "design": 1,
+            "outline": 1,
             "question": 2,
-            "analysis": 2,
-            "coding": 3,
-            "review": 4,
-            "fix": 4,
+            "review": 3,
+            "solve": 4,
+            "final_review": 5,
         }.get(role, 2)
         resolved = await registry.resolve_for_role(role, workspace_root, slot_id, phase=role_phase)
         inject_files.update(resolved)
@@ -65,12 +64,11 @@ async def run_debug(args, model_routing):
 
     # Build a minimal task prompt
     task_prompts = {
-        "design": f"请根据以下数据设计 {slot_id} 的出题蓝图。",
+        "outline": f"请根据以下数据设计 {slot_id} 的出题规划。",
         "question": f"请设计 {slot_id} 的完整题目。",
-        "analysis": "请审核以下题目，检查参数一致性和难度对标。",
-        "coding": "请编写完整的 Python 求解代码。",
-        "review": "请全局审核题目和求解结果。",
-        "fix": "请根据审核意见修复题目中的问题。优先使用 edit_file 做局部修改。",
+        "review": "请审核以下题目的设计质量（此阶段无答案，不评估答案正确性）。",
+        "solve": "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。",
+        "final_review": "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。",
     }
 
     task = task_prompts.get(role, f"请处理 {slot_id}。")

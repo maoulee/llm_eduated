@@ -33,7 +33,7 @@ class ComposeArtifact:
 class PipelineResult:
     slot_id: str
     ok: bool
-    pipeline_type: str = "doc_4layer"
+    pipeline_type: str = "doc_5layer"
     total_time_s: float = 0.0
     analysis_iterations: int = 0
     review_status: str = "?"

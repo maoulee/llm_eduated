@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
+import re
 from typing import Dict
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_WEBGPT_BASE_URL = "http://localhost:3000"
@@ -126,7 +130,74 @@ class WebGPTClient:
             if new_url:
                 self._sessions[slot_id] = new_url
 
-            return data["choices"][0]["message"]["content"]
+            content = data["choices"][0]["message"].get("content", "") or ""
+
+            # gpt-thinking 交错思考：先输出一段简介 → 思考 → 再输出完整答案。
+            # 初始响应可能只有思考前的片段（< 200 chars）。
+            # 如果内容过短且有 conversation_url，等待后通过 admin API 重新拉取。
+            if len(content.strip()) < 200 and new_url:
+                content = await self._refetch_full_response(new_url, content)
+
+            return content
+
+    async def _refetch_full_response(
+        self, conversation_url: str, initial_content: str
+    ) -> str:
+        """Re-fetch complete response via admin API after thinking model finishes.
+
+        gpt-thinking returns a brief pre-thinking text first, then thinks for
+        10-30s, then writes the full answer.  If the initial content is short
+        (< 200 chars), wait for thinking to complete and pull the full
+        assistant message from the ChatGPT backend API.
+
+        Returns the full content if recovered, otherwise the initial content.
+        """
+        conv_id = _extract_conversation_id(conversation_url)
+        if not conv_id:
+            return initial_content
+
+        # Thinking models typically take 10-30s.  Wait before polling.
+        logger.info(
+            "Response too short (%d chars), waiting 15s before re-fetching conversation %s",
+            len(initial_content.strip()), conv_id[:8],
+        )
+        await asyncio.sleep(15)
+
+        try:
+            http = self._get_http()
+            resp = await http.get(
+                f"{self.base_url}/admin/chatgpt/conversation/{conv_id}",
+                timeout=httpx.Timeout(30.0),
+            )
+            if resp.status_code != 200:
+                logger.warning("Admin API returned %d, using initial content", resp.status_code)
+                return initial_content
+
+            data = resp.json()
+            messages = data.get("messages", [])
+            # Find the latest assistant message
+            assistant_msgs = [m for m in messages if m.get("role") == "assistant" and m.get("text", "").strip()]
+            if not assistant_msgs:
+                logger.warning("No assistant messages found in re-fetch, using initial content")
+                return initial_content
+
+            # Pick the last assistant message (most recent)
+            latest = assistant_msgs[-1]
+            full_text = latest["text"].strip()
+
+            if len(full_text) > len(initial_content.strip()):
+                logger.info(
+                    "Re-fetch recovered full response (%d chars, was %d)",
+                    len(full_text), len(initial_content.strip()),
+                )
+                return full_text
+
+            logger.info("Re-fetch content not longer than initial (%d vs %d), keeping initial", len(full_text), len(initial_content.strip()))
+            return initial_content
+
+        except Exception as exc:
+            logger.warning("Re-fetch failed: %s, using initial content", exc)
+            return initial_content
 
     def _resolve_model(self, agent_name: str, explicit: str | None = None) -> str:
         if explicit:
@@ -230,6 +301,14 @@ def reset_webgpt_client() -> None:
     """Reset singleton (for testing)."""
     global _client
     _client = None
+
+
+def _extract_conversation_id(url: str) -> str | None:
+    """Extract ChatGPT conversation UUID from a /c/ URL."""
+    if not url:
+        return None
+    m = re.search(r'/c/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', url, re.IGNORECASE)
+    return m.group(1) if m else None
 
 
 def _parse_int_env(name: str, default: int) -> int:

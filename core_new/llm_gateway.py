@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 import httpx
+import openai
 
 from config import get_provider_config
 from core_new.agent_roles import TransportRetryPolicy
@@ -183,12 +184,9 @@ class LLMGateway:
         return False
 
     async def _wait_with_backoff(self, attempt: int) -> None:
-        """Fixed-interval backoff with jitter."""
-        base_delay = 3.0
-        max_delay = 15.0
-        delay = min(base_delay + random.uniform(0, base_delay * 0.3), max_delay)
-        logger.info("Transport retry attempt %d, waiting %.1fs", attempt + 1, delay)
-        await asyncio.sleep(delay)
+        """Fixed 5s backoff."""
+        logger.info("Transport retry attempt %d, waiting 5.0s", attempt + 1)
+        await asyncio.sleep(5.0)
 
     # ── Batch methods ──────────────────────────────────────
 
@@ -632,6 +630,15 @@ class LLMGateway:
 
     @staticmethod
     def _is_retryable_stream_error(exc: Exception) -> bool:
+        # OpenAI SDK exceptions (APITimeoutError inherits APIConnectionError, order matters)
+        if isinstance(exc, (
+            openai.APITimeoutError,
+            openai.APIConnectionError,
+            openai.RateLimitError,
+            openai.InternalServerError,
+        )):
+            return True
+
         if isinstance(exc, (
             httpx.ConnectError,
             httpx.ReadError,
@@ -968,6 +975,26 @@ def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _classify_exception(error: Exception) -> str:
+    # OpenAI SDK exceptions (most specific first — APITimeoutError inherits APIConnectionError)
+    if isinstance(error, openai.APITimeoutError):
+        return "timeout"
+    if isinstance(error, openai.APIConnectionError):
+        return "connection_error"
+    if isinstance(error, openai.RateLimitError):
+        return "rate_limit"
+    if isinstance(error, openai.InternalServerError):
+        return "server_error"
+    if isinstance(error, openai.APIStatusError):
+        status = error.status_code
+        if status == 429:
+            return "rate_limit"
+        if status in {408, 425}:
+            return "timeout"
+        if status >= 500:
+            return "server_error"
+        return "api_error"
+
+    # httpx exceptions (below OpenAI SDK, which wraps them)
     if isinstance(error, httpx.HTTPStatusError):
         status = error.response.status_code
         if status == 429:

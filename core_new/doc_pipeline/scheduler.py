@@ -42,6 +42,47 @@ from .write_file_tool import WriteFileTool
 logger = logging.getLogger(__name__)
 
 
+def _extract_terminology_ref(task: str) -> str:
+    """Extract condensed terminology reference from a full task.
+
+    The full task may contain the entire assembled doc (~13K+ chars) injected
+    as "## 蓝图" which GPT already processed. For the Qwen formatting step,
+    we only need key terms for alignment — not the full reference.
+
+    Keeps:
+      - The original question instruction (first paragraph)
+      - Key field values (primary_target_name, examination_mode, etc.)
+      - Working spec (## 工作规范)
+
+    Strips:
+      - The full assembled doc (## 蓝图 section, often 10K+ chars)
+      - K-radar definitions, past questions, K anchors, etc.
+    """
+    lines = task.split("\n")
+    result: list[str] = []
+    in_blueprint = False
+
+    for line in lines:
+        # Detect blueprint injection boundary
+        if line.startswith("## 蓝图") or line.startswith("## 藍圖"):
+            in_blueprint = True
+            continue
+        # Blueprint section runs to the end of the task (it's always the
+        # last injected section), so once in_blueprint, skip everything.
+        if in_blueprint:
+            continue
+
+        result.append(line)
+
+    condensed = "\n".join(result)
+
+    # Safety: if still too large, truncate to first 2000 chars
+    if len(condensed) > 2000:
+        condensed = condensed[:2000] + "\n\n[... 省略完整蓝图参考，GPT 已处理]"
+
+    return condensed
+
+
 class DocScheduler:
     """Agent scheduler: read inputs, route providers, execute tool calls."""
 
@@ -73,10 +114,13 @@ class DocScheduler:
 
         If model_routing specifies a provider for this role, create/return
         the corresponding gateway.  Otherwise fall back to self.gateway.
+        Checks role-specific key first, then "_default".
         """
-        if not self.model_routing or role not in self.model_routing:
+        if not self.model_routing:
             return self.gateway
-        provider_name = self.model_routing[role]
+        provider_name = self.model_routing.get(role) or self.model_routing.get("_default")
+        if not provider_name:
+            return self.gateway
         if self._is_webgpt_provider(provider_name):
             return self.gateway
         if provider_name not in self._gateway_cache:
@@ -89,14 +133,16 @@ class DocScheduler:
         return str(provider_name or "").strip().lower() in {"webgpt", "gpt", "chatgpt"}
 
     def _uses_webgpt_for_role(self, role: str) -> bool:
-        if not self.model_routing or role not in self.model_routing:
+        if not self.model_routing:
             return False
-        return self._is_webgpt_provider(self.model_routing.get(role))
+        provider_name = self.model_routing.get(role) or self.model_routing.get("_default")
+        return self._is_webgpt_provider(provider_name)
 
     def _uses_hybrid_for_role(self, role: str) -> bool:
-        if not self.model_routing or role not in self.model_routing:
+        if not self.model_routing:
             return False
-        return str(self.model_routing.get(role, "")).strip().lower() == "hybrid"
+        provider_name = self.model_routing.get(role) or self.model_routing.get("_default")
+        return str(provider_name or "").strip().lower() == "hybrid"
 
     # ── GPT prompt loader ──────────────────────────────────────────
 
@@ -120,13 +166,18 @@ class DocScheduler:
     _GPT_SYSTEM_PROMPTS = {
         "paper_composer": (
             "# 408考研组卷专家\n\n"
-            "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲是给下游出题智能体的'命题指令'。\n\n"
-            "## 输出格式\n"
-            "Markdown格式，包含：\n"
+            "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲同时面向教师阅读和下游出题智能体。\n\n"
+            "## 输出格式（混合大纲）\n"
+            "Markdown格式，包含以下部分：\n\n"
+            "### 全局部分\n"
             "- `# 试卷大纲` 标题\n"
             "- `## 整体规划` — difficulty_target 和 composition_rationale\n"
-            "- 每个题位一个 `## Qxx` 段落，包含：target_subject, target_family, primary_target_name, "
-            "difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
+            "- `## 1. 教师阅读版总览` — 自然语言描述整卷定位、知识点覆盖策略；附题位总览表格\n\n"
+            "### 每个题位（`## Qxx（题型）`）包含三个子节：\n"
+            "1. `### 教师可读说明` — 自然语言描述考查知识点、难度定位、能力要求和风险点\n"
+            "2. `### 教师批注区` — 固定格式 `> [教师] ` 后留空\n"
+            "3. `### 机器契约` — ```yaml 代码块包含：target_subject, target_family, "
+            "primary_target_name, difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
             "## 核心约束\n"
             "- examination_mode 必须精确复制自题位的'可选考察模式'列表，不得缩写、翻译或自创\n"
             "- 综合应用题（Q43-Q45）的 examination_mode 写'综合型'\n"
@@ -136,13 +187,18 @@ class DocScheduler:
         ),
         "paper_outline_composer": (
             "# 408考研组卷专家\n\n"
-            "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲是给下游出题智能体的'命题指令'。\n\n"
-            "## 输出格式\n"
-            "Markdown格式，包含：\n"
+            "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲同时面向教师阅读和下游出题智能体。\n\n"
+            "## 输出格式（混合大纲）\n"
+            "Markdown格式，包含以下部分：\n\n"
+            "### 全局部分\n"
             "- `# 试卷大纲` 标题\n"
             "- `## 整体规划` — difficulty_target 和 composition_rationale\n"
-            "- 每个题位一个 `## Qxx` 段落，包含：target_subject, target_family, primary_target_name, "
-            "difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
+            "- `## 1. 教师阅读版总览` — 自然语言描述整卷定位、知识点覆盖策略；附题位总览表格\n\n"
+            "### 每个题位（`## Qxx（题型）`）包含三个子节：\n"
+            "1. `### 教师可读说明` — 自然语言描述考查知识点、难度定位、能力要求和风险点\n"
+            "2. `### 教师批注区` — 固定格式 `> [教师] ` 后留空\n"
+            "3. `### 机器契约` — ```yaml 代码块包含：target_subject, target_family, "
+            "primary_target_name, difficulty_level, k_target, difficulty_rationale, examination_mode\n\n"
             "## 核心约束\n"
             "- examination_mode 必须精确复制自题位的'可选考察模式'列表，不得缩写、翻译或自创\n"
             "- 综合应用题（Q43-Q45）的 examination_mode 写'综合型'\n"
@@ -152,15 +208,15 @@ class DocScheduler:
         ),
         "question": (
             "# 408考研出题专家\n\n"
-            "你是408考研出题专家。你将收到蓝图（blueprint.md，包含知识点、难度、结构要求）"
-            "和经验卡（命题风格参考），请直接产出完整的考试题目。\n\n"
+            "你是408考研出题专家。你将收到出题契约（assembled.md，包含知识点、难度、结构要求），"
+            "请直接产出完整的考试题目。\n\n"
             "## 输出格式\n"
             "Markdown格式，按顺序包含以下章节：\n"
             "- `## status` — 内容固定为 `draft`\n"
             "- `## 题干` — 完整题干，包含所有给定条件和背景\n"
             "- `## 选项`（选择题）或 `## 子问题`（综合题）\n"
-            "- `## 答案` — 正确答案及完整推导过程\n"
             "- `## 设计说明` — 知识点选取理由、参数选择理由、干扰策略、难度自评\n\n"
+            "注意：不写答案！答案由独立的求解智能体产出。\n\n"
             "## 核心规则\n"
             "1. 所有给定条件必须被使用，不允许废弃条件\n"
             "2. 参数自洽，确保唯一解\n"
@@ -171,48 +227,106 @@ class DocScheduler:
             "7. 题干简洁精炼，避免冗长背景描述\n\n"
             "直接输出 Markdown 内容，不要用代码块包裹，不要在正文前后添加说明。"
         ),
-        "coding": (
-            "# 408考研解题专家\n\n"
-            "你是408考研解题专家。你将收到一道完整的考试题目，请编写可直接运行的Python代码，"
-            "从题目参数推导出所有答案。\n\n"
-            "## 代码要求\n"
-            "1. 只使用标准库：math, decimal, fractions, itertools, collections, struct, random\n"
-            "2. 每个子问题/选项必须有对应的计算代码\n"
-            "3. 每步用 print() 输出，包含清晰标签\n"
-            "4. 最终答案单独一行打印：`ANSWER: ...`\n"
-            "5. 严禁硬编码答案——所有值必须从给定参数计算得出\n"
-            "6. 变量命名体现物理含义（如 cache_index_bits 而非 x）\n"
-            "7. 选择题：逐选项验证；综合题：逐子问题求解\n\n"
-            "直接输出纯Python源码，不要用Markdown代码块包裹，不要添加说明文字。"
+        "question_sc": (
+            "# 408考研选择题出题专家\n\n"
+            "你是408考研选择题出题专家。你将收到出题契约（assembled.md），"
+            "请产出符合408风格的单选题（4选1，2分）。\n\n"
+            "选择题是选项级考察，核心在选项设计上：计算型4结果竞争、概念辨析型命题判断、"
+            "机制理解型对应理解、组合判断型I/II/III。\n\n"
+            "## 输出格式\n"
+            "- `## status` — `draft`\n"
+            "- `## 题干` — 简洁题干（1-3句话），包含所有给定条件\n"
+            "- `## 选项` — 4个选项（A/B/C/D），恰好1个正确\n"
+            "- `## 设计说明` — 考察模式、干扰策略、K值对齐\n\n"
+            "注意：不写答案！答案由独立的求解智能体产出。\n\n"
+            "## 核心规则\n"
+            "1. 题干简洁精炼，不冗长铺垫\n"
+            "2. 干扰项针对具体错误认知，不是随机值\n"
+            "3. 参数优先选用 2^n 相关值\n"
+            "4. 禁止在题干中出现编程语言代码\n"
+            "5. 题目完全原创，不得照搬历史原题\n\n"
+            "直接输出 Markdown 内容，不要用代码块包裹。"
+        ),
+        "question_comp": (
+            "# 408考研综合应用题出题专家\n\n"
+            "你是408考研综合应用题出题专家。你将收到出题契约（assembled.md），"
+            "请产出符合408风格的综合应用题（含多个子问题，连续推演式考察）。\n\n"
+            "综合题是连续推演式考察：基础问→核心问→区分度问，子问之间存在串行依赖。\n\n"
+            "## 输出格式\n"
+            "- `## status` — `draft`\n"
+            "- `## 题干` — 完整的系统状态/配置描述，作为所有子问题的共享上下文\n"
+            "- `## 子问题` — 2-4个子问题，每个标明分值，前问结果作为后问输入\n"
+            "- `## 设计说明` — 考察结构、子问依赖关系、K值对齐\n\n"
+            "注意：不写答案！答案由独立的求解智能体产出。\n\n"
+            "## 核心规则\n"
+            "1. 子问之间必须有逻辑依赖，不允许完全独立\n"
+            "2. 每个子问题可从前序结果+题干条件推导\n"
+            "3. 参数优先选用 2^n 相关值\n"
+            "4. 禁止在题干中出现编程语言代码\n"
+            "5. 题目完全原创，不得照搬历史原题\n\n"
+            "直接输出 Markdown 内容，不要用代码块包裹。"
+        ),
+        "solve": (
+            "# 408考研独立求解专家\n\n"
+            "你是408考研独立求解专家。你将收到一道考试题目，请独立推导出所有答案。\n\n"
+            "## 求解策略\n"
+            "- 概念/逻辑题：直接推理分析，不需要代码\n"
+            "- 数值题：编写 solve.py 代码验证，代码只使用标准库\n\n"
+            "## 输出格式\n"
+            "Markdown格式（solution.md），按顺序包含以下章节：\n"
+            "- `## status` — 内容固定为 `solved`\n"
+            "- `## 求解过程` — 每个子问题/选项的推理或计算过程\n"
+            "- `## 最终答案` — 选择题给出正确选项和理由，综合题给出各子问题答案\n\n"
+            "## 核心规则\n"
+            "1. 禁止阅读设计说明——只看题干和子问题\n"
+            "2. 所有结果必须从题干参数推导，禁止硬编码\n"
+            "3. 每个子问题/选项必须逐一求解\n"
+            "4. 数值题代码只用标准库，变量命名体现物理含义\n\n"
+            "直接输出 Markdown 内容，不要用代码块包裹。"
         ),
         "review": (
-            "# 408考研对抗审核专家\n\n"
-            "你是408考研出题对抗审核专家。你的目标不是确认题目'没问题'，而是主动寻找每个潜在缺陷。\n\n"
-            "## 两种审核场景\n\n"
-            "### 场景 A：有求解代码结果\n"
-            "你将收到题目和求解代码执行结果。\n"
-            "审核策略：\n"
-            "1. 验证答案：求解结果是否支持题目答案\n"
-            "2. 攻击选项（选择题）：错误选项是否太明显、正确答案是否唯一、排除法是否秒杀\n"
-            "3. 攻击题干：歧义表述、条件缺失、条件矛盾、废弃条件\n"
-            "4. 大纲匹配：考点和难度是否合理\n\n"
-            "### 场景 B：纯概念题（无代码验证）\n"
-            "你只收到题目，没有求解代码结果。这是纯概念题，无需计算验证。\n"
-            "审核策略：\n"
-            "1. 概念正确性：答案是否符合教材定义\n"
-            "2. 攻击选项：错误选项是否有合理干扰、正确答案是否唯一\n"
-            "3. 攻击题干：表述歧义、分类标准是否清晰\n"
-            "4. 大纲匹配：考点和难度是否合理\n\n"
+            "# 408考研题目审核专家\n\n"
+            "你是408考研题目审核专家（此阶段无答案）。审核题目设计质量。\n\n"
+            "## 审核维度\n"
+            "1. 知识点覆盖 — 是否与规划一致\n"
+            "2. K难度评估 — 实际K值 vs 目标K值（差异>=2级标 needs_fix）\n"
+            "3. 条件充分性 — 充分且不冗余\n"
+            "4. 题干清晰度 — 精确无歧义\n"
+            "5. 选项质量 — 恰好1个正确，干扰项有效（选择题）\n"
+            "6. 子问题结构 — 编号连续、分值合理（综合题）\n\n"
+            "注意：此阶段无答案，不评估答案正确性。\n\n"
             "## 输出格式\n"
             "Markdown格式，按顺序包含以下章节：\n"
             "- `## status` — `pass` 或 `needs_fix`\n"
             "- `## summary` — 审核总结\n"
-            "- `## corrections` — pass写'无'，needs_fix写具体问题及修正方向\n"
-            "- `## detailed_feedback` — 逐项审核发现：求解正确性(或概念正确性)、条件利用率、答案自洽性、选项质量、表述精确性、大纲匹配、总体评分(1-10)\n\n"
-            "## 判定规则\n"
-            "- 实质性问题（答案错误、条件矛盾、选项不唯一）→ needs_fix\n"
-            "- 无法攻破 → pass\n"
-            "- 润色建议不算问题\n\n"
+            "- `## corrections` — pass写'无'，needs_fix写具体问题\n"
+            "- `## detailed_feedback` — 逐项审核发现\n"
+            "- `## quality_score` — 分维度打分\n"
+            "- `## improvement_suggestions` — 即使 pass 也必须填写\n\n"
+            "直接输出 Markdown 内容，不要用代码块包裹。"
+        ),
+        "final_review": (
+            "# 408考研终审专家\n\n"
+            "你是408考研终审专家，审核题目和求解结果的整体质量。\n\n"
+            "## 审核维度\n"
+            "1. 求解正确性 — solution 是否正确回答 question\n"
+            "2. 答案唯一性 — 题目是否有唯一解\n"
+            "3. 条件利用率 — 每个条件都在求解中使用\n"
+            "4. 答案自洽性 — 推理链无跳步无矛盾\n\n"
+            "## 路由判定\n"
+            "- pass — 通过，输出 final.md\n"
+            "- expression_fix — 仅措辞/格式问题，就地修正\n"
+            "- question_error — 参数矛盾、条件缺失等根本设计错误，回出题\n"
+            "- solution_error — 求解逻辑或计算错误，回求解做最小修改\n\n"
+            "## 输出格式\n"
+            "Markdown格式，按顺序包含以下章节：\n"
+            "- `## status` — pass / expression_fix / question_error / solution_error\n"
+            "- `## summary` — 审核总结\n"
+            "- `## corrections` — 仅 expression_fix 时写修正内容，否则写'无'\n"
+            "- `## detailed_feedback` — 逐项审核发现\n"
+            "- `## quality_score` — 按维度打分(1-10): overall, knowledge, self_consistency, difficulty_match, expression_precision\n"
+            "- `## improvement_suggestions` — 即使 pass 也必须填写\n"
+            "- `## routing_feedback` — 仅 question_error/solution_error 时填写具体修正要求\n\n"
             "直接输出 Markdown 内容，不要用代码块包裹。"
         ),
     }
@@ -573,9 +687,10 @@ class DocScheduler:
             f"请直接输出 `{expected_fn}` 的完整文件内容。你收到的注入材料就是可用事实来源，"
             "不要声称无法访问本地文件。"
         )
-        if role == "coding":
+        if role == "solve":
             adapter += (
-                "\n`solve.py` 必须是可直接运行的纯 Python 源码；不要使用 Markdown 代码块；"
+                "\n数值题需先编写 solve.py 并运行验证。"
+                "`solve.py` 必须是可直接运行的纯 Python 源码；不要使用 Markdown 代码块；"
                 "只依赖 Python 标准库；必须打印清晰求解过程，最终单独打印 `ANSWER: ...`。"
             )
         else:
@@ -594,7 +709,7 @@ class DocScheduler:
             "如果输出 Markdown，第一行必须是目标文件的第一个 `##` 章节标题；"
             "如果输出 Python，第一行必须是 Python 源码或注释。"
         )
-        if role in {"question", "coding", "review", "fix"}:
+        if role in {"question", "question_sc", "question_comp", "solve", "review", "final_review"}:
             suffix += "\n如需计算或校验，请在你自己的推理过程中完成，并把必要的校验证据写入目标内容。"
         return task + suffix
 
@@ -605,50 +720,53 @@ class DocScheduler:
         These constraints translate the tool/file contract into plain output,
         because WebGPT cannot call local tools.
         """
-        if role == "design":
+        if role == "outline":
             return (
-                "## 目标文件协议：blueprint.md\n"
-                "必须包含且按顺序输出章节：`## status`、`## 知识点`、`## 难度`、"
-                "`## 出题要求`、`## 子问题规划`、`## 参数约束`。\n"
-                "`## status` 的内容固定为 `ready`。蓝图只定义结构、约束和参数范围，"
+                "## 目标文件协议：outline.md\n"
+                "必须包含且按顺序输出章节：`## status`、`## 考点`、`## 难度目标`、"
+                "`## 考察模式`、`## 出题要求`、`## 子问题规划`、`## 参数约束`、"
+                "`## 参考经验`、`## 教师批注区`。\n"
+                "`## status` 的内容固定为 `ready`。规划只定义结构、约束和参数范围，"
                 "不要提前指定具体数值或完整题干。"
             )
-        if role == "question":
+        if role in ("question", "question_sc", "question_comp"):
             return (
                 "## 目标文件协议：question.md\n"
                 "必须包含且按顺序输出章节：`## status`、`## 题干`、"
-                "`## 子问题` 或 `## 选项`、`## 答案`、`## 设计说明`。\n"
-                "`## status` 的内容固定为 `draft`。题目必须严格遵循蓝图，"
-                "所有给定条件都要被使用；参数校验证据写入设计说明，避免暴露冗长思考。"
-            )
-        if role == "analysis":
-            return (
-                "## 目标文件协议：feedback.md\n"
-                "必须包含且按顺序输出章节：`## status`、`## summary`、`## detailed_feedback`。\n"
-                "`## status` 只能是 `pass`、`pass_with_warnings`、`needs_fix`。"
-                "只有发现阻塞问题才使用 `needs_fix`。"
-            )
-        if role == "coding":
-            return (
-                "## 目标文件协议：solve.py\n"
-                "只输出 Python 源码，不要 Markdown。代码必须自包含，不能读取本地文件或联网；"
-                "从题干公开条件推导答案，覆盖每个子问题或每个选项。"
+                "`## 子问题` 或 `## 选项`、`## 设计说明`。\n"
+                "`## status` 的内容固定为 `draft`。题目必须严格遵循契约，"
+                "所有给定条件都要被使用。不写答案——答案由独立的求解智能体产出。"
+                "参数校验证据写入设计说明，避免暴露冗长思考。"
             )
         if role == "review":
             return (
                 "## 目标文件协议：review.md\n"
                 "必须包含且按顺序输出章节：`## status`、`## summary`、"
-                "`## corrections`、`## detailed_feedback`。\n"
-                "`## status` 使用 `pass` 或 `needs_fix`；发现可由 Fix 阶段最小修复的阻塞问题时，"
-                "必须使用 `needs_fix` 以触发后续修复。不要在 review.md 中直接输出 fixed.md。"
+                "`## corrections`、`## detailed_feedback`、"
+                "`## quality_score`、`## improvement_suggestions`。\n"
+                "`## status` 使用 `pass` 或 `needs_fix`。此阶段无答案，不评估答案正确性。\n"
+                "`## quality_score` 按维度打分（1-10）：overall, knowledge, difficulty_match, "
+                "condition_quality, expression_precision。\n"
+                "`## improvement_suggestions` 即使 pass 也必须填写具体改进方向。"
             )
-        if role == "fix":
+        if role == "solve":
             return (
-                "## 目标文件协议：fixed.md\n"
-                "必须包含且按顺序输出章节：`## status`、`## 题干`、`## 子问题`、"
-                "`## 答案`、`## 修改说明`。\n"
-                "`## status` 只能是 `fixed` 或 `unfixable`。只做审核意见要求的最小修复，"
-                "不要重写整题或改变蓝图知识点。"
+                "## 目标文件协议：solution.md\n"
+                "必须包含且按顺序输出章节：`## status`、`## 求解过程`、`## 最终答案`。\n"
+                "`## status` 的内容固定为 `solved`。概念题直接推理，数值题需先编写并运行 solve.py。"
+                "禁止阅读设计说明——只看题干。从题干公开条件推导答案，覆盖每个子问题或每个选项。"
+            )
+        if role == "final_review":
+            return (
+                "## 目标文件协议：final_review.md\n"
+                "必须包含且按顺序输出章节：`## status`、`## summary`、"
+                "`## corrections`（仅expression_fix时）、`## detailed_feedback`、"
+                "`## quality_score`、`## improvement_suggestions`、"
+                "`## routing_feedback`（仅question_error/solution_error时）。\n"
+                "`## status` 使用 `pass`、`expression_fix`、`question_error`、`solution_error`。\n"
+                "`## quality_score` 按维度打分（1-10）：overall, knowledge, self_consistency, "
+                "difficulty_match, expression_precision。\n"
+                "`## improvement_suggestions` 即使 pass 也必须填写。"
             )
         return f"## 目标文件协议：{expected_fn}\n直接输出目标文件完整内容。"
 
@@ -658,7 +776,7 @@ class DocScheduler:
         extracted = cls._extract_tool_text_content(text)
         if extracted:
             text = extracted.strip()
-        if role == "coding" or expected_fn.endswith(".py"):
+        if role == "solve" or expected_fn.endswith(".py"):
             return cls._extract_code_block(text).rstrip() + "\n"
         return cls._strip_outer_fence(text).rstrip() + "\n"
 
@@ -787,27 +905,38 @@ class DocScheduler:
         hybrid_spec = self._load_hybrid_spec(role)
         qwen_system = hybrid_spec if hybrid_spec else AGENT_PROMPTS.get(role, "")
 
-        # Include the full original task for terminology alignment
-        task_ref = task
+        # Extract a condensed terminology reference from the full task.
+        # The full task may contain the entire assembled doc (~13K chars)
+        # which GPT already processed — Qwen only needs key terms for
+        # alignment, not the full reference again.
+        task_ref = _extract_terminology_ref(task)
 
         qwen_user = (
-            f"## GPT 产出的原始内容\n\n{gpt_content}\n\n"
+            f"## GPT 产出的内容\n\n{gpt_content}\n\n"
             f"---\n\n"
             f"## 原始任务参考（用于名词对齐）\n\n{task_ref}\n\n"
             f"---\n\n"
-            f"请校验以上内容的格式，对照原始任务参考中的标准术语修正名词后，"
-            f"通过 write_file 写入 `{expected_fn}`。"
+            f"请完成以下工作：\n"
+            f"1. 校验GPT内容的格式是否符合 `{expected_fn}` 要求的章节结构\n"
+            f"2. 对照任务参考修正专业术语和名词\n"
+            f"3. 如果GPT内容包含对已有文件的修改指令（如修正、编辑），先 read_file 读取目标文件，"
+            f"   按修改指令调整后再 write_file 写入\n"
+            f"4. 如果是全新产出，直接 write_file 写入 `{expected_fn}`\n\n"
+            f"最终必须通过 write_file 写入目标文件。"
         )
 
         # Build tool registry for Qwen
         ws = expected_path.parent
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
+        registry.register(ReadFileTool(workspace=ws))
         required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_python" in required_tools:
             registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
 
-        tool_list = [registry.get(name) for name in required_tools if registry.get(name) is not None]
+        # Always include read_file + write_file for hybrid modification support
+        hybrid_tool_names = list(set(required_tools) | {"write_file", "read_file"})
+        tool_list = [registry.get(name) for name in hybrid_tool_names if registry.get(name) is not None]
         executor = ToolExecutor(tool_list)
         openai_tools = [t.to_openai_tool() for t in tool_list]
 
@@ -1021,6 +1150,7 @@ class DocScheduler:
         *,
         experience_card: str = "",
         k_definitions: str = "",
+        question_type: str | None = None,
     ) -> dict[str, Any]:
         """Compatibility wrapper; orchestration lives in orchestrator.py."""
         from .orchestrator import DocPipelineOrchestrator
@@ -1035,4 +1165,5 @@ class DocScheduler:
             slot_data,
             experience_card=experience_card,
             k_definitions=k_definitions,
+            question_type=question_type,
         )

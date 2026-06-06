@@ -1,0 +1,68 @@
+===== 子问题(1): Need 矩阵 =====
+  P0: [7, 4, 4]
+  P1: [1, 2, 2]
+  P2: [6, 0, 1]
+  P3: [1, 1, 1]
+  P4: [4, 3, 1]
+
+===== 子问题(1): Available 向量 =====
+  Sum(Allocation) = [7, 2, 5]
+  Available = Total - Sum(Allocation) = [10, 6, 8] - [7, 2, 5] = [3, 4, 3]
+
+===== 子问题(2): 安全性算法 =====
+  初始: Work = [3, 4, 3]
+  第1轮: P1 可完成 (Need=[1, 2, 2] <= Work=[3, 4, 3])
+    Work 更新: +Allocation[P1]=[2, 0, 0] -> Work=[5, 4, 3]
+  第1轮: P3 可完成 (Need=[1, 1, 1] <= Work=[5, 4, 3])
+    Work 更新: +Allocation[P3]=[1, 1, 1] -> Work=[6, 5, 4]
+  第1轮: P4 可完成 (Need=[4, 3, 1] <= Work=[6, 5, 4])
+    Work 更新: +Allocation[P4]=[0, 0, 2] -> Work=[6, 5, 6]
+  第2轮: P2 可完成 (Need=[6, 0, 1] <= Work=[6, 5, 6])
+    Work 更新: +Allocation[P2]=[3, 0, 2] -> Work=[9, 5, 8]
+  第3轮: P0 可完成 (Need=[7, 4, 4] <= Work=[9, 5, 8])
+    Work 更新: +Allocation[P0]=[1, 1, 0] -> Work=[10, 6, 8]
+
+  安全序列: P1 -> P3 -> P4 -> P2 -> P0
+  最终 Work = [10, 6, 8]
+  系统状态: 安全 (SAFE)
+
+===== 子问题(3): P0 请求 Request0 = (3, 4, 3) =====
+
+  步骤1: Request <= Need[P0]?
+    Request = [3, 4, 3], Need[P0] = [7, 4, 4]
+    结果: 通过
+
+  步骤2: Request <= Available?
+    Request = [3, 4, 3], Available = [3, 4, 3]
+    结果: 通过
+
+  步骤3: 假装分配后进行安全性检查
+    新 Available = [0, 0, 0]
+    新 Allocation[P0] = [4, 5, 3]
+    新 Need[P0] = [4, 0, 1]
+
+    更新后的状态:
+      P0: Allocation=[4, 5, 3], Need=[4, 0, 1]
+      P1: Allocation=[2, 0, 0], Need=[1, 2, 2]
+      P2: Allocation=[3, 0, 2], Need=[6, 0, 1]
+      P3: Allocation=[1, 1, 1], Need=[1, 1, 1]
+      P4: Allocation=[0, 0, 2], Need=[4, 3, 1]
+
+    安全性算法: 初始 Work = [0, 0, 0]
+    无任何进程可完成 (Work = [0, 0, 0], 所有 Need 均大于 Work):
+      P0: Need=[4, 0, 1]
+      P1: Need=[1, 2, 2]
+      P2: Need=[6, 0, 1]
+      P3: Need=[1, 1, 1]
+      P4: Need=[4, 3, 1]
+
+    安全性检查结果: 不安全
+    结论: 不能批准请求，P0 须等待
+
+    资源守恒: Sum(Alloc)+Avail = [10, 6, 8]+[0, 0, 0] = [10, 6, 8] (Total=[10, 6, 8])
+
+============================================================
+ANSWER:
+  (1) Need矩阵见上方; Available = [3, 4, 3]
+  (2) 系统处于安全状态, 安全序列: P1 -> P3 -> P4 -> P2 -> P0
+  (3) Request0=(3,4,3) 不能批准 (通过前两步但第三步安全性检查不通过)

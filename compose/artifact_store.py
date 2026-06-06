@@ -101,7 +101,9 @@ def assemble_slot_experience_doc(
     radar_text = re.sub(r"^##\s+K1-K5.*?\n", "", radar_text)
     parts.append(f"## K1-K5 认知雷达评分标准\n\n{radar_text.strip()}")
 
-    return "\n\n---\n\n".join(parts)
+    # Translate abbreviated codes (DS-1, CO-1 etc.) to full chapter names
+    from core_new.subject_map import translate_code
+    return translate_code("\n\n---\n\n".join(parts))
 
 
 def _extract_basic_info(exp_card: str) -> str:
@@ -192,29 +194,39 @@ def _extract_relevant_syllabus(slot_md: str) -> str:
     return "\n".join(compact) if compact else ""
 
 
-def _extract_knowledge_graph_section(target_family: str) -> str:
-    """Extract relevant knowledge graph section from computer_organization.md.
+_KG_FILE_MAP = {
+    "CO": "computer_organization.md",
+    "DS": "data_structure.md",
+    "OS": "operating_system_knowledge.md",
+    "CN": "computer_network.md",
+}
 
-    Given a target_family like "CO-1 > 计算机系统概述" or "CO-3 > 高速缓冲存储器 Cache",
+
+def _extract_knowledge_graph_section(target_family: str) -> str:
+    """Extract relevant knowledge graph section from subject-specific file.
+
+    Given a target_family like "CO-1 > 计算机系统概述" or "DS-3 > 栈",
     finds the corresponding section in the knowledge graph and returns its full subtree.
     """
-    kg_path = os.path.join("data", "computer_organization.md")
-    if not os.path.exists(kg_path):
-        return ""
-
-    with open(kg_path, encoding="utf-8") as f:
-        text = f.read()
-
     if not target_family:
         return ""
 
-    # Parse target_family: "CO-1 > 计算机系统概述" or just "CO-1"
+    # Determine which knowledge file to use based on domain prefix
     parts = [p.strip() for p in target_family.split(">")]
     top_level = parts[0] if parts else ""  # e.g. "CO-1"
     sub_level = parts[1] if len(parts) > 1 else ""  # e.g. "计算机系统概述"
 
     if not top_level:
         return ""
+
+    domain_prefix = top_level.split("-")[0] if "-" in top_level else ""
+    kg_filename = _KG_FILE_MAP.get(domain_prefix, "computer_organization.md")
+    kg_path = os.path.join("data", kg_filename)
+    if not os.path.exists(kg_path):
+        return ""
+
+    with open(kg_path, encoding="utf-8") as f:
+        text = f.read()
 
     # Find the top-level section: "## CO-1 计算机系统概述"
     top_pattern = re.compile(

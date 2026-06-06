@@ -1,175 +1,20 @@
 # core_new/slot_prompts.py
 """Prompts for slot-template driven extraction, composition, and generation.
 
-Extraction:
-  SLOT_BATCH_ANALYSIS_PROMPT — per-slot observation + template extraction
+Extraction (slot_extractor.py):
+  SLOT_SINGLE_EVAL_PROMPT_SC/COMP — per-question K-rating evaluation
+  SLOT_SYNTHESIS_PROMPT_SC/COMP — per-slot pattern synthesis
 
-Composition:
-  PAPER_COMPOSER_PROMPT — generates PaperBlueprint from SlotTemplates
-  BLUEPRINT_REVIEWER_PROMPT — reviews blueprint before sending to writers
+Composition (compose/):
+  PAPER_OUTLINE_PROMPT — paper outline from slot contracts
+  OUTLINE_REVISION_PROMPT — outline revision prompt
 
-Generation:
-  SLOT_QUESTION_WRITER — generates question from SlotBlueprint + experience card
-  QUESTION_FIXER_PROMPT — fixes specific issues in questions
+Generation (doc_pipeline AgentMD):
+  Agents defined in core_new/doc_pipeline/agents/*.md
 
-Review:
-  PAPER_REVIEWER_PROMPT — whole-paper review with issue categorization
+Knowledge:
+  K_RADAR_DEFINITIONS — K1-K5 cognitive radar scoring rubrics
 """
-
-SLOT_BATCH_ANALYSIS_PROMPT = """你是一位408考研教研专家，专精于试卷结构和题位分析。
-
-以下是2009-2023年408考研真题中**第{slot_num}题**（共{count}道）的完整数据。
-请完成以下三重分析任务。
-
-## K1-K5 认知雷达评分标准（必须严格参照）
-
-K1 基础认知需求（需要调用概念/术语/公式记忆的程度）:
-  1=微弱: 仅需日常常识词汇，几乎不需要 408 专业记忆
-  2=较低: 需要 408 基础名词，但概念模糊也能顺着题干做
-  3=标准: 必须准确记忆某个核心概念/公式的定义才能入题
-  4=较高: 需精准辨析极易混淆的概念，或提取冷门细节公式
-  5=极高: 纯概念辨析题，全凭记忆准确度，毫无推演绕过余地
-  判定锚点：看学生不记忆任何408知识能否入题 → 能则1，需一个核心定义则3，需辨析两个以上易混概念则4-5
-
-K2 单步代入需求（需要执行单次直接计算/转换的程度）:
-  1=微弱: 几乎无计算，或仅需极简单心算
-  2=较低: 需一步简单公式代入，数字友好（多为 2 的幂）
-  3=标准: 需代入常规公式计算，可能涉及非 2 的幂次或小数
-  4=较高: 单步计算繁杂/易算错，或需多级单位统一换算
-  5=极高: 整题核心就是卡这一步复杂计算，算错全盘皆输
-  判定锚点：看最复杂的单步计算是否可能算错 → 2的幂友好计算则2，非2幂次则3，多级换算或精度敏感则4-5
-
-K3 机制推演需求（需要在明确规则下多步串行推演的程度）:
-  1=微弱: 无需推演流程，得出答案不需走多步
-  2=较低: 仅需 2 步以内的极简推导，路径唯一
-  3=标准: 需按固定"说明书"走完 3-5 步流程，路径唯一
-  4=较高: 推演步数 >5 步，或需维持动态状态更新
-  5=极高: 极长程推演，极度消耗工作记忆，中间错一步全盘皆输
-  判定锚点：数从输入到输出需几步 → 1-2步则1-2，3-5步标准流程则3，>5步或需记忆中间状态则4-5
-
-K4 条件路由需求（需要识别隐含前提/避开暗坑/切换机制的程度）:
-  1=微弱: 题面字面意思即全部，无任何隐藏陷阱
-  2=较低: 存在常规注意点，408 考生基本不会踩坑
-  3=标准: 存在明确的陷阱词，不触发就会用错公式
-  4=较高: 隐含前提很深，必须依靠对机制本质的理解才能路由
-  5=极高: 整题专为反直觉设计，顺向常规思维 100% 掉坑
-  判定锚点：看有没有"题面没说但解题必须意识到的条件" → 无则1，有常规注意点则2，有陷阱词则3，隐含前提深则4，反直觉则5
-
-K5 跨域联动需求（需要跨越不同子系统/模块传递状态的程度）:
-  1=微弱: 单一知识点内部解决，不涉及其他系统
-  2=较低: 提及其他系统名词，但无数据/逻辑实质性关联
-  3=标准: 两系统单向拼接，A 的输出直接当 B 的输入
-  4=较高: A 系统的状态/异常会改变 B 系统的执行逻辑
-  5=极高: 多系统深度耦合，需来回交叉推演与双向验证
-  判定锚点：看是否需要在不同子系统之间传递数据或状态 → 单系统则1，提及无关则2，单向传数据则3，状态互影响则4，深度耦合则5
-
----
-
-## 真题数据
-
-{questions_data}
-
----
-
-## 任务1：逐题 SlotObservation
-
-对每道题，提取以下信息。请用XML标签包裹每道题的分析结果。
-
-对每道题输出如下格式：
-```xml
-<obs year="20XX">
-  <primary_target_type>knowledge 或 mechanism 或 pattern</primary_target_type>
-  <primary_target_name>具体考点名称</primary_target_name>
-  <target_family>所属知识领域（如：Cache映射与性能计算、指令系统设计、数据表示与运算）</target_family>
-  <supporting_targets>辅助考点，分号分隔</supporting_targets>
-  <prerequisite_targets>前置知识，分号分隔</prerequisite_targets>
-  <target_depth>knowledge 或 mechanism 或 pattern</target_depth>
-  <K1_demand>1-5整数。1=微弱常识, 2=基础名词, 3=标准需记忆, 4=易混辨析, 5=纯概念题</K1_demand>
-  <K2_demand>1-5整数。1=极简心算, 2=一步简单代入, 3=标准公式计算, 4=复杂单步换算, 5=纯卡计算</K2_demand>
-  <K3_demand>1-5整数。1=无需推演, 2=两步内极简, 3=标准3-5步固定推演, 4=长程>5步推演, 5=极长程易断链</K3_demand>
-  <K4_demand>1-5整数。1=题面即全部, 2=常规注意点, 3=明确陷阱词需切换机制, 4=深隐含前提需本质理解, 5=专为反直觉设计</K4_demand>
-  <K5_demand>1-5整数。1=单一系统, 2=提及他系统无关联, 3=单向数据传递, 4=系统状态异常互相影响, 5=多系统深度耦合双向推演</K5_demand>
-  <radar_shape_name>根据雷达最高分维度命名，如：K4陷阱型、K3推演型、K5跨域联动型、K1概念型</radar_shape_name>
-  <paper_role>以下枚举之一：foundation_check(基础覆盖)、mechanism_trigger(机制触发)、pattern_execution(推理模式执行)、trap_diagnosis(易错陷阱诊断)、calculation_stability(计算稳定性)、cross_topic_integration(综合整合)、difficulty_separator(区分度题)</paper_role>
-  <paper_role_reason>一句话说明为什么是这个角色</paper_role_reason>
-  <why_correct>标准答案为什么成立</why_correct>
-  <why_wrong_options>各错误选项为什么错，用JSON对象格式如 {{"A":"理由","B":"理由"}}</why_wrong_options>
-  <solution_steps>解题步骤，分号分隔</solution_steps>
-  <distractor_patterns>干扰项设计模式，JSON数组格式</distractor_patterns>
-  <stem_length>short 或 medium 或 long</stem_length>
-  <condition_count>条件数量，整数</condition_count>
-  <option_style>数字结果 或 概念判断 或 代码分析 或 混合</option_style>
-  <reasoning_shape>one_formula 或 multi_step 或 elimination 或 simulation</reasoning_shape>
-  <trap_style>陷阱类型描述</trap_style>
-</obs>
-```
-
----
-
-## 任务2：题位模板 SlotTemplate
-
-分析第{slot_num}题这个位置**跨年份的稳定模式**，输出：
-
-```xml
-<slot_template>
-  <slot_id>Q{slot_num}</slot_id>
-  <section>选择题 或 综合应用题</section>
-  <question_type>single_choice 或 comprehensive</question_type>
-  <typical_score>该题位通常分值</typical_score>
-  <subject_stability>这个题位科目是否稳定，稳定则写科目名，不稳定则写"跨科目"</subject_stability>
-  <subject_distribution>各科目出现频率，JSON格式如 {{"计算机组成原理":0.9,"操作系统":0.1}}</subject_distribution>
-  <target_family_distribution>出现频率最高的3-5个知识领域，JSON格式</target_family_distribution>
-  <target_depth_distribution>knowledge/mechanism/pattern各出现频率</target_depth_distribution>
-  <paper_role_distribution>各角色出现频率，JSON格式</paper_role_distribution>
-  <difficulty_anchor>各认知维度的众数和范围，JSON格式如 {{"K1_mode":2,"K1_range":[1,3],"K2_mode":3,"K2_range":[2,4],"K3_mode":2,"K3_range":[1,3],"K4_mode":2,"K4_range":[1,3],"K5_mode":1,"K5_range":[1,2]}}</difficulty_anchor>
-  <style_mode>最常见的风格组合，JSON格式</style_mode>
-  <slot_guidance>这个题位的出题指导，2-3句话描述应该出什么类型的题</slot_guidance>
-  <should_be>这个题位应该是什么样的题（一句话）</should_be>
-  <should_not_be>这个题位不应该是什么样的题（逗号分隔多个）</should_not_be>
-  <generation_style>生成风格建议（一句话）</generation_style>
-  <stability_assessment>这个题位跨年份的稳定程度评价（一句话）</stability_assessment>
-</slot_template>
-```
-
----
-
-## 任务3：TypeDifficultyGuide
-
-基于该题位的典型模式，给出出题类型-难度指导：
-
-```xml
-<type_difficulty_guide>
-  <guide_id>基于科目+深度+难度命名，如 CO_knowledge_level2_single_choice</guide_id>
-  <subject>科目</subject>
-  <target_depth>knowledge 或 mechanism 或 pattern</target_depth>
-  <difficulty>典型难度等级</difficulty>
-  <paper_role>典型功能角色</paper_role>
-  <expected_shape>该类型题目的预期形态，JSON格式，包含reasoning_steps、stem_length、condition_count、calculation_load、option_style</expected_shape>
-  <suitable_targets>适合的知识点列表，JSON数组</suitable_targets>
-  <distractor_style>干扰项设计风格，JSON数组</distractor_style>
-  <bad_examples>不应该出现的特征，JSON数组</bad_examples>
-</type_difficulty_guide>
-```
-
----
-
-请严格按照上述XML格式输出，确保每个标签都有内容。不要输出XML标签以外的额外解释。"""
-
-# ═══════════════════════════════════════════════════════════════
-# Per-question evaluation — Choice Questions (SC)
-# ═══════════════════════════════════════════════════════════════
-
-# Load detailed syllabus (computer_organization.md) at module level
-import os as _os
-_DETAILED_SYLLABUS_PATH = _os.path.join(
-    _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
-    "data", "computer_organization.md",
-)
-try:
-    with open(_DETAILED_SYLLABUS_PATH, encoding="utf-8") as _f:
-        _SYLLABUS_REF = _f.read().strip()
-except FileNotFoundError:
-    _SYLLABUS_REF = "（细纲文件未找到）"
 
 SLOT_SINGLE_EVAL_PROMPT_SC = """你是一位408考研教研专家。请对以下**选择题**进行深度分析，产出单题经验文档。
 
@@ -645,7 +490,7 @@ PAPER_COMPOSER_PROMPT = """你是一位408考研组卷专家。你的任务是�
 # V2: Outline-based composition (decoupled from question design)
 # ═══════════════════════════════════════════════════════════════
 
-PAPER_OUTLINE_PROMPT = """你是一位408考研组卷专家，以教师的视角规划试卷大纲。大纲是给下游出题智能体的"命题指令"。
+PAPER_OUTLINE_PROMPT = """你是一位408考研组卷专家，以教师的视角规划试卷大纲。大纲同时面向教师阅读和下游出题智能体。
 
 上方已展示共享参考信息（K1-K5认知雷达评分标准 + 知识点图谱），下方是各题位信息。
 
@@ -667,163 +512,85 @@ PAPER_OUTLINE_PROMPT = """你是一位408考研组卷专家，以教师的视角
    - 正确：`计算型——公式应用与单位换算`、`概念辨析型——核心定义与本质区分`
 5. **知识点选择**：每个模式都有"适用知识点"字段，你的 primary_target_name 应该是该模式适用知识点中的一个具体考点
 
-## 输出格式
+## 输出格式（混合大纲）
 
-请严格按以下 Markdown 格式输出完整的大纲文档：
+请严格按以下格式输出完整大纲。大纲包含**教师可读层**和**机器契约层**，方便教师直接阅读和批注。
 
 ```markdown
 # 试卷大纲
 
 ## 整体规划
 - **difficulty_target**: 整体难度目标（1-5整数）
-- **composition_rationale**: 整卷组卷思路（2-3句话，说明知识点覆盖策略和难度分布逻辑）
+- **composition_rationale**: 整卷组卷思路（2-3句话）
+
+## 1. 教师阅读版总览
+
+用2-3段自然语言描述整卷定位、知识点覆盖策略和难度分布逻辑。
+附题位总览表格：
+
+| 题位 | 题型 | 主考点 | 难度 | 考察目标 |
+|------|------|--------|------|----------|
+| Q12 | 选择题 | CPU执行时间公式 | 3 | 公式应用与单位换算 |
 
 ## Q12（选择题）
-- **target_subject**: 科目（如：计算机组成原理）
-- **target_family**: 知识领域（从知识点图谱中选择层级路径，如：CO-1 > 计算机系统概述）
-- **primary_target_name**: 具体考点（单个明确考点，如：CPU执行时间公式）
-- **difficulty_level**: 目标难度 1-5
-- **k_target**: 目标认知雷达形状（从该题位的"典型雷达"中选择，如：K1概念型、K2计算型、K1-K2平衡型）
-- **difficulty_rationale**: 一句话说明为什么是这个难度（教师视角）
-- **examination_mode**: 从该题位"可选考察模式"中复制的完整模式名称（不含频率括号）
+
+### 教师可读说明
+用自然语言描述：考查什么知识点、定位什么难度、对学生的能力要求、可能的风险点。
+
+### 教师批注区
+> [教师]
+
+### 机器契约
+```yaml
+target_subject: 计算机组成原理
+target_family: CO-4 > CPU > 性能指标
+primary_target_name: CPU执行时间公式
+difficulty_level: 3
+k_target: K1-K2平衡型
+difficulty_rationale: 公式记忆+标准计算与单位换算
+examination_mode: 计算型——公式应用与单位换算
+```
 
 ## Q13（选择题）
-- **target_subject**: ...
-（每个题位一个段落，格式同上）
+（每个题位同上，含教师可读说明 + 教师批注区 + 机器契约）
 ```
 
 注意：
 - **examination_mode 必须精确复制自题位的"可选考察模式"标题，不含频率括号**
 - 综合应用题（Q43-Q45）的 examination_mode 写模式标题（如"存储层次地址翻译与映射模拟"）
 - 每个 `## Qxx` 标题后注明题型
+- **教师可读说明**要写得让教师一眼理解出题意图，不要只重复字段值
+- **教师批注区**保持 `> [教师] ` 后留空，不要填写内容
+- **机器契约**的 YAML 代码块必须完整，字段名和格式不可变更
 - 不要输出选项风格、干扰策略、推理形式等设计级决策——这些由出题团队自主决定
 """
 
+OUTLINE_REVISION_PROMPT = """你是一位408考研组卷专家。教师对以下试卷大纲提出了修订意见，请根据意见修订大纲。
+
+## 修订规则
+
+1. **只修改被标注的题位**：未变更的题位保持原样，完整输出不要省略
+2. **同步更新两个层次**：
+   - `### 教师可读说明`：用自然语言反映修订后的意图
+   - `### 机器契约`：YAML 字段同步更新
+3. **清空批注区**：修订后将 `### 教师批注区` 的 `> [教师]` 恢复为空
+4. **契约合法性**：examination_mode 必须仍在题位可选列表中，difficulty_level 在 1-5 范围内
+5. **连带更新**：如果修订影响整卷难度分布，也更新 `## 整体规划` 和 `## 1. 教师阅读版总览`
+
+## 修订前大纲
+{original_outline}
+
+## 检测到的变更
+{detected_changes}
+
+## 各题位信息（用于验证 examination_mode 合法性）
+{slot_contracts_md}
+
+## 输出
+输出完整的修订后大纲（格式与修订前一致）。不要省略未修改的题位，完整输出所有题位。
+"""
+
 # DEPRECATED: References old blueprint format with design-level fields (option_style, reasoning_shape etc.)
-BLUEPRINT_REVIEWER_PROMPT = """你是一位408考研组卷审核专家。请审核以下组卷蓝图的质量，区分硬违规和软偏离。
-
-## 用户需求
-{user_requirements}
-
-## 组卷蓝图
-{paper_blueprint_json}
-
-## 题位契约（用于对照）
-{slot_contracts_md}
-
-## 审核分类标准
-
-对每个SlotBlueprint，按以下标准判定：
-
-**hard_violation（硬违规，必须修复）**：
-- 题型错误（如应该是single_choice却规划了综合题格式）
-- 分值错误
-- 多个正确答案或无法作答
-- 输出格式缺失
-- 综合应用题的option_style不为none（必须为none）
-
-**soft_deviation（软偏离）**：
-- major: 难度超出合理范围、计算量明显高于soft_max、primary_paper_role属于discouraged、考点属于should_not_be
-- minor: 轻微偏离偏好约束但仍在合理范围内
-
-**acceptable（可接受）**：
-- 完全符合或仅有minor偏离且理由合理
-
-## 审核要点
-
-1. 硬约束是否全部满足（题型、分值、选项数）
-2. 难度是否在合理范围内
-3. 计算量是否匹配题型和难度
-4. primary_paper_role是否合理
-5. 整卷知识点是否覆盖均匀、无重叠
-6. 难度曲线是否合理（前易后难）
-7. 偏离理由是否合理（如果有偏离）
-8. 整卷预算一致性：primary_role_distribution之和、difficulty_distribution之和、calculation_load_distribution之和是否都等于total_questions
-
-请严格按以下markdown格式输出：
-
-# blueprint_review
-
-## 总体
-- **status**: pass 或 revise
-- **hard_violation_count**: 硬违规数量
-- **major_deviation_count**: 重大偏离数量
-- **minor_deviation_count**: 轻微偏离数量
-- **comment**: 总体评价（2-3句话）
-
-## Q12
-- **status**: pass 或 revise
-- **hard_violation**: yes 或 no
-- **soft_deviation**: none 或 minor 或 major
-- **deviation_fields**: 偏离的字段（无偏离写"无"）
-- **issue**: 问题描述（无问题写"无"）
-- **revision_instruction**: 修改建议（无写"无"）
-
-（每个题位一个 ## 标题的section，格式同上）
-
-## 全局问题
-整卷层面的问题描述（无问题写"无"）
-"""
-
-BLUEPRINT_OUTLINE_REVIEW_PROMPT = """你是一位408考研组卷审核专家。请审核以下试卷大纲的质量。大纲是组卷智能体产出的规划文档，只包含每道题的考点、难度和考察模式。
-
-## 用户需求
-{user_requirements}
-
-## 试卷大纲
-{outline_md}
-
-## 各题位信息（用于对照）
-{slot_contracts_md}
-
-## 审核焦点
-
-### 1. 知识点兼容性
-- 每个题位的 primary_target_name 是否属于该题位的历史考点范围？
-- 是否有知识点与题位的能力范围不匹配？
-
-### 2. 难度分布一致性
-- 各题位 target_difficulty 是否在合理范围内（参照 K 值锚点）？
-- 整体难度曲线是否合理（前易后难、整体达标）？
-
-### 3. 跨题位覆盖
-- 知识点是否有不必要的重复？
-- 主要知识域是否都被覆盖到？
-- 功能角色搭配是否合理（基础/区分/陷阱）？
-
-### 4. 考察模式匹配
-- examination_mode 是否是该题位历史上出现过的模式？
-- 是否有题位选了不合理的模式？
-
-### 判定标准
-- **hard_issue**: 知识点完全不在题位范围内、难度严重超标
-- **soft_issue**: 考点略有偏差但可接受、模式选择不够典型
-- **pass**: 所有检查通过或仅有 minor 偏离
-
-请严格按以下markdown格式输出：
-
-## review
-- **status**: pass 或 revise
-- **hard_issue_count**: 硬问题数量
-- **soft_issue_count**: 软问题数量
-- **coverage_assessment**: 知识点覆盖评价（一句话）
-- **difficulty_curve_assessment**: 难度曲线评价（一句话）
-- **comment**: 总体评价（2-3句话）
-
-## per_slot
-（对每个有问题的题位，列出问题和修改建议；无问题的题位可以跳过）
-
-### Qxx
-- **issue_type**: hard 或 soft
-- **field**: 有问题的字段
-- **problem**: 问题描述
-- **suggestion**: 修改建议
-"""
-
-# ═══════════════════════════════════════════════════════════════
-# Generation prompts (markdown output)
-# ═══════════════════════════════════════════════════════════════
-
 SLOT_QUESTION_WRITER = """你是一位408考研出题专家。请严格按照以下SlotBlueprint生成一道完整的题目。
 
 ## 出题蓝图
@@ -914,93 +681,6 @@ QUESTION_FIXER_PROMPT = """你是一位408考研出题专家。以下题目整�
 
 # ═══════════════════════════════════════════════════════════════
 # Review prompt (markdown output)
-# ═══════════════════════════════════════════════════════════════
-
-PAPER_REVIEWER_PROMPT = """你是一位408考研试卷对抗审核员。你的目标不是确认试卷"没问题"，而是主动寻找每道题的潜在缺陷。你只有真的攻不破时，才能判 pass。
-
-## 整卷蓝图
-{paper_blueprint_json}
-
-## 生成的题目
-{generated_questions_json}
-
-## 题位模板（用于对照）
-{slot_templates_json}
-
-## 对抗审核策略
-
-对每道题，你必须执行以下攻击：
-
-### 攻击1：换一种理解方式解题
-用不同的推理路径重新求解，看是否得到相同答案。如果能得到不同答案，说明题目有歧义。
-
-### 攻击2：寻找表述漏洞
-- 题干是否有"可以合理理解为另一种意思"的歧义表述？
-- 是否存在需要善意补全但题目没给的条件？
-- 数值参数之间是否存在隐含矛盾？
-
-### 攻击3：攻击干扰项
-- 错误选项是否"太明显是错的"导致排除法秒杀？
-- 正确选项是否真的唯一正确？换种理解是否有其他选项也"说得通"？
-
-### 攻击4：对照蓝图
-- 考点/难度/风格是否真的匹配SlotBlueprint？
-- 解析推理是否严密？有无跳步、隐含假设、循环论证？
-
-### 攻击5：认知雷达匹配
-- 对比设计方案中的 target_K1-K5 与每道题实际的认知需求
-- 实际 K4≥4 但设计 K4=2 → 题目挖了意料之外的深坑
-- 实际 K5≤1 但设计 K5=3 → 跨域联动没有实现
-- 实际 K3≥4 但设计 K3=2 → 推演链过长超出设计意图
-
-## 判定规则
-- 找到任何一个实质性问题 → 判对应问题类型
-- 尝试所有攻击仍无法攻破 → pass
-- 不要把润色建议判为问题
-
-## 问题分类（关键！）
-
-- **content_mismatch**: 考点/难度/风格不符合蓝图要求 → 需要重新出题
-- **answer_error**: 内容符合但答案或计算有误 → 只需修复答案
-- **pass**: 质量合格（真的攻不破）
-
-请严格按以下markdown格式输出：
-
-# paper_review
-
-## 总体
-- **overall_status**: pass 或 has_issues
-- **overall_score**: 0-100
-- **overall_comment**: 总体评价
-
-## Q12
-- **status**: pass 或 content_mismatch 或 answer_error
-- **quality_score**: 0-10
-- **attack_result**: 你尝试了哪些攻击，结果如何（一句话）
-- **blueprint_compliance**: 是否符合蓝图（一句话）
-- **actual_K1**: 1-5（实际基础认知需求）
-- **actual_K2**: 1-5（实际单步代入需求）
-- **actual_K3**: 1-5（实际机制推演需求）
-- **actual_K4**: 1-5（实际条件路由需求）
-- **actual_K5**: 1-5（实际跨域联动需求）
-- **radar_match**: pass 或 fail（设计与实际认知雷达是否匹配）
-- **issue**: 问题描述（pass写"无"）
-- **fix_instruction**: 具体修复指令（pass写"无"；answer_error时指出错在哪、正确答案应该是什么；content_mismatch时说明应该如何调整）
-
-（每个题位一个 ## 标题的section，格式同上）
-
-## distribution
-- **difficulty_curve**: 难度曲线评价
-- **role_balance**: 功能角色分布评价
-- **knowledge_overlap**: 知识点重叠问题
-- **originality**: 原创性评价
-"""
-
-# Legacy prompt (kept for backward compatibility)
-PAPER_QUALITY_REVIEWER = PAPER_REVIEWER_PROMPT
-
-# ═══════════════════════════════════════════════════════════════
-# Hybrid subjective prompts (legacy prompt quality + new pipeline speed)
 # ═══════════════════════════════════════════════════════════════
 
 SUBJECTIVE_DRAFT_ONLY_PROMPT = """你是一位408考研出题专家。请根据以下设计方案，出一道综合应用题。

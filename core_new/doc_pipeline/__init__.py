@@ -1,4 +1,4 @@
-"""Document-based 4-layer pipeline for 408 exam question generation.
+"""Unified 5-layer document pipeline for 408 exam question generation.
 
 Usage:
     from core_new.doc_pipeline import DocPipeline
@@ -56,6 +56,7 @@ class DocPipeline:
         k_definitions: str = "",
         assembled_experience_doc: str = "",
         start_layer: int = 1,
+        question_type: str | None = None,
     ) -> PipelineResult:
         """Run the full document pipeline for one slot.
 
@@ -91,6 +92,7 @@ class DocPipeline:
                 k_definitions=k_definitions,
                 assembled_experience_doc=assembled_experience_doc,
                 start_layer=start_layer,
+                question_type=question_type,
             )
         finally:
             await scheduler.cleanup_webgpt(slot_id)

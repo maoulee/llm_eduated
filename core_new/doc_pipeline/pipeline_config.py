@@ -192,22 +192,23 @@ def _default_config() -> PipelineConfig:
 
 # Default values for fallback when no YAML exists
 _DEFAULT_PROVIDERS = [
-    {"name": "blueprint", "type": "file", "path_pattern": "{workspace}/{slot_id}/blueprint.md", "label": "蓝图", "phases": [2, 3, 4]},
-    {"name": "question", "type": "file", "path_pattern": "{workspace}/{slot_id}/question.md", "label": "题目", "phases": [2, 3, 4]},
-    {"name": "solve_output", "type": "file", "path_pattern": "{workspace}/{slot_id}/solve_output.txt", "label": "求解结果", "phases": [3, 4], "optional": True},
-    {"name": "feedback", "type": "file", "path_pattern": "{workspace}/{slot_id}/feedback.md", "label": "审核反馈", "phases": [2], "optional": True},
-    {"name": "review_comments", "type": "file", "path_pattern": "{workspace}/{slot_id}/review.md", "label": "审核意见", "phases": [4]},
-    {"name": "experience_doc", "type": "inline", "label": "经验文档", "phases": [1, 2], "optional": True},
+    {"name": "assembled", "type": "file", "path_pattern": "{workspace}/{slot_id}/blueprint.md", "label": "规划", "phases": [2, 3, 5]},
+    {"name": "question", "type": "file", "path_pattern": "{workspace}/{slot_id}/question.md", "label": "题目", "phases": [3, 4, 5]},
+    {"name": "solution", "type": "file", "path_pattern": "{workspace}/{slot_id}/solution.md", "label": "求解结果", "phases": [5]},
+    {"name": "solve_output", "type": "file", "path_pattern": "{workspace}/{slot_id}/solve_output.txt", "label": "代码输出", "phases": [5], "optional": True},
+    {"name": "review_comments", "type": "file", "path_pattern": "{workspace}/{slot_id}/review.md", "label": "审核意见", "phases": [2], "optional": True},
+    {"name": "experience_doc", "type": "inline", "label": "经验文档", "phases": [1], "optional": True},
     {"name": "k_definitions", "type": "inline", "label": "K值定义", "phases": [1], "optional": True},
 ]
 
 _DEFAULT_ROLE_BINDINGS = {
-    "design": [],
-    "question": ["blueprint", "feedback"],
-    "analysis": ["blueprint", "question"],
-    "coding": ["question"],
-    "review": ["blueprint", "question", "solve_output"],
-    "fix": ["question", "solve_output", "review_comments"],
+    "outline": ["experience_doc", "k_definitions"],
+    "question": ["assembled", "review_comments"],
+    "question_sc": ["assembled", "review_comments"],
+    "question_comp": ["assembled", "review_comments"],
+    "review": ["assembled", "question"],
+    "solve": ["question"],
+    "final_review": ["assembled", "question", "solution", "solve_output"],
 }
 
 _DEFAULT_PROFILES = {
@@ -215,7 +216,7 @@ _DEFAULT_PROFILES = {
     "all_remote": {"_role_routing": {}, "_model_routing": {}, "_default_routing": "remote"},
     "hybrid": {
         "_role_routing": {},
-        "_model_routing": {"paper_composer": "hybrid", "question": "hybrid", "coding": "hybrid", "review": "hybrid"},
+        "_model_routing": {"paper_composer": "hybrid", "question": "hybrid", "solve": "hybrid", "review": "hybrid"},
         "_default_routing": "local",
     },
 }

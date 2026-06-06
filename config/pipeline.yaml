@@ -15,12 +15,11 @@ pipeline:
     top_p: 0.9
 
   thinking_budget:
-    design: 8000
+    outline: 8000
     question: 10000
-    analysis: 10000
-    coding: 10000
-    review: 8000
-    fix: 10000
+    review: 10000
+    solve: 10000
+    final_review: 8000
 
 # ── Routing profiles ─────────────────────────────────────────
 routing:
@@ -47,7 +46,7 @@ routing:
       review: remote
       model_routing:
         review: "{fallback}"
-        fix: "{fallback}"
+        solve: "{fallback}"
 
     glm_gen_qwen_review:
       _default: remote
@@ -56,67 +55,69 @@ routing:
       review: local
       model_routing:
         question: "{fallback}"
-        coding: "{fallback}"
-        fix: "{fallback}"
-        analysis: "{local}"
+        solve: "{fallback}"
         review: "{local}"
 
     qwen_gpt_core:
       _default: local
       model_routing:
         question: webgpt
-        analysis: "{local}"
-        coding: webgpt
         review: webgpt
-        fix: webgpt
+        solve: webgpt
+        final_review: webgpt
 
     hybrid:
       _default: local
       model_routing:
         paper_composer: hybrid
         question: hybrid
-        coding: hybrid
+        solve: hybrid
         review: hybrid
+
+    glm_gpt_review:
+      _default: "{fallback}"
+      model_routing:
+        final_review: hybrid
 
 # ── Context providers ────────────────────────────────────────
 context_providers:
   builtins:
-    - name: blueprint
+    - name: assembled
       type: file
       path_pattern: "{workspace}/{slot_id}/blueprint.md"
-      label: "蓝图"
-      phases: [2, 3, 4]
+      label: "规划"
+      phases: [2, 3, 5]
 
     - name: question
       type: file
       path_pattern: "{workspace}/{slot_id}/question.md"
       label: "题目"
-      phases: [2, 3, 4]
+      phases: [3, 4, 5]
+
+    - name: solution
+      type: file
+      path_pattern: "{workspace}/{slot_id}/solution.md"
+      label: "求解结果"
+      phases: [5]
 
     - name: solve_output
       type: file
       path_pattern: "{workspace}/{slot_id}/solve_output.txt"
-      label: "求解结果"
-      phases: [3, 4]
-      optional: true
-
-    - name: feedback
-      type: file
-      path_pattern: "{workspace}/{slot_id}/feedback.md"
-      label: "审核反馈"
-      phases: [2]
+      label: "代码输出"
+      phases: [5]
       optional: true
 
     - name: review_comments
       type: file
       path_pattern: "{workspace}/{slot_id}/review.md"
       label: "审核意见"
-      phases: [4]
+      phases: [2]
+      optional: true
 
     - name: experience_doc
       type: inline
       label: "经验文档"
-      phases: [1, 2]
+      phases: [1]
       optional: true
 
     - name: k_definitions
@@ -126,9 +127,10 @@ context_providers:
       optional: true
 
   role_bindings:
-    design: []
-    question: [blueprint, feedback]
-    analysis: [blueprint, question]
-    coding: [question]
-    review: [blueprint, question, solve_output]
-    fix: [question, solve_output, review_comments]
+    outline: [experience_doc, k_definitions]
+    question: [assembled, review_comments]
+    question_sc: [assembled, review_comments]
+    question_comp: [assembled, review_comments]
+    review: [assembled, question]
+    solve: [question]
+    final_review: [assembled, question, solution, solve_output]

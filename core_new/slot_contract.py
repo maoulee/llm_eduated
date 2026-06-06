@@ -47,11 +47,13 @@ def build_slot_contract(
     subj = template.get("subject_stability", "未知")
     # Map subject_stability to display subject
     if subj == "跨领域":
-        lines.append("- **科目**: 计算机组成原理（跨知识域）")
+        lines.append("- **科目**: 跨知识域（见下方具体分布）")
     else:
-        lines.append(f"- **科目**: 计算机组成原理（{subj}）")
+        lines.append(f"- **科目**: {subj}")
     radar = template.get("radar_shape", "")
     if radar:
+        from core_new.subject_map import translate_code
+        radar = translate_code(radar)
         lines.append(f"- **典型雷达**: {radar}")
     lines.append("")
 

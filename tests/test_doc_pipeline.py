@@ -238,23 +238,30 @@ class TestDocParser:
 
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix"}
+        expected_roles = {
+            "outline", "question_sc", "question_comp",
+            "review", "solve", "final_review",
+        }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
     def test_all_roles_have_output_files(self):
-        expected_roles = {"design", "question", "analysis", "coding", "review", "fix"}
+        expected_roles = {
+            "outline", "question_sc", "question_comp",
+            "review", "solve", "final_review",
+        }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
     def test_output_files_have_extensions(self):
         for role, filename in AGENT_OUTPUT_FILES.items():
             assert "." in filename, f"{role} output file '{filename}' has no extension"
 
-    def test_coding_output_is_py(self):
-        assert AGENT_OUTPUT_FILES["coding"] == "solve.py"
+    def test_question_roles_share_output_file(self):
+        assert AGENT_OUTPUT_FILES["question_sc"] == "question.md"
+        assert AGENT_OUTPUT_FILES["question_comp"] == "question.md"
 
     def test_multi_turn_agents(self):
-        assert "question" in MULTI_TURN_AGENTS
-        assert "analysis" in MULTI_TURN_AGENTS
+        assert "question_sc" in MULTI_TURN_AGENTS
+        assert "question_comp" in MULTI_TURN_AGENTS
 
     def test_prompts_mention_write_file(self):
         for role, prompt in AGENT_PROMPTS.items():
@@ -309,16 +316,16 @@ class TestDocSchedulerToolProtocol:
                 "content": "",
                 "reasoning_content": "",
                 "tool_calls": [
-                    _write_file_call("blueprint.md", "## status\ndraft\n\n## 知识点\nCache")
+                    _write_file_call("outline.md", "## status\ndraft\n\n## 知识点\nCache")
                 ],
             }
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("design", "task", slot_id="S1"))
+        result = run_async(scheduler.run_agent("outline", "task", slot_id="S1"))
 
         assert result.startswith("## status")
-        assert (tmp_path / "S1" / "blueprint.md").read_text(encoding="utf-8") == result
+        assert (tmp_path / "S1" / "outline.md").read_text(encoding="utf-8") == result
         assert calls[0]["tool_choice"] == {
             "type": "function",
             "function": {"name": "write_file"},
@@ -327,7 +334,7 @@ class TestDocSchedulerToolProtocol:
     def test_run_agent_extracts_textual_tool_call(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
         textual = (
-            '[{"name": "write_file", "parameters": {"path": "blueprint.md", '
+            '[{"name": "write_file", "parameters": {"path": "outline.md", '
             '"content": "## status\\ndraft"}}]'
         )
 
@@ -340,15 +347,15 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("design", "task", slot_id="S2"))
+        result = run_async(scheduler.run_agent("outline", "task", slot_id="S2"))
 
         assert result == "## status\ndraft"
-        assert (tmp_path / "S2" / "blueprint.md").exists()
+        assert (tmp_path / "S2" / "outline.md").exists()
 
     def test_run_agent_does_not_reuse_stale_expected_file(self, tmp_path):
         slot_dir = tmp_path / "S3"
         slot_dir.mkdir()
-        stale = slot_dir / "blueprint.md"
+        stale = slot_dir / "outline.md"
         stale.write_text("old content", encoding="utf-8")
 
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -364,7 +371,7 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("design", "task", slot_id="S3"))
+        result = run_async(scheduler.run_agent("outline", "task", slot_id="S3"))
 
         assert result == ""
         assert not stale.exists()
@@ -381,7 +388,7 @@ class TestDocSchedulerToolProtocol:
             {
                 "content": "",
                 "reasoning_content": "",
-                "tool_calls": [_write_file_call("blueprint.md", "## status\ndraft", "call_2")],
+                "tool_calls": [_write_file_call("outline.md", "## status\ndraft", "call_2")],
             },
         ]
 
@@ -390,10 +397,10 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("design", "task", slot_id="S4"))
+        result = run_async(scheduler.run_agent("outline", "task", slot_id="S4"))
 
         assert result == "## status\ndraft"
-        assert (tmp_path / "S4" / "blueprint.md").exists()
+        assert (tmp_path / "S4" / "outline.md").exists()
 
 
 # ── Orchestration/scheduling separation ─────────────────────────
@@ -424,14 +431,18 @@ class FakeAgentSchedulerForOrchestration:
         ws.mkdir(parents=True, exist_ok=True)
 
         outputs = {
-            "design": ("blueprint.md", "## status\ndraft\n\n## 知识点\nCache"),
-            "question": (
+            "outline": ("outline.md", "## status\nready\n\n## 考点\nCache\n\n## 难度目标\nK1=2"),
+            "question_sc": (
                 "question.md",
-                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 答案\n42\n\n## 设计说明\n覆盖 Cache",
+                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 选项\n- A: 1\n- B: 2\n- C: 3\n- D: 4\n\n## 设计说明\n覆盖 Cache",
             ),
-            "analysis": ("feedback.md", "## status\npass\n\n## summary\nOK\n\n## detailed_feedback\n通过"),
-            "coding": ("solve.py", "print('42')\n"),
+            "question_comp": (
+                "question.md",
+                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 子问题\n### (1) (3分)\n求命中率\n\n## 设计说明\n覆盖 Cache",
+            ),
             "review": ("review.md", "## status\npass\n\n## summary\nOK\n\n## corrections\n无\n\n## detailed_feedback\n通过"),
+            "solve": ("solution.md", "## status\nsolved\n\n## 求解过程\n推导过程\n\n## 最终答案\n42"),
+            "final_review": ("final_review.md", "## status\npass\n\n## summary\nOK\n\n## corrections\n无\n\n## detailed_feedback\n通过"),
         }
         if role not in outputs:
             return ""
@@ -448,19 +459,18 @@ class TestDocPipelineOrchestrator:
         result = run_async(orchestrator.run_pipeline("S5", {"slot_id": "S5"}))
 
         assert result.ok is True
-        assert result.code_exec_ok is True
         assert [c["role"] for c in scheduler.calls] == [
-            "design",
-            "question",
-            "analysis",
-            "coding",
+            "outline",
+            "question_sc",
             "review",
+            "solve",
+            "final_review",
         ]
         final_text = (tmp_path / "S5" / "final.md").read_text(encoding="utf-8")
         assert "## 题目" in final_text
         assert "42" in final_text
 
-    def test_resume_refreshes_assembled_doc_and_requires_solve_output(self, tmp_path):
+    def test_resume_from_layer5_fails_without_solution(self, tmp_path):
         slot_dir = tmp_path / "S6"
         slot_dir.mkdir()
         (slot_dir / "blueprint.md").write_text("old blueprint", encoding="utf-8")
@@ -476,15 +486,14 @@ class TestDocPipelineOrchestrator:
             "S6",
             {"slot_id": "S6"},
             assembled_experience_doc="fresh assembled blueprint",
-            start_layer=4,
+            start_layer=5,
         ))
 
         assert result.ok is False
-        assert "solve_output.txt not found" in result.error
+        assert "solution.md not found" in result.error
         assert (slot_dir / "blueprint.md").read_text(encoding="utf-8") == "fresh assembled blueprint"
-        assert scheduler.calls == []
 
-    def test_resume_layer4_uses_existing_outputs(self, tmp_path):
+    def test_resume_layer4_runs_solve_and_final_review(self, tmp_path):
         slot_dir = tmp_path / "S7"
         slot_dir.mkdir()
         (slot_dir / "blueprint.md").write_text("old blueprint", encoding="utf-8")
@@ -492,7 +501,6 @@ class TestDocPipelineOrchestrator:
             "## status\ndraft\n\n## 题干\n计算题。\n\n## 答案\n42",
             encoding="utf-8",
         )
-        (slot_dir / "solve_output.txt").write_text("ANSWER: 42", encoding="utf-8")
 
         scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
         orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
@@ -506,7 +514,7 @@ class TestDocPipelineOrchestrator:
 
         assert result.ok is True
         assert (slot_dir / "blueprint.md").read_text(encoding="utf-8") == "fresh assembled blueprint"
-        assert [c["role"] for c in scheduler.calls] == ["review"]
+        assert [c["role"] for c in scheduler.calls] == ["solve", "final_review"]
 
 
 class TestContextRegistry:
@@ -607,7 +615,7 @@ class TestRunSlotCompositionArtifacts:
         stale = compose_dir / "Q99_assembled.md"
         stale.write_text("stale", encoding="utf-8")
 
-        async def fake_compose_paper(gateway, templates, user_requirements, model_routing=None):
+        async def fake_compose_paper(gateway, templates, user_requirements, model_routing=None, exp_dir="data/slot_experiences"):
             return "# outline", {
                 "total_questions": 1,
                 "slots": [
@@ -740,7 +748,10 @@ class TestGatewayGenerateWithTools:
 class TestAgentLoader:
     def test_loads_online_runtime_agents(self):
         specs = load_agents()
-        expected = {"design", "question", "analysis", "coding", "review", "fix"}
+        expected = {
+            "outline", "question_sc", "question_comp",
+            "review", "solve", "final_review",
+        }
         assert set(specs.keys()) == expected
 
     def test_each_spec_has_required_fields(self):
@@ -757,24 +768,22 @@ class TestAgentLoader:
 
     def test_multi_turn_agents(self):
         _, _, multi_turn, _, _, _ = get_agent_dicts()
-        assert multi_turn == {"question", "analysis"}
+        assert multi_turn == {"question_sc", "question_comp"}
 
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
-        assert thinking["design"] == 8000
-        assert thinking["coding"] == 10000
-        # format is a system hook, not an AgentMD runtime role.
-        assert "format" not in thinking
+        assert thinking["question_sc"] == 12000
+        assert thinking["question_comp"] == 16000
 
     def test_compat_dicts_match_legacy(self):
-        """AgentMD runtime roles should stay compatible with legacy online roles."""
+        """AgentMD runtime roles match the current 5-layer pipeline."""
         prompts, output_files, multi_turn, _, _, _ = get_agent_dicts()
-        runtime_roles = {"design", "question", "analysis", "coding", "review", "fix"}
-        assert set(prompts.keys()) == runtime_roles
-        assert set(output_files.keys()) == runtime_roles
-        assert runtime_roles.issubset(set(_AGENT_PROMPTS_LEGACY.keys()))
-        assert runtime_roles.issubset(set(_AGENT_OUTPUT_FILES_LEGACY.keys()))
-        assert multi_turn == _MULTI_TURN_LEGACY
+        expected_roles = {
+            "outline", "question_sc", "question_comp",
+            "review", "solve", "final_review",
+        }
+        assert set(prompts.keys()) == expected_roles
+        assert set(output_files.keys()) == expected_roles
 
     def test_parse_custom_agent_md(self, tmp_path):
         agent_file = tmp_path / "test_role.md"

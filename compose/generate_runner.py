@@ -200,7 +200,7 @@ async def _generate_doc(gateway, sb, slot_id, exp_card, *, output_dir="docs",
     elif assembled_experience_doc:
         print(f"  [{slot_id}] DocPipeline (3-layer, assembled doc)...")
     else:
-        print(f"  [{slot_id}] DocPipeline (4-layer)...")
+        print(f"  [{slot_id}] DocPipeline (5-layer)...")
     t0 = time.monotonic()
 
     try:
@@ -239,7 +239,7 @@ async def _generate_doc(gateway, sb, slot_id, exp_card, *, output_dir="docs",
     except Exception as e:
         elapsed = time.monotonic() - t0
         print(f"  [{slot_id}] DocPipeline failed ({elapsed:.1f}s): {e}")
-        return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "doc_4layer"}
+        return {"slot_id": slot_id, "status": "error", "error": str(e), "pipeline_type": "doc_5layer"}
 
 
 async def _format_and_export(gateway, final_questions, output_dir, blueprint=None):

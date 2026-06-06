@@ -50,49 +50,43 @@ _BEHAVIOR_CORE = (
 )
 
 _BEHAVIOR_VARIANTS = {
-    "question": "question_create",
-    "coding": "create_verify",
-    "fix": "fix_verify",
-    "analysis": "audit_judge",
-    "review": "audit_fix",
-    "design": "plan_design",
+    "outline": "plan_design",
+    "question_sc": "question_create",
+    "question_comp": "question_create",
+    "review": "audit_judge",
+    "solve": "solve_create",
+    "final_review": "final_review",
 }
 
 _BEHAVIOR_VARIANT_TEXT = {
+    "plan_design": (
+        "你的模式是「分析输入→构建框架→填充细节→输出」。"
+        "先搭骨架再填充，不要一开始就写完整内容。"
+    ),
     "question_create": (
         "你的模式是「深度思考知识设计→代码验证参数闭环→输出」。\n"
         "第1步（纯思考）：深入设计知识点覆盖、逻辑关联、题干表述、消除歧义，选参数但不验证数值。\n"
         "第2步（exec_python）：验证参数封闭性、推导路径等价、单位换算自洽，不计算最终答案。\n"
         "代码为王：参数不一致时以代码为准，改题干参数不改代码。只有审核指出题干问题时才修题干。\n"
+        "不写答案：答案由独立的求解智能体产出，你只输出题干+选项/子问题+设计说明。\n"
         "顺序：思考设计 → exec_python验证参数闭环 → write_file输出。"
-    ),
-    "create_verify": (
-        "你的模式是「大胆构造→代码验证→修正→输出」。"
-        "数值计算直接写代码(exec_python)验证，不在脑内推演。"
-        "快速选值→exec_python验证→write_file输出。"
-    ),
-    "fix_verify": (
-        "你的模式是「判断修改级别→修正→输出」。"
-        "措辞级问题：edit_file直接修改表述，不走代码校验。"
-        "结构级问题：修改推理/参数后用exec_python重新校验参数闭环，以代码为准调整题干参数。"
-        "代码为王：参数不一致改题干，不改代码。"
     ),
     "audit_judge": (
         "你的模式是「结构化审核→结论→输出」。"
         "按检查清单逐项判断，每项给结论不给推导。"
+        "此阶段无答案，不评估答案正确性。"
     ),
-    "audit_fix": (
-        "你的模式是「结构化审核→最小修复→输出」。"
-        "按检查清单逐项判断，需要修复时用exec_python验证数值。"
-        "审核结论或修复结果通过write_file输出。"
+    "solve_create": (
+        "你的模式是「判断题型→选择策略→求解→输出」。"
+        "概念题：直接推理，无需代码。数值题：大胆写代码验证，不在脑内推演。"
+        "禁止阅读设计说明——只看题干。"
+        "快速求解→exec_python验证（数值题）→write_file输出。"
     ),
-    "format_convert": (
-        "你的模式是「读取→组装→输出」。"
-        "原样搬运内容，不修改不增加不推理，直接组装后输出。"
-    ),
-    "plan_design": (
-        "你的模式是「分析输入→构建框架→填充细节→输出」。"
-        "先搭骨架再填充，不要一开始就写完整内容。"
+    "final_review": (
+        "你的模式是「结构化终审→路由判定→输出」。"
+        "审核题目+答案整体质量，按检查清单逐项判断。"
+        "精准路由：pass通过，expression_fix就地修正，question_error回出题，solution_error回求解。"
+        "需要修复时用exec_python验证数值。"
     ),
 }
 
@@ -144,10 +138,14 @@ class AgentSpec:
         self.required_tools = meta.get("required_tools", ["write_file"])
         self.behavior_type = _BEHAVIOR_VARIANTS.get(self.name, "plan_design")
 
-        # Assemble system prompt: behavior core + variant + write_file suffix
+        # Assemble system prompt: behavior core + identity + variant + write_file suffix
         variant_text = _BEHAVIOR_VARIANT_TEXT.get(self.behavior_type, "")
         suffix = _WRITE_FILE_SUFFIX.replace("{filename}", self.output_file)
-        self.prompt = _BEHAVIOR_CORE + "\n" + variant_text + suffix
+        identity = body.strip() if body.strip() else ""
+        if identity:
+            self.prompt = _BEHAVIOR_CORE + "\n\n" + identity + "\n\n" + variant_text + suffix
+        else:
+            self.prompt = _BEHAVIOR_CORE + "\n" + variant_text + suffix
 
         # Skill content: loaded from skills/<behavior_type>/<name>_skill.md
         self.skill_content = self._load_skill()

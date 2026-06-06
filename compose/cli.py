@@ -70,8 +70,8 @@ async def main():
     sub_gen.add_argument("--slots", nargs="+", help="Only generate these slots")
     sub_gen.add_argument("--output-dir", default="docs")
     sub_gen.add_argument("--routing", choices=routing_choices, default="all_local")
-    sub_gen.add_argument("--resume-from", type=int, default=1, choices=[1, 2, 3, 4],
-                         help="Resume from pipeline layer (1=full, 2=skip design, 3=skip Q/A, 4=review only)")
+    sub_gen.add_argument("--resume-from", type=int, default=1, choices=[1, 2, 3, 4, 5],
+                         help="Resume from pipeline layer (1=full, 2=skip outline, 3=skip question+review, 4=skip solve, 5=skip final review)")
     sub_gen.add_argument("--run-id", default=None,
                          help="Run ID for workspace isolation (default: read from compose manifest)")
 
@@ -79,13 +79,22 @@ async def main():
     sub_debug = subparsers.add_parser("debug", help="Run a single agent with workspace files")
     sub_debug.add_argument("--slot", required=True, help="Slot ID (e.g. Q12)")
     sub_debug.add_argument("--agent", required=True,
-                           choices=["design", "question", "analysis", "coding", "review", "fix"])
+                           choices=["outline", "question", "review", "solve", "final_review"])
     sub_debug.add_argument("--workspace", default="docs/workspace")
     sub_debug.add_argument("--routing", choices=routing_choices, default="all_local")
     sub_debug.add_argument("--run-id", default=None,
                            help="Run ID for workspace isolation (default: latest run)")
     sub_debug.add_argument("--inject", nargs="*", metavar="KEY=FILE",
                            help="Extra file injections, e.g. '蓝图=docs/workspace/Q12/blueprint.md'")
+
+    # ── revise subcommand ──
+    sub_revise = subparsers.add_parser("revise", help="修订大纲（基于教师批注/字段变更）")
+    sub_revise.add_argument("--base", default=None,
+                           help="修订前大纲路径（默认: docs/compose/outline.md）")
+    sub_revise.add_argument("--annotated", default=None,
+                           help="教师批注后大纲路径（默认: 与 --base 相同，即原地检测批注）")
+    sub_revise.add_argument("--output-dir", default="docs")
+    sub_revise.add_argument("--routing", choices=routing_choices, default="all_local")
 
     args = parser.parse_args()
 
@@ -97,6 +106,49 @@ async def main():
     # ── debug subcommand ──
     if args.command == "debug":
         await debug_runner.run_debug(args, model_routing)
+        return
+
+    # ── revise subcommand ──
+    if args.command == "revise":
+        base_path = args.base or os.path.join(args.output_dir, "compose", "outline.md")
+        if not os.path.exists(base_path):
+            print(f"Outline not found: {base_path}")
+            print("Run 'compose compose' first to generate the outline.")
+            return
+
+        # Load templates and experience cards for re-assembly
+        tpl_path = "data/slot_templates.json"
+        if not os.path.exists(tpl_path):
+            print(f"Templates not found: {tpl_path}")
+            return
+        with open(tpl_path, encoding="utf-8") as f:
+            tpl_data = json.load(f)
+        templates = tpl_data.get("templates", {})
+
+        exp_cards = {}
+        exp_dir = "data/slot_experiences"
+        if os.path.isdir(exp_dir):
+            for fname in os.listdir(exp_dir):
+                if fname.endswith("_experience.md"):
+                    slot_id = fname.replace("_experience.md", "")
+                    with open(os.path.join(exp_dir, fname), encoding="utf-8") as f:
+                        exp_cards[slot_id] = f.read()
+
+        gateway = _rgw("paper_composer")
+        result = await compose_runner.revise_outline(
+            gateway, templates, exp_cards,
+            base_outline_path=base_path,
+            annotated_outline_path=args.annotated,
+            output_dir=args.output_dir,
+            model_routing=model_routing,
+        )
+
+        if result.get("status") == "ok":
+            print(f"\n✅ 修订完成，已更新: {', '.join(result.get('changed_slots', []))}")
+        elif result.get("status") == "unchanged":
+            print("\n未检测到变更，大纲未修改。")
+        else:
+            print(f"\n❌ 修订失败: {result}")
         return
 
     # ── generate subcommand ──
