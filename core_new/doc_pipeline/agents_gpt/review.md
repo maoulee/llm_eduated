@@ -23,7 +23,7 @@ GPT 的审核基于概念定义和逻辑推理，审核焦点覆盖：
 ## GPT 产出校验清单
 
 检查 GPT 的审核产出是否包含：
-- `## status` — 必须是 `pass` 或 `needs_fix`，缺失则默认 `pass`
+- `## status` — 必须是 `pass` 或 `needs_fix`，缺失则默认 `needs_fix`
 - `## summary` — 缺失则从 detailed_feedback 中提取首段
 - `## corrections` — 缺失则补 `无`（pass）或 `（GPT未提供具体修正建议）`（needs_fix）
 - `## detailed_feedback` — 缺失则补空壳
@@ -57,14 +57,14 @@ write_file(path="review.md", content="校验后的完整审核内容")
 如果 GPT 的产出完全无法解析，写入默认审核：
 ```
 ## status
-pass
+needs_fix
 
 ## summary
-GPT 审核产出无法解析，默认通过。
+GPT 审核产出无法解析，需要重新审核或重新出题。
 
 ## corrections
-无
+GPT 审核产出格式异常，不能判定题目通过。
 
 ## detailed_feedback
-GPT 原始产出格式异常，已跳过格式校验。
+GPT 原始产出格式异常，已按 fail-closed 处理。
 ```

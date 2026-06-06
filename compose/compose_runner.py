@@ -274,10 +274,6 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
 
     YAML block takes priority when present.
     """
-    # Translate abbreviated codes in LLM output
-    from core_new.subject_map import translate_code
-    outline_md = translate_code(outline_md)
-
     slots = []
     pattern = r"## (Q\d+)"
     parts = re.split(pattern, outline_md)

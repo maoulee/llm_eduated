@@ -79,7 +79,7 @@ async def main():
     sub_debug = subparsers.add_parser("debug", help="Run a single agent with workspace files")
     sub_debug.add_argument("--slot", required=True, help="Slot ID (e.g. Q12)")
     sub_debug.add_argument("--agent", required=True,
-                           choices=["outline", "question", "review", "solve", "final_review"])
+                           choices=["outline", "question_sc", "question_comp", "review", "solve", "final_review"])
     sub_debug.add_argument("--workspace", default="docs/workspace")
     sub_debug.add_argument("--routing", choices=routing_choices, default="all_local")
     sub_debug.add_argument("--run-id", default=None,

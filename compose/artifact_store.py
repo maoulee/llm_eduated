@@ -201,26 +201,37 @@ _KG_FILE_MAP = {
     "CN": "computer_network.md",
 }
 
+_KG_DOMAIN_ALIASES = {
+    "CO": "CO",
+    "组成原理": "CO",
+    "计算机组成原理": "CO",
+    "DS": "DS",
+    "数据结构": "DS",
+    "OS": "OS",
+    "操作系统": "OS",
+    "CN": "CN",
+    "计算机网络": "CN",
+}
+
 
 def _extract_knowledge_graph_section(target_family: str) -> str:
     """Extract relevant knowledge graph section from subject-specific file.
 
-    Given a target_family like "CO-1 > 计算机系统概述" or "DS-3 > 栈",
+    Given a target_family like "CO-1 > 计算机系统概述" or "DS-5 > 树与二叉树",
     finds the corresponding section in the knowledge graph and returns its full subtree.
+    Both English codes and translated codes such as "数据结构-5" are accepted.
     """
     if not target_family:
         return ""
 
-    # Determine which knowledge file to use based on domain prefix
     parts = [p.strip() for p in target_family.split(">")]
-    top_level = parts[0] if parts else ""  # e.g. "CO-1"
-    sub_level = parts[1] if len(parts) > 1 else ""  # e.g. "计算机系统概述"
-
-    if not top_level:
+    top_level = parts[0] if parts else ""
+    sub_level = parts[1] if len(parts) > 1 else ""
+    domain, chapter_no, canonical_top = _parse_kg_top_level(top_level)
+    if not domain or not chapter_no:
         return ""
 
-    domain_prefix = top_level.split("-")[0] if "-" in top_level else ""
-    kg_filename = _KG_FILE_MAP.get(domain_prefix, "computer_organization.md")
+    kg_filename = _KG_FILE_MAP.get(domain, "computer_organization.md")
     kg_path = os.path.join("data", kg_filename)
     if not os.path.exists(kg_path):
         return ""
@@ -228,16 +239,12 @@ def _extract_knowledge_graph_section(target_family: str) -> str:
     with open(kg_path, encoding="utf-8") as f:
         text = f.read()
 
-    # Find the top-level section: "## CO-1 计算机系统概述"
-    top_pattern = re.compile(
-        rf"^## {re.escape(top_level)}\b", re.MULTILINE
-    )
-    top_match = top_pattern.search(text)
+    top_match = _find_kg_top_section(text, domain, chapter_no, canonical_top)
     if not top_match:
         return ""
 
     # Find the end of this top-level section (next ## or end of file)
-    next_top = re.search(r"\n## (?!#)", text[top_match.end():])
+    next_top = re.search(r"\n##\s+(?!#)", text[top_match.end():])
     top_end = top_match.end() + next_top.start() if next_top else len(text)
     top_section = text[top_match.start():top_end]
 
@@ -245,7 +252,7 @@ def _extract_knowledge_graph_section(target_family: str) -> str:
     if sub_level:
         # Try to match ### or #### heading containing the sub-level name
         sub_pattern = re.compile(
-            rf"^(#{2,4})\s+.*{re.escape(sub_level)}", re.MULTILINE
+            rf"^(#{2,6})\s+.*{re.escape(sub_level)}", re.MULTILINE
         )
         sub_match = sub_pattern.search(top_section)
         if sub_match:
@@ -266,13 +273,53 @@ def _extract_knowledge_graph_section(target_family: str) -> str:
     return _clean_knowledge_section(top_section)
 
 
+def _parse_kg_top_level(top_level: str) -> tuple[str, str, str]:
+    """Return (domain, chapter_no, canonical_top) from a target-family prefix."""
+    raw = (top_level or "").strip()
+    if not raw:
+        return "", "", ""
+
+    m = re.match(
+        r"^(CO|DS|OS|CN|组成原理|计算机组成原理|数据结构|操作系统|计算机网络)-(\d+)\b",
+        raw,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        return "", "", ""
+
+    domain_key = m.group(1).upper() if m.group(1).isascii() else m.group(1)
+    domain = _KG_DOMAIN_ALIASES.get(domain_key, "")
+    chapter_no = m.group(2)
+    canonical_top = f"{domain}-{chapter_no}" if domain else ""
+    return domain, chapter_no, canonical_top
+
+
+def _find_kg_top_section(text: str, domain: str, chapter_no: str, canonical_top: str):
+    """Find the top-level heading in a subject knowledge graph file."""
+    patterns = []
+    if domain == "CO":
+        patterns.append(rf"^##\s+{re.escape(canonical_top)}\b")
+        # Fallback for future files that may switch to numeric headings.
+        patterns.append(rf"^##\s+{re.escape(chapter_no)}\.\s+")
+    else:
+        # DS/OS/CN knowledge files use numeric chapter headings.
+        patterns.append(rf"^##\s+{re.escape(chapter_no)}\.\s+")
+        patterns.append(rf"^##\s+{re.escape(canonical_top)}\b")
+
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.MULTILINE)
+        if match:
+            return match
+    return None
+
+
 def _clean_knowledge_section(section: str) -> str:
     """Clean a knowledge graph section: keep headings and leaf names, remove attributes/sources."""
     lines: list[str] = []
     for line in section.split("\n"):
         stripped = line.rstrip()
         # Keep headings
-        if re.match(r"^#{1,4}\s", stripped):
+        if re.match(r"^#{1,6}\s", stripped):
             lines.append(stripped)
         # Keep top-level bullet items (not sub-bullets with 属性/来源)
         elif stripped.startswith("- ") and not stripped.startswith("  "):

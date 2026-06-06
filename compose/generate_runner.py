@@ -16,6 +16,11 @@ from pathlib import Path
 from core_new.doc_pipeline.contracts import ComposeArtifact
 
 
+_H2_RE = re.compile(r"^##\s+(.+)$", re.MULTILINE)
+_OPTION_RE = re.compile(r"^\s*(?:[-*]\s*)?([A-D])\s*[.、:：)]\s*(.+?)\s*$")
+_SUBQ_RE = re.compile(r"^\s*(?:[-*]\s*)?(\(?\d+\)|\d+[.、])\s*(.+?)\s*$")
+
+
 def load_compose_artifacts(compose_dir: str, slot_filter: list[str] | None = None) -> dict[str, ComposeArtifact]:
     """Load compose artifacts from disk.
 
@@ -230,6 +235,7 @@ async def _generate_doc(gateway, sb, slot_id, exp_card, *, output_dir="docs",
 
         if result.final_content:
             q_data["final_md"] = result.final_content
+            q_data.update(_extract_structured_fields_from_final_md(result.final_content, slot_id))
 
         print(f"  [{slot_id}] DocPipeline done ({elapsed:.1f}s): "
               f"review={result.review_status} iters={result.analysis_iterations} ok={result.ok}")
@@ -264,3 +270,125 @@ def _read_run_id_from_manifest(compose_dir: str) -> str | None:
     text = manifest_path.read_text(encoding="utf-8")
     m = re.search(r"^- run_id:\s*(.+)$", text, re.MULTILINE)
     return m.group(1).strip() if m else None
+
+
+def _extract_structured_fields_from_final_md(final_md: str, slot_id: str) -> dict:
+    """Parse DocPipeline final.md into the legacy structured dict used by formatter."""
+    if not final_md:
+        return {}
+
+    stem = _extract_h2_section(final_md, "题目")
+    options_text = _extract_h2_section(final_md, "选项")
+    subq_text = _extract_h2_section(final_md, "子问题")
+    process_text = _extract_h2_section(final_md, "求解过程")
+    code_output = _extract_h2_section(final_md, "代码验证输出")
+    answer_text = _extract_h2_section(final_md, "答案")
+    design_notes = _extract_h2_section(final_md, "设计说明")
+
+    slot_num = int(re.sub(r"[^\d]", "", slot_id) or "99")
+    is_comp = slot_num >= 43 or (subq_text and not options_text)
+    data: dict[str, object] = {
+        "stem": stem.strip(),
+        "question_type": "comprehensive" if is_comp else "single_choice",
+    }
+
+    options = _parse_option_fields(options_text)
+    if options:
+        data.update(options)
+
+    if is_comp:
+        data["sub_questions"] = _parse_sub_questions(subq_text)
+        if answer_text:
+            data["answer"] = answer_text.strip()
+    else:
+        correct_answer = _parse_correct_answer(answer_text)
+        if correct_answer:
+            data["correct_answer"] = correct_answer
+
+    explanation_parts = [part.strip() for part in (process_text, code_output) if part and part.strip()]
+    if explanation_parts:
+        data["explanation"] = "\n\n".join(explanation_parts)
+    elif answer_text:
+        data["explanation"] = answer_text.strip()
+
+    if design_notes:
+        data["parameter_notes"] = design_notes.strip()
+
+    return data
+
+
+def _extract_h2_section(text: str, heading: str) -> str:
+    """Extract content under a ## heading, preserving ### subsections."""
+    matches = list(_H2_RE.finditer(text or ""))
+    for i, match in enumerate(matches):
+        if match.group(1).strip() == heading:
+            start = match.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+            return text[start:end].strip()
+    return ""
+
+
+def _parse_option_fields(options_text: str) -> dict[str, str]:
+    options: dict[str, str] = {}
+    current_key = ""
+    current_lines: list[str] = []
+
+    def flush() -> None:
+        nonlocal current_key, current_lines
+        if current_key:
+            options[f"option_{current_key}"] = " ".join(line.strip() for line in current_lines if line.strip()).strip()
+        current_key = ""
+        current_lines = []
+
+    for line in (options_text or "").splitlines():
+        match = _OPTION_RE.match(line)
+        if match:
+            flush()
+            current_key = match.group(1).upper()
+            current_lines = [match.group(2).strip()]
+        elif current_key and line.strip():
+            current_lines.append(line.strip())
+    flush()
+    return options
+
+
+def _parse_sub_questions(subq_text: str) -> list[str]:
+    text = (subq_text or "").strip()
+    if not text:
+        return []
+
+    heading_matches = list(re.finditer(r"^###\s+(.+?)\s*$", text, flags=re.MULTILINE))
+    if heading_matches:
+        items: list[str] = []
+        for i, match in enumerate(heading_matches):
+            start = match.end()
+            end = heading_matches[i + 1].start() if i + 1 < len(heading_matches) else len(text)
+            body = text[start:end].strip()
+            heading = match.group(1).strip()
+            items.append((heading + ("\n" + body if body else "")).strip())
+        return items
+
+    items = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        match = _SUBQ_RE.match(stripped)
+        if match:
+            items.append(f"{match.group(1)} {match.group(2).strip()}")
+        elif items:
+            items[-1] += " " + stripped
+        else:
+            items.append(stripped)
+    return items
+
+
+def _parse_correct_answer(answer_text: str) -> str:
+    text = (answer_text or "").strip()
+    if not text:
+        return ""
+    match = re.search(r"(?:正确答案|答案)\s*[：:]\s*([A-D])\b", text, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+    match = re.search(r"\b([A-D])\b", text, flags=re.IGNORECASE)
+    return match.group(1).upper() if match else ""

@@ -13,9 +13,11 @@ import httpx
 import pytest
 
 from core_new.doc_pipeline.write_file_tool import WriteFileTool
+from compose.artifact_store import _extract_knowledge_graph_section
+from compose.compose_runner import _parse_outline_to_blueprint
+from compose.generate_runner import _extract_structured_fields_from_final_md
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
 from core_new.doc_pipeline.context import ContextRegistry, FileProvider, InlineProvider, ProviderDef
-from core_new.doc_pipeline.agents import AGENT_PROMPTS as _AGENT_PROMPTS_LEGACY, AGENT_OUTPUT_FILES as _AGENT_OUTPUT_FILES_LEGACY, MULTI_TURN_AGENTS as _MULTI_TURN_LEGACY
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
@@ -198,6 +200,16 @@ class TestDocParser:
         path = self._write_doc("feedback.md", "## status\nneeds_fix\n\n## summary\n参数矛盾")
         status = get_doc_status(path)
         assert status == "needs_fix"
+
+    def test_rejects_invalid_status(self):
+        path = self._write_doc("feedback.md", "## status\nmaybe\n\n## summary\n格式异常")
+        status = get_doc_status(path, allowed={"pass", "needs_fix"})
+        assert status == ""
+
+    def test_rejects_status_outside_allowed_set(self):
+        path = self._write_doc("feedback.md", "## status\nexpression_fix\n\n## summary\n终审状态")
+        status = get_doc_status(path, allowed={"pass", "needs_fix"})
+        assert status == ""
 
     def test_parse_multiple_sections(self):
         path = self._write_doc("review.md", (
@@ -466,6 +478,12 @@ class TestDocPipelineOrchestrator:
             "solve",
             "final_review",
         ]
+        solve_call = next(c for c in scheduler.calls if c["role"] == "solve")
+        assert solve_call["inject_files"]["题目"].endswith("question_public.md")
+        public_question = Path(solve_call["inject_files"]["题目"]).read_text(encoding="utf-8")
+        assert "## 题干" in public_question
+        assert "## 选项" in public_question
+        assert "设计说明" not in public_question
         final_text = (tmp_path / "S5" / "final.md").read_text(encoding="utf-8")
         assert "## 题目" in final_text
         assert "42" in final_text
@@ -559,6 +577,64 @@ class TestContextRegistry:
 
 
 class TestRunSlotCompositionArtifacts:
+    def test_outline_parser_preserves_machine_contract_codes(self):
+        outline = (
+            "# 试卷大纲\n\n"
+            "## Q12\n\n"
+            "### 机器契约\n"
+            "```yaml\n"
+            "target_subject: 计算机组成原理\n"
+            "target_family: CO-1 > 计算机系统概述\n"
+            "primary_target_name: 性能指标\n"
+            "difficulty_level: 3\n"
+            "k_target: K2\n"
+            "difficulty_rationale: 常规计算\n"
+            "examination_mode: 计算型\n"
+            "```\n"
+        )
+
+        blueprint = _parse_outline_to_blueprint(outline, {"Q12": {"question_type": "single_choice"}})
+
+        assert blueprint["slots"][0].target_family == "CO-1 > 计算机系统概述"
+
+    def test_extracts_translated_cross_subject_knowledge_graph(self):
+        section = _extract_knowledge_graph_section("数据结构-5 > 树与二叉树")
+
+        assert "## 5. 树与二叉树" in section
+        assert "二叉树" in section
+
+    def test_parse_final_md_single_choice_for_export(self):
+        final_md = (
+            "## 题目\nCache 命中率为多少？\n\n"
+            "## 选项\nA. 25%\nB. 50%\nC. 75%\nD. 100%\n\n"
+            "## 求解过程\n逐一计算四个选项。\n\n"
+            "## 答案\n正确答案：C\n\n"
+            "## 设计说明\n覆盖 Cache"
+        )
+
+        data = _extract_structured_fields_from_final_md(final_md, "Q12")
+
+        assert data["stem"] == "Cache 命中率为多少？"
+        assert data["option_A"] == "25%"
+        assert data["option_D"] == "100%"
+        assert data["correct_answer"] == "C"
+        assert "逐一计算" in data["explanation"]
+
+    def test_parse_final_md_comprehensive_for_export(self):
+        final_md = (
+            "## 题目\n给定页表和访问序列。\n\n"
+            "## 子问题\n### (1) (3分)\n计算缺页次数。\n\n### (2) (4分)\n计算平均访问时间。\n\n"
+            "## 求解过程\n逐步模拟。\n\n"
+            "## 答案\n(1) 3 次\n(2) 120 ns"
+        )
+
+        data = _extract_structured_fields_from_final_md(final_md, "Q43")
+
+        assert data["question_type"] == "comprehensive"
+        assert len(data["sub_questions"]) == 2
+        assert "(1)" in data["sub_questions"][0]
+        assert data["answer"].startswith("(1) 3")
+
     def test_run_composition_passes_slot_filter_to_generate(self, monkeypatch, tmp_path):
         import compose.compose_runner as compose_runner
         import compose.generate_runner as generate_runner

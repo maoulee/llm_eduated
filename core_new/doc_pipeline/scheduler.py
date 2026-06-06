@@ -206,27 +206,6 @@ class DocScheduler:
             "- 确保知识点覆盖主要知识域，避免连续多题考同一知识点\n\n"
             "直接输出 Markdown 内容，不要用代码块包裹。"
         ),
-        "question": (
-            "# 408考研出题专家\n\n"
-            "你是408考研出题专家。你将收到出题契约（assembled.md，包含知识点、难度、结构要求），"
-            "请直接产出完整的考试题目。\n\n"
-            "## 输出格式\n"
-            "Markdown格式，按顺序包含以下章节：\n"
-            "- `## status` — 内容固定为 `draft`\n"
-            "- `## 题干` — 完整题干，包含所有给定条件和背景\n"
-            "- `## 选项`（选择题）或 `## 子问题`（综合题）\n"
-            "- `## 设计说明` — 知识点选取理由、参数选择理由、干扰策略、难度自评\n\n"
-            "注意：不写答案！答案由独立的求解智能体产出。\n\n"
-            "## 核心规则\n"
-            "1. 所有给定条件必须被使用，不允许废弃条件\n"
-            "2. 参数自洽，确保唯一解\n"
-            "3. 题目完全原创，不得照搬参考文档中的历史原题\n"
-            "4. 参数优先选用 2^n 相关值（如4KB、64、256MB），便于考生心算\n"
-            "5. 推理路径完整无跳步\n"
-            "6. 禁止在题干中出现编程语言代码\n"
-            "7. 题干简洁精炼，避免冗长背景描述\n\n"
-            "直接输出 Markdown 内容，不要用代码块包裹，不要在正文前后添加说明。"
-        ),
         "question_sc": (
             "# 408考研选择题出题专家\n\n"
             "你是408考研选择题出题专家。你将收到出题契约（assembled.md），"
@@ -709,7 +688,7 @@ class DocScheduler:
             "如果输出 Markdown，第一行必须是目标文件的第一个 `##` 章节标题；"
             "如果输出 Python，第一行必须是 Python 源码或注释。"
         )
-        if role in {"question", "question_sc", "question_comp", "solve", "review", "final_review"}:
+        if role in {"question_sc", "question_comp", "solve", "review", "final_review"}:
             suffix += "\n如需计算或校验，请在你自己的推理过程中完成，并把必要的校验证据写入目标内容。"
         return task + suffix
 
@@ -729,7 +708,7 @@ class DocScheduler:
                 "`## status` 的内容固定为 `ready`。规划只定义结构、约束和参数范围，"
                 "不要提前指定具体数值或完整题干。"
             )
-        if role in ("question", "question_sc", "question_comp"):
+        if role in ("question_sc", "question_comp"):
             return (
                 "## 目标文件协议：question.md\n"
                 "必须包含且按顺序输出章节：`## status`、`## 题干`、"
@@ -776,7 +755,7 @@ class DocScheduler:
         extracted = cls._extract_tool_text_content(text)
         if extracted:
             text = extracted.strip()
-        if role == "solve" or expected_fn.endswith(".py"):
+        if expected_fn.endswith(".py"):
             return cls._extract_code_block(text).rstrip() + "\n"
         return cls._strip_outer_fence(text).rstrip() + "\n"
 
@@ -933,6 +912,8 @@ class DocScheduler:
         required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_python" in required_tools:
             registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
+        if "edit_file" in required_tools:
+            registry.register(EditFileTool(workspace=ws))
 
         # Always include read_file + write_file for hybrid modification support
         hybrid_tool_names = list(set(required_tools) | {"write_file", "read_file"})

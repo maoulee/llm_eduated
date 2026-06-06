@@ -44,7 +44,7 @@ from .config import (
 )
 from .contracts import PipelineResult
 from .context import ContextRegistry
-from .doc_parser import get_doc_status, parse_doc_section
+from .doc_parser import FINAL_REVIEW_STATUSES, REVIEW_STATUSES, get_doc_status, parse_doc_section
 
 logger = logging.getLogger(__name__)
 
@@ -262,8 +262,10 @@ class DocPipelineOrchestrator:
                     if not review_path.exists():
                         return self._fail_result(slot_id, "Review agent did not write review.md")
 
-                    review_status = get_doc_status(str(review_path))
+                    review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
                     logger.info("[%s] Review iter %d: status=%s", slot_id, iteration, review_status)
+                    if not review_status:
+                        return self._fail_result(slot_id, "Review agent returned invalid or missing status")
                     if review_status == "pass":
                         break
                     # needs_fix: loop back to question
@@ -275,6 +277,7 @@ class DocPipelineOrchestrator:
         solution_path = ws / "solution.md"
         solve_path = ws / "solve.py"
         output_path = ws / "solve_output.txt"
+        question_public_path = ws / "question_public.md"
 
         exec_result: dict[str, Any] = {"ok": True, "skipped": True}
 
@@ -284,9 +287,10 @@ class DocPipelineOrchestrator:
                 return self._fail_result(slot_id, f"Cannot resume: solution.md not found")
         else:
             logger.info("[%s] Layer 4: Solve", slot_id)
+            question_public_path = self._write_public_question_view(question_path)
             s_task = "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。"
             s_inject = await self._resolve_inject("solve", slot_id, 4, {
-                "题目": str(question_path),
+                "题目": str(question_public_path),
             })
             await self.scheduler.run_agent(
                 "solve",
@@ -315,6 +319,8 @@ class DocPipelineOrchestrator:
             logger.info("[%s] Layer 5: Final Review", slot_id)
 
             for final_iter in range(MAX_FINAL_RETRIES + 1):
+                question_before = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
+                solution_before = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
                 fr_task = "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。"
                 fr_inject_files = {
                     "规划": str(ref_path),
@@ -335,13 +341,23 @@ class DocPipelineOrchestrator:
                 if not final_review_path.exists():
                     return self._fail_result(slot_id, "Final Review agent did not write final_review.md")
 
-                final_status = get_doc_status(str(final_review_path))
+                final_status = get_doc_status(str(final_review_path), allowed=FINAL_REVIEW_STATUSES)
                 logger.info("[%s] Final Review: status=%s (iter %d)", slot_id, final_status, final_iter)
+                if not final_status:
+                    return self._fail_result(slot_id, "Final Review agent returned invalid or missing status")
 
                 if final_status == "pass":
                     break
                 elif final_status == "expression_fix":
-                    # Check if agent made corrections — if so, proceed
+                    corrections = parse_doc_section(str(final_review_path), "corrections").strip()
+                    if corrections and corrections != "无":
+                        question_after = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
+                        solution_after = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
+                        if question_after == question_before and solution_after == solution_before:
+                            return self._fail_result(
+                                slot_id,
+                                "Final Review requested expression_fix but did not modify question.md or solution.md",
+                            )
                     break
                 elif final_status == "question_error" and final_iter < MAX_FINAL_RETRIES:
                     # Back to Question Agent
@@ -366,12 +382,13 @@ class DocPipelineOrchestrator:
 
                     # Re-solve
                     logger.info("[%s] Re-solving after question fix", slot_id)
+                    question_public_path = self._write_public_question_view(question_path)
                     s_task = "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。"
                     await self.scheduler.run_agent(
                         "solve",
                         s_task,
                         slot_id=slot_id,
-                        inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_path)}),
+                        inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)}),
                         max_tokens=self.max_tokens,
                     )
                     if not solution_path.exists():
@@ -385,11 +402,12 @@ class DocPipelineOrchestrator:
                     feedback = parse_doc_section(str(final_review_path), "routing_feedback")
                     s_task = "请修正求解过程中的错误（最小修改）。"
                     s_task += f"\n\n## 终审反馈（求解错误）\n{feedback}"
+                    question_public_path = self._write_public_question_view(question_path)
                     await self.scheduler.run_agent(
                         "solve",
                         s_task,
                         slot_id=slot_id,
-                        inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_path)}),
+                        inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)}),
                         max_tokens=self.max_tokens,
                     )
                     if not solution_path.exists():
@@ -397,8 +415,7 @@ class DocPipelineOrchestrator:
                     if solve_path.exists():
                         exec_result = await self.exec_python(solve_path, output_path)
                 else:
-                    # Max retries or unknown status — proceed with what we have
-                    break
+                    return self._fail_result(slot_id, f"Final Review unresolved status: {final_status}")
 
         # ── Format: Assemble final.md ─────────────────────────────
         logger.info("[%s] Format (system hook)", slot_id)
@@ -430,6 +447,7 @@ class DocPipelineOrchestrator:
                 "outline": str(outline_path),
                 "assembled": str(assembled_path),
                 "question": str(question_path),
+                "question_public": str(question_public_path),
                 "review": str(review_path),
                 "solution": str(solution_path),
                 "solve": str(solve_path),
@@ -483,6 +501,37 @@ class DocPipelineOrchestrator:
             return {"ok": False, "exit_code": -1, "stdout": "", "stderr": "Timeout", "timed_out": True}
         except Exception as exc:
             return {"ok": False, "exit_code": -1, "stdout": "", "stderr": str(exc), "timed_out": False}
+
+    @staticmethod
+    def _write_public_question_view(question_path: Path) -> Path:
+        """Write a solver-facing question view without design notes."""
+        public_path = question_path.with_name("question_public.md")
+        question_text = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
+
+        stem = _extract_h2_section(question_text, "题干")
+        options = _extract_h2_section(question_text, "选项")
+        sub_questions = _extract_h2_section(question_text, "子问题")
+
+        parts = ["## status\ndraft"]
+        if stem:
+            parts.append(f"\n\n## 题干\n{stem.strip()}")
+        if options:
+            parts.append(f"\n\n## 选项\n{options.strip()}")
+        if sub_questions:
+            parts.append(f"\n\n## 子问题\n{sub_questions.strip()}")
+
+        if len(parts) == 1 and question_text.strip():
+            # Malformed question fallback: drop explicit design sections by H2 boundary.
+            public_text = re.sub(
+                r"^##\s+设计说明\s*\n.*?(?=^##\s+|\Z)",
+                "",
+                question_text,
+                flags=re.MULTILINE | re.DOTALL,
+            ).strip()
+            parts.append(f"\n\n## 题干\n{public_text}")
+
+        public_path.write_text("\n".join(parts), encoding="utf-8")
+        return public_path
 
     @staticmethod
     def _format_final(

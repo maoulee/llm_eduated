@@ -45,7 +45,8 @@ async def run_debug(args, model_routing):
     if registry:
         role_phase = {
             "outline": 1,
-            "question": 2,
+            "question_sc": 2,
+            "question_comp": 2,
             "review": 3,
             "solve": 4,
             "final_review": 5,
@@ -65,7 +66,8 @@ async def run_debug(args, model_routing):
     # Build a minimal task prompt
     task_prompts = {
         "outline": f"请根据以下数据设计 {slot_id} 的出题规划。",
-        "question": f"请设计 {slot_id} 的完整题目。",
+        "question_sc": f"请设计 {slot_id} 的选择题题目。",
+        "question_comp": f"请设计 {slot_id} 的综合应用题题目。",
         "review": "请审核以下题目的设计质量（此阶段无答案，不评估答案正确性）。",
         "solve": "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。",
         "final_review": "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。",

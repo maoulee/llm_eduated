@@ -193,7 +193,8 @@ def _default_config() -> PipelineConfig:
 # Default values for fallback when no YAML exists
 _DEFAULT_PROVIDERS = [
     {"name": "assembled", "type": "file", "path_pattern": "{workspace}/{slot_id}/blueprint.md", "label": "规划", "phases": [2, 3, 5]},
-    {"name": "question", "type": "file", "path_pattern": "{workspace}/{slot_id}/question.md", "label": "题目", "phases": [3, 4, 5]},
+    {"name": "question", "type": "file", "path_pattern": "{workspace}/{slot_id}/question.md", "label": "题目", "phases": [3, 5]},
+    {"name": "question_public", "type": "file", "path_pattern": "{workspace}/{slot_id}/question_public.md", "label": "题目", "phases": [4]},
     {"name": "solution", "type": "file", "path_pattern": "{workspace}/{slot_id}/solution.md", "label": "求解结果", "phases": [5]},
     {"name": "solve_output", "type": "file", "path_pattern": "{workspace}/{slot_id}/solve_output.txt", "label": "代码输出", "phases": [5], "optional": True},
     {"name": "review_comments", "type": "file", "path_pattern": "{workspace}/{slot_id}/review.md", "label": "审核意见", "phases": [2], "optional": True},
@@ -203,11 +204,10 @@ _DEFAULT_PROVIDERS = [
 
 _DEFAULT_ROLE_BINDINGS = {
     "outline": ["experience_doc", "k_definitions"],
-    "question": ["assembled", "review_comments"],
     "question_sc": ["assembled", "review_comments"],
     "question_comp": ["assembled", "review_comments"],
     "review": ["assembled", "question"],
-    "solve": ["question"],
+    "solve": ["question_public"],
     "final_review": ["assembled", "question", "solution", "solve_output"],
 }
 
@@ -216,7 +216,14 @@ _DEFAULT_PROFILES = {
     "all_remote": {"_role_routing": {}, "_model_routing": {}, "_default_routing": "remote"},
     "hybrid": {
         "_role_routing": {},
-        "_model_routing": {"paper_composer": "hybrid", "question": "hybrid", "solve": "hybrid", "review": "hybrid"},
+        "_model_routing": {
+            "paper_composer": "hybrid",
+            "question_sc": "hybrid",
+            "question_comp": "hybrid",
+            "solve": "hybrid",
+            "review": "hybrid",
+            "final_review": "hybrid",
+        },
         "_default_routing": "local",
     },
 }

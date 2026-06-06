@@ -9,7 +9,7 @@
 ## GPT 产出校验清单
 
 检查 GPT 的审核产出是否包含：
-- `## status` — 必须是 `pass`、`expression_fix`、`question_error` 或 `solution_error`，缺失则默认 `pass`
+- `## status` — 必须是 `pass`、`expression_fix`、`question_error` 或 `solution_error`，缺失则默认 `question_error`
 - `## summary` — 缺失则从 detailed_feedback 中提取首段
 - `## corrections` — 缺失则补 `无`（pass）或 `（GPT未提供具体修正建议）`（其他状态）
 - `## detailed_feedback` — 缺失则补空壳
@@ -44,20 +44,23 @@ write_file(path="final_review.md", content="校验后的完整审核内容")
 如果 GPT 的产出完全无法解析，写入默认审核：
 ```
 ## status
-pass
+question_error
 
 ## summary
-GPT 终审产出无法解析，默认通过。
+GPT 终审产出无法解析，不能判定题目通过。
 
 ## corrections
 无
 
 ## detailed_feedback
-GPT 原始产出格式异常，已跳过格式校验。
+GPT 原始产出格式异常，已按 fail-closed 处理。
 
 ## quality_score
 overall: 5/10
 
 ## improvement_suggestions
-无
+重新执行终审；如仍无法解析，回到出题阶段检查题面结构。
+
+## routing_feedback
+终审产出无法解析，需要重新检查题目结构和求解结果。
 ```

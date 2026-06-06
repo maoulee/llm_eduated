@@ -8,6 +8,32 @@ from typing import Any
 
 from core_new.markdown_parser import _strip_thinking, _extract_sections
 
+REVIEW_STATUSES = frozenset({"pass", "needs_fix"})
+FINAL_REVIEW_STATUSES = frozenset({"pass", "expression_fix", "question_error", "solution_error"})
+DOC_STATUS_VALUES = frozenset({
+    "draft",
+    "ready",
+    "solved",
+    "error",
+    *REVIEW_STATUSES,
+    *FINAL_REVIEW_STATUSES,
+})
+
+_STATUS_CN_MAP = {
+    "通过": "pass",
+    "合格": "pass",
+    "无需修改": "pass",
+    "需要修改": "needs_fix",
+    "需修改": "needs_fix",
+    "有问题": "needs_fix",
+    "表述修正": "expression_fix",
+    "格式修正": "expression_fix",
+    "题目错误": "question_error",
+    "设计错误": "question_error",
+    "求解错误": "solution_error",
+    "计算错误": "solution_error",
+}
+
 
 def parse_doc_header(filepath: str | Path) -> dict[str, Any]:
     """Parse ## sections from a markdown file, returning a dict.
@@ -68,15 +94,49 @@ def parse_doc_section(filepath: str | Path, section_name: str) -> str:
     return value if isinstance(value, str) else ""
 
 
-def get_doc_status(filepath: str | Path) -> str:
+def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None = None) -> str:
+    """Normalize a status value and reject anything outside the allowed set."""
+    allowed_values = set(allowed or DOC_STATUS_VALUES)
+    text = str(value or "").strip()
+    if not text:
+        return ""
+
+    cleaned = re.sub(r"[`*]", "", text).strip().lower()
+    cleaned = re.sub(r"^[\-:：\s✅✔❌]+", "", cleaned)
+
+    for line in cleaned.splitlines():
+        line = re.sub(r"^[\-:：\s✅✔❌]+", "", line.strip())
+        if not line:
+            continue
+
+        for cn, status in _STATUS_CN_MAP.items():
+            if cn in line and status in allowed_values:
+                return status
+
+        match = re.search(
+            r"\b(pass|needs_fix|expression_fix|question_error|solution_error|draft|ready|solved|error)\b",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            status = match.group(1).lower()
+            return status if status in allowed_values else ""
+
+        token = re.split(r"\s+", line, maxsplit=1)[0]
+        if token in allowed_values:
+            return token
+
+    return ""
+
+
+def get_doc_status(filepath: str | Path, allowed: set[str] | frozenset[str] | None = None) -> str:
     """Extract the ## status field from a document.
 
     Returns "" if the field is missing.
     Falls back to keyword extraction if ## status is absent.
     """
     header = parse_doc_header(filepath)
-    status = header.get("status", "")
-    status = str(status).strip().lower()
+    status = normalize_doc_status(header.get("status", ""), allowed)
     if status:
         return status
 
@@ -97,7 +157,7 @@ def get_doc_status(filepath: str | Path) -> str:
     ):
         m = re.search(pattern, text, re.IGNORECASE)
         if m:
-            return m.group(1).lower()
+            return normalize_doc_status(m.group(1), allowed)
 
     # Bare-header fallback: "status\n\npass" (WebGPT sometimes omits ##)
     m = re.search(
@@ -105,6 +165,6 @@ def get_doc_status(filepath: str | Path) -> str:
         text, re.IGNORECASE,
     )
     if m:
-        return m.group(1).lower()
+        return normalize_doc_status(m.group(1), allowed)
 
     return ""
