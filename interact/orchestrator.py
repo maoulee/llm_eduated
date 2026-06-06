@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 
 from core_new.llm_gateway import LLMGateway
 from interact.intent_router import IntentRouter
@@ -85,17 +87,7 @@ class InteractiveOrchestrator:
         if session.mode == "knowledge_point":
             return await self._generate_knowledge_point(session)
         elif session.mode == "compose":
-            # TODO: Wire up compose_runner.run_compose() + generate_runner.run_generate()
-            logger.info(
-                "Compose generation not yet wired for session %s", session_id,
-            )
-            return {
-                "session_id": session_id,
-                "mode": "compose",
-                "blueprint_id": session.blueprint_id,
-                "results": [],
-                "status": "pending_compose_wiring",
-            }
+            return await self._generate_compose(session)
 
         return {
             "session_id": session_id,
@@ -208,3 +200,81 @@ class InteractiveOrchestrator:
         if "操作" in subj:
             return "OS"
         return "CO"
+
+    async def _generate_compose(self, session) -> dict:
+        """Generate a full paper via compose_runner + generate_runner."""
+        from compose import compose_runner, generate_runner
+
+        templates, exp_cards = self._load_compose_assets()
+        if not templates:
+            raise RuntimeError("slot_templates.json not found — run slot_extractor first")
+
+        p = session.collected_params
+        user_requirements = self._build_compose_requirements(p)
+
+        # Phase A: outline + assembly
+        compose_result = await compose_runner.run_compose(
+            gateway=self.gateway,
+            slot_templates=templates,
+            experience_cards=exp_cards,
+            user_requirements=user_requirements,
+            model_routing=self.model_routing,
+        )
+        if compose_result.get("status") != "ok":
+            raise RuntimeError(f"Compose failed: {compose_result}")
+
+        # Phase B: question generation
+        generate_result = await generate_runner.run_generate(
+            gateway=self.gateway,
+            compose_dir=compose_result["compose_dir"],
+            model_routing=self.model_routing,
+            run_id=compose_result.get("run_id"),
+        )
+
+        return {
+            "session_id": session.session_id,
+            "mode": "compose",
+            "blueprint_id": session.blueprint_id,
+            "compose_result": compose_result,
+            "generate_result": generate_result,
+        }
+
+    @staticmethod
+    def _load_compose_assets() -> tuple[dict, dict]:
+        """Load slot templates and experience cards from disk."""
+        tpl_path = "data/slot_templates.json"
+        templates = {}
+        if os.path.exists(tpl_path):
+            with open(tpl_path, encoding="utf-8") as f:
+                templates = json.load(f).get("templates", {})
+
+        exp_cards = {}
+        exp_dir = "data/slot_experiences"
+        if os.path.isdir(exp_dir):
+            for fname in os.listdir(exp_dir):
+                if fname.endswith("_experience.md"):
+                    sid = fname.replace("_experience.md", "")
+                    with open(os.path.join(exp_dir, fname), encoding="utf-8") as f:
+                        exp_cards[sid] = f.read()
+
+        return templates, exp_cards
+
+    @staticmethod
+    def _build_compose_requirements(params: dict) -> str:
+        """Build user_requirements string from collected compose params."""
+        parts = []
+        subject = params.get("subject", "")
+        if subject:
+            parts.append(f"科目: {subject}")
+        difficulty = params.get("difficulty", "")
+        if difficulty:
+            parts.append(f"难度: {difficulty}")
+        q_count = params.get("question_count", "")
+        if q_count:
+            parts.append(f"题目数量: {q_count}")
+        q_types = params.get("question_types") or params.get("question_type", "")
+        if q_types:
+            if isinstance(q_types, list):
+                q_types = "、".join(q_types)
+            parts.append(f"题型: {q_types}")
+        return "；".join(parts) if parts else "408考研标准试卷"
