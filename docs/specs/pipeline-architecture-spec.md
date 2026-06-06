@@ -1,6 +1,6 @@
 # Doc Pipeline 架构 Spec — 智能体、路由与协作模式
 
-> 最后更新: 2026-06-06 (v2: Codex hardening)
+> 最后更新: 2026-06-06 (v3: 交互式出题层 + 批注循环 + 组卷对接)
 > 本文档固化流水线核心设计，避免跨会话信息丢失。
 
 ---
@@ -384,6 +384,18 @@ pass / needs_fix
 - `core_new/llm_gateway.py` — 统一 LLM 网关（api_vllm + glm5.1）
 - `core_new/webgpt_client.py` — WebGPT 客户端（GPT via WebAI2API）
 - `config/pipeline.yaml` — 路由 + 参数 + context injection
+
+### 交互式出题层
+- `interact/orchestrator.py` — 顶层协调器（knowledge_point + compose 双模式）
+- `interact/session_manager.py` — FSM 多轮会话管理（8 状态 + 批注循环）
+- `interact/intent_router.py` — Qwen 意图分类（compose/knowledge_point/clarify）
+- `interact/blueprint_synthesizer.py` — 数据注入 + LLM 教学决策（含修订模式）
+- `interact/knowledge_retriever.py` — 知识图谱检索 + KG 回退搜索
+
+### 组卷流程
+- `compose/compose_runner.py` — Phase A: 大纲生成 + 经验文档组装
+- `compose/generate_runner.py` — Phase B: 批量出题 + 格式化导出
+- `compose/artifact_store.py` — 经验文档组装 + 知识图谱抽取
 
 ### 数据
 - `data/slot_experiences/` — 47 份 LLM 合成经验卡
