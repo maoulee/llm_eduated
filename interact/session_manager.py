@@ -13,14 +13,13 @@ from interact.blueprint_synthesizer import BlueprintSynthesizer, SynthesisReques
 
 logger = logging.getLogger(__name__)
 
-# Keywords the user might say to approve a blueprint
-# Negative lookbehind for "不" to exclude "不可以", "不行"
-# Negative lookahead for "吗|的" to exclude "可以这样吗", "行的吗"
+# Approval keywords — positive patterns to match
 _APPROVAL_PATTERNS = re.compile(
-    r"(?<!不)(确认|没问题|ok|好的|批准|通过|approve|就这样|同意)"
-    r"|(?<!不)(可以|行)(?!吗|的)",
+    r"(确认|没问题|ok|好的|批准|通过|approve|就这样|同意|可以|行)",
     re.IGNORECASE,
 )
+_NEGATION_CHARS = {"不", "别", "未"}
+_APPROVAL_SUFFIX_BLACKLIST = re.compile(r"(吗|的吗|一下|看看)$")
 
 
 class SessionState(Enum):
@@ -47,6 +46,7 @@ class SessionData:
     max_annotation_rounds: int = 3
     generation_results: list = field(default_factory=list)
     error_message: str = ""
+    pending_candidates: list[str] = field(default_factory=list)  # disambiguation candidates
 
 
 class SessionManager:
@@ -143,6 +143,20 @@ class SessionManager:
 
     async def _handle_collecting(self, session: SessionData, user_message: str) -> str:
         """COLLECTING: accumulate params until complete."""
+        # Handle pending candidate selection (user enters "1", "2", etc.)
+        if session.pending_candidates:
+            stripped = user_message.strip()
+            if stripped.isdigit():
+                idx = int(stripped) - 1
+                if 0 <= idx < len(session.pending_candidates):
+                    selected = session.pending_candidates[idx]
+                    session.collected_params["knowledge_tag"] = selected
+                    session.pending_candidates = []
+                    session.mode = session.mode or "knowledge_point"
+                    return await self._synthesize_blueprint(session)
+            # Non-numeric input with pending candidates → clear and re-route
+            session.pending_candidates = []
+
         accumulated = self._build_accumulated_message(session, user_message)
         result: IntentResult = await self.intent_router.route(accumulated)
 
@@ -169,9 +183,22 @@ class SessionManager:
             session.state = SessionState.APPROVED
             return "已确认！正在开始生成题目..."
 
-        # User provided feedback — transition to annotating
+        # User provided feedback
+        if session.mode == "compose":
+            # Compose mode: re-extract params from feedback, update confirmation
+            return await self._handle_compose_feedback(session, user_message)
+
+        # Knowledge point mode: transition to annotating
         session.state = SessionState.ANNOTATING
         return await self._handle_annotating(session, user_message)
+
+    async def _handle_compose_feedback(self, session: SessionData, user_message: str) -> str:
+        """Handle feedback for compose mode — re-extract params and show new confirmation."""
+        accumulated = self._build_accumulated_message(session, user_message)
+        result = await self.intent_router.route(accumulated)
+        session.collected_params.update(result.params)
+        # Stay in BLUEPRINT_READY, show updated confirmation
+        return self._format_compose_confirmation(session)
 
     async def _handle_annotating(self, session: SessionData, user_message: str) -> str:
         """ANNOTATING: process annotation, revise blueprint."""
@@ -221,9 +248,10 @@ class SessionManager:
                 candidates = self.knowledge_retriever.search(p["knowledge_topic"])
                 if len(candidates) > 1:
                     session.missing_params = ["knowledge_topic"]
+                    session.pending_candidates = candidates[:5]
                     session.state = SessionState.COLLECTING
                     labels = "\n".join(
-                        f"  {i+1}. {c}" for i, c in enumerate(candidates[:5])
+                        f"  {i+1}. {c}" for i, c in enumerate(session.pending_candidates)
                     )
                     return (
                         f"「{p['knowledge_topic']}」匹配到多个知识点，请选择：\n"
@@ -292,8 +320,27 @@ class SessionManager:
         return new_message
 
     def _is_approval(self, text: str) -> bool:
-        """Check if user message indicates approval."""
-        return bool(_APPROVAL_PATTERNS.search(text.strip()))
+        """Check if user message indicates approval.
+
+        Two-step check:
+        1. Find all approval keyword matches
+        2. For each match, verify no negation particle (不/别/未) in the
+           1-2 characters before it, and no question suffix after it.
+        """
+        stripped = text.strip()
+        for m in _APPROVAL_PATTERNS.finditer(stripped):
+            start = m.start()
+            end = m.end()
+            # Check 1-2 chars before for negation
+            prefix = stripped[max(0, start - 2):start]
+            if any(neg in prefix for neg in _NEGATION_CHARS):
+                continue
+            # Check suffix for question particles
+            rest = stripped[end:].strip()
+            if rest and _APPROVAL_SUFFIX_BLACKLIST.search(rest):
+                continue
+            return True
+        return False
 
     def _ask_missing(self, session: SessionData) -> str:
         """Generate a clarification prompt for missing parameters."""

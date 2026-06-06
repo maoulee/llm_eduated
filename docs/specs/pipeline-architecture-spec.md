@@ -54,14 +54,17 @@ Step 2: Qwen 接收 GPT 输出 + agents_gpt/{role}.md 中继规范
 | 文件 | 用途 |
 |------|------|
 | `paper_composer.md` | Qwen 中继：校验 GPT 组卷大纲 |
-| `question.md` | Qwen 中继：校验 GPT 出题 |
+| `question_sc.md` | Qwen 中继：校验 GPT 选择题 + 格式红线验证 |
+| `question_comp.md` | Qwen 中继：校验 GPT 综合题 + 格式红线验证 |
 | `review.md` | Qwen 中继：校验 GPT 审核 |
+| `solve.md` | Qwen 中继：校验 GPT 求解 + 行为合规检查 |
 | `final_review.md` | Qwen 中继：校验 GPT 终审 |
 
 中继智能体职责：
 - **不修改 GPT 的审核结论** — 只调整格式
 - 校验必要章节是否存在（## status, ## summary 等）
 - 标准化 status 值（"通过"→ pass, "需要修改"→ needs_fix）
+- 格式红线验证 + 行为合规检查
 - 通过 write_file 写入文件
 
 ### 2.3 Prompt 组装顺序 (agent_loader.py)

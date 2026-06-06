@@ -101,22 +101,32 @@ def run(coro):
 
 
 class TestApprovalRegex:
-    """Verify approval patterns accept/reject correctly."""
+    """Verify approval check accepts/rejects correctly."""
+
+    @pytest.fixture
+    def sm(self):
+        """SessionManager with fakes — only need _is_approval."""
+        router = FakeIntentRouter()
+        retriever = FakeKnowledgeRetriever()
+        synthesizer = FakeBlueprintSynthesizer()
+        return SessionManager(router, retriever, synthesizer)
 
     @pytest.mark.parametrize("text", [
         "确认", "没问题", "好的", "ok", "OK",
         "批准", "通过", "approve", "就这样", "同意",
-        "可以", "行",
+        "可以", "行", "确认通过",
     ])
-    def test_positive(self, text):
-        assert _APPROVAL_PATTERNS.search(text), f"Should match: {text!r}"
+    def test_positive(self, sm, text):
+        assert sm._is_approval(text), f"Should match: {text!r}"
 
     @pytest.mark.parametrize("text", [
         "不可以", "不行", "这样可以吗", "行的吗",
         "可以吗", "可以的吗",
+        "不能通过", "不要通过", "不要批准", "别通过",
+        "不能确认", "别同意", "未批准",
     ])
-    def test_negative(self, text):
-        assert not _APPROVAL_PATTERNS.search(text), f"Should NOT match: {text!r}"
+    def test_negative(self, sm, text):
+        assert not sm._is_approval(text), f"Should NOT match: {text!r}"
 
 
 # ── State machine transitions ──────────────────────────────────
@@ -332,3 +342,121 @@ class TestDifficultyPassthrough:
         run(sm.handle_message("s1", "出2道二叉树遍历选择题，困难"))
         assert synth.last_request is not None
         assert synth.last_request.difficulty == "hard"
+
+
+class TestCandidateSelection:
+    """Verify disambiguation candidate selection flow."""
+
+    def test_select_candidate_by_number(self):
+        sm, router, retriever, synth = _make_manager()
+        retriever.set_resolved_tag(None)
+        retriever.set_search_results([
+            "CO-4 > Cache > 映射方式",
+            "CO-4 > Cache > 替换算法",
+            "CO-4 > Cache > 写策略",
+        ])
+        # First turn: shows candidates
+        router.set_result(IntentResult(
+            intent="knowledge_point",
+            params={
+                "knowledge_topic": "Cache",
+                "subject": "CO",
+                "question_count": 2,
+                "difficulty": "medium",
+            },
+        ))
+        resp = run(sm.handle_message("s1", "出2道Cache题"))
+        session = sm.get_or_create("s1")
+        assert session.state == SessionState.COLLECTING
+        assert len(session.pending_candidates) == 3
+
+        # Second turn: user selects "2"
+        resp = run(sm.handle_message("s1", "2"))
+        session = sm.get_or_create("s1")
+        assert session.state == SessionState.BLUEPRINT_READY
+        assert session.collected_params["knowledge_tag"] == "CO-4 > Cache > 替换算法"
+        assert synth.call_count == 1
+
+    def test_candidate_cleared_on_non_numeric_input(self):
+        sm, router, retriever, synth = _make_manager()
+        retriever.set_resolved_tag(None)
+        retriever.set_search_results([
+            "CO-4 > Cache > 映射方式",
+            "CO-4 > Cache > 替换算法",
+        ])
+        # Complete params but ambiguous tag → goes to disambiguation
+        router.set_result(IntentResult(
+            intent="knowledge_point",
+            params={
+                "knowledge_topic": "Cache",
+                "subject": "CO",
+                "question_count": 2,
+                "difficulty": "medium",
+            },
+        ))
+        resp = run(sm.handle_message("s1", "出2道Cache题"))
+        session = sm.get_or_create("s1")
+        assert session.state == SessionState.COLLECTING
+        assert len(session.pending_candidates) == 2
+
+        # User types non-numeric → clears candidates, re-routes
+        router.set_result(IntentResult(
+            intent="knowledge_point",
+            params={"knowledge_topic": "Cache映射", "subject": "CO"},
+            missing_params=["difficulty"],
+        ))
+        resp = run(sm.handle_message("s1", "我想出Cache映射相关的"))
+        session = sm.get_or_create("s1")
+        assert len(session.pending_candidates) == 0
+
+
+class TestComposeFeedback:
+    """Verify compose mode handles feedback without blueprint synthesis."""
+
+    def test_compose_feedback_updates_params(self):
+        sm, router, _, synth = _make_manager()
+        router.set_result(IntentResult(
+            intent="compose",
+            params={
+                "subject": "数据结构",
+                "difficulty": "medium",
+                "question_count": 7,
+                "question_types": ["选择题", "综合应用题"],
+            },
+        ))
+        run(sm.handle_message("s1", "出一张数据结构试卷"))
+        assert sm.get_or_create("s1").state == SessionState.BLUEPRINT_READY
+        assert synth.call_count == 0
+
+        # User gives feedback to change params
+        router.set_result(IntentResult(
+            intent="compose",
+            params={
+                "subject": "数据结构",
+                "difficulty": "hard",
+                "question_count": 5,
+                "question_types": ["选择题"],
+            },
+        ))
+        resp = run(sm.handle_message("s1", "改成5道选择题，困难难度"))
+        session = sm.get_or_create("s1")
+        assert session.state == SessionState.BLUEPRINT_READY  # stays, not ANNOTATING
+        assert session.collected_params["question_count"] == 5
+        assert synth.call_count == 0  # still no synthesis
+
+    def test_compose_approval_triggers_generation(self):
+        sm, router, _, synth = _make_manager()
+        router.set_result(IntentResult(
+            intent="compose",
+            params={
+                "subject": "CO",
+                "difficulty": "hard",
+                "question_count": 5,
+                "question_types": ["选择题"],
+            },
+        ))
+        run(sm.handle_message("s1", "出一张CO试卷"))
+        assert sm.get_or_create("s1").state == SessionState.BLUEPRINT_READY
+
+        resp = run(sm.handle_message("s1", "确认"))
+        assert sm.get_or_create("s1").state == SessionState.APPROVED
