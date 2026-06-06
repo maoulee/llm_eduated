@@ -489,3 +489,84 @@ pass / needs_fix
 - `core_new/doc_pipeline/agents_gpt/solve.md` — 求解混合中继
 
 **验证状态**: 51 pipeline tests passed, 244 total tests passed。
+
+---
+
+## 12. 交互式出题层 (Interaction Layer)
+
+> 新增: 2026-06-06
+> 用户通过自然语言交互，系统自动生成 assembled.md 蓝图并驱动 5 层流水线出题。
+
+### 12.1 架构
+
+```
+交互智能体 (Qwen本地, ~50 token LLM) → 意图路由
+     ├─ compose → compose_runner (组卷)
+     └─ knowledge_point → knowledge_retriever + blueprint_synthesizer → assembled.md
+                                                    ↓
+                                              沟通智能体 ↔ 用户批注
+                                                    ↓
+                                              批准后 → 5层流水线并行出题
+```
+
+### 12.2 模块结构
+
+```
+interact/
+├── knowledge_retriever.py   — 纯Python: 图谱检索+题目收集+KG文件回退搜索
+├── blueprint_synthesizer.py — Python数据注入+LLM教学决策→assembled.md
+├── intent_router.py         — Qwen意图分类 (compose/knowledge_point/clarify)
+├── session_manager.py       — FSM多轮会话管理 (8状态)
+└── orchestrator.py          — 顶层协调器+生成管线对接
+```
+
+### 12.3 设计原则
+
+- **Python 做数据搬运，LLM 做教学决策** — 检索/聚合用 Python，考察角度和难度梯度由 LLM 生成
+- **知识图谱子树和历年真题经验原样注入** — LLM 不重写原始知识数据
+- **LLM 只生成**: 考察角度、难度梯度、should_be/should_not_be、题型建议
+- **assembled.md 格式与 slot 模式完全一致** — 下游 5 层流水线无感
+
+### 12.4 知识检索回退 (Knowledge Retriever)
+
+```
+knowledge_registry.json 覆盖:
+  - CO (137 tags)
+  - DS (partial)
+
+回退策略:
+  CN/OS 查询 → KG markdown 文件 heading 级搜索
+  示例: "TCP拥塞控制" → CN KG file → "CN-5 > TCP协议 > TCP拥塞控制"
+```
+
+### 12.5 会话 FSM
+
+```
+IDLE → COLLECTING → BLUEPRINT_READY → ANNOTATING → APPROVED → GENERATING → COMPLETE
+                                                       ↑    ↓ (max 3 rounds)
+                                                       └────┘
+```
+
+- **IDLE**: 等待用户发起
+- **COLLECTING**: 收集科目/知识点/难度/题型信息
+- **BLUEPRINT_READY**: assembled.md 已生成，等待用户确认
+- **ANNOTATING**: 用户批注修改中（最多 3 轮）
+- **APPROVED**: 用户批准，准备执行
+- **GENERATING**: 5 层流水线执行中
+- **COMPLETE**: 出题完成
+
+### 12.6 交互测试结果 (2026-06-06, Qwen 本地模型)
+
+| 场景 | 结果 |
+|------|------|
+| 模糊意图 "帮我出题" | 正确追问科目/难度/题型 |
+| 知识点完整 "出3道中断方式选择题" | 28K 蓝图，17 道真题，教学决策准确 |
+| 歧义 "出几道Cache" | 正确追问科目 |
+| 组卷 "出一张CO试卷" | compose 模式确认 |
+| 多轮 TCP | 2 轮收集，知识点正确解析 |
+
+### 12.7 待完成
+
+- 批注循环（用户修改蓝图后重新合成）
+- compose_runner 实际调用
+- 生成管线实际执行

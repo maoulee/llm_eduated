@@ -128,52 +128,58 @@ class InteractiveOrchestrator:
 
         # Prepare workspace directory
         run_id = datetime.now().strftime("%Y-%m-%dT%H-%M-%S-%f")
-        workspace = os.path.join("docs", "workspace", run_id, slot_id)
+        workspace = os.path.join("docs", "workspace", run_id)
         os.makedirs(workspace, exist_ok=True)
 
-        # Write assembled doc to workspace
+        # Write assembled doc to workspace root
         assembled_path = os.path.join(workspace, "assembled.md")
         with open(assembled_path, "w", encoding="utf-8") as f:
             f.write(session.blueprint_md)
 
-        # Build minimal slot_data for DocPipeline
+        # Determine subject from knowledge_tag prefix or explicit param
+        subject = self._resolve_subject(knowledge_tag, p)
+
+        # Build slot_data for DocPipeline
+        q_type_raw = p.get("question_type", "") or ""
         slot_data = {
             "slot_id": slot_id,
-            "subject": p.get("subject", ""),
+            "subject": subject,
             "knowledge_tag": knowledge_tag,
             "difficulty": p.get("difficulty", "medium"),
-            "question_type": p.get("question_type", ""),
-            "question_count": int(p.get("question_count", 1) or 1),
+            "question_type": q_type_raw,
         }
 
-        question_type = p.get("question_type") or None
+        question_type = q_type_raw or None
+        question_count = int(p.get("question_count", 1) or 1)
+        results: list[dict] = []
 
-        logger.info(
-            "DocPipeline for session %s slot_id=%s (TODO: actual execution)",
-            session.session_id,
-            slot_id,
-        )
+        for i in range(question_count):
+            q_workspace = os.path.join(workspace, f"q{i + 1}")
+            q_slot_id = f"{slot_id}-{i + 1}" if question_count > 1 else slot_id
 
-        # TODO: Uncomment to run the actual pipeline (takes minutes)
-        # dp = DocPipeline(
-        #     workspace=workspace,
-        #     model_routing=self.model_routing,
-        # )
-        # result = await dp.run(
-        #     slot_id=slot_id,
-        #     slot_data=slot_data,
-        #     assembled_experience_doc=session.blueprint_md,
-        #     question_type=question_type,
-        # )
-        # return {
-        #     "session_id": session.session_id,
-        #     "mode": "knowledge_point",
-        #     "blueprint_id": session.blueprint_id,
-        #     "slot_id": slot_id,
-        #     "workspace": workspace,
-        #     "ok": result.ok,
-        #     "results": [result.final_content] if result.ok else [],
-        # }
+            logger.info(
+                "DocPipeline session=%s slot_id=%s question=%d/%d",
+                session.session_id, q_slot_id, i + 1, question_count,
+            )
+
+            dp = DocPipeline(
+                workspace=q_workspace,
+                model_routing=self.model_routing,
+            )
+            result = await dp.run(
+                slot_id=q_slot_id,
+                slot_data=slot_data,
+                assembled_experience_doc=session.blueprint_md,
+                question_type=question_type,
+            )
+
+            results.append({
+                "slot_id": q_slot_id,
+                "ok": result.ok,
+                "review_status": result.review_status,
+                "final_content": result.final_content if result.ok else None,
+                "total_time_s": result.total_time_s,
+            })
 
         return {
             "session_id": session.session_id,
@@ -181,7 +187,24 @@ class InteractiveOrchestrator:
             "blueprint_id": session.blueprint_id,
             "slot_id": slot_id,
             "workspace": workspace,
-            "assembled_path": assembled_path,
-            "results": [],
-            "status": "wired_not_executed",
+            "results": results,
         }
+
+    @staticmethod
+    def _resolve_subject(knowledge_tag: str, params: dict) -> str:
+        """Determine the 408 subject code from knowledge_tag prefix or params."""
+        if knowledge_tag.startswith("CN"):
+            return "CN"
+        if knowledge_tag.startswith("DS"):
+            return "DS"
+        if knowledge_tag.startswith("OS"):
+            return "OS"
+
+        subj = params.get("subject", "")
+        if "网络" in subj:
+            return "CN"
+        if "数据" in subj:
+            return "DS"
+        if "操作" in subj:
+            return "OS"
+        return "CO"
