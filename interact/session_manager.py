@@ -14,8 +14,11 @@ from interact.blueprint_synthesizer import BlueprintSynthesizer, SynthesisReques
 logger = logging.getLogger(__name__)
 
 # Keywords the user might say to approve a blueprint
+# Negative lookbehind for "不" to exclude "不可以", "不行"
+# Negative lookahead for "吗|的" to exclude "可以这样吗", "行的吗"
 _APPROVAL_PATTERNS = re.compile(
-    r"(确认|没问题|可以|ok|好的|批准|通过|approve|就这样|没问题|行|同意)",
+    r"(?<!不)(确认|没问题|ok|好的|批准|通过|approve|就这样|同意)"
+    r"|(?<!不)(可以|行)(?!吗|的)",
     re.IGNORECASE,
 )
 
@@ -124,6 +127,7 @@ class SessionManager:
                 session.state = SessionState.COLLECTING
                 return result.response or self._ask_missing(session)
             # Params complete — confirm understanding before compose_runner call
+            session.state = SessionState.BLUEPRINT_READY
             return self._format_compose_confirmation(session)
 
         # Knowledge point mode with partial params — collect more
@@ -152,6 +156,10 @@ class SessionManager:
         if result.intent in ("compose", "knowledge_point"):
             session.mode = result.intent
             session.collected_params.update(result.params)
+
+        if session.mode == "compose":
+            session.state = SessionState.BLUEPRINT_READY
+            return self._format_compose_confirmation(session)
 
         return await self._synthesize_blueprint(session)
 
@@ -208,11 +216,27 @@ class SessionManager:
             knowledge_tag = self.knowledge_retriever.resolve_knowledge_tag(
                 p["knowledge_topic"]
             ) or ""
+            # Ambiguous: multiple candidates → ask user to pick
+            if not knowledge_tag:
+                candidates = self.knowledge_retriever.search(p["knowledge_topic"])
+                if len(candidates) > 1:
+                    session.missing_params = ["knowledge_topic"]
+                    session.state = SessionState.COLLECTING
+                    labels = "\n".join(
+                        f"  {i+1}. {c}" for i, c in enumerate(candidates[:5])
+                    )
+                    return (
+                        f"「{p['knowledge_topic']}」匹配到多个知识点，请选择：\n"
+                        f"{labels}\n\n请输入编号或更精确的描述。"
+                    )
+                if candidates:
+                    knowledge_tag = candidates[0]
 
         request = SynthesisRequest(
             knowledge_tag=knowledge_tag,
             user_intent=p.get("user_intent", p.get("knowledge_topic", "")),
             subject=p.get("subject", ""),
+            difficulty=p.get("difficulty", ""),
             question_count=int(p.get("question_count", 1) or 1),
             question_type=p.get("question_type", ""),
         )
@@ -244,6 +268,7 @@ class SessionManager:
             knowledge_tag=knowledge_tag,
             user_intent=p.get("user_intent", p.get("knowledge_topic", "")),
             subject=p.get("subject", ""),
+            difficulty=p.get("difficulty", ""),
             question_count=int(p.get("question_count", 1) or 1),
             question_type=p.get("question_type", ""),
             existing_blueprint=session.blueprint_md,

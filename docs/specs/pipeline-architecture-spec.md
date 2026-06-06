@@ -45,7 +45,6 @@ Step 2: Qwen 接收 GPT 输出 + agents_gpt/{role}.md 中继规范
 | `outline.md` | 规划 | L1 | outline.md, assembled.md | write_file |
 | `question_sc.md` | 选择题 | L2 | question.md | write_file, exec_python |
 | `question_comp.md` | 综合题 | L2 | question.md | write_file, exec_python |
-| `question.md` | 通用出题 | L2 | question.md | write_file, exec_python |
 | `review.md` | 题目审核 | L3 | review.md | write_file |
 | `solve.md` | 独立求解 | L4 | solution.md | write_file, exec_python |
 | `final_review.md` | 终审 | L5 | final_review.md | write_file, exec_python |

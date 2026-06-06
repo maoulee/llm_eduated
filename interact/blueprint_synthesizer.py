@@ -120,6 +120,7 @@ class SynthesisRequest:
     knowledge_tag: str = ""       # resolved tag from KnowledgeRetriever
     user_intent: str = ""         # free text, e.g. "出3道选择题，K2-K3难度"
     subject: str = ""             # optional subject hint
+    difficulty: str = ""          # easy / medium / hard
     question_count: int = 1       # number of questions to generate
     question_type: str = ""       # "single_choice" | "comprehensive" or empty for auto
     existing_blueprint: str = ""  # for revision: current blueprint text
@@ -240,6 +241,8 @@ class BlueprintSynthesizer:
 
         if request.subject:
             lines.append(f"- **科目提示**: {request.subject}")
+        if request.difficulty:
+            lines.append(f"- **难度要求**: {request.difficulty}")
         if request.question_count:
             lines.append(f"- **出题数量**: {request.question_count}")
         if request.question_type:
