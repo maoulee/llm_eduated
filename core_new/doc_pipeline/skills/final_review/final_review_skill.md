@@ -1,37 +1,9 @@
-# 终审技能
+# 终审技能 — 验证流程清单
 
-## 输出格式（必须严格遵循）
+> 行为约束（审核范围、路由判定、就地修正规则、输出格式、禁止行为）已定义在 agents/final_review.md。
+> 本文件仅包含终审验证步骤清单。
 
-```markdown
-## status
-pass
-
-## summary
-（审核总结）
-
-## corrections
-（仅 expression_fix 时写修正内容，否则写"无"）
-
-## detailed_feedback
-（逐项审核发现）
-
-## quality_score
-- overall: X/10
-- knowledge: X/10
-- self_consistency: X/10
-- difficulty_match: X/10
-- expression_precision: X/10
-
-## improvement_suggestions
-（即使 pass 也必须填写）
-
-## routing_feedback
-（仅 question_error / solution_error 时填写具体修正要求）
-```
-
-**status 必须是以下之一：`pass`、`expression_fix`、`question_error`、`solution_error`**，写在 `## status` 下的第一行，不要用表格或加粗包裹。
-
-## 审核流程
+## 终审验证步骤
 
 ### Step 1: 求解正确性验证
 - 检查 solution.md 是否回答了 question.md 的每个子问题
@@ -57,44 +29,6 @@ pass
 - K难度实际评估 vs 目标
 - 差异>=2级需标记
 
-## 路由判定规则
-
-### pass（通过）
-- 求解正确
-- 条件利用充分
-- 答案自洽
-- 可有微小瑕疵但不影响正确性
-
-### expression_fix（就地修正）
-**严格条件**：
-- 仅措辞/格式问题
-- 不涉及参数值修改
-- 不涉及逻辑变更
-- 不影响答案正确性
-
-**操作**：
-- 用 edit_file 直接修改
-- 不需要回退到其他 Agent
-
-### question_error（题目错误）
-**触发条件**：
-- 参数矛盾（两个条件互相冲突）
-- 条件缺失（无法推导出唯一答案）
-- 条件冗余（存在无用条件）
-- 知识点错误（考察内容与规划不符）
-- 题干歧义（存在多种合理解读）
-
-**操作**：输出 review_feedback.md，回退到 Question Agent
-
-### solution_error（求解错误）
-**触发条件**：
-- 计算错误（数值不对）
-- 推理错误（逻辑不正确）
-- 遗漏子问题（未覆盖所有子问题）
-- 硬编码痕迹（结果非推导得出）
-
-**操作**：输出 review_feedback.md，回退到 Solve Agent
-
 ## 就地修正操作指南
 
 当判定为 expression_fix 时：
@@ -102,11 +36,10 @@ pass
 2. edit_file 进行最小修正（不改变参数值和逻辑）
 3. 如涉及数值表述，用 exec_python 验证
 4. write_file 输出 final_review.md
-5. 组装 final.md
 
 ## 修复反馈格式
 
-当判定为 question_error 或 solution_error 时，review_feedback.md 必须包含：
+当判定为 question_error 或 solution_error 时，routing_feedback 必须包含：
 
 ```markdown
 ## 错误定位
@@ -116,7 +49,6 @@ pass
 
 ## 具体问题
 1. （精确描述问题）
-2. ...
 
 ## 修正建议
 - （具体可操作的修正方向）
