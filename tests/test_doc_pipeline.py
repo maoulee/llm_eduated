@@ -102,6 +102,17 @@ def _write_file_call(path: str, content: str, call_id: str = "call_1") -> dict:
     }
 
 
+def _tool_call(name: str, arguments: dict, call_id: str = "call_1") -> dict:
+    return {
+        "id": call_id,
+        "type": "function",
+        "function": {
+            "name": name,
+            "arguments": json.dumps(arguments, ensure_ascii=False),
+        },
+    }
+
+
 # ── WriteFileTool tests ──────────────────────────────────────────
 
 
@@ -338,10 +349,7 @@ class TestDocSchedulerToolProtocol:
 
         assert result.startswith("## status")
         assert (tmp_path / "S1" / "outline.md").read_text(encoding="utf-8") == result
-        assert calls[0]["tool_choice"] == {
-            "type": "function",
-            "function": {"name": "write_file"},
-        }
+        assert calls[0]["tool_choice"] == "auto"
 
     def test_run_agent_extracts_textual_tool_call(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -413,6 +421,128 @@ class TestDocSchedulerToolProtocol:
 
         assert result == "## status\ndraft"
         assert (tmp_path / "S4" / "outline.md").exists()
+
+    def test_normal_workflow_does_not_trigger_commit_only(self, tmp_path):
+        """A normal read→write workflow should NOT trigger commit-only."""
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+        responses = [
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_1")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call("question.md", "## status\ndraft\n\n## 题干\nT", "call_2")],
+            },
+        ]
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append({"messages": list(messages), **kwargs})
+            return responses.pop(0)
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S5"))
+
+        assert result.startswith("## status")
+        # 2 calls: read assembled.md, then write question.md
+        assert len(calls) == 2
+        second_call = calls[1]
+        tool_names = [t["function"]["name"] for t in second_call["tools"]]
+        assert "write_file" in tool_names
+        assert "read_file" in tool_names
+        # No exec_file — question_comp does not verify
+        assert "exec_file" not in tool_names
+        # No commit-only — messages should be normal history, not rebuilt context.
+        assert len([m for m in second_call["messages"] if m["role"] == "system"]) == 1
+
+    def test_no_file_progress_triggers_commit_only(self, tmp_path):
+        """4+ rounds with zero file writes should trigger commit-only."""
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+        # 4 rounds of only read_file (no file writes), then commit-only write.
+        responses = [
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_1")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_2")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_3")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_4")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call("question.md", "## status\ndraft\n\n## 题干\nT", "call_5")],
+            },
+        ]
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append({"messages": list(messages), **kwargs})
+            return responses.pop(0)
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S6"))
+
+        assert result.startswith("## status")
+        # The 5th call (index 4) should be in commit-only mode — only write_file.
+        fifth_call = calls[4]
+        assert [t["function"]["name"] for t in fifth_call["tools"]] == ["write_file"]
+        assert fifth_call["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "write_file"},
+        }
+        # Commit-only rebuilds messages: system + user (task) + user (recovery prompt).
+        assert [m["role"] for m in fifth_call["messages"]] == ["system", "user", "user"]
+
+    def test_final_review_secondary_output_uses_write_file_only(self, tmp_path):
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+        responses = [
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call("final_review.md", "## status\npass", "call_1")],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call("final.md", "## 题目\nT", "call_2")],
+            },
+        ]
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append(kwargs)
+            return responses.pop(0)
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent("final_review", "task", slot_id="S6"))
+
+        assert result == "## status\npass"
+        assert (tmp_path / "S6" / "final_review.md").exists()
+        assert (tmp_path / "S6" / "final.md").exists()
+        assert [t["function"]["name"] for t in calls[1]["tools"]] == ["write_file"]
+        assert calls[1]["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "write_file"},
+        }
 
 
 # ── Orchestration/scheduling separation ─────────────────────────
@@ -839,7 +969,7 @@ class TestAgentLoader:
 
     def test_prompt_includes_write_file_suffix(self):
         for name, spec in load_agents().items():
-            assert "【强制要求】" in spec.prompt, f"{name} missing write_file suffix"
+            assert "产出文件" in spec.prompt, f"{name} missing write_file suffix"
             assert spec.output_file in spec.prompt, f"{name} missing filename in suffix"
 
     def test_multi_turn_agents(self):
@@ -880,7 +1010,7 @@ class TestAgentLoader:
         assert spec.output_file == "out.md"
         assert spec.thinking_budget == 5000
         # Prompt is now built from behavior layer, not MD body
-        assert "工具调用智能体" in spec.prompt
+        assert "自主智能体" in spec.prompt
         assert "out.md" in spec.prompt
 
     def test_parse_rejects_missing_frontmatter(self, tmp_path):

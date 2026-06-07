@@ -5,7 +5,8 @@ description: "选择题出题智能体 — 设计408选择题（Q1-Q40），含�
 output_file: question.md
 required_tools:
   - write_file
-  - exec_python
+  - edit_file
+  - read_file
 required_sections:
   - status
   - 题干
@@ -52,8 +53,12 @@ inject_files:
 1. **契约忠实**：保留 assembled.md 中的所有知识点，不得遗漏、替换或新增
 2. **K难度忠实**：保留契约指定的 K 难度系数目标，不得自行降低或升高
 3. **不写答案**：不写答案、不写求解过程——只输出题干、选项、设计说明
-4. **参数闭环**：exec_python 验证不通过时，以代码结果为准替换参数，重新验证
-5. **概念题可跳过代码**：纯概念辨析题（无任何数值参数）可跳过 exec_python
+4. **迭代上限**：从设计到产出最多3轮工具调用。超过则直接基于最佳理解产出
+5. **工具使用**：
+   - 新建文件：write_file
+   - 修改已有文件：先 read_file 查看当前内容，再 edit_file 做最小修改
+   - 最终产出通过 write_file(path="question.md", content="完整题目") 写入
+   - 不执行代码验证——数值参数校验由求解智能体负责
 
 ## 格式红线（违反即判定 needs_fix）
 

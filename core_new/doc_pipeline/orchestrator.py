@@ -231,40 +231,42 @@ class DocPipelineOrchestrator:
                     q_task,
                     slot_id=slot_id,
                     inject_files=q_inject,
-                    continue_session=False,
+                    continue_session=iteration > 0,
                 )
 
                 if not question_path.exists():
                     return self._fail_result(slot_id, f"Question agent did not write question.md (iter {iteration})")
 
                 # ── Layer 3: Review (question-only) ────────────────
-                if iteration < MAX_REVIEW_RETRIES:
-                    logger.info("[%s] Layer 3: Review (iter %d)", slot_id, iteration)
-                    r_task = "请审核以下题目的设计质量（此阶段无答案，不评估答案正确性）。"
-                    r_inject = await self._resolve_inject("review", slot_id, 3, {
-                        "规划": str(ref_path),
-                        "题目": str(question_path),
-                    })
-                    await self.scheduler.run_agent(
-                        "review",
-                        r_task,
-                        slot_id=slot_id,
-                        inject_files=r_inject,
+                logger.info("[%s] Layer 3: Review (iter %d)", slot_id, iteration)
+                r_task = "请审核以下题目的设计质量（此阶段无答案，不评估答案正确性）。"
+                r_inject = await self._resolve_inject("review", slot_id, 3, {
+                    "规划": str(ref_path),
+                    "题目": str(question_path),
+                })
+                await self.scheduler.run_agent(
+                    "review",
+                    r_task,
+                    slot_id=slot_id,
+                    inject_files=r_inject,
+                )
+
+                if not review_path.exists():
+                    return self._fail_result(slot_id, "Review agent did not write review.md")
+
+                review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
+                logger.info("[%s] Review iter %d: status=%s", slot_id, iteration, review_status)
+                if not review_status:
+                    return self._fail_result(slot_id, "Review agent returned invalid or missing status")
+                if review_status == "pass":
+                    break
+                if iteration >= MAX_REVIEW_RETRIES:
+                    logger.warning(
+                        "[%s] Review still needs_fix after %d iterations — proceeding with current question",
+                        slot_id, MAX_REVIEW_RETRIES + 1,
                     )
-
-                    if not review_path.exists():
-                        return self._fail_result(slot_id, "Review agent did not write review.md")
-
-                    review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
-                    logger.info("[%s] Review iter %d: status=%s", slot_id, iteration, review_status)
-                    if not review_status:
-                        return self._fail_result(slot_id, "Review agent returned invalid or missing status")
-                    if review_status == "pass":
-                        break
-                    # needs_fix: loop back to question
-                else:
-                    # Final iteration, skip review and proceed
-                    logger.info("[%s] Layer 3: Review SKIPPED (final iteration)", slot_id)
+                    break
+                # needs_fix: loop back to question
 
         # ── Layer 4: Solve ────────────────────────────────────────
         solution_path = ws / "solution.md"
@@ -314,7 +316,7 @@ class DocPipelineOrchestrator:
             for final_iter in range(MAX_FINAL_RETRIES + 1):
                 question_before = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
                 solution_before = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
-                fr_task = "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。"
+                fr_task = "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。通过时需写入 final_review.md 和 final.md（最终交付文档）两个文件。"
                 fr_inject_files = {
                     "规划": str(ref_path),
                     "题目": str(question_path),
@@ -322,6 +324,8 @@ class DocPipelineOrchestrator:
                 }
                 if output_path.exists():
                     fr_inject_files["代码输出"] = str(output_path)
+                if solve_path.exists():
+                    fr_inject_files["求解代码"] = str(solve_path)
 
                 fr_inject = await self._resolve_inject("final_review", slot_id, 5, fr_inject_files)
                 await self.scheduler.run_agent(
@@ -329,6 +333,7 @@ class DocPipelineOrchestrator:
                     fr_task,
                     slot_id=slot_id,
                     inject_files=fr_inject,
+                    continue_session=final_iter > 0,
                 )
 
                 if not final_review_path.exists():
@@ -342,15 +347,7 @@ class DocPipelineOrchestrator:
                 if final_status == "pass":
                     break
                 elif final_status == "expression_fix":
-                    corrections = parse_doc_section(str(final_review_path), "corrections").strip()
-                    if corrections and corrections != "无":
-                        question_after = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
-                        solution_after = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
-                        if question_after == question_before and solution_after == solution_before:
-                            return self._fail_result(
-                                slot_id,
-                                "Final Review requested expression_fix but did not modify question.md or solution.md",
-                            )
+                    # final_review fixes text in final.md, no need to check question/solution changes
                     break
                 elif final_status == "question_error" and final_iter < MAX_FINAL_RETRIES:
                     # Back to Question Agent
@@ -369,6 +366,7 @@ class DocPipelineOrchestrator:
                         q_task,
                         slot_id=slot_id,
                         inject_files=await self._resolve_inject(q_role, slot_id, 2, {"规划": str(ref_path)}),
+                        continue_session=True,
                     )
                     if not question_path.exists():
                         return self._fail_result(slot_id, "Question agent (retry) did not write question.md")
@@ -402,6 +400,7 @@ class DocPipelineOrchestrator:
                         slot_id=slot_id,
                         inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)}),
                         max_tokens=self.max_tokens,
+                        continue_session=True,
                     )
                     if not solution_path.exists():
                         return self._fail_result(slot_id, "Solve agent (retry) did not write solution.md")
@@ -410,15 +409,18 @@ class DocPipelineOrchestrator:
                 else:
                     return self._fail_result(slot_id, f"Final Review unresolved status: {final_status}")
 
-        # ── Format: Assemble final.md ─────────────────────────────
-        logger.info("[%s] Format (system hook)", slot_id)
-        self._format_final(
-            ws,
-            question_path=question_path,
-            solution_path=solution_path,
-            output_path=output_path,
-            review_path=final_review_path if final_review_path.exists() else None,
-        )
+        # ── Format: Assemble final.md (fallback if agent didn't write it) ──
+        final_path = ws / "final.md"
+        if not final_path.exists():
+            logger.info("[%s] Format (system hook — agent did not write final.md)", slot_id)
+            self._format_final(
+                ws,
+                question_path=question_path,
+                solution_path=solution_path,
+                output_path=output_path,
+            )
+        else:
+            logger.info("[%s] Format (agent-produced final.md, %d chars)", slot_id, len(final_path.read_text(encoding="utf-8")))
 
         final_path = ws / "final.md"
         total_time = time.monotonic() - total_start
@@ -533,13 +535,14 @@ class DocPipelineOrchestrator:
         question_path: Path,
         solution_path: Path,
         output_path: Path,
-        review_path: Path | None = None,
     ) -> None:
         """Assemble final.md from component files without another LLM call."""
         question_text = question_path.read_text(encoding="utf-8") if question_path.exists() else ""
         q_sections = _extract_sections(question_text)
 
-        stem = q_sections.get("题干", question_text)
+        # Stem: try 题干 first, then 题目; never fall back to full question_text
+        # to avoid duplicating headers / design-notes / answer sections.
+        stem = q_sections.get("题干") or q_sections.get("题目") or extract_h2_section(question_text, "题干") or extract_h2_section(question_text, "题目")
         sub_questions = q_sections.get("子问题", "")
         options = q_sections.get("选项", "")
 
@@ -548,17 +551,12 @@ class DocPipelineOrchestrator:
         s_sections = _extract_sections(solution_text)
         # Use ##-level extraction so ### subsections stay intact
         process = extract_h2_section(solution_text, "求解过程") or solution_text
-        answer = s_sections.get("最终答案", "")
+        answer = s_sections.get("最终答案", "") or extract_h2_section(solution_text, "最终答案")
 
         # If solve_output exists (numerical question), append it
         code_output = ""
         if output_path.exists():
             code_output = output_path.read_text(encoding="utf-8")
-
-        review_summary = ""
-        if review_path and review_path.exists():
-            r_sections = _extract_sections(review_path.read_text(encoding="utf-8"))
-            review_summary = r_sections.get("summary", "")
 
         design_notes = q_sections.get("设计说明", "")
 
@@ -570,11 +568,10 @@ class DocPipelineOrchestrator:
         parts.append(f"\n\n## 求解过程\n{process.strip()}")
         if code_output:
             parts.append(f"\n\n## 代码验证输出\n{code_output.strip()}")
-        parts.append(f"\n\n## 答案\n{answer.strip()}")
+        if answer:
+            parts.append(f"\n\n## 答案\n{answer.strip()}")
         if design_notes:
             parts.append(f"\n\n## 设计说明\n{design_notes.strip()}")
-        if review_summary:
-            parts.append(f"\n\n## 审核总结\n{review_summary.strip()}")
 
         (ws / "final.md").write_text("\n".join(parts), encoding="utf-8")
 

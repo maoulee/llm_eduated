@@ -5,7 +5,8 @@ description: "综合题出题智能体 — 设计408综合应用题（Q41-Q47）
 output_file: question.md
 required_tools:
   - write_file
-  - exec_python
+  - edit_file
+  - read_file
 required_sections:
   - status
   - 题干
@@ -56,7 +57,12 @@ inject_files:
 4. **子问依赖**：子问之间必须有逻辑依赖（串行或混合），不允许完全独立
 5. **不写答案**：不写答案、不写求解过程——只输出题干、子问题、设计说明
 6. **条件充分不冗余**：每个给定条件都要被子问题用到
-7. **参数闭环**：exec_python 验证不通过时，以代码结果为准替换参数，重新验证
+7. **迭代上限**：从设计到产出最多3轮工具调用。超过则直接基于最佳理解产出
+8. **工具使用**：
+   - 新建文件：write_file
+   - 修改已有文件：先 read_file 查看当前内容，再 edit_file 做最小修改
+   - 最终产出通过 write_file(path="question.md", content="完整题目") 写入
+   - 不执行代码验证——数值参数校验由求解智能体负责
 
 ## 格式红线（违反即判定 needs_fix）
 
