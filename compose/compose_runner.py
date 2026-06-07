@@ -173,6 +173,9 @@ async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_exper
         print("  ERROR: WebGPT not configured for hybrid composition")
         return "", {}
 
+    # Run-scoped session key prevents cross-run context leakage
+    compose_session = f"compose-{time.monotonic_ns()}"
+
     slot_md = _build_slot_contracts_md(templates, exp_dir)
     prompt = PAPER_OUTLINE_PROMPT.format(
         user_requirements=user_requirements,
@@ -184,13 +187,18 @@ async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_exper
     try:
         raw = await client.delegate(
             agent_name="hybrid_paper_composer",
-            slot_id="compose",
+            slot_id=compose_session,
             system_prompt=_OUTLINE_SYSTEM_PROMPT,
             content=prompt,
         )
     except Exception as e:
         print(f"  ERROR: GPT call failed: {e}")
         return "", {}
+    finally:
+        try:
+            await client.cleanup(slot_id=compose_session)
+        except Exception:
+            pass
 
     elapsed = time.monotonic() - t0
     print(f"  GPT responded in {elapsed:.1f}s ({len(raw)} chars)")
@@ -714,16 +722,22 @@ async def _revise_hybrid(prompt: str) -> str:
     client = get_webgpt_client()
     if client is None:
         return ""
+    revise_session = f"revise-{time.monotonic_ns()}"
     try:
         raw = await client.delegate(
             agent_name="hybrid_paper_reviser",
-            slot_id="revise",
+            slot_id=revise_session,
             system_prompt=_OUTLINE_SYSTEM_PROMPT,
             content=prompt,
         )
     except Exception as e:
         print(f"  ERROR: GPT revise failed: {e}")
         return ""
+    finally:
+        try:
+            await client.cleanup(slot_id=revise_session)
+        except Exception:
+            pass
     print(f"  GPT 修订完成 ({len(raw)} chars)")
     return raw
 

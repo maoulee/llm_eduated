@@ -1,0 +1,31 @@
+State: blueprint_ready
+Mode: knowledge_point
+Params: {
+  "knowledge_topic": "Cache映射方式",
+  "subject": "计算机组成原理",
+  "question_count": 1,
+  "question_type": "选择题",
+  "difficulty": "medium"
+}
+
+Response:
+蓝图已生成：
+
+_auto 出题参考文档（考察模式：概念辨析与计算结合）
+  - **考点**: Cache与主存的地址映射方式（全相联、直接映射、组相联）
+  - **知识域**: 计算机组成原理 - 存储器系统
+  - **难度**: 3
+  - **K目标**: K2-K3平衡型
+  - **难度说明**: 中等难度，重点考察映射规则的理解与索引/标记字段的划分计算
+  - **考察模式**: 概念辨析与计算结合
+  - **出题数量**: 1
+  - **题型**: single_choice
+  - **用户意图**: Cache映射方式
+  - **知识点**:
+  - **历史题目数**: 0
+  - **科目**: 计算机组成原理
+  - **recommended_mode**: 概念辨析与计算结合
+  - **mode_rationale**: Cache映射的核心在于地址结构的划分，结合计算能有效验证考生对位宽分配的理解
+  - **alternative_modes**: 原理判断, 故障/冲突分析
+
+请确认此蓝图，或提出修改意见。

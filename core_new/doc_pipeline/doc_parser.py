@@ -44,6 +44,9 @@ _STATUS_CN_MAP = {
     "需要修改": "needs_fix",
     "需修改": "needs_fix",
     "有问题": "needs_fix",
+    "需要完善": "needs_fix",
+    "基本通过": "needs_fix",
+    "有条件通过": "needs_fix",
     "表述修正": "expression_fix",
     "格式修正": "expression_fix",
     "题目错误": "question_error",
@@ -112,6 +115,18 @@ def parse_doc_section(filepath: str | Path, section_name: str) -> str:
     return value if isinstance(value, str) else ""
 
 
+# Patterns that qualify a "pass" into a conditional (non-pass) result.
+# Only triggers when the qualifier appears near a pass keyword on the same line.
+_PASS_QUALIFIERS_EN = re.compile(
+    r"(?:with\s+suggestions?|with\s+reservations?|with\s+caveats?)",
+    re.IGNORECASE,
+)
+_PASS_QUALIFIERS_CN = re.compile(
+    r"通过.*?但|合格.*?但|通过.*?需要|合格.*?需要|有条件通过|基本通过|需要完善",
+    re.IGNORECASE,
+)
+
+
 def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None = None) -> str:
     """Normalize a status value and reject anything outside the allowed set."""
     allowed_values = set(allowed or DOC_STATUS_VALUES)
@@ -127,8 +142,12 @@ def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None =
         if not line:
             continue
 
-        for cn, status in _STATUS_CN_MAP.items():
+        # CN keyword matching (ordered: longer keys first for precision)
+        for cn, status in sorted(_STATUS_CN_MAP.items(), key=lambda x: -len(x[0])):
             if cn in line and status in allowed_values:
+                # "pass" with qualifying language → needs_fix
+                if status == "pass" and _PASS_QUALIFIERS_CN.search(line):
+                    return "needs_fix" if "needs_fix" in allowed_values else ""
                 return status
 
         match = re.search(
@@ -138,6 +157,8 @@ def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None =
         )
         if match:
             status = match.group(1).lower()
+            if status == "pass" and _PASS_QUALIFIERS_EN.search(line):
+                return "needs_fix" if "needs_fix" in allowed_values else ""
             return status if status in allowed_values else ""
 
         token = re.split(r"\s+", line, maxsplit=1)[0]

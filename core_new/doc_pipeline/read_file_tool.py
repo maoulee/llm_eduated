@@ -14,7 +14,7 @@ from typing import Any
 
 from core_new.agent_runtime.base import Tool
 
-_MAX_CHARS = 4000
+_MAX_CHARS = 30000
 
 
 class ReadFileTool(Tool):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -57,9 +58,16 @@ class InteractiveOrchestrator:
         if session.state == SessionState.APPROVED:
             try:
                 result = await self.run_generation(session_id)
-                session.state = SessionState.COMPLETE
-                session.generation_results = result.get("results", [])
-                response += "\n\n题目生成完成！"
+                results = result.get("results", [])
+                all_ok = all(r.get("ok") for r in results) if results else False
+                session.generation_results = results
+                if all_ok:
+                    session.state = SessionState.COMPLETE
+                    response += "\n\n题目生成完成！"
+                else:
+                    session.state = SessionState.ERROR
+                    session.error_message = "部分题目生成失败"
+                    response += f"\n\n部分题目生成失败，请检查生成结果。"
             except Exception as exc:
                 logger.exception("Generation failed for session %s", session_id)
                 session.state = SessionState.ERROR
@@ -145,13 +153,13 @@ class InteractiveOrchestrator:
         question_count = int(p.get("question_count", 1) or 1)
         results: list[dict] = []
 
-        for i in range(question_count):
-            q_workspace = os.path.join(workspace, f"q{i + 1}")
-            q_slot_id = f"{slot_id}-{i + 1}" if question_count > 1 else slot_id
+        async def _run_one(idx: int) -> dict:
+            q_workspace = os.path.join(workspace, f"q{idx + 1}")
+            q_slot_id = f"{slot_id}-{idx + 1}" if question_count > 1 else slot_id
 
             logger.info(
                 "DocPipeline session=%s slot_id=%s question=%d/%d",
-                session.session_id, q_slot_id, i + 1, question_count,
+                session.session_id, q_slot_id, idx + 1, question_count,
             )
 
             dp = DocPipeline(
@@ -160,18 +168,23 @@ class InteractiveOrchestrator:
             )
             result = await dp.run(
                 slot_id=q_slot_id,
-                slot_data=slot_data,
+                slot_data=dict(slot_data),
                 assembled_experience_doc=session.blueprint_md,
                 question_type=question_type,
             )
 
-            results.append({
+            return {
                 "slot_id": q_slot_id,
                 "ok": result.ok,
                 "review_status": result.review_status,
                 "final_content": result.final_content if result.ok else None,
                 "total_time_s": result.total_time_s,
-            })
+            }
+
+        if question_count > 1:
+            results = await asyncio.gather(*[_run_one(i) for i in range(question_count)])
+        else:
+            results = [await _run_one(0)]
 
         return {
             "session_id": session.session_id,

@@ -28,7 +28,15 @@ class WebGPTClient:
     Uses per-session locking: each session key has its own lock to allow
     parallel requests across different slots while serializing requests
     within the same slot.
+
+    Cloud conversation deletion is deferred: completed sessions are
+    accumulated in a pending list and batch-deleted when the threshold
+    is reached, preventing context leakage caused by immediate URL
+    recycling.
     """
+
+    # Batch-delete cloud conversations once this many accumulate.
+    _BATCH_DELETE_THRESHOLD = 10
 
     def __init__(
         self,
@@ -38,6 +46,7 @@ class WebGPTClient:
         model: str = DEFAULT_WEBGPT_MODEL,
         max_tokens: int = DEFAULT_WEBGPT_MAX_TOKENS,
         timeout_s: float = DEFAULT_WEBGPT_TIMEOUT_S,
+        batch_delete_threshold: int | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -49,6 +58,13 @@ class WebGPTClient:
         self._locks: Dict[str, asyncio.Lock] = {}  # Per-session locks
         self._lock_lock = asyncio.Lock()  # Lock for accessing _locks dict
         self._available: bool | None = None
+        self._pending_deletions: list[str] = []  # URLs awaiting cloud deletion
+        self._batch_threshold = (
+            batch_delete_threshold if batch_delete_threshold is not None
+            else _parse_int_env("WEBGPT_BATCH_DELETE_THRESHOLD", self._BATCH_DELETE_THRESHOLD)
+        )
+        self._flush_fail_count: int = 0  # consecutive flush failure count
+        self._MAX_FLUSH_FAILS = 3  # drop URLs after this many consecutive failures
 
     def _get_http(self) -> httpx.AsyncClient:
         """Lazy init httpx client with auth headers."""
@@ -220,36 +236,42 @@ class WebGPTClient:
         return self.max_tokens
 
     async def cleanup(self, slot_id: str = "") -> None:
-        """Remove local session tracking AND delete ChatGPT cloud conversations.
+        """Remove local session tracking; defer cloud conversation deletion.
 
-        Calls WebGPT admin API DELETE /admin/chatgpt/conversation to remove
-        the remote ChatGPT session, preventing session bloat.
-        Also cleans up per-session locks.
+        Moves completed conversation URLs into a pending-deletion list.
+        Cloud conversations are NOT deleted immediately — they are batch-
+        deleted once the pending list reaches ``_batch_threshold``.
+        This prevents ChatGPT from recycling URLs too fast and leaking
+        residual context into new conversations.
+
+        Call ``flush_pending_deletions()`` to force immediate cloud deletion.
         """
-        import logging as _log
-        _logger = _log.getLogger("webgpt_cleanup")
-
         if not slot_id:
-            # Cleanup all sessions
-            urls = list(self._sessions.values())
+            # Mark all sessions as pending deletion
+            self._pending_deletions.extend(self._sessions.values())
             self._sessions.clear()
             async with self._lock_lock:
                 self._locks.clear()
-            if urls:
-                await self._delete_cloud_conversations(urls)
+        else:
+            url = self._sessions.pop(slot_id, None)
+            async with self._lock_lock:
+                self._locks.pop(slot_id, None)
+            if url:
+                self._pending_deletions.append(url)
+
+        # Batch-delete when threshold is reached
+        if len(self._pending_deletions) >= self._batch_threshold:
+            await self._flush_batch()
+
+    async def flush_pending_deletions(self) -> None:
+        """Force-delete all pending cloud conversations immediately."""
+        await self._flush_batch()
+
+    async def _flush_batch(self) -> None:
+        """Batch-delete accumulated conversation URLs from ChatGPT cloud."""
+        if not self._pending_deletions:
             return
-
-        url = self._sessions.pop(slot_id, None)
-        # Also cleanup the lock for this session
-        async with self._lock_lock:
-            self._locks.pop(slot_id, None)
-        if url:
-            await self._delete_cloud_conversations([url])
-
-    async def _delete_cloud_conversations(self, urls: list[str]) -> None:
-        """Delete ChatGPT cloud conversations via WebGPT admin API."""
-        import logging as _log
-        _logger = _log.getLogger("webgpt_cleanup")
+        urls, self._pending_deletions = self._pending_deletions, []
         try:
             http = self._get_http()
             resp = await http.request(
@@ -258,15 +280,33 @@ class WebGPTClient:
                 json={"conversation_urls": urls},
             )
             if resp.status_code == 200:
-                _logger.info("Deleted %d cloud conversations", len(urls))
+                logger.info("Batch-deleted %d cloud conversations", len(urls))
+                self._flush_fail_count = 0
             else:
-                _logger.warning("Failed to delete cloud conversations: %s %s",
-                                resp.status_code, resp.text[:200])
-        except Exception as e:
-            _logger.warning("Cloud conversation cleanup error: %s", e)
+                self._flush_fail_count += 1
+                if self._flush_fail_count >= self._MAX_FLUSH_FAILS:
+                    logger.error(
+                        "Batch delete failed %d consecutive times (%s %s), dropping %d URLs",
+                        self._flush_fail_count, resp.status_code, resp.text[:200], len(urls),
+                    )
+                    self._flush_fail_count = 0
+                else:
+                    logger.warning("Batch delete failed: %s %s — re-queuing %d URLs",
+                                   resp.status_code, resp.text[:200], len(urls))
+                    self._pending_deletions[:0] = urls
+        except Exception as exc:
+            self._flush_fail_count += 1
+            if self._flush_fail_count >= self._MAX_FLUSH_FAILS:
+                logger.error("Batch delete error after %d retries: %s, dropping URLs",
+                             self._flush_fail_count, exc)
+                self._flush_fail_count = 0
+            else:
+                logger.warning("Batch delete error: %s — re-queuing %d URLs", exc, len(urls))
+                self._pending_deletions[:0] = urls
 
     async def close(self) -> None:
-        """Close the underlying HTTP client."""
+        """Flush pending deletions and close the underlying HTTP client."""
+        await self._flush_batch()
         if self._http and not self._http.is_closed:
             await self._http.aclose()
             self._http = None
@@ -287,12 +327,15 @@ def get_webgpt_client() -> WebGPTClient | None:
             model = os.getenv("WEBGPT_MODEL", DEFAULT_WEBGPT_MODEL).strip()
             max_tokens = _parse_int_env("WEBGPT_MAX_TOKENS", DEFAULT_WEBGPT_MAX_TOKENS)
             timeout_s = _parse_float_env("WEBGPT_TIMEOUT_S", DEFAULT_WEBGPT_TIMEOUT_S)
+            batch_threshold_raw = _parse_int_env("WEBGPT_BATCH_DELETE_THRESHOLD", -1)
+            batch_threshold = batch_threshold_raw if batch_threshold_raw >= 0 else None
             _client = WebGPTClient(
                 base_url,
                 api_key,
                 model=model,
                 max_tokens=max_tokens,
                 timeout_s=timeout_s,
+                batch_delete_threshold=batch_threshold,
             )
     return _client
 
@@ -301,6 +344,29 @@ def reset_webgpt_client() -> None:
     """Reset singleton (for testing)."""
     global _client
     _client = None
+
+
+def shutdown_webgpt_client() -> None:
+    """Synchronous shutdown: flush pending deletions and close HTTP client.
+
+    Safe to call from atexit or signal handlers. Best-effort: logs
+    failures but never raises.
+    """
+    global _client
+    if _client is None:
+        return
+    client = _client
+    _client = None
+    try:
+        asyncio.run(client.close())
+    except RuntimeError:
+        pass
+    except Exception as exc:
+        logger.warning("shutdown_webgpt_client error: %s", exc)
+
+
+import atexit
+atexit.register(shutdown_webgpt_client)
 
 
 def _extract_conversation_id(url: str) -> str | None:

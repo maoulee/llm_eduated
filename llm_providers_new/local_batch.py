@@ -24,15 +24,24 @@ logger = logging.getLogger(__name__)
 class LocalVLLMProvider(BaseLLMProvider):
     """实现 BaseLLMProvider 接口的本地 vLLM 客户端。"""
 
+    # Application-level config keys that are NOT vLLM EngineArgs
+    _NON_VLLM_KEYS = frozenset({
+        "request_timeout", "max_retries", "supports_response_format",
+        "prompt_template_style", "thinking_control_method", "serve_as_api",
+        "temperature", "top_p", "top_k", "default_max_tokens",
+    })
+
     def __init__(self, model_name: str, **vllm_kwargs):
         default_kwargs = {
             "trust_remote_code": True,
             "max_model_len": 10000,
         }
-        final_kwargs = {**default_kwargs, **vllm_kwargs}
+        merged = {**default_kwargs, **vllm_kwargs}
+        # Strip non-vLLM params before passing to EngineArgs
+        engine_kwargs = {k: v for k, v in merged.items() if k not in self._NON_VLLM_KEYS}
 
-        logger.info("Initializing LocalVLLMProvider with model '%s' and params: %s", model_name, final_kwargs)
-        self.llm = LLM(model=model_name, **final_kwargs)
+        logger.info("Initializing LocalVLLMProvider with model '%s' and params: %s", model_name, engine_kwargs)
+        self.llm = LLM(model=model_name, **engine_kwargs)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         self.provider_type = "local"
 

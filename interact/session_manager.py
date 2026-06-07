@@ -370,7 +370,7 @@ class SessionManager:
             f"  - 题型：{q_types}",
             f"  - 难度：{difficulty}",
             "",
-            "（组卷功能对接中，当前版本请使用知识点出题模式）",
+            "确认后将开始组卷，请回复「确认」开始生成。",
         ]
         return "\n".join(lines)
 
