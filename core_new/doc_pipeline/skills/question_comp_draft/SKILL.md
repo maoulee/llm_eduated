@@ -7,16 +7,25 @@
 
 ### 设计题干（写 question.md）
 
-**目标**：基于蓝图设计完整题目，**直接产出 question.md**。
+**目标**：基于设计卡设计完整题目，**直接产出 question.md**。
 
-1. 阅读 assembled.md（蓝图），提取知识点、考察模式、K难度、题型结构
-2. 在思考中设计题干、子问题、分值分配、设计说明
-3. **直接 write_file(question.md)** — 不做数值校验
+1. **优先读取 design_card.md**：
+   - blueprint_contract（考点范围）
+   - core_knowledge_intent（核心知识点意图）
+   - question_structure_plan（题型结构和子问规划）
+   - parameter_plan（参数规划）
+   - terminology_and_expression_constraints（术语约束）
+2. **assembled.md 仅用于补充**：
+   - 经验卡中的 should_be / should_not_be
+   - 选中模式的考察结构模式
+   - 历年题型风格参考
+3. **不得**把 design_card 未选择的 assembled 候选知识点加入题目
+4. **直接 write_file(question.md)** — 不做数值校验
 
 **只关注**：
-- 知识点与蓝图对齐
+- 知识点与 design_card 对齐
 - 考察形式符合要求
-- 子问结构与蓝图一致
+- 子问结构与 design_card 一致
 - 题干风格像408真题
 
 **数值参数校验不在此阶段** — 参数自洽性和数值修订由求解智能体负责。
@@ -71,7 +80,7 @@
 
 ## 经验卡消费规范
 
-蓝图（assembled.md）中包含经验卡的考察结构模式分析和出题指导。出题前必须先提取以下信息：
+assembled.md 中包含经验卡的考察结构模式分析和出题指导，作为 design_card 的补充。出题前必须先提取以下信息：
 
 ### 必提取项
 1. **should_be**：这个题位应该出什么样的综合题

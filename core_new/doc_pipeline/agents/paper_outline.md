@@ -61,8 +61,7 @@ skills:
 
 ## 工具使用规则
 
-- 首轮模式：使用 `write_file` 一次性输出 outline_draft.md
-- 修订模式：先 `read_file` 读取当前 outline_approved.md，识别 diff，再 `write_file` 输出修订版
+工具使用遵循 behavior/artifact_writer.md。修订模式优先使用 gitdiff 识别变化；diff 不足以定位时才 read_file。
 
 ## 输出格式要求
 

@@ -6,9 +6,13 @@
 ## 审核焦点
 
 终审在 review（题干风格审核）和 solve（求解+参数校验）之后执行：
-- **review 已审过**：风格、知识点、考察形式 — 终审不再重审
-- **solve 已做过**：参数校验、数值修订、代码验证 — 终审读取证据核对
-- **终审聚焦**：交付一致性 — question + solution + evidence 是否闭环
+- **review 已审过**：风格、考察形式表面结构
+- **solve 已做过**：参数校验、数值修订、代码验证
+- **终审必须基于 design_card + solve evidence 复核**：
+  - 目标知识点是否真正进入求解链条
+  - expected_reasoning_actions 是否在 solution / solve_output 中出现
+  - terminology constraints 是否被题干满足
+  - 若题面看似符合但求解未体现目标动作，应判 question_error
 
 ## 数值题 vs 概念题路径
 
@@ -97,11 +101,17 @@ pass / expression_fix / question_error / solution_error
 - 答案自洽性：[通过/偏差] （关键词）
 - 蓝图匹配：[通过/偏差] （关键词）
 
-## quality_score
-overall: N/10, self_consistency: N/10, difficulty: N/10, expression: N/10
+## issue_type（仅非 pass 时）
+pass 时省略。非 pass 时填写：question_error / solution_error / expression_fix
 
-## improvement_suggestions
-1-2条建议。
+## evidence_check
+逐条列出 design_card 核心约束的验证结果：
+- core_knowledge_intent 覆盖：[是/否] + 证据
+- expected_reasoning_actions 出现：[是/否] + 哪些缺失
+- terminology constraints 满足：[是/否] + 偏差
+
+## design_card_alignment
+design_card 要求 vs 实际产出的对齐总结（1-3行）。
 
 ## routing_feedback（仅 question_error / solution_error 时）
 1. [位置]: 当前值 → 应改为 → 不要动的部分

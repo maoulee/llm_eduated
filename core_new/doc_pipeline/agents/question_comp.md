@@ -54,11 +54,7 @@ skills:
 7. **不写答案**：不写答案、不写求解过程——只输出题干、子问题、设计说明
 8. **条件充分不冗余**：每个给定条件都要被子问题用到
 9. **迭代上限**：从设计到产出最多3轮工具调用。超过则直接基于最佳理解产出
-8. **工具使用**：
-   - 新建文件：write_file
-   - 修改已有文件：先 read_file 查看当前内容，再 edit_file 做最小修改
-   - 最终产出通过 write_file(path="question.md", content="完整题目") 写入
-   - 不执行代码验证——数值参数校验由求解智能体负责
+8. **工具使用**：遵循 behavior/artifact_writer.md。最终产出通过 write_file 写入 question.md
 
 ## 格式红线（违反即判定 needs_fix）
 

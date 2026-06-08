@@ -39,3 +39,10 @@
 - 写必须使用的标准术语。
 - 写必须补充的限定条件。
 - 写容易误导的表达及标准改写。
+
+## 教师说明与排除项
+
+- 若输入包含 teacher_annotation，必须在 blueprint_contract 或 audit_focus 中体现其约束
+- excluded.modes / excluded.knowledge 不得进入 must_test、expected_reasoning_actions、parameter_plan
+- candidate_pool_visible 只表示教师可见候选池，不表示本题需要覆盖
+- active_selection 才是本题实际采用的模式和知识点
