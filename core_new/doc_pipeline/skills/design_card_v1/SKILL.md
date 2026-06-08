@@ -14,11 +14,20 @@
 8. terminology_and_expression_constraints
 9. audit_focus
 
+## route 字段枚举值（必须使用英文原值，不加中文注释）
+
+- question_form: 只能写 `single_choice` 或 `comprehensive`
+- question_type: 只能写 `conceptual`、`computational` 或 `mixed`
+
+错误示例：`选择题`、`综合应用题（共享题干）`、`mixed（概念+计算）`
+正确示例：`single_choice`、`comprehensive`、`mixed`
+
 ## expected_reasoning_actions
 - 只写解题动作。
 - 不写具体数值答案。
 - 不写正确选项。
 - 不写最终树结构、最终地址字段数值等结果。
+- 格式：每行以 `- ` 开头，或使用编号列表。
 
 ## parameter_plan
 - 只写参数槽位、候选范围、验证目标。

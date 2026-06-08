@@ -643,6 +643,7 @@ class TestDocPipelineOrchestrator:
         assert result.ok is True
         assert [c["role"] for c in scheduler.calls] == [
             "outline",
+            "question_design",
             "question_sc",
             "review",
             "solve",

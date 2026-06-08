@@ -112,8 +112,8 @@ def validate_design_card(content: str) -> ValidationResult:
     era_text = sections.get("expected_reasoning_actions", "")
     actions = re.findall(r"-\s+action_\d+\s*[:：]", era_text)
     if not actions:
-        # Also check for "- action_1:" without colon
-        actions = re.findall(r"-\s+action_\d+", era_text)
+        # Also accept numbered list format: "1. ..." or "- ..."
+        actions = re.findall(r"(?:^|\n)\s*(?:\d+\.\s+|-\s+)\S", era_text)
     if not actions:
         result.error("expected_reasoning_actions must have at least 1 action")
 
@@ -124,20 +124,32 @@ def validate_design_card(content: str) -> ValidationResult:
         r"question_form\s*[:：]\s*(.+)", route_text
     )
     if q_form_match:
-        q_form = q_form_match.group(1).strip().lower()
+        q_form_raw = q_form_match.group(1).strip().lower()
+        # Extract English enum value from possible mixed text like "选择题" or "综合应用题（共享题干）"
+        q_form = q_form_raw.split("（")[0].split("(")[0].strip()
+        # Map common Chinese terms to enum values
+        q_form_map = {"选择题": "single_choice", "综合题": "comprehensive", "综合应用题": "comprehensive"}
+        q_form = q_form_map.get(q_form, q_form)
         if q_form not in VALID_QUESTION_FORMS:
             result.error(
-                f"route.question_form must be one of {VALID_QUESTION_FORMS}, got '{q_form}'"
+                f"route.question_form must be one of {VALID_QUESTION_FORMS}, got '{q_form_raw}'"
             )
 
     q_type_match = re.search(
         r"question_type\s*[:：]\s*(.+)", route_text
     )
     if q_type_match:
-        q_type = q_type_match.group(1).strip().lower()
+        q_type_raw = q_type_match.group(1).strip().lower()
+        # Extract English enum value from possible mixed text like "mixed（概念+计算）"
+        for valid in VALID_QUESTION_TYPES:
+            if q_type_raw.startswith(valid):
+                q_type = valid
+                break
+        else:
+            q_type = q_type_raw
         if q_type not in VALID_QUESTION_TYPES:
             result.error(
-                f"route.question_type must be one of {VALID_QUESTION_TYPES}, got '{q_type}'"
+                f"route.question_type must be one of {VALID_QUESTION_TYPES}, got '{q_type_raw}'"
             )
 
     # 6. Warnings for common issues

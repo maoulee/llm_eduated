@@ -11,7 +11,7 @@ pipeline:
   slot_concurrency: 2          # env PIPELINE_SLOT_CONCURRENCY overrides this
 
   features:
-    enable_question_design: false  # Phase 1: generate design_card.md before question writer
+    enable_question_design: true  # Phase 1: generate design_card.md before question writer
 
   sampling:
     temperature: 0.2
