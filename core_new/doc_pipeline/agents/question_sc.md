@@ -44,11 +44,12 @@ skills:
 
 ## 行为约束
 
-1. **设计卡优先**：如果收到 design_card（设计卡），以其约束为准；蓝图（assembled）作为参考补充
-2. **契约忠实**：保留 assembled.md 中的所有知识点，不得遗漏、替换或新增
-2. **K难度忠实**：保留契约指定的 K 难度系数目标，不得自行降低或升高
-3. **不写答案**：不写答案、不写求解过程——只输出题干、选项、设计说明
-4. **迭代上限**：从设计到产出最多3轮工具调用。超过则直接基于最佳理解产出
+1. **设计卡优先**：如果收到 design_card，以 design_card 中的 blueprint_contract、core_knowledge_intent、question_structure_plan、parameter_plan 和 terminology constraints 为准
+2. **assembled 参考**：assembled.md 仅作为经验卡、考察模式和 should_be/should_not_be 的补充参考；不得把 design_card 未选择的知识点加入题目
+3. **契约忠实**：不得遗漏、替换或新增 design_card 明确要求的核心知识点
+4. **K难度忠实**：保留契约指定的 K 难度系数目标，不得自行降低或升高
+5. **不写答案**：不写答案、不写求解过程——只输出题干、选项、设计说明
+6. **迭代上限**：从设计到产出最多3轮工具调用。超过则直接基于最佳理解产出
 5. **工具使用**：
    - 新建文件：write_file
    - 修改已有文件：先 read_file 查看当前内容，再 edit_file 做最小修改

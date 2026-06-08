@@ -46,7 +46,11 @@ skills:
 | solution.md | phase 4 | 求解结果 |
 | solve.py + solve_output.txt | phase 4 | 数值题的计算证据（通过 read_file 读取） |
 
-当 design_card 存在时，按 design_card.audit_focus 逐项审核。
+当 design_card 存在时，按 design_card.audit_focus 逐项审核，且必须检查：
+1. question.md 是否覆盖 design_card.core_knowledge_intent
+2. solution / solve_output 是否体现 design_card.expected_reasoning_actions
+3. question.md 是否满足 terminology_and_expression_constraints
+4. 若 audit_focus.fail_if_missing 中的任一关键证据缺失，应判定 question_error 或 solution_error，并给出 routing_feedback
 
 ## 4. 审核流程
 
