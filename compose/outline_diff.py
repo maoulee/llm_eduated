@@ -57,18 +57,17 @@ def _split_slots(outline_md: str) -> dict[str, str]:
     return result
 
 
-# ── YAML contract extraction (reuse logic from compose_runner) ──
+# ── YAML contract extraction ──
 
 def _extract_yaml_contract(content: str) -> dict:
-    """Extract YAML contract from ```yaml block under ### 机器契约."""
-    m = re.search(r"###\s*机器(?:选择)?契约\s*\n```(?:yaml|yml)\s*\n(.*?)```", content, re.DOTALL)
-    if not m:
-        return {}
-    try:
-        import yaml
-        return yaml.safe_load(m.group(1)) or {}
-    except Exception:
-        return {}
+    """Extract YAML contract via unified markdown_contract_parser."""
+    from compose.markdown_contract_parser import scan_contract_blocks, load_yaml_contract
+    blocks = scan_contract_blocks(content)
+    for block in blocks:
+        loaded = load_yaml_contract(block)
+        if loaded.data:
+            return loaded.data
+    return {}
 
 
 def _extract_legacy_fields(content: str) -> dict:

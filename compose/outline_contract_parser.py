@@ -1,4 +1,8 @@
-"""Outline contract parser — extract active_selection from outline_approved.md."""
+"""Outline contract parser — extract active_selection from outline_approved.md.
+
+Delegates to markdown_contract_parser for unified parsing.
+Legacy functions kept as thin wrappers for backward compatibility.
+"""
 
 from __future__ import annotations
 
@@ -22,36 +26,13 @@ class SlotContract:
 
 
 def parse_outline_contracts(outline_md: str) -> list[SlotContract]:
-    """从 outline_approved.md 抽取每题的机器契约。"""
-    contracts: list[SlotContract] = []
-    parts = re.split(r"## (Q\d+)", outline_md)
+    """从 outline_approved.md 抽取每题的机器契约。
 
-    for i in range(1, len(parts), 2):
-        slot_id = parts[i]
-        content = parts[i + 1] if i + 1 < len(parts) else ""
-
-        yaml_data = _extract_yaml_block(content)
-        if not yaml_data:
-            continue
-
-        # excluded is nested: {modes: [], knowledge: []}
-        excluded_data = yaml_data.get("excluded") or {}
-        if isinstance(excluded_data, list):
-            excluded_data = {}
-
-        contracts.append(SlotContract(
-            slot_id=slot_id,
-            question_type=yaml_data.get("question_type", "single_choice"),
-            score=yaml_data.get("score", 2),
-            examination_mode=yaml_data.get("examination_mode", ""),
-            active_selection=yaml_data.get("active_selection", {}),
-            candidate_pool_visible=yaml_data.get("candidate_pool_visible", []),
-            excluded_modes=excluded_data.get("modes", []),
-            excluded_knowledge=excluded_data.get("knowledge", []),
-            teacher_annotation=_extract_teacher_annotation(content),
-        ))
-
-    return contracts
+    Uses markdown_contract_parser for robust CONTRACT marker + legacy parsing.
+    """
+    from compose.markdown_contract_parser import parse_outline_to_selection
+    result = parse_outline_to_selection(outline_md)
+    return result.slots
 
 
 def write_paper_selection(contracts: list[SlotContract], output_path: str) -> None:
@@ -80,18 +61,18 @@ def write_paper_selection(contracts: list[SlotContract], output_path: str) -> No
 
 
 def _extract_yaml_block(content: str) -> dict:
-    """Extract first ```yaml code block from slot content."""
-    m = re.search(r"###\s*机器(?:选择)?契约\s*\n```(?:yaml|yml)\s*\n(.*?)```", content, re.DOTALL)
-    if not m:
-        return {}
-    try:
-        return yaml.safe_load(m.group(1)) or {}
-    except Exception:
-        return {}
+    """Deprecated: use markdown_contract_parser instead."""
+    from compose.markdown_contract_parser import scan_contract_blocks, load_yaml_contract
+    blocks = scan_contract_blocks(content)
+    for block in blocks:
+        loaded = load_yaml_contract(block)
+        if loaded.data:
+            return loaded.data
+    return {}
 
 
 def _extract_teacher_annotation(content: str) -> str:
-    """Extract text from ### 教师可编辑说明 section."""
+    """Deprecated: use markdown_contract_parser instead."""
     m = re.search(
         r"###\s*教师可编辑说明[^\n]*\n(.*?)(?=\n###|\n## |\Z)",
         content,

@@ -262,112 +262,91 @@ def _print_blueprint_summary(blueprint: dict) -> None:
 
 
 def _extract_yaml_contract(content: str) -> dict:
-    """Extract YAML contract from ```yaml block under ### 机器契约.
+    """Extract YAML contract from content.
 
-    Returns empty dict if no YAML block found (old-style outline).
-    Supports v2 format with active_selection, candidate_pool_visible, excluded.
+    Delegates to markdown_contract_parser. Falls back to direct heading+yaml
+    regex for slot fragments without ## Qxx headings.
     """
-    m = re.search(r"###\s*机器(?:选择)?契约\s*\n```(?:yaml|yml)\s*\n(.*?)```", content, re.DOTALL)
-    if not m:
-        return {}
-    try:
-        import yaml
-        return yaml.safe_load(m.group(1)) or {}
-    except Exception:
-        return {}
+    from compose.markdown_contract_parser import scan_contract_blocks, load_yaml_contract, _LEGACY_HEADING
+    import yaml
+
+    blocks = scan_contract_blocks(content)
+    for block in blocks:
+        loaded = load_yaml_contract(block)
+        if loaded.data:
+            return loaded.data
+
+    # Fallback: direct regex for content fragments (no ## Qxx heading)
+    m = _LEGACY_HEADING.search(content)
+    if m:
+        try:
+            return yaml.safe_load(m.group(1)) or {}
+        except Exception:
+            return {}
+
+    return {}
 
 
 def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
-    """Parse hybrid or legacy outline MD into blueprint dict format.
+    """Parse outline MD into blueprint dict format.
 
-    Supports two formats:
-    - **Hybrid**: each slot has `### 机器契约` with a ```yaml block
-    - **Legacy**: each slot uses `**field**: value` lines
-
-    YAML block takes priority when present.
+    Delegates to markdown_contract_parser for unified parsing, then
+    maps SlotContract → SlotBlueprint. Falls back to legacy **field**
+    extraction for fields not in the YAML contract.
     """
-    slots = []
-    pattern = r"## (Q\d+)"
-    parts = re.split(pattern, outline_md)
+    from compose.markdown_contract_parser import parse_outline_to_selection
 
-    overall_difficulty = 3
-    composition_rationale = ""
+    result = parse_outline_to_selection(outline_md)
+    overall_difficulty = result.header.difficulty_target
+    composition_rationale = result.header.composition_rationale
 
-    header = parts[0] if parts else ""
-    dm = re.search(r"difficulty_target[*:\s]*(\d)", header)
-    if dm:
-        overall_difficulty = int(dm.group(1))
-    cm = re.search(r"composition_rationale[*:\s]*(.+?)(?:\n|$)", header)
-    if cm:
-        composition_rationale = cm.group(1).strip()
+    slots: list[SlotBlueprint] = []
+    parts = re.split(r"## (Q\d+)", outline_md)
 
-    for i in range(1, len(parts), 2):
-        slot_id = parts[i]
-        content = parts[i + 1] if i + 1 < len(parts) else ""
+    for contract in result.slots:
+        # Find content for this slot (legacy **field** fallback)
+        content = ""
+        for i in range(1, len(parts), 2):
+            if parts[i] == contract.slot_id:
+                content = parts[i + 1] if i + 1 < len(parts) else ""
+                break
 
-        # Try YAML contract first (hybrid format)
+        tpl = templates.get(contract.slot_id, {})
+
+        # Extract raw YAML data for blueprint-level fields not in SlotContract
         yaml_data = _extract_yaml_contract(content)
 
         def _extract(field: str, default: str = "") -> str:
-            # YAML contract takes priority
+            # YAML data takes priority, then legacy **field** format
             if yaml_data and field in yaml_data:
                 return str(yaml_data[field])
-            # Fallback to legacy **field**: value regex
             m = re.search(rf"\* *{field}[*:\s]*(.+?)(?:\n|$)", content)
             return m.group(1).strip() if m else default
 
-        difficulty = _extract("difficulty_level", "3")
+        target_subject = _extract("target_subject") or tpl.get("subject", "")
+        difficulty_str = _extract("difficulty_level") or _extract("target_difficulty", "3")
         try:
-            difficulty = int(difficulty)
+            difficulty = int(difficulty_str)
         except ValueError:
             difficulty = 3
 
-        tpl = templates.get(slot_id, {})
-        target_subject = _extract("target_subject") or tpl.get("subject", "")
-        question_type = str(yaml_data.get("question_type") or tpl.get("question_type", "single_choice"))
-
-        # Parse v2 fields (backward compatible: default if missing)
-        score = _extract("score") or 2
-        try:
-            score = int(score)
-        except ValueError:
-            score = 2
-
-        active_selection = yaml_data.get("active_selection") or {}
-        candidate_pool_visible = yaml_data.get("candidate_pool_visible") or []
-
-        # Parse excluded sub-fields
-        excluded_data = yaml_data.get("excluded") or {}
-        excluded_modes = excluded_data.get("modes") or []
-        excluded_knowledge = excluded_data.get("knowledge") or []
-
-        # Extract teacher annotation from ### 教师可编辑说明
-        ta_m = re.search(
-            r"###\s*教师可编辑说明[^\n]*\n(.*?)(?=\n###|\n## |\Z)",
-            content, re.DOTALL,
-        )
-        teacher_annotation = ta_m.group(1).strip() if ta_m else ""
-
-        slot_blueprint = SlotBlueprint(
-            slot_id=slot_id,
+        slots.append(SlotBlueprint(
+            slot_id=contract.slot_id,
             target_subject=target_subject,
             target_family=_extract("target_family"),
             primary_target_name=_extract("primary_target_name"),
             target_difficulty=difficulty,
-            examination_mode=_extract("examination_mode"),
+            examination_mode=contract.examination_mode,
             k_target=_extract("k_target"),
             difficulty_rationale=_extract("difficulty_rationale"),
-            question_type=question_type,
-            # v2 fields
-            score=score,
-            active_selection=active_selection,
-            candidate_pool_visible=candidate_pool_visible,
-            excluded_modes=excluded_modes,
-            excluded_knowledge=excluded_knowledge,
-            teacher_annotation=teacher_annotation,
-        )
-
-        slots.append(slot_blueprint)
+            question_type=contract.question_type,
+            score=contract.score,
+            active_selection=contract.active_selection,
+            candidate_pool_visible=contract.candidate_pool_visible,
+            excluded_modes=contract.excluded_modes,
+            excluded_knowledge=contract.excluded_knowledge,
+            teacher_annotation=contract.teacher_annotation,
+        ))
 
     return {
         "paper_type": "408模拟卷",
@@ -446,6 +425,26 @@ def _build_type_hint(templates: dict, slot_ids: list | None) -> str:
         else:
             slot_types.append(f"{sid}(选择题)")
     return "。指定题位：" + "、".join(slot_types) + "。"
+
+
+def _write_sidecar_artifacts(compose_dir: str, outline_md: str) -> None:
+    """Parse outline and write paper_selection.yaml + parse_report.md."""
+    from compose.markdown_contract_parser import parse_outline_to_selection
+    from compose.outline_contract_parser import write_paper_selection
+
+    result = parse_outline_to_selection(outline_md)
+
+    selection_path = os.path.join(compose_dir, "paper_selection.yaml")
+    write_paper_selection(result.slots, selection_path)
+
+    report_path = os.path.join(compose_dir, "parse_report.md")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.write(result.report)
+
+    print(f"  paper_selection.yaml ({len(result.slots)} slots, status={result.validation.status})")
+    if result.validation.errors:
+        for e in result.validation.errors:
+            print(f"    [error] {e.slot_id}: {e.message}")
 
 
 async def run_compose(
@@ -557,6 +556,9 @@ async def run_compose(
     outline_path = os.path.join(compose_dir, "outline.md")
     with open(outline_path, "w", encoding="utf-8") as f:
         f.write(outline_md)
+
+    # Generate sidecar artifacts: paper_selection.yaml + parse_report.md
+    _write_sidecar_artifacts(compose_dir, outline_md)
 
     # Generate run_id and write manifest
     compose_elapsed = time.monotonic() - compose_start
@@ -734,6 +736,9 @@ async def revise_outline(
     outline_path = os.path.join(compose_dir, "outline.md")
     with open(outline_path, "w", encoding="utf-8") as f:
         f.write(revised_md)
+
+    # Regenerate sidecar artifacts after revision
+    _write_sidecar_artifacts(compose_dir, revised_md)
 
     # Write revision report
     report_path = os.path.join(compose_dir, "revision_report.md")

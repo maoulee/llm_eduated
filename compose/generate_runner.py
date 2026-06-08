@@ -266,21 +266,57 @@ async def _format_and_export(gateway, final_questions, output_dir, blueprint=Non
 
 
 def _load_blueprint_map(compose_dir: str) -> dict[str, SlotBlueprint]:
-    """Load SlotBlueprint instances from outline.md in compose dir.
+    """Load SlotBlueprint instances from outline.md or paper_selection.yaml.
 
-    Parses the outline MD directly — no separate JSON needed.
-    Falls back gracefully if outline is missing or unparseable.
+    Uses markdown_contract_parser for unified MD parsing.
+    Falls back gracefully if no outline found.
     """
     from compose.compose_runner import _parse_outline_to_blueprint
+    from compose.outline_contract_parser import SlotContract
 
-    # Prefer approved outline (post-teacher-edit), fall back to draft
+    # Prefer paper_selection.yaml sidecar if available
+    import yaml as _yaml
+    sidecar = Path(compose_dir) / "paper_selection.yaml"
+    if sidecar.exists():
+        try:
+            data = _yaml.safe_load(sidecar.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                slots = data.get("slots", [])
+            elif isinstance(data, list):
+                slots = data
+            else:
+                slots = []
+            result: dict[str, SlotBlueprint] = {}
+            for item in slots:
+                if isinstance(item, dict) and "slot_id" in item:
+                    sid = item["slot_id"]
+                    excluded = item.get("excluded", {})
+                    if isinstance(excluded, list):
+                        excluded = {}
+                    result[sid] = SlotBlueprint(
+                        slot_id=sid,
+                        question_type=str(item.get("question_type", "single_choice")),
+                        score=int(item.get("score", 2)),
+                        examination_mode=item.get("examination_mode", ""),
+                        active_selection=item.get("active_selection", {}),
+                        candidate_pool_visible=item.get("candidate_pool_visible", []),
+                        excluded_modes=item.get("excluded_modes") or excluded.get("modes", []),
+                        excluded_knowledge=item.get("excluded_knowledge") or excluded.get("knowledge", []),
+                        teacher_annotation=item.get("teacher_annotation", ""),
+                    )
+            if result:
+                return result
+        except Exception:
+            pass
+
+    # Fallback: parse outline.md via unified parser
     for name in ("outline_approved.md", "outline.md"):
         outline_path = Path(compose_dir) / name
         if outline_path.exists():
             outline_md = outline_path.read_text(encoding="utf-8")
             bp_dict = _parse_outline_to_blueprint(outline_md, {})
-            slots = bp_dict.get("slots", [])
-            return {s.slot_id: s for s in slots if isinstance(s, SlotBlueprint)}
+            bp_slots = bp_dict.get("slots", [])
+            return {s.slot_id: s for s in bp_slots if isinstance(s, SlotBlueprint)}
     return {}
 
 

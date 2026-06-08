@@ -31,9 +31,12 @@
 （教师可直接修改的命题说明区。教师可以删除、改写、保留内容。系统通过 gitdiff 识别变化。）
 
 ### 机器选择契约
+
+<!-- CONTRACT:BEGIN type=outline_slot schema=outline_v2 slot=Q12 -->
 ```yaml
 （机器可解析的契约字段）
 ```
+<!-- CONTRACT:END slot=Q12 -->
 
 ## Q13（选择题）
 ...
@@ -45,9 +48,22 @@
 1. **当前推荐**：人读说明，解释为什么选择这个模式和知识点
 2. **候选替换池**：列出该题位所有可选考察模式的简略信息
 3. **教师可编辑说明**：教师可直接修改的命题说明区，可删除、改写、保留内容
-4. **机器选择契约**：YAML 格式的机器可解析契约
+4. **机器选择契约**：YAML 格式的机器可解析契约，使用 HTML comment 锚点标记（系统通过锚点定位，不依赖标题文字）
 
 ### 机器契约字段（完整列表）
+
+每题的契约块必须使用 HTML comment 锚点包裹：
+
+````markdown
+<!-- CONTRACT:BEGIN type=outline_slot schema=outline_v2 slot=Qxx -->
+```yaml
+slot_id: Qxx
+...
+```
+<!-- CONTRACT:END slot=Qxx -->
+````
+
+完整字段示例：
 
 ```yaml
 slot_id: Q12
@@ -97,6 +113,7 @@ excluded:
 - [ ] 每个题位的候选池已列出
 - [ ] examination_mode 精确复制自题位可选模式
 - [ ] primary_target_name 是该模式适用知识点中的一个
+- [ ] 每个契约块使用 CONTRACT:BEGIN/END 锚点
 - [ ] 整卷难度合理分布
 - [ ] 知识点覆盖主要知识域
 - [ ] 避免连续多题考同一知识点
@@ -135,6 +152,20 @@ excluded:
 - [ ] 整体规划和总览已同步更新（如需要）
 
 ## 格式约束
+
+### 契约锚点格式
+
+每个机器契约块必须用 HTML comment 锚点包裹：
+- 开始标记：`<!-- CONTRACT:BEGIN type=outline_slot schema=outline_v2 slot=Qxx -->`
+- 结束标记：`<!-- CONTRACT:END slot=Qxx -->`
+- slot 参数必须与 YAML 中的 slot_id 一致
+
+锚点的好处：
+- 老师修改标题文字不影响系统解析
+- 一个题位中出现多个 yaml block 时系统只取锚点内的
+- 不依赖正则匹配 `### 机器选择契约` 等标题
+
+旧格式（`### 机器选择契约` + yaml block）仍可被系统兼容解析，但推荐使用锚点。
 
 ### YAML 代码块
 
