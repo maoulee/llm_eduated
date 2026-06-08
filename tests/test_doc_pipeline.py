@@ -793,7 +793,70 @@ class FakeDualAgentScheduler:
         return content
 
 
-class TestDualAgentOrchestrator:
+class TestPublicQuestionView:
+    """Verify _write_public_question_view isolates solver from design notes."""
+
+    def test_strips_design_notes(self, tmp_path):
+        question = tmp_path / "question.md"
+        question.write_text(
+            "## status\ndraft\n\n"
+            "## 题干\n某计算机主频500MHz。\n\n"
+            "## 选项\nA. 8ms\nB. 12ms\n\n"
+            "## 设计说明\n干扰项A基于遗漏25%指令。正确答案12ms。\n\n"
+            "## 子问题\n无",
+            encoding="utf-8",
+        )
+        from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
+        public_path = DocPipelineOrchestrator._write_public_question_view(question)
+        public = public_path.read_text(encoding="utf-8")
+
+        assert "## 题干" in public
+        assert "500MHz" in public
+        assert "## 选项" in public
+        assert "12ms" in public  # option value, not answer
+        assert "设计说明" not in public
+        assert "干扰项" not in public
+        assert "正确答案" not in public
+
+    def test_preserves_ascii_art_and_code_blocks(self, tmp_path):
+        question = tmp_path / "question.md"
+        question.write_text(
+            "## status\ndraft\n\n"
+            "## 题干\n"
+            "示意图如下：\n```\n┌─────┐\n│ CPU │\n└─────┘\n```\n请回答问题。\n\n"
+            "## 子问题\n(1) 计算字段位数\n\n"
+            "## 设计说明\n参数选择：主频500MHz",
+            encoding="utf-8",
+        )
+        from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
+        public_path = DocPipelineOrchestrator._write_public_question_view(question)
+        public = public_path.read_text(encoding="utf-8")
+
+        assert "┌─────┐" in public
+        assert "字段位数" in public
+        assert "设计说明" not in public
+        assert "参数选择" not in public
+
+    def test_comprehensive_question_public_has_sub_questions(self, tmp_path):
+        question = tmp_path / "question.md"
+        question.write_text(
+            "## status\ndraft\n\n"
+            "## 题干\n已知R1=0001H, R2=7FFFH。\n\n"
+            "## 子问题\n(1) 写出真值\n(2) 计算R3并判断CF/OF\n\n"
+            "## 设计说明\nR1=0001H是种子值，R2=7FFFH是最大正数。",
+            encoding="utf-8",
+        )
+        from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
+        public_path = DocPipelineOrchestrator._write_public_question_view(question)
+        public = public_path.read_text(encoding="utf-8")
+
+        assert "0001H" in public
+        assert "CF/OF" in public
+        assert "设计说明" not in public
+        assert "种子值" not in public
+
+
+
     def test_concept_question_marks_code_skipped_without_code_exec_ok(self, tmp_path):
         scheduler = FakeDualAgentScheduler(
             tmp_path,
