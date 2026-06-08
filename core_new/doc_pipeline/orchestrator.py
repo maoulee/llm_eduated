@@ -120,6 +120,12 @@ class DocPipelineOrchestrator:
         self.max_analysis_iterations = max_analysis_iterations
         self._registry = context_registry
 
+    def _should_run_design_layer(self) -> bool:
+        """Check if question_design layer is enabled via pipeline features."""
+        from .pipeline_config import load_pipeline_config
+        cfg = load_pipeline_config()
+        return cfg.params.features.get("enable_question_design", False)
+
     async def _resolve_inject(
         self,
         role: str,
@@ -197,6 +203,30 @@ class DocPipelineOrchestrator:
 
         # Reference path for downstream agents
         ref_path = assembled_path if assembled_path.exists() else (outline_path if outline_path.exists() else ws / "blueprint.md")
+
+        # ── Layer 1.5: Design Card (feature-flagged) ──────────────
+        design_card_path = ws / "design_card.md"
+        if self._should_run_design_layer():
+            if start_layer <= 1:
+                logger.info("[%s] Layer 1.5: Design Card", slot_id)
+                d_task = (
+                    "请根据以下单题蓝图生成 design_card.md 设计卡。\n\n"
+                    "严格按 design_card schema v1 格式输出，9 个 section 全部必填。\n"
+                    "只生成设计卡，不写题目、不写答案、不写代码。"
+                )
+                d_inject = await self._resolve_inject(
+                    "question_design", slot_id, 1.5, {"规划": str(ref_path)},
+                )
+                await self.scheduler.run_agent(
+                    "question_design",
+                    d_task,
+                    slot_id=slot_id,
+                    inject_files=d_inject,
+                )
+                if not design_card_path.exists():
+                    logger.warning("[%s] Design card agent did not write design_card.md, continuing without it", slot_id)
+            else:
+                logger.info("[%s] Layer 1.5: Design Card SKIPPED (resume from layer %d)", slot_id, start_layer)
 
         # ── Layer 2: Question (with internal parameter validation) ─
         question_path = ws / "question.md"

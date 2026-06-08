@@ -10,12 +10,16 @@ pipeline:
   python_exec_timeout: 30
   slot_concurrency: 2          # env PIPELINE_SLOT_CONCURRENCY overrides this
 
+  features:
+    enable_question_design: false  # Phase 1: generate design_card.md before question writer
+
   sampling:
     temperature: 0.2
     top_p: 0.9
 
   thinking_budget:
     outline: 8000
+    question_design: 2000
     question_sc: 12000
     question_comp: 8000
     review: 4000
@@ -27,6 +31,9 @@ pipeline:
     outline:
       multi_turn: false
       max_attempts: 2
+    question_design:
+      multi_turn: false
+      max_attempts: 1
     question_sc:
       multi_turn: true
       max_attempts: 3

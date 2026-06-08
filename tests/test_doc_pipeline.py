@@ -263,7 +263,7 @@ class TestDocParser:
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
         expected_roles = {
-            "outline", "question_sc", "question_comp",
+            "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer",
         }
@@ -271,7 +271,7 @@ class TestAgentPrompts:
 
     def test_all_roles_have_output_files(self):
         expected_roles = {
-            "outline", "question_sc", "question_comp",
+            "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer",
         }
@@ -1130,7 +1130,7 @@ class TestAgentLoader:
     def test_loads_online_runtime_agents(self):
         specs = load_agents()
         expected = {
-            "outline", "question_sc", "question_comp",
+            "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer",
         }
@@ -1161,7 +1161,7 @@ class TestAgentLoader:
         """AgentMD runtime roles match the current 5-layer + 2-agent pipeline."""
         prompts, output_files, multi_turn, _, _, _ = get_agent_dicts()
         expected_roles = {
-            "outline", "question_sc", "question_comp",
+            "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer",
         }

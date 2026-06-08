@@ -38,6 +38,7 @@ class PipelineParams:
     top_p: float = 0.9
     thinking_budget: dict[str, int] = field(default_factory=dict)
     roles: dict[str, dict[str, Any]] = field(default_factory=dict)
+    features: dict[str, bool] = field(default_factory=dict)
 
 
 @dataclass
@@ -88,6 +89,7 @@ def _parse_config(raw: dict) -> PipelineConfig:
         top_p=p.get("sampling", {}).get("top_p", 0.9),
         thinking_budget=p.get("thinking_budget", {}),
         roles=p.get("roles", {}),
+        features=p.get("features", {}),
     )
 
     # 2. Routing
