@@ -40,10 +40,13 @@ skills:
 
 | 材料 | 来源 | 用途 |
 |------|------|------|
+| design_card.md | phase 1.5 | 设计意图、知识点约束、审核对齐依据（可选） |
 | outline.md / assembled.md | phase 1 | 知识点与K难度的基准 |
 | question.md | phase 2 | 待审题目 |
 | solution.md | phase 4 | 求解结果 |
 | solve.py + solve_output.txt | phase 4 | 数值题的计算证据（通过 read_file 读取） |
+
+当 design_card 存在时，按 design_card.audit_focus 逐项审核。
 
 ## 4. 审核流程
 

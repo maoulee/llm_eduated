@@ -263,6 +263,9 @@ class DocPipelineOrchestrator:
                 )
                 q_task = self._build_question_task(slot_id, iteration)
                 q_inject = await self._resolve_inject(q_role, slot_id, 2, {"规划": str(ref_path)})
+                # Fallback: inject design_card when registry is absent
+                if design_card_path.exists() and "设计卡" not in q_inject:
+                    q_inject["设计卡"] = str(design_card_path)
                 if iteration > 0 and review_path.exists():
                     feedback_body = parse_doc_section(str(review_path), "corrections")
                     if not feedback_body.strip() or feedback_body.strip() == "无":
@@ -365,6 +368,8 @@ class DocPipelineOrchestrator:
                     "题目": str(question_path),
                     "求解结果": str(solution_path),
                 }
+                if design_card_path.exists() and "设计卡" not in fr_inject_files:
+                    fr_inject_files["设计卡"] = str(design_card_path)
                 if output_path.exists():
                     fr_inject_files["代码输出"] = str(output_path)
                 if solve_path.exists():

@@ -159,6 +159,13 @@ context_providers:
       phases: [2]
       optional: true
 
+    - name: design_card
+      type: file
+      path_pattern: "{workspace}/{slot_id}/design_card.md"
+      label: "设计卡"
+      phases: [2, 5]
+      optional: true
+
     - name: experience_doc
       type: inline
       label: "经验文档"
@@ -173,8 +180,8 @@ context_providers:
 
   role_bindings:
     outline: [experience_doc, k_definitions]
-    question_sc: [assembled, review_comments]
-    question_comp: [assembled, review_comments]
+    question_sc: [design_card, assembled, review_comments]
+    question_comp: [design_card, assembled, review_comments]
     review: [assembled, question]
     solve: [question_public]
-    final_review: [assembled, question, solution, solve_output]
+    final_review: [design_card, assembled, question, solution, solve_output]

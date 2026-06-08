@@ -202,17 +202,18 @@ _DEFAULT_PROVIDERS = [
     {"name": "solution", "type": "file", "path_pattern": "{workspace}/{slot_id}/solution.md", "label": "求解结果", "phases": [5]},
     {"name": "solve_output", "type": "file", "path_pattern": "{workspace}/{slot_id}/solve_output.txt", "label": "代码输出", "phases": [5], "optional": True},
     {"name": "review_comments", "type": "file", "path_pattern": "{workspace}/{slot_id}/review.md", "label": "审核意见", "phases": [2], "optional": True},
+    {"name": "design_card", "type": "file", "path_pattern": "{workspace}/{slot_id}/design_card.md", "label": "设计卡", "phases": [2, 5], "optional": True},
     {"name": "experience_doc", "type": "inline", "label": "经验文档", "phases": [1], "optional": True},
     {"name": "k_definitions", "type": "inline", "label": "K值定义", "phases": [1], "optional": True},
 ]
 
 _DEFAULT_ROLE_BINDINGS = {
     "outline": ["experience_doc", "k_definitions"],
-    "question_sc": ["assembled", "review_comments"],
-    "question_comp": ["assembled", "review_comments"],
+    "question_sc": ["design_card", "assembled", "review_comments"],
+    "question_comp": ["design_card", "assembled", "review_comments"],
     "review": ["assembled", "question"],
     "solve": ["question_public"],
-    "final_review": ["assembled", "question", "solution", "solve_output"],
+    "final_review": ["design_card", "assembled", "question", "solution", "solve_output"],
 }
 
 _DEFAULT_PROFILES = {
