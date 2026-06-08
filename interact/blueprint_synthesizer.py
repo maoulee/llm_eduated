@@ -90,7 +90,7 @@ BLUEPRINT_DESIGNER_SYSTEM_PROMPT = """\
 - **难度**: （推荐难度等级1-5，附简要理由）
 - **K目标**: （推荐的K值组合，如K2-K3平衡型）
 - **难度说明**: （为什么推荐这个难度，一句话）
-- **考察模式**: （推荐的考察模式名称）
+- **考察模式**: （必须从输入中"可选考察模式"列表选择一个，直接使用原名称）
 - **出题数量**: （推荐出几道题）
 - **题型**: （推荐的题型：single_choice 或 comprehensive）
 
@@ -102,14 +102,15 @@ BLUEPRINT_DESIGNER_SYSTEM_PROMPT = """\
 - **question_type_recommendation**: （推荐的题型和数量，如"2道选择题，1道综合题"）
 
 ## 模式概览
-- **recommended_mode**: （推荐的考察模式，需与考察模式字段一致）
+- **recommended_mode**: （必须与考察模式字段完全一致）
 - **mode_rationale**: （为什么推荐这个模式，一句话）
-- **alternative_modes**: （备选模式，逗号分隔）
+- **alternative_modes**: （备选模式，从可选列表中选择，逗号分隔）
 
 ## 约束
 - 不要重复或摘要原始数据——只做决策
 - 不要输出知识点图谱或真题经验——这些由程序直接注入
 - 决策必须基于统计数据，不要凭空想象
+- 考察模式必须从"可选考察模式"列表中选择，不要自创模式名称
 """
 
 
@@ -156,8 +157,22 @@ class BlueprintSynthesizer:
         stats = self._retriever.compute_statistics(tag)
         profile = self._retriever.retrieve_knowledge_profile(tag)
 
+        # ── Step 1.5: Pre-load experience card to extract available modes ──
+        slot_hint = self._extract_slot_hint(tag, stats)
+        slot_exp_card = self._load_slot_experience_card(slot_hint)
+        if not slot_exp_card:
+            slot_exp_card = self._find_matching_experience_card(
+                tag, request.question_type,
+            )
+        if slot_exp_card:
+            m = re.match(r"# (Q\d+)", slot_exp_card)
+            if m:
+                slot_hint = m.group(1)
+
+        available_modes = self._extract_available_modes(slot_exp_card)
+
         # ── Step 2: Compute statistics summary for LLM context ──
-        stats_summary = self._build_stats_summary(stats, request)
+        stats_summary = self._build_stats_summary(stats, request, available_modes)
 
         # ── Step 3: LLM teaching decisions (fresh or revision) ──
         if request.existing_blueprint and request.feedback:
@@ -189,17 +204,17 @@ class BlueprintSynthesizer:
 
         # Extract examination_mode from LLM decisions for the title
         examination_mode = self._extract_examination_mode(llm_decisions)
-        slot_id = self._extract_slot_hint(tag, stats)
 
         # ── Step 4: Merge into assembled.md ──
         parts = self._assemble_sections(
-            slot_id=slot_id,
+            slot_id=slot_hint,
             examination_mode=examination_mode,
             llm_decisions=llm_decisions,
             request=request,
             stats=stats,
             subtree=subtree,
             experiences=experiences,
+            slot_exp_card=slot_exp_card,
         )
 
         assembled_md = "\n\n---\n\n".join(parts)
@@ -229,6 +244,7 @@ class BlueprintSynthesizer:
         self,
         stats: KnowledgeStatistics,
         request: SynthesisRequest,
+        available_modes: list[str] | None = None,
     ) -> str:
         """Build a concise statistical summary for the LLM. NOT the raw data."""
         lines = [
@@ -247,6 +263,10 @@ class BlueprintSynthesizer:
             lines.append(f"- **出题数量**: {request.question_count}")
         if request.question_type:
             lines.append(f"- **题型**: {request.question_type}")
+
+        # Available modes from experience card — LLM must choose from these
+        if available_modes:
+            lines.append(f"- **可选考察模式（必须从中选择）**: {', '.join(available_modes)}")
 
         # K-value distributions
         if stats.k_distributions:
@@ -325,6 +345,14 @@ class BlueprintSynthesizer:
             f"- **alternative_modes**: 无\n"
         )
 
+    @staticmethod
+    def _extract_available_modes(exp_card: str) -> list[str]:
+        """Extract mode names from experience card headings."""
+        if not exp_card:
+            return []
+        mode_pattern = re.compile(r"^(?:##|###) (模式[A-Z][：:](.+?))(?:\n|$)", re.MULTILINE)
+        return [m.group(2).strip() for m in mode_pattern.finditer(exp_card)]
+
     def _extract_examination_mode(self, llm_decisions: str) -> str:
         """Extract the examination_mode from LLM decisions text."""
         # Try to find the examination mode from 本次出题要求 section
@@ -359,8 +387,15 @@ class BlueprintSynthesizer:
         stats: KnowledgeStatistics,
         subtree: str,
         experiences: list,
+        slot_exp_card: str = "",
     ) -> list[str]:
         """Assemble the 7-section document matching artifact_store format."""
+        from compose.artifact_store import (
+            _extract_matching_mode,
+            _extract_mode_years,
+            _extract_knowledge_graph_section,
+        )
+
         parts = []
 
         # ── Section 1: Title + requirements (from LLM + user intent) ──
@@ -382,41 +417,82 @@ class BlueprintSynthesizer:
         else:
             parts.append(title)
 
-        # ── Section 2: Basic info (from statistics) ──
-        basic_lines = ["## 基本信息"]
-        basic_lines.append(f"- **知识点**: {request.knowledge_tag}")
-        basic_lines.append(f"- **历史题目数**: {stats.question_count}")
-        if request.subject:
-            basic_lines.append(f"- **科目**: {request.subject}")
-        if stats.slot_distribution:
-            slots_str = ", ".join(
-                f"{s}({c})" for s, c in sorted(stats.slot_distribution.items())
-            )
-            basic_lines.append(f"- **题位分布**: {slots_str}")
-        basic_text = "\n".join(basic_lines)
-        if basic_text.strip() != "## 基本信息":
-            parts.append(basic_text)
+        # ── Section 2: Basic info (from slot experience card or statistics) ──
+        if slot_exp_card:
+            from compose.artifact_store import _extract_basic_info
+            basic_info = _extract_basic_info(slot_exp_card)
+            if basic_info:
+                parts.append(f"## 基本信息\n\n{basic_info}")
+        else:
+            basic_lines = ["## 基本信息"]
+            basic_lines.append(f"- **知识点**: {request.knowledge_tag}")
+            basic_lines.append(f"- **历史题目数**: {stats.question_count}")
+            if request.subject:
+                basic_lines.append(f"- **科目**: {request.subject}")
+            if stats.slot_distribution:
+                slots_str = ", ".join(
+                    f"{s}({c})" for s, c in sorted(stats.slot_distribution.items())
+                )
+                basic_lines.append(f"- **题位分布**: {slots_str}")
+            basic_text = "\n".join(basic_lines)
+            if basic_text.strip() != "## 基本信息":
+                parts.append(basic_text)
 
-        # ── Section 3: Mode overview (from LLM) ──
-        mode_section = self._extract_section(llm_decisions, "模式概览")
-        if mode_section:
-            parts.append(f"## 模式概览（来自教学设计师决策）\n\n{mode_section}")
+        # ── Section 3: Mode overview (from slot experience card, NOT just LLM) ──
+        mode_from_card = ""
+        if slot_exp_card and examination_mode:
+            mode_from_card = _extract_matching_mode(slot_exp_card, examination_mode)
+        if mode_from_card:
+            parts.append(f"## 模式概览（来自题位经验卡）\n\n{mode_from_card}")
+        else:
+            # Fallback: LLM-generated mode overview
+            mode_section = self._extract_section(llm_decisions, "模式概览")
+            if mode_section:
+                parts.append(f"## 模式概览（来自教学设计师决策）\n\n{mode_section}")
 
-        # ── Section 4: Knowledge subtree (VERBATIM from retriever) ──
+        # ── Section 4: Knowledge subtree (from retriever or knowledge graph) ──
         if subtree:
             parts.append(f"## 相关知识点细纲\n\n{subtree}")
+        else:
+            target_family = ""
+            req_section_text = self._extract_section(llm_decisions, "本次出题要求")
+            if req_section_text:
+                m = re.search(r"\*?\*?知识域\*?\*?[:：]\s*(.+?)(?:\n|$)", req_section_text)
+                if m:
+                    target_family = m.group(1).strip()
+            syllabus = _extract_knowledge_graph_section(target_family)
+            if syllabus:
+                parts.append(f"## 相关知识点细纲\n\n{syllabus}")
 
-        # ── Section 5: Question experiences (VERBATIM from retriever) ──
-        if experiences:
+        # ── Section 5: Past year questions (from slot experience card) ──
+        past_questions_injected = False
+        if slot_exp_card:
+            mode_years = _extract_mode_years(mode_from_card) if mode_from_card else []
+            if mode_years:
+                from compose.artifact_store import _build_question_entries
+                question_entries = _build_question_entries(slot_id, mode_years)
+                if question_entries:
+                    parts.append(
+                        f"## 往年真题经验（{examination_mode}，共{len(question_entries)}题）\n\n"
+                        + "\n\n---\n\n".join(question_entries)
+                    )
+                    past_questions_injected = True
+        # Fallback: individual question experiences from retriever
+        if not past_questions_injected and experiences:
             exp_entries = []
             for exp in experiences:
-                # Use raw content directly — no LLM rewriting
                 exp_entries.append(exp.content)
             if exp_entries:
                 parts.append(
                     f"## 往年真题经验（共{len(exp_entries)}题）\n\n"
                     + "\n\n---\n\n".join(exp_entries)
                 )
+
+        # ── Section 5.5: 出题指导 should_be/should_not_be (from slot experience card) ──
+        if slot_exp_card:
+            guidance = self._extract_teaching_guidance(slot_exp_card)
+            if guidance:
+                parts.append(f"## 出题指导\n\n{guidance}")
 
         # ── Section 6: K-value anchors (computed from statistics) ──
         k_anchors = self._build_k_anchors(stats)
@@ -432,6 +508,117 @@ class BlueprintSynthesizer:
         parts.append(f"## K1-K5 认知雷达评分标准\n\n{radar_text.strip()}")
 
         return parts
+
+    @staticmethod
+    def _load_slot_experience_card(slot_id: str) -> str:
+        """Load the slot experience card from data/slot_experiences/."""
+        import os
+        # Strip any suffix after the base slot_id (e.g. "Q43-1" → "Q43")
+        base_slot = slot_id.split("-")[0] if "-" in slot_id else slot_id
+        for candidate in (slot_id, base_slot):
+            path = os.path.join("data", "slot_experiences", f"{candidate}_experience.md")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    return f.read()
+        return ""
+
+    @staticmethod
+    def _find_matching_experience_card(
+        knowledge_tag: str,
+        question_type: str = "",
+    ) -> str:
+        """Fuzzy-match an experience card when slot_id lookup fails.
+
+        Strategy:
+        1. Scan all cards in data/slot_experiences/
+        2. Score each card by keyword overlap with knowledge_tag
+        3. Prefer cards matching the question_type (comprehensive → Q41-47)
+        4. Return the highest-scoring card, or empty string.
+        """
+        import os
+
+        card_dir = os.path.join("data", "slot_experiences")
+        if not os.path.isdir(card_dir):
+            return ""
+
+        # Extract meaningful keywords from the knowledge tag
+        # "平衡二叉树AVL的插入旋转" → ["平衡二叉树avl", "插入旋转", "平衡二叉树avl的插入旋转"]
+        # Also extract shorter CJK substrings: "平衡", "二叉树", "插入", "旋转"
+        tag_lower = knowledge_tag.lower()
+        keywords = []
+        for chunk in re.split(r"[>的与、，,\s]+", tag_lower):
+            chunk = chunk.strip()
+            if len(chunk) >= 2:
+                keywords.append(chunk)
+        # Add the full tag for exact-substring matches
+        if len(tag_lower) >= 4:
+            keywords.append(tag_lower)
+        # For CJK-heavy tags, add 2-4 char sliding windows as secondary keywords
+        cjk_text = re.sub(r"[a-zA-Z0-9\s]", "", tag_lower)
+        if len(cjk_text) >= 4:
+            for size in (2, 3, 4):
+                for i in range(len(cjk_text) - size + 1):
+                    sub = cjk_text[i : i + size]
+                    if sub not in keywords:
+                        keywords.append(sub)
+
+        if not keywords:
+            return ""
+
+        # Determine slot range from question_type
+        # comprehensive → Q41-Q47, single_choice → Q1-Q40
+        qt_lower = question_type.lower()
+        prefer_comp = "comp" in qt_lower or "综合" in qt_lower or "应用题" in qt_lower
+
+        best_score = 0
+        best_card = ""
+
+        for fname in os.listdir(card_dir):
+            if not fname.endswith("_experience.md"):
+                continue
+            path = os.path.join(card_dir, fname)
+            try:
+                with open(path, encoding="utf-8") as f:
+                    content = f.read()
+            except OSError:
+                continue
+
+            # Slot name filter: prefer matching question type
+            # Comprehensive slots: Q41-Q47 (综合应用题), Choice slots: Q1-Q40 (选择题)
+            slot_name = fname.replace("_experience.md", "")
+            slot_num = int(slot_name[1:]) if slot_name[1:].isdigit() else 0
+            is_comp = 41 <= slot_num <= 47
+            if prefer_comp and not is_comp:
+                continue  # skip choice slots when we need comprehensive
+            if not prefer_comp and is_comp:
+                continue  # skip comprehensive slots when we need choice
+
+            # Score by keyword matches in content
+            content_lower = content.lower()
+            score = 0
+            for kw in keywords:
+                count = content_lower.count(kw)
+                if count > 0:
+                    score += min(count, 5)  # cap per-keyword contribution
+
+            if score > best_score:
+                best_score = score
+                best_card = content
+
+        # Fallback: no keyword match — return default comprehensive card only
+        if best_score == 0 and prefer_comp:
+            path = os.path.join(card_dir, "Q43_experience.md")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as f:
+                    return f.read()
+
+        return best_card
+
+    @staticmethod
+    def _extract_teaching_guidance(exp_card: str) -> str:
+        """Extract should_be/should_not_be from the slot experience card."""
+        m = re.search(r"## 出题指导\n(.*?)(?=\n## |\Z)", exp_card, re.DOTALL)
+        return m.group(1).strip() if m else ""
 
     def _build_k_anchors(self, stats: KnowledgeStatistics) -> str:
         """Build K-value anchor text from statistics."""

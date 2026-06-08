@@ -128,17 +128,16 @@ def _extract_mode_years(mode_section: str) -> list:
 
 
 def _extract_matching_mode(exp_card: str, examination_mode: str) -> str:
-    """Extract the experience card section matching examination_mode."""
-    mode_pattern = re.compile(r"^## (模式[A-Z][：:].+)$", re.MULTILINE)
+    """Extract the experience card section matching examination_mode.
+
+    All slot cards use ## 模式A/B/C headings (normalized format).
+    Matching strategy: exact → core-type → word-level fuzzy → first mode.
+    """
+    mode_pattern = re.compile(r"^(##|###) (模式[A-Z][：:].+)$", re.MULTILINE)
     mode_starts = list(mode_pattern.finditer(exp_card))
 
     if not mode_starts:
-        mode_pattern = re.compile(r"^### (模式[A-Z][：:].+)$", re.MULTILINE)
-        mode_starts = list(mode_pattern.finditer(exp_card))
-
-    if not mode_starts:
-        struct_match = re.search(r"^## 考察结构模式\n(.*?)(?=\n## |\Z)", exp_card, re.MULTILINE | re.DOTALL)
-        return struct_match.group(1).strip() if struct_match else ""
+        return ""
 
     modes = []
     for i, m in enumerate(mode_starts):
@@ -147,18 +146,21 @@ def _extract_matching_mode(exp_card: str, examination_mode: str) -> str:
         sep_match = re.search(r"\n---\n", exp_card[start:])
         if sep_match and start + sep_match.start() < end:
             end = start + sep_match.start()
-        modes.append((m.group(1), start, end))
+        modes.append((m.group(2), start, end))
 
+    # 1. Exact substring match
     for heading, start, end in modes:
         if examination_mode in heading:
             return exp_card[start:end].strip()
 
+    # 2. Core type match (before em-dash)
     core_type = examination_mode.split("——")[0].split("—")[0].strip()
     if core_type:
         for heading, start, end in modes:
             if core_type in heading:
                 return exp_card[start:end].strip()
 
+    # 3. Word-level fuzzy match
     words = [w for w in re.split(r"[——\-\s,，、]", examination_mode) if len(w) >= 2]
     best_match = None
     best_score = 0
@@ -170,6 +172,7 @@ def _extract_matching_mode(exp_card: str, examination_mode: str) -> str:
     if best_match and best_score > 0:
         return exp_card[best_match[0]:best_match[1]].strip()
 
+    # 4. Fallback: first mode
     return exp_card[modes[0][1]:modes[0][2]].strip()
 
 

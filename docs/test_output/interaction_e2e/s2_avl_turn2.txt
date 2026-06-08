@@ -1,7 +1,7 @@
-State: complete
+State: error
 Mode: knowledge_point
 
 Response:
 已确认！正在开始生成题目...
 
-题目生成完成！
+部分题目生成失败，请检查生成结果。
