@@ -532,6 +532,11 @@ class LLMGateway:
         if thinking_budget and self._supports_thinking_budget(provider):
             params.setdefault("extra_body", {})
             params["extra_body"]["thinking_token_budget"] = thinking_budget
+            # Thinking models count reasoning tokens against max_tokens.
+            # Inflate output budget so reasoning doesn't consume it entirely.
+            current_max = params.get("max_tokens", 0)
+            if current_max and current_max > 0:
+                params["max_tokens"] = max(current_max, thinking_budget + 16000)
 
         if enable_thinking is not None and hasattr(provider, "_extra_body_for_thinking"):
             extra_body = provider._extra_body_for_thinking(enable_thinking)

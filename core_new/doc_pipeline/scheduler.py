@@ -540,12 +540,6 @@ class DocScheduler:
         gateway = self._get_gateway_for_role(role)
         effective_max_tokens = max_tokens or self.max_tokens
         effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
-
-        # Thinking models (Qwen3, etc.) count reasoning tokens against
-        # max_tokens.  Ensure enough headroom so reasoning doesn't consume
-        # the entire output budget before tool calls land.
-        if effective_thinking_budget and effective_thinking_budget > 0:
-            effective_max_tokens = max(effective_max_tokens, effective_thinking_budget + 16000)
         final_text = ""
 
         # Model decides when to call tools. Boundary detection (streak counters)
@@ -625,10 +619,16 @@ class DocScheduler:
                     tool_choice=forced_tool_choice,
                 )
             except Exception as exc:
-                # API errors (400 malformed messages, 500, timeouts) are
-                # recoverable — drop the last assistant+tool pair if present
-                # and inject a fresh retry prompt.
                 exc_name = type(exc).__name__
+                # Transport-level failures (network, timeout) are NOT
+                # recoverable at the agent level — propagate to orchestrator.
+                if self._gateway._is_retryable_stream_error(exc):
+                    logger.error(
+                        "[%s] Agent '%s': transport failure (%s: %s), aborting slot",
+                        slot_id, role, exc_name, str(exc)[:200],
+                    )
+                    raise
+                # Content/protocol errors (400, malformed tool_call) — recoverable.
                 logger.warning(
                     "[%s] Agent '%s' attempt %d: API error (%s: %s), recovering",
                     slot_id, role, attempt + 1, exc_name, str(exc)[:200],

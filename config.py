@@ -107,7 +107,7 @@ class GlobalSettings(BaseSettings):
             api_key=os.getenv("GLM_API_KEY"),
             api_protocol="openai_chat",
             batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
-            request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600.0")),
+            request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "120.0")),
             max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
             thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "none"),
             supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
