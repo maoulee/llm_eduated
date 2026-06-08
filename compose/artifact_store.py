@@ -98,12 +98,14 @@ def assemble_slot_experience_doc(
 
     # ── 3. 模式概览 ──
     if exp_card and examination_mode:
-        mode_section = _extract_matching_mode(exp_card, examination_mode)
-        if mode_section:
-            if selected_knowledge:
-                mode_section = _filter_mode_by_knowledge(mode_section, selected_knowledge)
+        mode_section_raw = _extract_matching_mode(exp_card, examination_mode)
+        # Extract years from raw (unfiltered) section to preserve 参考题
+        mode_years = _extract_mode_years(mode_section_raw)
+        if mode_section_raw:
+            mode_section = _filter_mode_by_knowledge(mode_section_raw, selected_knowledge)
+            if excluded_knowledge:
+                mode_section = _mark_excluded_knowledge(mode_section, excluded_knowledge)
             parts.append(f"## 模式概览（来自题位经验卡）\n\n{mode_section}")
-        mode_years = _extract_mode_years(mode_section)
     else:
         mode_years = []
 
@@ -144,20 +146,24 @@ def _extract_basic_info(exp_card: str) -> str:
 
 
 def _filter_mode_by_knowledge(mode_section: str, selected_knowledge: list[str]) -> str:
-    """Keep only lines in mode section that mention a selected knowledge point."""
+    """Keep structural lines (考察方式, 选项架构, 陷阱, 干扰策略, etc.) intact;
+    only filter the 适用知识点范围 line to highlight selected knowledge.
+    """
     if not selected_knowledge:
         return mode_section
     lines = mode_section.split("\n")
     filtered = []
-    keep = True
     for line in lines:
-        if line.startswith("#") or line.startswith("##"):
-            keep = True
+        # Always keep headings and blank lines
+        if line.startswith("#") or line.strip() == "":
             filtered.append(line)
-        elif any(kp in line for kp in selected_knowledge):
-            keep = True
+        # Filter only the knowledge scope line
+        elif "适用知识点范围" in line:
+            # Keep the line but it will be marked by excluded logic later
             filtered.append(line)
-        elif line.strip() == "":
+        else:
+            # Keep all structural lines: 考察方式, 选项架构, 常见参数,
+            # 常见陷阱, 典型干扰策略, 参考题, 难度范围, 出现频率
             filtered.append(line)
     return "\n".join(filtered)
 

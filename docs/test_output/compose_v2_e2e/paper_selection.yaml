@@ -1,0 +1,49 @@
+- slot_id: Q12
+  question_type: single_choice
+  score: 2
+  examination_mode: 计算型——公式应用与单位换算
+  active_selection:
+    mode_id: 模式A
+    mode_name: 计算型——公式应用与单位换算
+    selected_knowledge:
+    - CPU执行时间公式
+    - 主频与时钟周期换算
+    - CPI概念与计算
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  excluded_modes:
+  - 模式C
+- slot_id: Q43
+  question_type: comprehensive
+  score: 10
+  examination_mode: 多子系统耦合性能评估
+  active_selection:
+    mode_id: 模式A
+    mode_name: 多子系统耦合性能评估
+    selected_knowledge:
+    - Cache直接映射与组相联映射
+    - 平均访存时间AMAT计算
+    - 总线传输时序分析
+    - CPU利用率计算
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  - 模式C
+  excluded_knowledge:
+  - DMA传输开销计算
+- slot_id: Q6
+  question_type: single_choice
+  score: 2
+  examination_mode: 概念辨析型——性质与边界判定
+  active_selection:
+    mode_id: 模式A
+    mode_name: 概念辨析型——性质与边界判定
+    selected_knowledge:
+    - 哈夫曼树性质
+    - 前缀编码定义
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  - 模式C
+  - 模式D
