@@ -1,6 +1,6 @@
 # Doc Pipeline 架构 Spec — 智能体、路由与协作模式
 
-> 最后更新: 2026-06-07 (v3.6: 工具调用两阶段协议、commit-only 收敛、提示语工具名统一)
+> 最后更新: 2026-06-07 (v4.0: 双智能体流水线 creator + reviewer 协作循环)
 > 本文档固化流水线核心设计，避免跨会话信息丢失。
 
 ---
@@ -1163,4 +1163,135 @@ Agent system prompt 不得再出现旧工具名 exec_python。
   - pytest tests/test_doc_pipeline.py::TestDocSchedulerToolProtocol -q  → 6 passed
   - pytest tests/test_doc_pipeline.py -q                                → 53 passed
   - pytest tests -q                                                     → 287 passed, 13 skipped
+```
+
+---
+
+## 19. 双智能体流水线 (2026-06-07 v4.0)
+
+### 19.1 架构变更
+
+```
+旧架构 (5 层串行):
+  outline → question → review → solve → final_review
+
+新架构 (2 智能体协作循环):
+  Creator: design → [CP1 审核] → verify → solve → [CP2 终审] → final
+  Reviewer: CP1(题干审核) + CP2(求解一致性审核)
+```
+
+**核心变化**:
+- question_comp + solve 合并为 **creator** 智能体（一次连续会话）
+- review + final_review 合并为 **reviewer** 智能体（双检查点）
+- outline 独立于出题流程，assembled doc 直接注入
+
+### 19.2 Creator 智能体
+
+```
+文件: agents/creator.md + skills/creator_solve/creator_skill.md
+工具: write_file, exec_file, edit_file, read_file
+会话: multi_turn=true, 单次连续会话贯穿 4 步工作流
+
+4 步工作流:
+  Step 1: 设计题目 → write_file(question.md)
+          数值参数仅需近似合理，不做内部验算
+          写入后立即停止 → 等待 CP1 审核反馈
+  Step 2: 参数校验 → write_file(verify.py) → exec_file(verify.py)
+          参数不自洽时 edit_file(question.md) 改数值（代码为王）
+          概念题跳过此步
+  Step 3: 独立求解 → write_file(solution.md)
+          数值题: write_file(solve.py) → exec_file(solve.py) → 对比
+          写入后立即停止 → 等待 CP2 终审反馈
+  Step 4: 组装交付 → write_file(final.md)
+
+两个暂停点:
+  - question.md 写入后 → 等 CP1
+  - solution.md 写入后 → 等 CP2
+```
+
+### 19.3 Reviewer 智能体
+
+```
+文件: agents/reviewer.md + skills/checkpoint_review/reviewer_skill.md
+工具: write_file, read_file
+会话: multi_turn=true
+
+双检查点自动判定:
+  - 仅有 question.md → CP1（题干设计审核）
+  - question.md + solution.md → CP2（求解一致性终审）
+
+CP1 审核维度:
+  1. 知识点覆盖  2. K难度评估  3. 条件充分性
+  4. 题干清晰度  5. 选项/子问题质量  6. 风格合规
+  7. 考察形式  8. 经验卡对齐
+  状态值: pass / needs_fix
+
+CP2 审核维度:
+  1. 证据核对(数值题)  2. 答案唯一性  3. 条件利用率
+  4. 答案自洽性  5. 蓝图匹配
+  状态值: pass / expression_fix / question_error / solution_error
+```
+
+### 19.4 编排流程 (dual_agent_orchestrator.py)
+
+```
+Phase 1: Creator Step 1 → Reviewer CP1
+  creator.run("设计题目", inject=[assembled.md])
+  reviewer.run("CP1 审核", inject=[question.md, assembled.md])
+  needs_fix → creator.run(反馈, continue_session=True) → re-review
+
+Phase 2: Creator Steps 2-3
+  creator.run("verify + solve", continue_session=True)
+
+Phase 3: Reviewer CP2 → 路由判定
+  reviewer.run("CP2 终审", inject=[question.md, solution.md, solve.py, solve_output.txt])
+  question_error → creator 重新设计+求解
+  solution_error → creator 最小修正求解
+
+Phase 4: Creator Step 4
+  creator.run("组装 final.md", continue_session=True)
+```
+
+### 19.5 设计动机
+
+```
+问题:
+  1. GLM-5.1 在 question 阶段做 45K reasoning 内部验算 (3.6 min)
+     → 但验算不可审计，失败无中间产物
+  2. solve 跳过 verify.py 直接求解
+     → 参数不自洽流入求解阶段
+  3. 5 层串行导致 3 次 LLM 冷启动，上下文在层间丢失
+  4. 总耗时 ~11 min (GLM-5.1 远程 API)
+
+解决:
+  1. question 只设计不验算 (省 ~2 min reasoning)
+  2. verify 在 creator 内执行，代码为王
+  3. 2 智能体共享上下文，无信息丢失
+  4. 预估 ~7-8 min
+```
+
+### 19.6 behavior_type 映射
+
+```python
+# agent_loader.py _BEHAVIOR_VARIANTS 新增:
+"creator": "creator_solve"
+"reviewer": "checkpoint_review"
+```
+
+### 19.7 文件索引
+
+```
+新增:
+  - core_new/doc_pipeline/agents/creator.md
+  - core_new/doc_pipeline/agents/reviewer.md
+  - core_new/doc_pipeline/skills/creator_solve/creator_skill.md
+  - core_new/doc_pipeline/skills/checkpoint_review/reviewer_skill.md
+  - core_new/doc_pipeline/dual_agent_orchestrator.py
+  - scripts/test_dual_agent_pipeline.py
+
+修改:
+  - core_new/doc_pipeline/agent_loader.py — 新增 creator_solve / checkpoint_review 行为变体
+
+保留(向后兼容):
+  - 旧 5 层智能体和 orchestrator 不删除
 ```

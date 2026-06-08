@@ -184,9 +184,9 @@ class LLMGateway:
         return False
 
     async def _wait_with_backoff(self, attempt: int) -> None:
-        """Fixed 5s backoff."""
-        logger.info("Transport retry attempt %d, waiting 5.0s", attempt + 1)
-        await asyncio.sleep(5.0)
+        """Fixed 3s backoff."""
+        logger.info("Transport retry attempt %d, waiting 3.0s", attempt + 1)
+        await asyncio.sleep(3.0)
 
     # ── Batch methods ──────────────────────────────────────
 

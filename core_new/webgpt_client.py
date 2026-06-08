@@ -161,10 +161,12 @@ class WebGPTClient:
     ) -> str:
         """Re-fetch complete response via admin API after thinking model finishes.
 
-        gpt-thinking returns a brief pre-thinking text first, then thinks for
-        10-30s, then writes the full answer.  If the initial content is short
-        (< 200 chars), wait for thinking to complete and pull the full
-        assistant message from the ChatGPT backend API.
+        Strategy:
+        1. Wait 10s, fetch
+        2. If content grew → model is generating, stop (wait for completion)
+        3. If content didn't grow → wait 5s, fetch again
+        4. Repeat until content grows or max 30s elapsed
+        5. After growth detected, do one final fetch after 10s to get full content
 
         Returns the full content if recovered, otherwise the initial content.
         """
@@ -172,48 +174,81 @@ class WebGPTClient:
         if not conv_id:
             return initial_content
 
-        # Thinking models typically take 10-30s.  Wait before polling.
-        logger.info(
-            "Response too short (%d chars), waiting 15s before re-fetching conversation %s",
-            len(initial_content.strip()), conv_id[:8],
-        )
-        await asyncio.sleep(15)
+        best_content = initial_content.strip()
+        elapsed = 0.0
+        max_wait = 30.0
+        growth_detected = False
 
-        try:
-            http = self._get_http()
-            resp = await http.get(
-                f"{self.base_url}/admin/chatgpt/conversation/{conv_id}",
-                timeout=httpx.Timeout(30.0),
+        # Phase 1: Poll until content grows or timeout
+        # Start with 10s wait, then 5s intervals
+        next_delay = 10.0
+        while elapsed < max_wait:
+            logger.info(
+                "Polling conversation %s (%d chars, %.0fs elapsed, next=%.0fs)",
+                conv_id[:8], len(best_content), elapsed, next_delay,
             )
-            if resp.status_code != 200:
-                logger.warning("Admin API returned %d, using initial content", resp.status_code)
-                return initial_content
+            await asyncio.sleep(next_delay)
+            elapsed += next_delay
 
-            data = resp.json()
-            messages = data.get("messages", [])
-            # Find the latest assistant message
-            assistant_msgs = [m for m in messages if m.get("role") == "assistant" and m.get("text", "").strip()]
-            if not assistant_msgs:
-                logger.warning("No assistant messages found in re-fetch, using initial content")
-                return initial_content
+            try:
+                fetched = await self._fetch_assistant_text(conv_id)
+                if fetched is None:
+                    continue
 
-            # Pick the last assistant message (most recent)
-            latest = assistant_msgs[-1]
-            full_text = latest["text"].strip()
+                if len(fetched) > len(best_content):
+                    prev_len = len(best_content)
+                    best_content = fetched
+                    growth_detected = True
+                    logger.info(
+                        "Content grew: %d → %d chars (%.0fs elapsed)",
+                        prev_len, len(best_content), elapsed,
+                    )
+                    # Content is growing — model started generating, stop polling
+                    break
+                else:
+                    logger.info("No growth: %d chars unchanged (%.0fs elapsed)", len(best_content), elapsed)
+                    next_delay = 5.0
 
-            if len(full_text) > len(initial_content.strip()):
-                logger.info(
-                    "Re-fetch recovered full response (%d chars, was %d)",
-                    len(full_text), len(initial_content.strip()),
-                )
-                return full_text
+            except Exception as exc:
+                logger.warning("Poll failed: %s", exc)
+                next_delay = 5.0
 
-            logger.info("Re-fetch content not longer than initial (%d vs %d), keeping initial", len(full_text), len(initial_content.strip()))
-            return initial_content
+        # Phase 2: If growth was detected, wait for generation to finish then do final fetch
+        if growth_detected:
+            logger.info("Growth detected, waiting 10s for generation to complete before final fetch")
+            await asyncio.sleep(10.0)
+            try:
+                fetched = await self._fetch_assistant_text(conv_id)
+                if fetched and len(fetched) > len(best_content):
+                    best_content = fetched
+                    logger.info("Final fetch: %d chars", len(best_content))
+            except Exception as exc:
+                logger.warning("Final fetch failed: %s", exc)
 
-        except Exception as exc:
-            logger.warning("Re-fetch failed: %s, using initial content", exc)
-            return initial_content
+        if len(best_content) > len(initial_content.strip()):
+            logger.info("Re-fetch result: %d chars (was %d)", len(best_content), len(initial_content.strip()))
+        else:
+            logger.info("Re-fetch: no improvement (%d chars)", len(best_content))
+        return best_content
+
+    async def _fetch_assistant_text(self, conv_id: str) -> str | None:
+        """Fetch the latest assistant message text from admin API."""
+        http = self._get_http()
+        resp = await http.get(
+            f"{self.base_url}/admin/chatgpt/conversation/{conv_id}",
+            timeout=httpx.Timeout(30.0),
+        )
+        if resp.status_code != 200:
+            logger.warning("Admin API returned %d", resp.status_code)
+            return None
+
+        data = resp.json()
+        messages = data.get("messages", [])
+        assistant_msgs = [m for m in messages if m.get("role") == "assistant" and m.get("text", "").strip()]
+        if not assistant_msgs:
+            return None
+
+        return assistant_msgs[-1]["text"].strip()
 
     def _resolve_model(self, agent_name: str, explicit: str | None = None) -> str:
         if explicit:

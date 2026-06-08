@@ -19,6 +19,7 @@ from compose.generate_runner import _extract_structured_fields_from_final_md
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
 from core_new.doc_pipeline.context import ContextRegistry, FileProvider, InlineProvider, ProviderDef
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
+from core_new.doc_pipeline.dual_agent_orchestrator import DualAgentOrchestrator
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
 from core_new.doc_pipeline.scheduler import DocScheduler
@@ -264,6 +265,7 @@ class TestAgentPrompts:
         expected_roles = {
             "outline", "question_sc", "question_comp",
             "review", "solve", "final_review",
+            "creator", "reviewer",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -271,6 +273,7 @@ class TestAgentPrompts:
         expected_roles = {
             "outline", "question_sc", "question_comp",
             "review", "solve", "final_review",
+            "creator", "reviewer",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -396,6 +399,43 @@ class TestDocSchedulerToolProtocol:
         assert result == ""
         assert not stale.exists()
         assert (slot_dir / "wrong.md").exists()
+
+    def test_preserve_existing_allows_edit_file_target(self, tmp_path):
+        slot_dir = tmp_path / "S3B"
+        slot_dir.mkdir()
+        target = slot_dir / "question.md"
+        target.write_text("## status\ndraft\n\n## 题干\nold\n", encoding="utf-8")
+
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+
+        async def fake_stream(provider, messages, **kwargs):
+            return {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [
+                    _tool_call(
+                        "edit_file",
+                        {"path": "question.md", "old_string": "old", "new_string": "new"},
+                        "call_edit",
+                    )
+                ],
+            }
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(
+            scheduler.run_agent(
+                "creator",
+                "fix",
+                slot_id="S3B",
+                target_file="question.md",
+                preserve_existing=True,
+            )
+        )
+
+        assert "new" in result
+        assert target.exists()
+        assert "new" in target.read_text(encoding="utf-8")
 
     def test_run_agent_retries_when_tool_writes_wrong_path(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -663,6 +703,141 @@ class TestDocPipelineOrchestrator:
         assert result.ok is True
         assert (slot_dir / "blueprint.md").read_text(encoding="utf-8") == "fresh assembled blueprint"
         assert [c["role"] for c in scheduler.calls] == ["solve", "final_review"]
+
+
+class FakeDualAgentScheduler:
+    def __init__(
+        self,
+        workspace,
+        *,
+        cp1_statuses=None,
+        cp2_statuses=None,
+        write_final=True,
+    ):
+        self.workspace = Path(workspace)
+        self.cp1_statuses = list(cp1_statuses or ["pass"])
+        self.cp2_statuses = list(cp2_statuses or ["pass"])
+        self.write_final = write_final
+        self.calls = []
+
+    @staticmethod
+    def _next_status(statuses, default):
+        return statuses.pop(0) if statuses else default
+
+    async def run_agent(
+        self,
+        role,
+        task,
+        *,
+        slot_id,
+        inject_files=None,
+        continue_session=False,
+        max_tokens=None,
+        target_file=None,
+        preserve_existing=False,
+        **kwargs,
+    ):
+        self.calls.append({
+            "role": role,
+            "task": task,
+            "inject_files": inject_files or {},
+            "continue_session": continue_session,
+            "max_tokens": max_tokens,
+            "target_file": target_file,
+            "preserve_existing": preserve_existing,
+        })
+        ws = self.workspace / slot_id
+        ws.mkdir(parents=True, exist_ok=True)
+
+        if target_file == "question.md":
+            content = (
+                "## status\n"
+                "draft\n\n"
+                "## 题干\n"
+                "概念题。\n\n"
+                "## 子问题\n"
+                "### (1) (5分)\n说明。\n\n"
+                "## 设计说明\n"
+                "覆盖目标知识点。"
+            )
+        elif target_file == "solution.md":
+            content = (
+                "## status\n"
+                "solved\n\n"
+                "## 求解过程\n"
+                "概念推理。\n\n"
+                "## 最终答案\n"
+                "答案。"
+            )
+        elif target_file == "review.md":
+            if "检查点 2" in task:
+                status = self._next_status(self.cp2_statuses, "pass")
+            else:
+                status = self._next_status(self.cp1_statuses, "pass")
+            content = (
+                f"## status\n{status}\n\n"
+                f"## summary\n{status}\n\n"
+                "## corrections\n需要最小修改\n\n"
+                "## detailed_feedback\n表述修正建议\n\n"
+                "## routing_feedback\n请修正对应位置。"
+            )
+        elif target_file == "final.md":
+            if not self.write_final:
+                return ""
+            content = "## 题目\n概念题。\n\n## 答案\n答案。"
+        else:
+            return ""
+
+        (ws / target_file).write_text(content, encoding="utf-8")
+        return content
+
+
+class TestDualAgentOrchestrator:
+    def test_concept_question_marks_code_skipped_without_code_exec_ok(self, tmp_path):
+        scheduler = FakeDualAgentScheduler(
+            tmp_path,
+            cp1_statuses=["pass"],
+            cp2_statuses=["pass"],
+        )
+        orchestrator = DualAgentOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline("D1", assembled_doc="blueprint"))
+
+        assert result.ok is True
+        assert result.review_status == "pass"
+        assert result.code_skipped is True
+        assert result.code_exec_ok is False
+
+    def test_cp2_question_error_requires_cp1_re_review_to_pass(self, tmp_path):
+        scheduler = FakeDualAgentScheduler(
+            tmp_path,
+            cp1_statuses=["pass", "needs_fix", "needs_fix", "needs_fix"],
+            cp2_statuses=["question_error"],
+        )
+        orchestrator = DualAgentOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline("D2", assembled_doc="blueprint"))
+
+        assert result.ok is False
+        assert "CP1 re-review still needs_fix" in result.error
+        assert any(
+            call["target_file"] == "question.md" and call["preserve_existing"]
+            for call in scheduler.calls
+        )
+
+    def test_expression_fix_requires_creator_final_output(self, tmp_path):
+        scheduler = FakeDualAgentScheduler(
+            tmp_path,
+            cp1_statuses=["pass"],
+            cp2_statuses=["expression_fix"],
+            write_final=False,
+        )
+        orchestrator = DualAgentOrchestrator(scheduler=scheduler, workspace=tmp_path)
+
+        result = run_async(orchestrator.run_pipeline("D3", assembled_doc="blueprint"))
+
+        assert result.ok is False
+        assert "final.md for expression_fix" in result.error
 
 
 class TestContextRegistry:
@@ -957,6 +1132,7 @@ class TestAgentLoader:
         expected = {
             "outline", "question_sc", "question_comp",
             "review", "solve", "final_review",
+            "creator", "reviewer",
         }
         assert set(specs.keys()) == expected
 
@@ -974,7 +1150,7 @@ class TestAgentLoader:
 
     def test_multi_turn_agents(self):
         _, _, multi_turn, _, _, _ = get_agent_dicts()
-        assert multi_turn == {"question_sc", "question_comp"}
+        assert multi_turn == {"question_sc", "question_comp", "creator", "reviewer"}
 
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
@@ -982,11 +1158,12 @@ class TestAgentLoader:
         assert thinking["question_comp"] == 16000
 
     def test_compat_dicts_match_legacy(self):
-        """AgentMD runtime roles match the current 5-layer pipeline."""
+        """AgentMD runtime roles match the current 5-layer + 2-agent pipeline."""
         prompts, output_files, multi_turn, _, _, _ = get_agent_dicts()
         expected_roles = {
             "outline", "question_sc", "question_comp",
             "review", "solve", "final_review",
+            "creator", "reviewer",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles
@@ -1010,7 +1187,7 @@ class TestAgentLoader:
         assert spec.output_file == "out.md"
         assert spec.thinking_budget == 5000
         # Prompt is now built from behavior layer, not MD body
-        assert "自主智能体" in spec.prompt
+        assert "按指令直接行动" in spec.prompt
         assert "out.md" in spec.prompt
 
     def test_parse_rejects_missing_frontmatter(self, tmp_path):

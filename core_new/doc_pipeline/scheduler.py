@@ -406,6 +406,9 @@ class DocScheduler:
         continue_session: bool = False,
         max_tokens: int | None = None,
         pre_copy_source: str | Path | None = None,
+        target_file: str | None = None,
+        preserve_existing: bool = False,
+        enable_thinking: bool | None = None,
     ) -> str:
         """Run an agent and return the final text content.
 
@@ -421,6 +424,10 @@ class DocScheduler:
             max_tokens: Override default max_tokens for this call.
             pre_copy_source: If set, copy this file to expected_path after unlink
                 (so the agent can use edit_file on a pre-populated file).
+            target_file: Override the role's default output file for this call.
+            preserve_existing: Keep an existing target file so the agent can
+                edit_file it during feedback rounds. Stale files are still not
+                accepted as success unless this call writes/edits the target.
 
         Returns:
             The final text content from the agent.
@@ -448,8 +455,8 @@ class DocScheduler:
 
         # 2. Build or continue message history
         system_prompt = AGENT_PROMPTS.get(role, "")
-        if continue_session and role in self._sessions:
-            messages = list(self._sessions[role])
+        if continue_session and f"{slot_id}:{role}" in self._sessions:
+            messages = list(self._sessions[f"{slot_id}:{role}"])
             messages.append({"role": "user", "content": full_task})
         else:
             messages = [
@@ -457,11 +464,13 @@ class DocScheduler:
                 {"role": "user", "content": full_task},
             ]
 
-        expected_fn = AGENT_OUTPUT_FILES.get(role, "output.md")
+        expected_fn = target_file or AGENT_OUTPUT_FILES.get(role, "output.md")
         expected_path = ws / expected_fn
 
-        # Avoid accepting stale artifacts from previous attempts/runs.
-        if expected_path.exists():
+        # Avoid accepting stale artifacts from previous attempts/runs. Feedback
+        # rounds intentionally preserve the file so edit_file has something to
+        # modify; success is still gated on this call writing/editing target_fn.
+        if expected_path.exists() and not preserve_existing:
             expected_path.unlink()
 
         # Pre-copy source file (e.g. question.md → fixed.md) so agent can edit_file.
@@ -954,7 +963,7 @@ class DocScheduler:
 
         # 6. Update session state for multi-turn agents
         if role in MULTI_TURN_AGENTS:
-            self._sessions[role] = messages
+            self._sessions[f"{slot_id}:{role}"] = messages
 
         if not final_text:
             logger.error(

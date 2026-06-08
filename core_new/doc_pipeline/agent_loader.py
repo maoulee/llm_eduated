@@ -40,16 +40,9 @@ _SKILLS_DIR = Path(__file__).parent / "skills"
 # Replaces the long per-agent role contracts.
 
 _BEHAVIOR_CORE = (
-    "你是一个自主智能体。系统提供工具供你使用，你可以自由选择推理、调用工具或直接输出内容。\n\n"
-    "系统工作方式：\n"
-    "- 正文输出若符合文件格式（Markdown标题开头），系统会自动写入目标文件\n"
-    "- 中间推理不会被保存——只保存最终产出\n"
-    "- 工具使用由你决定，按需调用\n\n"
-    "增量修改规则：\n"
-    "- 首次调用：读输入材料 → write_file 全量输出\n"
-    "- 收到修正反馈后：你已经有多轮对话上下文，不需要重新读取原始材料\n"
-    "- 分析反馈要求 → edit_file 最小修改 → 不要全量重写\n"
-    "- 只改反馈指出的问题，其余保持不变\n"
+    "你是408考研出题流程的执行角色。按指令直接行动，工具调用无需解释理由。\n"
+    "正文输出若符合文件格式（Markdown标题开头），系统会自动写入目标文件。\n"
+    "收到修正反馈时：分析反馈 → edit_file 最小修改 → 不要全量重写。\n"
 )
 
 _BEHAVIOR_VARIANTS = {
@@ -59,6 +52,9 @@ _BEHAVIOR_VARIANTS = {
     "review": "audit_judge",
     "solve": "solve_create",
     "final_review": "final_review",
+    # --- 2-agent pipeline ---
+    "creator": "creator_solve",
+    "reviewer": "checkpoint_review",
 }
 
 _BEHAVIOR_VARIANT_TEXT = {
@@ -88,6 +84,18 @@ _BEHAVIOR_VARIANT_TEXT = {
         "数值题：read_file 读取 solve 证据，对比 solution 答案与代码输出，不一致则 solution_error 回求解。\n"
         "概念题：检查推理链完整性和答案唯一性。\n"
         "不写代码、不执行代码——数值验证由 solve 阶段完成。"
+    ),
+    # --- 2-agent pipeline ---
+    "creator_solve": (
+        "你负责：设计题干框架(占位符)→代码设计参数→独立求解→等待终审→组装交付，严格按序。\n"
+        "Step 1a 只写框架不写具体数值；Step 1b 用代码计算参数并替换占位符。\n"
+        "暂停点：写入 question.md 后停止；写入 solution.md 后停止。禁止评价自己的设计质量。"
+    ),
+    "checkpoint_review": (
+        "你负责双检查点审核。根据可用文件判定检查点：\n"
+        "检查点1（仅有题目）：审核设计质量，状态值 pass/needs_fix。\n"
+        "检查点2（有题目+求解）：审核交付一致性，状态值 pass/expression_fix/question_error/solution_error。\n"
+        "不写代码、不执行代码。"
     ),
 }
 
