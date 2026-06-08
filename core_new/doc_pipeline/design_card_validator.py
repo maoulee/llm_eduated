@@ -124,32 +124,44 @@ def validate_design_card(content: str) -> ValidationResult:
         r"question_form\s*[:：]\s*(.+)", route_text
     )
     if q_form_match:
-        q_form_raw = q_form_match.group(1).strip().lower()
-        # Extract English enum value from possible mixed text like "选择题" or "综合应用题（共享题干）"
-        q_form = q_form_raw.split("（")[0].split("(")[0].strip()
-        # Map common Chinese terms to enum values
+        q_form_raw = q_form_match.group(1).strip()
+        q_form_lower = q_form_raw.lower()
+        # Strip parenthetical suffixes first: "综合应用题（共享题干）" → "综合应用题"
+        q_form_base = re.split(r"[（(]", q_form_raw)[0].strip()
+        # Map common Chinese terms to enum values (tolerant)
         q_form_map = {"选择题": "single_choice", "综合题": "comprehensive", "综合应用题": "comprehensive"}
-        q_form = q_form_map.get(q_form, q_form)
+        q_form = q_form_map.get(q_form_base, q_form_map.get(q_form_raw, q_form_lower))
         if q_form not in VALID_QUESTION_FORMS:
             result.error(
                 f"route.question_form must be one of {VALID_QUESTION_FORMS}, got '{q_form_raw}'"
+            )
+        elif q_form_raw not in VALID_QUESTION_FORMS:
+            # Accepted via Chinese mapping — warn to track schema compliance
+            result.warn(
+                f"route.question_form should be '{q_form}', got '{q_form_raw}' (Chinese term auto-mapped)"
             )
 
     q_type_match = re.search(
         r"question_type\s*[:：]\s*(.+)", route_text
     )
     if q_type_match:
-        q_type_raw = q_type_match.group(1).strip().lower()
+        q_type_raw = q_type_match.group(1).strip()
+        q_type_lower = q_type_raw.lower()
         # Extract English enum value from possible mixed text like "mixed（概念+计算）"
         for valid in VALID_QUESTION_TYPES:
-            if q_type_raw.startswith(valid):
+            if q_type_lower.startswith(valid):
                 q_type = valid
                 break
         else:
-            q_type = q_type_raw
+            q_type = q_type_lower
         if q_type not in VALID_QUESTION_TYPES:
             result.error(
                 f"route.question_type must be one of {VALID_QUESTION_TYPES}, got '{q_type_raw}'"
+            )
+        elif q_type_raw != q_type:
+            # Accepted via prefix match but has extra text — warn
+            result.warn(
+                f"route.question_type should be '{q_type}' (plain English), got '{q_type_raw}'"
             )
 
     # 6. Warnings for common issues
