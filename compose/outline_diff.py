@@ -8,8 +8,10 @@ Also provides validation of changes against slot templates.
 
 from __future__ import annotations
 
+import difflib
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 # ── Data structures ──────────────────────────────────────────────
@@ -59,7 +61,7 @@ def _split_slots(outline_md: str) -> dict[str, str]:
 
 def _extract_yaml_contract(content: str) -> dict:
     """Extract YAML contract from ```yaml block under ### 机器契约."""
-    m = re.search(r"###\s*机器契约\s*\n```ya?m?l?\s*\n(.*?)```", content, re.DOTALL)
+    m = re.search(r"###\s*机器(?:选择)?契约\s*\n```(?:yaml|yml)\s*\n(.*?)```", content, re.DOTALL)
     if not m:
         return {}
     try:
@@ -88,10 +90,23 @@ def extract_slot_contract(content: str) -> dict:
 # ── Teacher annotation extraction ────────────────────────────────
 
 def _extract_teacher_annotation(content: str) -> str:
-    """Extract text after > [教师] in the annotation area.
+    """Extract text from teacher-editable section.
 
+    v2 format: ### 教师可编辑说明 (free-form text)
+    v1 format: ### 教师批注区 with > [教师] prefix
     Returns empty string if no annotation or annotation is blank.
     """
+    # v2: 教师可编辑说明 (free-form content)
+    m = re.search(
+        r"###\s*教师可编辑说明\s*\n(.*?)(?=\n###|\n## |\Z)",
+        content,
+        re.DOTALL,
+    )
+    if m:
+        text = m.group(1).strip()
+        if text:
+            return text
+    # v1 fallback: 教师批注区 with > [教师] prefix
     m = re.search(
         r"###\s*教师批注区\s*\n>\s*\[教师\]\s*(.*?)(?:\n###|\n## )",
         content,
@@ -241,3 +256,30 @@ def format_diff_summary(outline_diff: OutlineDiff, warnings: list[str] | None = 
             lines.append(f"  - {w}")
 
     return "\n".join(lines)
+
+
+# ── Git-style diff formatting ───────────────────────────────────
+
+def compute_gitdiff(base_md: str, annotated_md: str) -> str:
+    """Generate git-style unified diff between base and annotated outlines.
+
+    Uses difflib.unified_diff to produce a diff that shows:
+    - Removed lines (prefixed with -)
+    - Added lines (prefixed with +)
+    - Context lines (prefixed with space)
+
+    Returns the diff as a string, or empty string if files are identical.
+    """
+
+    base_lines = base_md.splitlines(keepends=True)
+    annotated_lines = annotated_md.splitlines(keepends=True)
+
+    diff_lines = list(difflib.unified_diff(
+        base_lines,
+        annotated_lines,
+        fromfile="outline_draft.md",
+        tofile="outline_annotated.md",
+        lineterm="",
+    ))
+
+    return "".join(diff_lines)

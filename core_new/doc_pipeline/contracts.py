@@ -20,6 +20,12 @@ class SlotBlueprint:
     k_target: str = ""
     difficulty_rationale: str = ""
     question_type: str = "single_choice"
+    # v2 fields for mode selection
+    score: int = 2
+    active_selection: dict = field(default_factory=dict)
+    candidate_pool_visible: list[str] = field(default_factory=list)
+    excluded_modes: list[str] = field(default_factory=list)
+    excluded_knowledge: list[str] = field(default_factory=list)
 
 
 @dataclass

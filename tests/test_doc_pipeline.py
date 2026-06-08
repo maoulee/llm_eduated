@@ -265,7 +265,7 @@ class TestAgentPrompts:
         expected_roles = {
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
-            "creator", "reviewer",
+            "creator", "reviewer", "paper_outline",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -273,7 +273,7 @@ class TestAgentPrompts:
         expected_roles = {
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
-            "creator", "reviewer",
+            "creator", "reviewer", "paper_outline",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -1196,7 +1196,7 @@ class TestAgentLoader:
         expected = {
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
-            "creator", "reviewer",
+            "creator", "reviewer", "paper_outline",
         }
         assert set(specs.keys()) == expected
 
@@ -1227,7 +1227,7 @@ class TestAgentLoader:
         expected_roles = {
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
-            "creator", "reviewer",
+            "creator", "reviewer", "paper_outline",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles

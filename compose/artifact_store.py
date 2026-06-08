@@ -19,6 +19,7 @@ def assemble_slot_experience_doc(
     """Assemble a complete experience document for a slot based on chosen examination mode.
 
     Structure:
+      0. final_machine_contract (YAML summary from outline entry)
       1. 本次出题要求 (from outline entry — 考点 + 难度 + 考察模式)
       2. 基本信息 (from slot experience card)
       3. 模式概览 (matching mode from slot experience card)
@@ -27,9 +28,36 @@ def assemble_slot_experience_doc(
       6. K值锚点 (from slot experience card)
       7. K-radar完整定义 (from slot_prompts)
     """
+    import yaml
     from core_new.slot_prompts import K_RADAR_DEFINITIONS
 
     parts = []
+
+    # Extract v2 fields for filtering
+    active_selection = (outline_entry or {}).get("active_selection", {})
+    selected_knowledge = active_selection.get("selected_knowledge", [])
+    if isinstance(selected_knowledge, str):
+        selected_knowledge = [selected_knowledge]
+    excluded_knowledge = (outline_entry or {}).get("excluded_knowledge", [])
+
+    # ── 0. final_machine_contract ──
+    contract_fields = {}
+    for key in ("slot_id", "question_type", "score", "examination_mode",
+                "active_selection", "candidate_pool_visible"):
+        val = (outline_entry or {}).get(key)
+        if val:
+            contract_fields[key] = val
+    # excluded uses nested structure per schema v2
+    excluded = {}
+    if val := (outline_entry or {}).get("excluded_modes"):
+        excluded["modes"] = val
+    if val := (outline_entry or {}).get("excluded_knowledge"):
+        excluded["knowledge"] = val
+    if excluded:
+        contract_fields["excluded"] = excluded
+    if contract_fields:
+        contract_yaml = yaml.dump(contract_fields, allow_unicode=True, default_flow_style=False, sort_keys=False)
+        parts.append(f"## final_machine_contract\n\n```yaml\n{contract_yaml}```")
 
     # ── Load sources ──
     exp_card = ""
@@ -72,6 +100,8 @@ def assemble_slot_experience_doc(
     if exp_card and examination_mode:
         mode_section = _extract_matching_mode(exp_card, examination_mode)
         if mode_section:
+            if selected_knowledge:
+                mode_section = _filter_mode_by_knowledge(mode_section, selected_knowledge)
             parts.append(f"## 模式概览（来自题位经验卡）\n\n{mode_section}")
         mode_years = _extract_mode_years(mode_section)
     else:
@@ -83,6 +113,8 @@ def assemble_slot_experience_doc(
         target_family = outline_entry.get("target_family", "")
     syllabus = _extract_knowledge_graph_section(target_family)
     if syllabus:
+        if excluded_knowledge:
+            syllabus = _mark_excluded_knowledge(syllabus, excluded_knowledge)
         parts.append(f"## 相关知识点细纲\n\n{syllabus}")
 
     # ── 5. 往年真题经验 ──
@@ -109,6 +141,39 @@ def assemble_slot_experience_doc(
 def _extract_basic_info(exp_card: str) -> str:
     m = re.search(r"## 基本信息\n(.*?)(?=\n## )", exp_card, re.DOTALL)
     return m.group(1).strip() if m else ""
+
+
+def _filter_mode_by_knowledge(mode_section: str, selected_knowledge: list[str]) -> str:
+    """Keep only lines in mode section that mention a selected knowledge point."""
+    if not selected_knowledge:
+        return mode_section
+    lines = mode_section.split("\n")
+    filtered = []
+    keep = True
+    for line in lines:
+        if line.startswith("#") or line.startswith("##"):
+            keep = True
+            filtered.append(line)
+        elif any(kp in line for kp in selected_knowledge):
+            keep = True
+            filtered.append(line)
+        elif line.strip() == "":
+            filtered.append(line)
+    return "\n".join(filtered)
+
+
+def _mark_excluded_knowledge(syllabus: str, excluded_knowledge: list[str]) -> str:
+    """Mark lines containing excluded knowledge points with [已排除]."""
+    if not excluded_knowledge:
+        return syllabus
+    lines = syllabus.split("\n")
+    result = []
+    for line in lines:
+        if any(ek in line for ek in excluded_knowledge):
+            result.append(f"{line.rstrip()} [已排除]")
+        else:
+            result.append(line)
+    return "\n".join(result)
 
 
 def _extract_k_anchors(exp_card: str) -> str:

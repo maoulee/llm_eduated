@@ -23,26 +23,29 @@ _OUTLINE_SYSTEM_PROMPT = (
     "你将收到：\n"
     "1. 共享参考信息：K1-K5认知雷达评分标准 + 计算机组成原理知识点图谱\n"
     "2. 各题位信息：考点定位 + 可选考察模式（含适用知识点和频率）+ 出题指导\n\n"
-    "## 输出格式（混合大纲）\n"
+    "## 输出格式（Outline v2）\n"
     "Markdown格式，包含以下部分：\n\n"
     "### 全局部分\n"
     "- `# 试卷大纲` 标题\n"
     "- `## 整体规划` — difficulty_target 和 composition_rationale\n"
     "- `## 1. 教师阅读版总览` — 自然语言描述整卷定位、知识点覆盖策略；附题位总览表格\n\n"
-    "### 每个题位（`## Qxx（题型）`）包含三个子节：\n"
-    "1. `### 教师可读说明` — 用自然语言描述：考查什么知识点、定位什么难度、"
-    "对学生的能力要求、可能的风险点。面向教师阅读。\n"
-    "2. `### 教师批注区` — 固定格式 `> [教师] ` 后留空，供后续教师填写意见。\n"
-    "3. `### 机器契约` — 用 ```yaml 代码块包裹以下字段：\n"
-    "   target_subject, target_family, primary_target_name, difficulty_level, "
-    "k_target, difficulty_rationale, examination_mode\n\n"
+    "### 每个题位（`## Qxx（题型）`）包含四个子节：\n"
+    "1. `### 当前推荐` — 当前选定的考察模式、核心知识点、推荐理由\n"
+    "2. `### 候选替换池` — 该题位所有可选模式列表（模式A/B/C/D），教师可删除不想考的模式\n"
+    "3. `### 教师可编辑说明` — 自然语言描述：考查什么知识点、定位什么难度、"
+    "对学生的能力要求、可能的风险点。面向教师阅读，可自由编辑。\n"
+    "4. `### 机器选择契约` — 用 ```yaml 代码块包裹以下字段：\n"
+    "   slot_id, question_type, score, target_subject, target_family, primary_target_name, "
+    "target_difficulty, k_target, examination_mode, active_selection (mode_id, mode_name, selected_knowledge), "
+    "candidate_pool_visible, excluded (modes, knowledge)\n\n"
     "## 核心约束\n"
     "- examination_mode 必须精确复制自题位的'可选考察模式'标题（从 ### 后复制完整名称，不含频率）\n"
     "- target_family 使用知识点图谱中的层级路径（如 CO-1 > 计算机系统概述）\n"
     "- 知识点选择应参考模式中的'适用知识点'字段，确保选的知识点适合该考察模式\n"
     "- 综合应用题（Q43-Q45）的 examination_mode 写模式标题（如'存储层次地址翻译与映射模拟'）\n"
     "- 不要输出选项风格、干扰策略等设计级决策\n"
-    "- 确保知识点覆盖主要知识域，避免连续多题考同一知识点\n\n"
+    "- 确保知识点覆盖主要知识域，避免连续多题考同一知识点\n"
+    "- 系统只解析机器选择契约，不从教师自然语言描述猜测结论\n\n"
     "直接输出 Markdown 内容，不要用代码块包裹。"
 )
 
@@ -262,8 +265,9 @@ def _extract_yaml_contract(content: str) -> dict:
     """Extract YAML contract from ```yaml block under ### 机器契约.
 
     Returns empty dict if no YAML block found (old-style outline).
+    Supports v2 format with active_selection, candidate_pool_visible, excluded.
     """
-    m = re.search(r"###\s*机器契约\s*\n```ya?m?l?\s*\n(.*?)```", content, re.DOTALL)
+    m = re.search(r"###\s*机器(?:选择)?契约\s*\n```(?:yaml|yml)\s*\n(.*?)```", content, re.DOTALL)
     if not m:
         return {}
     try:
@@ -322,6 +326,21 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
         target_subject = _extract("target_subject") or tpl.get("subject", "")
         question_type = tpl.get("question_type", "single_choice")
 
+        # Parse v2 fields (backward compatible: default if missing)
+        score = _extract("score") or 2
+        try:
+            score = int(score)
+        except ValueError:
+            score = 2
+
+        active_selection = yaml_data.get("active_selection") or {}
+        candidate_pool_visible = yaml_data.get("candidate_pool_visible") or []
+
+        # Parse excluded sub-fields
+        excluded_data = yaml_data.get("excluded") or {}
+        excluded_modes = excluded_data.get("modes") or []
+        excluded_knowledge = excluded_data.get("knowledge") or []
+
         slot_blueprint = SlotBlueprint(
             slot_id=slot_id,
             target_subject=target_subject,
@@ -332,6 +351,12 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
             k_target=_extract("k_target"),
             difficulty_rationale=_extract("difficulty_rationale"),
             question_type=question_type,
+            # v2 fields
+            score=score,
+            active_selection=active_selection,
+            candidate_pool_visible=candidate_pool_visible,
+            excluded_modes=excluded_modes,
+            excluded_knowledge=excluded_knowledge,
         )
 
         slots.append(slot_blueprint)
@@ -571,6 +596,7 @@ async def revise_outline(
     from core_new.slot_prompts import OUTLINE_REVISION_PROMPT
     from .outline_diff import (
         compute_outline_diff,
+        compute_gitdiff,
         validate_changes,
         format_diff_summary,
     )
@@ -616,10 +642,14 @@ async def revise_outline(
     if has_annotations:
         # Need LLM to interpret annotations
         print("  路径: LLM 修订（含批注意见）")
+        # Use git-style diff for better structure understanding
+        gitdiff = compute_gitdiff(base_md, annotated_md)
         changes_summary = format_diff_summary(diff, warnings)
+        # Combine gitdiff with summary for comprehensive context
+        detected_changes_text = f"## Git-style Diff\n{gitdiff}\n\n## 结构化变更摘要\n{changes_summary}"
         prompt = OUTLINE_REVISION_PROMPT.format(
             original_outline=base_md,
-            detected_changes=changes_summary,
+            detected_changes=detected_changes_text,
             slot_contracts_md=slot_md,
         )
 

@@ -7,13 +7,14 @@ and formatting/exporting results.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import os
 import re
 import time
 from pathlib import Path
 
-from core_new.doc_pipeline.contracts import ComposeArtifact
+from core_new.doc_pipeline.contracts import ComposeArtifact, SlotBlueprint
 from core_new.doc_pipeline.doc_parser import extract_h2_section
 
 
@@ -119,11 +120,13 @@ async def run_generate(
                     with open(os.path.join(exp_dir, fname), encoding="utf-8") as f:
                         exp_cards[sid] = f.read()
 
-    # Build minimal slot_blueprints and assembled_docs for generate_questions
+    # Build slot_blueprints from compose artifacts and assembled_docs
     slot_blueprints = []
     assembled_docs = {}
+    blueprint_map = _load_blueprint_map(compose_dir)
     for sid, art in artifacts.items():
-        slot_blueprints.append({"slot_id": sid})
+        sb = blueprint_map.get(sid)
+        slot_blueprints.append(dataclasses.asdict(sb) if sb else {"slot_id": sid})
         assembled_docs[sid] = art.assembled_md
 
     # Generate questions
@@ -260,6 +263,32 @@ async def _format_and_export(gateway, final_questions, output_dir, blueprint=Non
         print(f"排版完成: {md_path}")
     except Exception as exc:
         print(f"排版步骤跳过: {exc}")
+
+
+def _load_blueprint_map(compose_dir: str) -> dict[str, SlotBlueprint]:
+    """Load SlotBlueprint instances from compose dir blueprint files."""
+    blueprint_map: dict[str, SlotBlueprint] = {}
+    blueprint_path = os.path.join(compose_dir, "blueprints.json")
+    if not os.path.exists(blueprint_path):
+        return blueprint_map
+    try:
+        with open(blueprint_path, encoding="utf-8") as f:
+            data = json.load(f)
+        slots = data.get("slots", data) if isinstance(data, dict) else data
+        if isinstance(slots, list):
+            for item in slots:
+                if isinstance(item, dict) and "slot_id" in item:
+                    sid = item["slot_id"]
+                    valid = {k: v for k, v in item.items() if k in SlotBlueprint.__dataclass_fields__}
+                    blueprint_map[sid] = SlotBlueprint(**valid)
+        elif isinstance(slots, dict):
+            for sid, item in slots.items():
+                if isinstance(item, dict):
+                    valid = {k: v for k, v in item.items() if k in SlotBlueprint.__dataclass_fields__}
+                    blueprint_map[sid] = SlotBlueprint(**valid)
+    except Exception:
+        pass
+    return blueprint_map
 
 
 def _read_run_id_from_manifest(compose_dir: str) -> str | None:
