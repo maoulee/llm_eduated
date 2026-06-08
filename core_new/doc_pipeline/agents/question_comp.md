@@ -14,15 +14,6 @@ required_sections:
   - 设计说明
 status_values:
   - draft
-thinking_budget: 16000
-max_tokens: null
-model_routing: null
-multi_turn: true
-max_attempts: 3
-inject_files:
-  - label: "规划"
-    from_phase: 1
-    optional: false
 ---
 
 # 综合应用题出题智能体

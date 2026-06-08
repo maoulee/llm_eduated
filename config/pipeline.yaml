@@ -17,10 +17,37 @@ pipeline:
   thinking_budget:
     outline: 8000
     question_sc: 12000
-    question_comp: 16000
-    review: 10000
+    question_comp: 8000
+    review: 4000
     solve: 10000
     final_review: 8000
+
+  # Per-role system parameters (moved from agent MD frontmatter)
+  roles:
+    outline:
+      multi_turn: false
+      max_attempts: 2
+    question_sc:
+      multi_turn: true
+      max_attempts: 3
+    question_comp:
+      multi_turn: true
+      max_attempts: 3
+    review:
+      multi_turn: false
+      max_attempts: 2
+    solve:
+      multi_turn: false
+      max_attempts: 2
+    final_review:
+      multi_turn: false
+      max_attempts: 2
+    creator:
+      multi_turn: true
+      max_attempts: 6
+    reviewer:
+      multi_turn: true
+      max_attempts: 3
 
 # ── Routing profiles ─────────────────────────────────────────
 routing:

@@ -17,21 +17,6 @@ status_values:
   - expression_fix
   - question_error
   - solution_error
-thinking_budget: 12000
-max_tokens: null
-model_routing: null
-multi_turn: false
-max_attempts: 2
-inject_files:
-  - label: "规划"
-    from_phase: 1
-    optional: false
-  - label: "题目"
-    from_phase: 2
-    optional: false
-  - label: "求解结果"
-    from_phase: 4
-    optional: false
 ---
 
 # 终审智能体 — 角色合约

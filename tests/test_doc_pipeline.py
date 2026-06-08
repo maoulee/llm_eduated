@@ -1155,7 +1155,7 @@ class TestAgentLoader:
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
         assert thinking["question_sc"] == 12000
-        assert thinking["question_comp"] == 16000
+        assert thinking["question_comp"] == 8000
 
     def test_compat_dicts_match_legacy(self):
         """AgentMD runtime roles match the current 5-layer + 2-agent pipeline."""

@@ -18,12 +18,6 @@ status_values:
   - expression_fix
   - question_error
   - solution_error
-thinking_budget: 0
-max_tokens: null
-model_routing: null
-multi_turn: true
-max_attempts: 3
-inject_files: []
 ---
 
 # 审核智能体（Reviewer）

@@ -15,12 +15,6 @@ required_sections:
   - 参考经验
 status_values:
   - ready
-thinking_budget: 10000
-max_tokens: null
-model_routing: null
-multi_turn: false
-max_attempts: 2
-inject_files: []
 ---
 
 # 题目规划师 — 角色合约

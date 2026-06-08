@@ -215,18 +215,27 @@ def get_agent_dicts(
 ) -> tuple[dict[str, str], dict[str, str], set[str], dict[str, int], dict[str, list[str]], dict[str, str]]:
     """Load AgentMD files and return the same dicts agents.py exported.
 
+    System params (multi_turn, max_attempts, thinking_budget) are read from
+    pipeline.yaml, not from agent MD frontmatter.
+
     Returns:
         (AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS, ROLE_THINKING_BUDGET, ROLE_REQUIRED_TOOLS, ROLE_SKILLS)
     """
+    from .pipeline_config import load_pipeline_config
+    config = load_pipeline_config()
+    role_params = config.params.roles
+
     specs = load_agents(agents_dir)
     prompts = {name: s.prompt for name, s in specs.items()}
     output_files = {name: s.output_file for name, s in specs.items()}
-    multi_turn = {name for name, s in specs.items() if s.multi_turn}
-    thinking_budget = {
-        name: s.thinking_budget
-        for name, s in specs.items()
-        if s.thinking_budget is not None
+
+    # System params from pipeline.yaml
+    multi_turn = {
+        name for name in specs
+        if role_params.get(name, {}).get("multi_turn", False)
     }
+    thinking_budget = config.params.thinking_budget
+
     required_tools = {name: s.required_tools for name, s in specs.items()}
     skills = {name: s.skill_content for name, s in specs.items() if s.skill_content}
     return prompts, output_files, multi_turn, thinking_budget, required_tools, skills

@@ -18,12 +18,6 @@ status_values:
   - verified
   - solved
   - final
-thinking_budget: 0
-max_tokens: null
-model_routing: null
-multi_turn: true
-max_attempts: 6
-inject_files: []
 ---
 
 # 问题智能体（Creator）

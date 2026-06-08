@@ -14,15 +14,6 @@ required_sections:
   - 最终答案
 status_values:
   - solved
-thinking_budget: 10000
-max_tokens: null
-model_routing: null
-multi_turn: false
-max_attempts: 2
-inject_files:
-  - label: "题目"
-    from_phase: 2
-    optional: false
 ---
 
 # 独立求解智能体
