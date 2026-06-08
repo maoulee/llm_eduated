@@ -324,7 +324,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
 
         tpl = templates.get(slot_id, {})
         target_subject = _extract("target_subject") or tpl.get("subject", "")
-        question_type = tpl.get("question_type", "single_choice")
+        question_type = str(yaml_data.get("question_type") or tpl.get("question_type", "single_choice"))
 
         # Parse v2 fields (backward compatible: default if missing)
         score = _extract("score") or 2
