@@ -18,6 +18,7 @@ class SlotContract:
     candidate_pool_visible: list[str] = field(default_factory=list)
     excluded_modes: list[str] = field(default_factory=list)
     excluded_knowledge: list[str] = field(default_factory=list)
+    teacher_annotation: str = ""
 
 
 def parse_outline_contracts(outline_md: str) -> list[SlotContract]:
@@ -47,6 +48,7 @@ def parse_outline_contracts(outline_md: str) -> list[SlotContract]:
             candidate_pool_visible=yaml_data.get("candidate_pool_visible", []),
             excluded_modes=excluded_data.get("modes", []),
             excluded_knowledge=excluded_data.get("knowledge", []),
+            teacher_annotation=_extract_teacher_annotation(content),
         ))
 
     return contracts
@@ -69,6 +71,8 @@ def write_paper_selection(contracts: list[SlotContract], output_path: str) -> No
             entry["excluded_modes"] = c.excluded_modes
         if c.excluded_knowledge:
             entry["excluded_knowledge"] = c.excluded_knowledge
+        if c.teacher_annotation:
+            entry["teacher_annotation"] = c.teacher_annotation
         selection.append(entry)
 
     with open(output_path, "w", encoding="utf-8") as f:
@@ -84,3 +88,15 @@ def _extract_yaml_block(content: str) -> dict:
         return yaml.safe_load(m.group(1)) or {}
     except Exception:
         return {}
+
+
+def _extract_teacher_annotation(content: str) -> str:
+    """Extract text from ### 教师可编辑说明 section."""
+    m = re.search(
+        r"###\s*教师可编辑说明[^\n]*\n(.*?)(?=\n###|\n## |\Z)",
+        content,
+        re.DOTALL,
+    )
+    if not m:
+        return ""
+    return m.group(1).strip()

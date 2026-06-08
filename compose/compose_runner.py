@@ -341,6 +341,13 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
         excluded_modes = excluded_data.get("modes") or []
         excluded_knowledge = excluded_data.get("knowledge") or []
 
+        # Extract teacher annotation from ### 教师可编辑说明
+        ta_m = re.search(
+            r"###\s*教师可编辑说明[^\n]*\n(.*?)(?=\n###|\n## |\Z)",
+            content, re.DOTALL,
+        )
+        teacher_annotation = ta_m.group(1).strip() if ta_m else ""
+
         slot_blueprint = SlotBlueprint(
             slot_id=slot_id,
             target_subject=target_subject,
@@ -357,6 +364,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
             candidate_pool_visible=candidate_pool_visible,
             excluded_modes=excluded_modes,
             excluded_knowledge=excluded_knowledge,
+            teacher_annotation=teacher_annotation,
         )
 
         slots.append(slot_blueprint)

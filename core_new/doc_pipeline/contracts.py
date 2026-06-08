@@ -26,6 +26,7 @@ class SlotBlueprint:
     candidate_pool_visible: list[str] = field(default_factory=list)
     excluded_modes: list[str] = field(default_factory=list)
     excluded_knowledge: list[str] = field(default_factory=list)
+    teacher_annotation: str = ""
 
 
 @dataclass

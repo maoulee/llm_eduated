@@ -216,6 +216,12 @@ class DocPipelineOrchestrator:
                     "严格按 design_card schema v1 格式输出，9 个 section 全部必填。\n"
                     "只生成设计卡，不写题目、不写答案、不写代码。"
                 )
+                # Inject teacher annotation if present
+                teacher_ann = slot_data.get("teacher_annotation", "")
+                if teacher_ann:
+                    d_task += (
+                        f"\n\n---\n**教师批注（请务必参考）：**\n{teacher_ann}\n---"
+                    )
                 d_inject = await self._resolve_inject(
                     "question_design", slot_id, 1.5, {"规划": str(ref_path)},
                 )

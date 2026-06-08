@@ -266,29 +266,22 @@ async def _format_and_export(gateway, final_questions, output_dir, blueprint=Non
 
 
 def _load_blueprint_map(compose_dir: str) -> dict[str, SlotBlueprint]:
-    """Load SlotBlueprint instances from compose dir blueprint files."""
-    blueprint_map: dict[str, SlotBlueprint] = {}
-    blueprint_path = os.path.join(compose_dir, "blueprints.json")
-    if not os.path.exists(blueprint_path):
-        return blueprint_map
-    try:
-        with open(blueprint_path, encoding="utf-8") as f:
-            data = json.load(f)
-        slots = data.get("slots", data) if isinstance(data, dict) else data
-        if isinstance(slots, list):
-            for item in slots:
-                if isinstance(item, dict) and "slot_id" in item:
-                    sid = item["slot_id"]
-                    valid = {k: v for k, v in item.items() if k in SlotBlueprint.__dataclass_fields__}
-                    blueprint_map[sid] = SlotBlueprint(**valid)
-        elif isinstance(slots, dict):
-            for sid, item in slots.items():
-                if isinstance(item, dict):
-                    valid = {k: v for k, v in item.items() if k in SlotBlueprint.__dataclass_fields__}
-                    blueprint_map[sid] = SlotBlueprint(**valid)
-    except Exception:
-        pass
-    return blueprint_map
+    """Load SlotBlueprint instances from outline.md in compose dir.
+
+    Parses the outline MD directly — no separate JSON needed.
+    Falls back gracefully if outline is missing or unparseable.
+    """
+    from compose.compose_runner import _parse_outline_to_blueprint
+
+    # Prefer approved outline (post-teacher-edit), fall back to draft
+    for name in ("outline_approved.md", "outline.md"):
+        outline_path = Path(compose_dir) / name
+        if outline_path.exists():
+            outline_md = outline_path.read_text(encoding="utf-8")
+            bp_dict = _parse_outline_to_blueprint(outline_md, {})
+            slots = bp_dict.get("slots", [])
+            return {s.slot_id: s for s in slots if isinstance(s, SlotBlueprint)}
+    return {}
 
 
 def _read_run_id_from_manifest(compose_dir: str) -> str | None:
