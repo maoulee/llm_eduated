@@ -84,6 +84,7 @@ def parse_doc_header(filepath: str | Path) -> dict[str, Any]:
         known = (
             "status", "summary", "corrections", "detailed_feedback",
             "quality_score", "improvement_suggestions", "routing_feedback",
+            "issue_type", "fix_instructions", "keep_unchanged", "feedback_for_agent",
             "题干", "选项", "设计说明", "子问题", "求解过程", "最终答案",
         )
         pattern = "|".join(known)
