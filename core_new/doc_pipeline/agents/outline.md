@@ -15,6 +15,7 @@ required_sections:
   - 参考经验
 status_values:
   - ready
+behavior: artifact_writer
 ---
 
 # 题目规划师 — 角色合约

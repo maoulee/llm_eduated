@@ -14,6 +14,9 @@ required_sections:
   - 设计说明
 status_values:
   - draft
+behavior: artifact_writer
+skills:
+  - question_comp_draft
 ---
 
 # 综合应用题出题智能体

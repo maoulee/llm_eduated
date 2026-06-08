@@ -14,6 +14,7 @@ required_sections:
   - 最终答案
 status_values:
   - solved
+behavior: evidence_solver
 ---
 
 # 独立求解智能体

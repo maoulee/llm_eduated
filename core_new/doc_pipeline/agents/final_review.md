@@ -17,6 +17,9 @@ status_values:
   - expression_fix
   - question_error
   - solution_error
+behavior: audit_gate
+skills:
+  - final_review_design_card
 ---
 
 # 终审智能体 — 角色合约

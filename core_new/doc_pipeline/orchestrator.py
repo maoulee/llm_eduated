@@ -122,9 +122,11 @@ class DocPipelineOrchestrator:
 
     def _should_run_design_layer(self) -> bool:
         """Check if question_design layer is enabled via pipeline features."""
-        from .pipeline_config import load_pipeline_config
-        cfg = load_pipeline_config()
-        return cfg.params.features.get("enable_question_design", False)
+        if not hasattr(self, "_design_layer_enabled"):
+            from .pipeline_config import load_pipeline_config
+            cfg = load_pipeline_config()
+            self._design_layer_enabled = cfg.params.features.get("enable_question_design", False)
+        return self._design_layer_enabled
 
     async def _resolve_inject(
         self,
@@ -225,6 +227,17 @@ class DocPipelineOrchestrator:
                 )
                 if not design_card_path.exists():
                     logger.warning("[%s] Design card agent did not write design_card.md, continuing without it", slot_id)
+                else:
+                    # Validate design_card (warn-only, non-blocking)
+                    try:
+                        from .design_card_validator import validate_design_card_file
+                        result = validate_design_card_file(str(design_card_path))
+                        if not result.ok:
+                            logger.warning("[%s] Design card validation failed: %s", slot_id, result.errors)
+                        if result.warnings:
+                            logger.info("[%s] Design card warnings: %s", slot_id, result.warnings)
+                    except Exception as exc:
+                        logger.warning("[%s] Design card validator error: %s", slot_id, exc)
             else:
                 logger.info("[%s] Layer 1.5: Design Card SKIPPED (resume from layer %d)", slot_id, start_layer)
 

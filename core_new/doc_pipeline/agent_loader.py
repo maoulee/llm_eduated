@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 _AGENTS_DIR = Path(__file__).parent / "agents"
 _SKILLS_DIR = Path(__file__).parent / "skills"
+_BEHAVIOR_DIR = Path(__file__).parent / "behavior"
 
 # ── Behavior layer ────────────────────────────────────────────────
 # Universal behavior control shared across all agents.
@@ -112,6 +113,20 @@ _RETRY_FEEDBACK = (
     "也可调用 write_file(path=\"{filename}\", content=\"完整内容\")。"
 )
 
+# ── Behavior file cache ──────────────────────────────────────────
+
+_behavior_cache: dict[str, str] = {}
+
+
+def _load_behavior_file(name: str) -> str:
+    if name not in _behavior_cache:
+        path = _BEHAVIOR_DIR / f"{name}.md"
+        if path.exists():
+            _behavior_cache[name] = path.read_text(encoding="utf-8").strip()
+        else:
+            _behavior_cache[name] = ""
+    return _behavior_cache[name]
+
 
 # ── AgentMD dataclass ────────────────────────────────────────────
 
@@ -125,6 +140,8 @@ class AgentSpec:
         "multi_turn", "max_attempts", "inject_files",
         "required_tools",
         "behavior_type",  # create_verify / audit_judge / format_convert / plan_design
+        "behavior",       # new: e.g. "artifact_writer" or None
+        "skills",         # new: e.g. ["design_card_v1"] or []
         "prompt",         # assembled system prompt (behavior core + variant + suffix)
         "skill_content",  # domain knowledge loaded from skills/ directory
     )
@@ -144,18 +161,17 @@ class AgentSpec:
         self.inject_files = meta.get("inject_files", [])
         self.required_tools = meta.get("required_tools", ["write_file"])
         self.behavior_type = _BEHAVIOR_VARIANTS.get(self.name, "plan_design")
+        self.behavior = meta.get("behavior")
+        self.skills = meta.get("skills", [])
 
-        # Assemble system prompt: behavior core + identity + variant + write_file suffix
-        variant_text = _BEHAVIOR_VARIANT_TEXT.get(self.behavior_type, "")
         suffix = _WRITE_FILE_SUFFIX.replace("{filename}", self.output_file)
-        identity = body.strip() if body.strip() else ""
-        if identity:
-            self.prompt = _BEHAVIOR_CORE + "\n\n" + identity + "\n\n" + variant_text + suffix
-        else:
-            self.prompt = _BEHAVIOR_CORE + "\n" + variant_text + suffix
+        self.prompt = self._build_prompt(body, suffix)
 
-        # Skill content: loaded from skills/<behavior_type>/<name>_skill.md
-        self.skill_content = self._load_skill()
+        # Skills: prefer new path if skills list is declared, else fall back to old path
+        if self.skills:
+            self.skill_content = self._load_skills_new()
+        else:
+            self.skill_content = self._load_skill()
 
     def _load_skill(self) -> str:
         """Load domain-specific skill content from the skills directory."""
@@ -163,6 +179,30 @@ class AgentSpec:
         if skill_path.exists():
             return skill_path.read_text(encoding="utf-8").strip()
         return ""
+
+    def _load_skills_new(self) -> str:
+        """Load skills from new path: skills/<skill_name>/SKILL.md"""
+        parts = []
+        for skill_name in self.skills:
+            path = _SKILLS_DIR / skill_name / "SKILL.md"
+            if path.exists():
+                parts.append(path.read_text(encoding="utf-8").strip())
+        return "\n\n".join(parts)
+
+    def _build_prompt(self, body: str, suffix: str) -> str:
+        if self.behavior is not None:
+            core = _load_behavior_file("CORE")
+            mode = _load_behavior_file(self.behavior)
+            role = body.strip()
+            skills_text = self._load_skills_new()
+            parts = [p for p in [core, mode, role, skills_text] if p]
+            return "\n\n".join(parts) + suffix
+        # Old path: _BEHAVIOR_CORE + identity + variant_text + suffix
+        variant_text = _BEHAVIOR_VARIANT_TEXT.get(self.behavior_type, "")
+        identity = body.strip() if body.strip() else ""
+        if identity:
+            return _BEHAVIOR_CORE + "\n\n" + identity + "\n\n" + variant_text + suffix
+        return _BEHAVIOR_CORE + "\n" + variant_text + suffix
 
 
 # ── Frontmatter parser ───────────────────────────────────────────

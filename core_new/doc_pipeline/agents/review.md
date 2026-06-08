@@ -14,6 +14,7 @@ required_sections:
 status_values:
   - pass
   - needs_fix
+behavior: audit_gate
 ---
 
 # 题目审核智能体 — 角色合约

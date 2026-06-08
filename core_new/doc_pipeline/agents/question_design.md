@@ -17,6 +17,9 @@ required_sections:
   - audit_focus
 status_values:
   - draft
+behavior: artifact_writer
+skills:
+  - design_card_v1
 ---
 
 # 单题设计卡智能体
@@ -59,97 +62,19 @@ status_values:
 
 ## 输出格式
 
-严格按以下 Markdown 格式输出 design_card.md（不要用代码块包裹）：
+直接输出 Markdown，不要用代码块包裹。按以下章节顺序输出，每个章节以 ## 标题开头：
 
-```
-## status
-draft
+1. ## status — 固定写 draft
+2. ## blueprint_contract — 从蓝图原样摘取：slot_id, question_type, score, target_subject, target_family, primary_target_name, examination_mode, k_target, difficulty_level, should_be（每项一行）, should_not_be（每项一行）, hard_constraints
+3. ## route — question_form, question_type（conceptual/computational/mixed）, requires_parameter_verification, requires_solver, requires_code
+4. ## core_knowledge_intent — must_test（2-3项）, must_not_shift_to（1-2项）, coverage_success_criteria（1-2项）
+5. ## expected_reasoning_actions — 至少3个解题动作（如"由块大小推出块内偏移位数"），只写动作不写答案
+6. ## question_structure_plan — 选择题：stem_style, option_architecture（correct + 3 distractors）, asking_method；综合题：shared_context, sub_question_chain, dependency_pattern
+7. ## parameter_plan — parameter_slots（name/role/candidate_range/used_by）, validation_targets, adjustment_priority
+8. ## terminology_and_expression_constraints — required_terms, required_qualifiers, avoid_phrases, standard_rewrites（bad/good 对）
+9. ## audit_focus — final_review_must_check, solve_output_should_contain, fail_if_missing
 
-## blueprint_contract
-- slot_id: （从基本信息中提取题位）
-- question_type: （single_choice / comprehensive）
-- score: （分值）
-- target_subject: （科目）
-- target_family: （知识域）
-- primary_target_name: （考点）
-- examination_mode: （考察模式，必须与模式概览一致）
-- k_target: （K目标）
-- difficulty_level: （难度等级 1-5）
-- should_be: （从出题指导中摘取，每项一行）
-- should_not_be: （从出题指导中摘取，每项一行）
-- hard_constraints: （不可违反的硬约束）
-
-## route
-- question_form: （single_choice / comprehensive）
-- question_type: （conceptual / computational / mixed）
-- requires_parameter_verification: （true / false）
-- requires_solver: （true / false）
-- requires_code: （true / false）
-
-## core_knowledge_intent
-- must_test:
-  - （本题必须实质考察的知识点，2-3项）
-- must_not_shift_to:
-  - （不允许偏移到的相邻知识点，1-2项）
-- coverage_success_criteria:
-  - （判断"真正覆盖"的标准，1-2项）
-
-## expected_reasoning_actions
-- action_1: （解题动作，如"由块大小推出块内偏移位数"）
-- action_2: ...
-- action_3: ...
-（至少3个动作，只写动作不写答案）
-
-## question_structure_plan
-（选择题：）
-- stem_style: （简洁题干 / 场景计算 / 命题判断 / 组合判断）
-- option_architecture:
-  - correct_option_role: （正确选项承担什么角色）
-  - distractor_1_role: （干扰项1的干扰逻辑）
-  - distractor_2_role: ...
-  - distractor_3_role: ...
-- asking_method: （设问方式）
-
-（综合题：）
-- shared_context: （共享题干条件说明）
-- sub_question_chain:
-  - q1_role: （基础参数计算 / 机制判断）
-  - q2_role: （过程模拟 / 状态跟踪）
-  - q3_role: （结果分析 / 边界讨论）
-- dependency_pattern:
-  - （q2 depends on q1）
-  - （q3 depends on q2）
-
-## parameter_plan
-- parameter_slots:
-  - name: （参数名）
-    role: （参数用途）
-    candidate_range: （候选范围）
-    used_by: （被哪些子问题使用）
-- validation_targets:
-  - （需验证的约束条件）
-- adjustment_priority:
-  - （优先调整什么，其次调整什么）
-
-## terminology_and_expression_constraints
-- required_terms:
-  - （必须使用的标准术语）
-- required_qualifiers:
-  - （题干必须包含的限定语）
-- avoid_phrases:
-  - （需要避免的误导表述）
-- standard_rewrites:
-  - bad: （不标准写法）
-    good: （标准写法）
-
-## audit_focus
-- final_review_must_check:
-  - （final_review 必须重点检查什么）
-- solve_output_should_contain:
-  - （solve_output 中应出现的证据）
-- fail_if_missing:
-  - （缺失这些证据应判定为不通过）
-```
+详细字段说明参考 schema 文档：data/design_cards/examples/avl_rotation.md
 
 ## 关键约束
 
