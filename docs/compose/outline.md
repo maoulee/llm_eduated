@@ -34,6 +34,9 @@
 
 ### 机器契约
 ```yaml
+slot_id: Q41
+question_type: comprehensive
+score: 10
 target_subject: 数据结构
 target_family: 数据结构-5 > 树与二叉树 > 树与二叉树的应用 > 平衡二叉树 AVL
 primary_target_name: 平衡二叉树 AVL 的插入与旋转
@@ -59,6 +62,9 @@ examination_mode: 结构操作与状态维护模拟
 
 ### 机器契约
 ```yaml
+slot_id: Q45
+question_type: comprehensive
+score: 10
 target_subject: 操作系统
 target_family: 操作系统-2 > 进程与线程 > 死锁 > 死锁避免
 primary_target_name: 银行家算法
