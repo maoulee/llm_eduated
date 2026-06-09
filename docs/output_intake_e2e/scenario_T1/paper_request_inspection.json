@@ -1,0 +1,64 @@
+{
+  "label": "T1_paper_request",
+  "schema_version": "paper_request_v1",
+  "assessment_type": "kaoyan_408",
+  "subjects": [
+    "数据结构",
+    "计算机组成原理",
+    "操作系统",
+    "计算机网络"
+  ],
+  "total_score": 150,
+  "duration_minutes": 180,
+  "primary_chapters": [
+    "数据结构 > 全部章节",
+    "计算机组成原理 > 全部章节",
+    "操作系统 > 全部章节",
+    "计算机网络 > 全部章节"
+  ],
+  "focus_points": [],
+  "excluded_points": [
+    "Cache",
+    "虚拟内存"
+  ],
+  "coverage_strategy": "exam_weighted",
+  "question_types": [
+    {
+      "type": "single_choice",
+      "count_range": [
+        40,
+        40
+      ],
+      "score_per": 2,
+      "score_range": null
+    },
+    {
+      "type": "comprehensive",
+      "count_range": [
+        7,
+        7
+      ],
+      "score_per": null,
+      "score_range": [
+        70,
+        70
+      ]
+    }
+  ],
+  "difficulty_target": "hard",
+  "difficulty_distribution": {
+    "easy": 15,
+    "medium": 35,
+    "hard": 50
+  },
+  "require": [
+    "操作系统冷门考点"
+  ],
+  "avoid": [
+    "Cache",
+    "虚拟内存"
+  ],
+  "style_notes": "整体难度偏难，接近考研真题上限。 数据结构部分降档为基础-中等难度，不出偏难怪题。 操作系统部分需要覆盖冷门考点，如：进程通信细节、磁盘调度高级算法、 文件系统实现细节等低频但大纲范围内知识点。 组成原理和计算机网络按正常偏难标准出题。",
+  "allow_similar_to_past": false,
+  "min_knowledge_diversity": 4
+}

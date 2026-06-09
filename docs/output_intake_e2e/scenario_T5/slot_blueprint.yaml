@@ -1,0 +1,37 @@
+active_selection:
+  candidate_pool_visible: []
+  mode_id: topic_selected
+  mode_name: 教师指定知识点
+  selected_knowledge:
+  - AVL树旋转操作
+  - LR型旋转（先左旋后右旋）
+  - RL型旋转（先右旋后左旋）
+  - 平衡因子计算
+  - 失衡类型判断
+confidence:
+  level: medium
+constraints:
+  avoid_repetition: true
+  must_include:
+  - LR型旋转场景
+  - RL型旋转场景
+difficulty_level: 4
+examination_mode: ''
+excluded:
+  knowledge:
+  - 红黑树
+  - B树
+  modes: []
+k_target: ''
+kg_node_path: 数据结构 > 树与二叉树 > 平衡二叉树 > 旋转操作
+primary_target_name: AVL树旋转（LR型和RL型判断）
+question_type: comprehensive
+routing:
+  can_route: true
+  next_action: run_single_pipeline
+schema_version: slot_blueprint_v1
+score: 10
+slot_id: AVL_ROT_001
+target_family: 数据结构 > 树与二叉树 > 平衡二叉树（AVL树）
+target_subject: 数据结构
+teacher_annotation: 要求同时包含LR型和RL型旋转的判断，考察学生对不同失衡类型的识别与处理能力

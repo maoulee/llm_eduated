@@ -1,0 +1,26 @@
+{
+  "scenario": "T3",
+  "name": "极限约束 — 指定知识点+排除+分数精确控制",
+  "teacher_input": "组一套操作系统期末卷，只考进程管理和内存管理这两章，必须包含银行家算法和页面置换算法，不能出现PV操作相关题目，总分50分，5道选择题每题2分，2道综合题分别10分20分",
+  "elapsed_sec": 33.0,
+  "intake": {
+    "label": "T3_intake",
+    "task_type": "paper",
+    "intake_status": "needs_user_choice",
+    "confidence_level": "blocked",
+    "confidence_missing": [
+      "difficulty.target"
+    ],
+    "confidence_contradictions": [
+      "题目分值加总(5×2+10+20=40分)与声明的总分(50分)不一致，缺口10分"
+    ],
+    "can_route": false,
+    "next_action": "ask_user",
+    "next_input": null,
+    "routing_reason": "题目分数加总40分与总分50分矛盾，需要教师选择处理方式"
+  },
+  "has_downstream": false,
+  "compose_trace": null,
+  "issues": [],
+  "overall_pass": true
+}

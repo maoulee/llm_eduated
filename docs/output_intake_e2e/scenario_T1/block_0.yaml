@@ -1,0 +1,66 @@
+assessment:
+  duration_minutes: 180
+  subjects:
+  - 数据结构
+  - 计算机组成原理
+  - 操作系统
+  - 计算机网络
+  total_score: 150
+  type: kaoyan_408
+confidence:
+  contradictions: []
+  level: high
+  missing_fields: []
+  notes: 教师需求清晰完整。408四科全覆盖，难度偏难但数据结构降档， 操作系统要求冷门考点，明确排除Cache和虚拟内存。 题型配置按408考研标准默认值，未检测到矛盾。
+  unverified_scope: false
+difficulty:
+  anchor_source: kaoyan_408
+  distribution:
+    easy: 15
+    hard: 50
+    medium: 35
+  target: hard
+intake_status: ready
+knowledge_scope:
+  coverage_strategy: exam_weighted
+  excluded_points:
+  - Cache
+  - 虚拟内存
+  focus_points: []
+  primary_chapters:
+  - 408全部章节
+  subject_difficulty_override:
+    操作系统: cold_topics_required
+    数据结构: easy_medium
+question_config:
+  types:
+  - count_range:
+    - 40
+    - 40
+    score_per: 2
+    type: single_choice
+  - count_range:
+    - 7
+    - 7
+    score_range:
+    - 70
+    - 70
+    type: comprehensive
+routing:
+  can_route: true
+  next_action: run_compose
+  next_input: paper_request.yaml
+  reason: paper_route_gate 通过：全部必需字段已填充，无矛盾，可路由至组卷团队
+schema_version: intake_result_v1
+source:
+  intake_type: human_input
+  raw_input: 一套完整的408考研模拟卷，难度整体偏难，数据结构部分简单点，操作系统部分要出些冷门考点，不要出Cache和虚拟内存的题，总分150分，180分钟
+task_confidence: high
+task_type: paper
+teacher_preferences:
+  avoid:
+  - Cache
+  - 虚拟内存
+  require:
+  - 操作系统冷门考点
+  style_notes: 整体偏难。数据结构部分难度降低至基础-中等水平。 操作系统部分需纳入冷门/低频考点。

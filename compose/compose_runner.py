@@ -12,6 +12,8 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from core_new.doc_pipeline.contracts import SlotBlueprint
 
 from . import artifact_store
@@ -463,6 +465,19 @@ async def run_compose(
     """
     compose_start = time.monotonic()
 
+    # Check for paper_request.yaml (intake layer output)
+    compose_dir = os.path.join(output_dir, "compose")
+    paper_request = load_paper_request(compose_dir)
+    if paper_request:
+        mapped = map_paper_request_to_params(paper_request)
+        # Merge mapped params, existing CLI params take precedence for overrides
+        if not user_requirements:
+            user_requirements = mapped.get("user_requirements", "")
+        # Model routing merges with existing
+        if mapped.get("model_routing"):
+            model_routing = {**(model_routing or {}), **mapped["model_routing"]}
+        print(f"  [intake] Merged paper_request params: {len(user_requirements)} chars requirements")
+
     templates = _filter_templates(slot_templates, slot_ids)
     if not templates:
         print("No templates to compose from!")
@@ -841,3 +856,121 @@ def _build_revision_report(
     lines.append("")
 
     return "\n".join(lines)
+
+
+def load_paper_request(compose_dir: str) -> dict | None:
+    """Load paper_request.yaml from compose directory if it exists.
+
+    This is the intake layer output for paper (组卷) tasks.
+
+    Args:
+        compose_dir: Path to compose directory (e.g., "docs/compose")
+
+    Returns:
+        Parsed paper_request dict, or None if file doesn't exist (backward compat)
+    """
+    request_path = Path(compose_dir) / "paper_request.yaml"
+    if not request_path.exists():
+        return None
+
+    try:
+        with open(request_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        print(f"  [intake] Loaded paper_request.yaml (schema={data.get('schema_version', 'unknown')})")
+        return data
+    except Exception as e:
+        print(f"  ERROR: Failed to load paper_request.yaml: {e}")
+        return None
+
+
+def map_paper_request_to_params(pr: dict) -> dict:
+    """Map paper_request fields to run_compose() parameters.
+
+    Args:
+        pr: Parsed paper_request dict
+
+    Returns:
+        Dict with keys matching run_compose() parameter names:
+        - user_requirements: Generated from knowledge_scope + difficulty
+        - subject_files: Inferred from assessment.subjects
+        - slot_templates_hints: Inferred from question_config.types
+        - model_routing: Inferred from difficulty.target
+    """
+    # Build user_requirements from knowledge_scope and difficulty
+    ks = pr.get("knowledge_scope", {})
+    diff = pr.get("difficulty", {})
+    pref = pr.get("teacher_preferences", {})
+
+    req_parts = []
+
+    # Subjects
+    subjects = pr.get("assessment", {}).get("subjects", [])
+    if subjects:
+        req_parts.append(f"科目：{', '.join(subjects)}")
+
+    # Knowledge scope
+    if ks.get("primary_chapters"):
+        req_parts.append(f"重点章节：{', '.join(ks['primary_chapters'])}")
+    if ks.get("focus_points"):
+        req_parts.append(f"重点关注：{', '.join(ks['focus_points'])}")
+    if ks.get("excluded_points"):
+        req_parts.append(f"排除考点：{', '.join(ks['excluded_points'])}")
+
+    # Coverage strategy
+    strategy = ks.get("coverage_strategy", "balanced")
+    strategy_map = {
+        "balanced": "均衡覆盖",
+        "focus_heavy": "重点突出",
+        "exam_weighted": "按考试权重",
+    }
+    req_parts.append(f"覆盖策略：{strategy_map.get(strategy, strategy)}")
+
+    # Difficulty
+    target = diff.get("target", "medium")
+    target_map = {"easy": "容易", "medium": "中等", "hard": "较难"}
+    req_parts.append(f"难度目标：{target_map.get(target, target)}")
+
+    # Teacher preferences
+    if pref.get("style_notes"):
+        req_parts.append(f"教师备注：{pref['style_notes']}")
+
+    # Require/avoid keywords
+    if pref.get("require"):
+        req_parts.append(f"必须包含：{', '.join(pref['require'])}")
+    if pref.get("avoid"):
+        req_parts.append(f"避免：{', '.join(pref['avoid'])}")
+
+    user_requirements = "。".join(req_parts) + "。"
+
+    # Infer subject files from assessment.subjects
+    subject_to_file = {
+        "计算机组成原理": "computer_organization.md",
+        "数据结构": "data_structure.md",
+        "操作系统": "operating_system_knowledge.md",
+        "计算机网络": "computer_network.md",
+    }
+    subject_files = [subject_to_file.get(s, "") for s in subjects]
+    subject_files = [f for f in subject_files if f]  # Filter empty
+
+    # Infer slot templates hints from question_config
+    qc = pr.get("question_config", {})
+    slot_hints = []
+    for qtype_spec in qc.get("types", []):
+        qtype = qtype_spec.get("type")
+        count_range = qtype_spec.get("count_range", [])
+        slot_hints.append({
+            "question_type": qtype,
+            "count_range": count_range,
+        })
+
+    # Infer model routing from difficulty
+    routing = {}
+    if target == "hard":
+        routing["paper_composer"] = "hybrid"
+
+    return {
+        "user_requirements": user_requirements,
+        "subject_files": subject_files,
+        "slot_templates_hints": slot_hints,
+        "model_routing": routing,
+    }
