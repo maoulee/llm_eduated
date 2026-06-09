@@ -132,19 +132,48 @@ Step 6 [教师]: 选择考察模式 → Python 生成 YAML
 | 题号 | 题型 | 知识点 | 考察方向 | 难度 |
 ```
 
-## 4. 模型路由
+## 4. 模型路由（配置驱动，不硬编码）
 
-| 任务 | 模型 | 上下文 | 预计耗时 |
-|------|------|--------|---------|
-| 渲染经验卡（路线1） | api_vllm (Qwen3.6-27B-FP8) | ~2K/slot | <5s |
-| grep 关键词生成 | api_vllm (Qwen3.6-27B-FP8) | ~500 chars | <2s |
-| 检索结果归纳 | api_vllm (Qwen3.6-27B-FP8) | ~3-5K | <10s |
-| 自由组卷初稿（路线3 Step1） | glm5.1 (远程) | ~5K (仅KG) | ~60-90s |
-| diff 后检索归纳（路线3 Step4-5） | api_vllm (Qwen3.6-27B-FP8) | ~3K | <10s |
-| YAML 生成 | Python（无LLM） | N/A | <1s |
+**核心原则**：模型选择由 `config/pipeline.yaml` 中的 `model_routing` 配置决定，代码中不绑定具体模型。
+用户可以自由配置：交互层用 qwen 还是 glm，自由组卷用哪个模型，全部通过配置切换。
 
-**注意**：config.py 中的 `local` (Qwen3-32B) 是废弃配置，实际本地模型为 `api_vllm` (Qwen3.6-27B-FP8)。
-**原则**：远程 GLM 只在路线3 Step1 使用，其他全部本地 api_vllm。
+### pipeline.yaml 配置示例
+
+```yaml
+model_routing:
+  # 交互层（intake + 渲染 + grep + 归纳）
+  interaction: api_vllm       # 可改为 glm5.1 / glm4flash / qwen36_a35 等
+
+  # 自由组卷初稿（路线3 Step1，唯一可能需要强模型的任务）
+  free_compose: glm5.1        # 可改为 api_vllm 如果本地模型够用
+
+  # 以下是默认推荐，但完全可配置
+  # interaction: api_vllm     # 本地模型，快速，低成本
+  # free_compose: glm5.1      # 远程模型，推理能力强
+```
+
+### 路由逻辑
+
+```python
+def get_model_for_task(task: str) -> str:
+    """从 pipeline.yaml 读取模型配置，不硬编码。"""
+    routing = pipeline_config.get("model_routing", {})
+    return routing.get(task, routing.get("interaction", "api_vllm"))
+```
+
+### 任务上下文预算（模型无关）
+
+| 任务 | 典型上下文 | 典型耗时 | 备注 |
+|------|-----------|---------|------|
+| 渲染经验卡（路线1） | ~2K/slot | <5s | 纯格式化 |
+| grep 关键词生成 | ~500 chars | <2s | 简单生成 |
+| 检索结果归纳 | ~3-5K | <10s | 分类任务 |
+| 自由组卷初稿（路线3 Step1） | ~5-8K | 视模型 | 唯一可能需要推理的任务 |
+| diff 后检索归纳（路线3 Step4-5） | ~3-5K/知识点 | <10s | 检索+分类 |
+| YAML 生成 | N/A | <1s | Python，不经过LLM |
+
+**注意**：config.py 中的 `local` (Qwen3-32B) 是废弃配置。当前实际可用的本地模型为 `api_vllm` (Qwen3.6-27B-FP8)。
+**原则**：所有模型选择通过配置文件驱动，代码中只引用 `get_model_for_task()` 返回的 provider name。
 
 ## 5. 数据加载策略
 
@@ -265,7 +294,7 @@ skills:
 
 ```
 Step 1 [Python]: 加载 paper_request → 确定科目和 slot 范围
-Step 2 [api_vllm, ~2K/slot, 可并行]: 渲染经验卡为选择卡片
+Step 2 [config:interaction, ~2K/slot, 可并行]: 渲染经验卡为选择卡片
   Prompt: "将以下 slot data 格式化为选择卡片。不要修改、重排或选择。只格式化。"
   输出: ## Q12（选择题·2分）推荐: 计算型 (53.8%) / 备选: ...
 Step 3 [教师]: 确认/改选模式，排除知识点
@@ -275,10 +304,10 @@ Step 4 [Python]: 教师选择 → outline_draft.md（CONTRACT marker YAML）
 ### 9.3 Skill: compose_topic_search（路线2）
 
 ```
-Step 1 [api_vllm, ~200 chars]: 生成 grep 关键词
+Step 1 [config:interaction, ~200 chars]: 生成 grep 关键词
   Prompt: "给定知识点'{name}'，生成3-5个grep关键词搜索相关题目"
 Step 2 [Python]: grep 检索题库 data/question_experiences/*.md
-Step 3 [api_vllm, ~3-5K]: 按考察模式分类归纳
+Step 3 [config:interaction, ~3-5K]: 按考察模式分类归纳
   Prompt: "将以下N道关于{topic}的题目按考察模式分类。每个模式给：名称、数量、1句话描述、1-2个代表题。"
 Step 4 [教师]: 选择考察模式
 Step 5 [Python]: 生成 outline_draft.md
@@ -287,24 +316,24 @@ Step 5 [Python]: 生成 outline_draft.md
 ### 9.4 Skill: compose_free_outline（路线3）
 
 ```
-Step 1 [glm5.1, ~5-8K]: 基于 KG 分配知识点
+Step 1 [config:free_compose, ~5-8K]: 基于 KG 分配知识点
   输入: KG(仅目标科目) + slot模板(类型+分值)
   输出: markdown表格(slot_id | 题型 | 知识点 | 考察方向 | 难度)
 Step 2 [Python]: KG 自动补全考点详情(父章节、兄弟知识点、子主题)
 Step 3 [教师]: 批注/移除知识点 → 产生 diff
-Step 4 [api_vllm, ~5K/知识点]: 对保留知识点执行路线2的 grep+归纳流程
+Step 4 [config:interaction, ~5K/知识点]: 对保留知识点执行路线2的 grep+归纳流程
 Step 5 [教师]: 选择考察模式
 Step 6 [Python]: 生成 outline_draft.md
 ```
 
 ### 9.5 上下文预算总览
 
-| 步骤 | 路线 | 上下文 | 模型 | 可并行 |
-|------|------|--------|------|--------|
-| 渲染卡片 | 1 | ~2K/slot | api_vllm | 是 |
-| grep关键词 | 2 | ~200 chars | api_vllm | 否 |
-| 结果归纳 | 2/3 | ~3-5K | api_vllm | 是(按知识点) |
-| 知识点分配 | 3 | ~5-8K | glm5.1 | 否 |
+| 步骤 | 路线 | 上下文 | 模型来源 | 可并行 |
+|------|------|--------|---------|--------|
+| 渲染卡片 | 1 | ~2K/slot | config:interaction | 是 |
+| grep关键词 | 2 | ~200 chars | config:interaction | 否 |
+| 结果归纳 | 2/3 | ~3-5K | config:interaction | 是(按知识点) |
+| 知识点分配 | 3 | ~5-8K | config:free_compose | 否 |
 | KG补全 | 2/3 | N/A | Python | 是 |
 | YAML生成 | 1/2/3 | N/A | Python | N/A |
 
