@@ -1002,6 +1002,8 @@ class DocScheduler:
 
         gateway = self._get_gateway_for_role(role)
         effective_max_tokens = max_tokens or self.max_tokens
+        if role == "interact" and not max_tokens:
+            effective_max_tokens = min(effective_max_tokens, 4096)
         effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
 
         response_text = ""
@@ -1012,7 +1014,7 @@ class DocScheduler:
 
         # Interact turns need a real tool loop: after read/search/write tools run,
         # feed observations back to the model so the teacher receives a usable reply.
-        max_tool_rounds = 4
+        max_tool_rounds = 10
         for round_index in range(max_tool_rounds + 1):
             try:
                 raw = await self._streaming_chat_call(
@@ -1057,6 +1059,13 @@ class DocScheduler:
                 break
 
             assistant_msg = {"role": "assistant", "content": content or None}
+            # Cap tool calls per round to avoid context overflow
+            if len(tool_calls) > 5:
+                logger.warning(
+                    "[%s] Interact turn: model emitted %d tool calls, capping to 5",
+                    session_id, len(tool_calls),
+                )
+                tool_calls = tool_calls[:5]
             assistant_msg["tool_calls"] = tool_calls
             session.messages.append(assistant_msg)
             total_tool_calls += len(tool_calls)
@@ -1076,6 +1085,9 @@ class DocScheduler:
                         {"ok": False, "error": f"tool '{fn_name}' not available"},
                         ensure_ascii=False,
                     )
+                # Truncate large tool results to prevent context overflow
+                if len(result_str) > 4000:
+                    result_str = result_str[:3800] + "\n... [truncated]"
                 session.messages.append({
                     "role": "tool",
                     "tool_call_id": tc["id"],
