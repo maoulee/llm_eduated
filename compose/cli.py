@@ -63,6 +63,8 @@ async def main():
     sub_compose.add_argument("--requirements", default="出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点")
     sub_compose.add_argument("--output-dir", default="docs")
     sub_compose.add_argument("--routing", choices=routing_choices, default="all_local")
+    sub_compose.add_argument("--slot-blueprint", default=None,
+                             help="Path to slot_blueprint.yaml (Route 2: single topic)")
 
     # ── generate subcommand ──
     sub_gen = subparsers.add_parser("generate", help="出题 only (load compose artifacts)")
@@ -206,6 +208,15 @@ async def main():
     gateway = _rgw("paper_composer")
 
     if args.command == "compose":
+        # Route 2: copy slot_blueprint.yaml to compose dir if provided
+        if args.slot_blueprint:
+            import shutil
+            compose_output = os.path.join(args.output_dir, "compose")
+            os.makedirs(compose_output, exist_ok=True)
+            dest = os.path.join(compose_output, "slot_blueprint.yaml")
+            shutil.copy2(args.slot_blueprint, dest)
+            print(f"[Route 2] Copied slot_blueprint to {dest}")
+
         await compose_runner.run_compose(
             gateway, templates, exp_cards, args.requirements,
             slot_ids=slot_ids, output_dir=args.output_dir, model_routing=model_routing,

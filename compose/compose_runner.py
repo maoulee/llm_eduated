@@ -530,7 +530,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
     composition_rationale = result.header.composition_rationale
 
     slots: list[SlotBlueprint] = []
-    parts = re.split(r"## (Q\d+)", outline_md)
+    parts = re.split(r"## ((?:Q\d+|TOPIC_\d+))", outline_md)
 
     for contract in result.slots:
         # Find content for this slot (legacy **field** fallback)
@@ -584,6 +584,209 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
         "composition_rationale": composition_rationale,
         "slots": slots,
     }
+
+
+def determine_route(
+    compose_dir: str,
+    slot_templates: dict,
+    exp_dir: str = "data/slot_experiences",
+) -> tuple[int, str]:
+    """Determine which compose route to use based on intake output.
+
+    Args:
+        compose_dir: Compose output directory (may contain intake files)
+        slot_templates: Available slot templates
+        exp_dir: Experience cards directory
+
+    Returns:
+        (route_number, reason_string)
+        - route 1: paper_request + has experience cards
+        - route 2: slot_blueprint (single knowledge point)
+        - route 3: paper_request + no experience cards
+    """
+    compose_path = Path(compose_dir)
+
+    # Check for slot_blueprint.yaml → Route 2
+    blueprint_path = compose_path / "slot_blueprint.yaml"
+    if blueprint_path.exists():
+        return 2, "slot_blueprint detected — single knowledge point"
+
+    # Check for paper_request.yaml → Route 1 or 3
+    request_path = compose_path / "paper_request.yaml"
+    if request_path.exists():
+        try:
+            with open(request_path, encoding="utf-8") as f:
+                pr = yaml.safe_load(f)
+        except Exception:
+            pr = {}
+
+        has_experience = False
+        for sid in slot_templates:
+            exp_path = Path(exp_dir) / f"{sid}_experience.md"
+            if exp_path.exists():
+                has_experience = True
+                break
+
+        if has_experience:
+            return 1, "paper_request + experience cards available"
+        else:
+            return 3, "paper_request + no experience cards"
+
+    # Default: check if experience cards exist for any slot
+    for sid in slot_templates:
+        if (Path(exp_dir) / f"{sid}_experience.md").exists():
+            return 1, "experience cards available (default)"
+
+    return 3, "no intake files, no experience cards — free compose"
+
+
+async def compose_route_2(
+    gateway,
+    slot_blueprint: dict,
+    slot_templates: dict,
+    model_routing: dict[str, str] | None = None,
+    data_dir: str = "data/question_experiences",
+) -> tuple[str, dict]:
+    """Route 2: Single knowledge point — grep + classify.
+
+    Args:
+        gateway: LLMGateway for interaction model
+        slot_blueprint: Parsed slot_blueprint.yaml
+        slot_templates: Available slot templates
+        model_routing: Optional model routing config
+        data_dir: Question experience directory
+
+    Returns:
+        (outline_md, blueprint_dict)
+    """
+    from compose.topic_search import run_topic_search
+
+    topic_name = slot_blueprint.get("primary_target_name", "")
+    slot_id = slot_blueprint.get("slot_id", "TOPIC_001")
+    template = slot_templates.get(slot_id, {
+        "question_type": slot_blueprint.get("question_type", "single_choice"),
+        "score": slot_blueprint.get("score", 2),
+    })
+
+    print(f"  [Route 2] 知识点: {topic_name}, 题位: {slot_id}")
+
+    result = await run_topic_search(
+        topic_name=topic_name,
+        slot_id=slot_id,
+        template=template,
+        gateway=gateway,
+        model_routing=model_routing,
+        data_dir=data_dir,
+    )
+
+    outline_md = result["outline_section"]
+    topic_card = result["topic_card"]
+
+    # Build blueprint dict for downstream compatibility
+    modes = topic_card.get("modes", [])
+    selected_mode = modes[0]["name"] if modes else ""
+    difficulty = slot_blueprint.get("difficulty_level", 3)
+    if isinstance(difficulty, str):
+        try:
+            difficulty = int(difficulty)
+        except ValueError:
+            difficulty = 3
+
+    sb = SlotBlueprint(
+        slot_id=slot_id,
+        target_subject=slot_blueprint.get("target_subject", ""),
+        target_family=slot_blueprint.get("target_family", ""),
+        primary_target_name=topic_name,
+        target_difficulty=difficulty,
+        examination_mode=selected_mode,
+        question_type=slot_blueprint.get("question_type", "single_choice"),
+        score=slot_blueprint.get("score", 2),
+        active_selection=slot_blueprint.get("active_selection", {}),
+        candidate_pool_visible=[m["name"] for m in modes],
+        excluded_modes=slot_blueprint.get("excluded", {}).get("modes", []),
+        excluded_knowledge=slot_blueprint.get("excluded", {}).get("knowledge", []),
+        teacher_annotation=slot_blueprint.get("teacher_annotation", ""),
+    )
+
+    # Wrap outline in full document
+    full_outline = f"# 试卷大纲\n\n## 整体规划\n- **difficulty_target**: {difficulty}\n- **composition_rationale**: 单知识点组卷 — {topic_name}\n\n{outline_md}"
+
+    blueprint = {
+        "paper_type": "单知识点",
+        "total_questions": 1,
+        "difficulty_target": difficulty,
+        "composition_rationale": f"单知识点组卷: {topic_name}",
+        "slots": [sb],
+    }
+
+    return full_outline, blueprint
+
+
+async def compose_route_3(
+    gateway,
+    slot_templates: dict,
+    user_requirements: str,
+    model_routing: dict[str, str] | None = None,
+    data_dir: str = "data/question_experiences",
+) -> tuple[str, dict]:
+    """Route 3: Free composition — GLM draft + grep + classify.
+
+    Args:
+        gateway: LLMGateway (will be used for both free_compose and interaction)
+        slot_templates: Available slot templates
+        user_requirements: Teacher requirements text
+        model_routing: Optional model routing config
+        data_dir: Question experience directory
+
+    Returns:
+        (outline_md, blueprint_dict)
+    """
+    from compose.free_compose import run_free_compose
+
+    # Determine subjects from requirements or default
+    subjects = _infer_subjects(user_requirements)
+    print(f"  [Route 3] 科目: {subjects}")
+
+    result = await run_free_compose(
+        subjects=subjects,
+        slot_templates=slot_templates,
+        user_requirements=user_requirements,
+        free_gateway=gateway,
+        interaction_gateway=gateway,
+        model_routing=model_routing,
+        data_dir=data_dir,
+    )
+
+    if result.get("status") != "ok":
+        error = result.get("error", "unknown Route 3 failure")
+        print(f"  [Route 3] 失败: {error}")
+        return "", {"error": error}
+
+    outline_md = result["outline_md"]
+    assignments = result["assignments"]
+
+    # Parse outline for blueprint
+    blueprint = _parse_outline_to_blueprint(outline_md, slot_templates)
+
+    return outline_md, blueprint
+
+
+def _infer_subjects(requirements: str) -> list[str]:
+    """Infer target subjects from requirements text."""
+    subject_keywords = {
+        "计算机组成原理": ["组成原理", "计算机组成", "CO", "硬件"],
+        "数据结构": ["数据结构", "DS", "算法", "树", "图", "排序"],
+        "操作系统": ["操作系统", "OS", "进程", "内存管理"],
+        "计算机网络": ["计算机网络", "网络", "TCP", "IP", "CN"],
+    }
+    found = []
+    for subject, keywords in subject_keywords.items():
+        for kw in keywords:
+            if kw in requirements:
+                if subject not in found:
+                    found.append(subject)
+                break
+    return found if found else ["计算机组成原理"]
 
 
 async def compose_paper(gateway, templates, user_requirements, model_routing=None, exp_dir="data/slot_experiences") -> tuple[str, dict]:
@@ -731,8 +934,34 @@ async def run_compose(
         routing_profile = model_routing.get("paper_composer", "all_local")
         print(f"  [config] Loaded model_routing from pipeline.yaml: {model_routing}")
 
-    # Step 1: Compose
-    outline_md, blueprint = await compose_paper(gateway, templates, user_requirements, model_routing=model_routing, exp_dir=exp_dir)
+    # Step 0: Determine route
+    route, route_reason = determine_route(compose_dir, templates, exp_dir)
+    print(f"  [route] Route {route}: {route_reason}")
+
+    # Step 1: Compose — route to appropriate path
+    if route == 2:
+        # Route 2: slot_blueprint → single topic grep + classify
+        blueprint_path = Path(compose_dir) / "slot_blueprint.yaml"
+        if not blueprint_path.exists():
+            return {"status": "error", "error": "Route 2 requires slot_blueprint.yaml"}
+        with open(blueprint_path, encoding="utf-8") as f:
+            slot_blueprint_data = yaml.safe_load(f) or {}
+        if not slot_blueprint_data:
+            return {"status": "error", "error": "slot_blueprint.yaml is empty or invalid"}
+        outline_md, blueprint = await compose_route_2(
+            gateway, slot_blueprint_data, templates, model_routing=model_routing,
+        )
+    elif route == 3:
+        # Route 3: free composition — GLM draft + grep + classify
+        outline_md, blueprint = await compose_route_3(
+            gateway, templates, user_requirements, model_routing=model_routing,
+        )
+    else:
+        # Route 1 (default): experience card rendering or legacy LLM compose
+        outline_md, blueprint = await compose_paper(
+            gateway, templates, user_requirements, model_routing=model_routing, exp_dir=exp_dir,
+        )
+
     if not blueprint:
         return {"status": "error", "step": "compose"}
 

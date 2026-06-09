@@ -142,7 +142,7 @@ def generate_from_topic_mode(topic_card: dict, slot_id: str, template: dict) -> 
     Returns:
         Markdown section with CONTRACT marker
     """
-    lines = [f"## {slot_id}（{template.get('type', 'single_choice')}）\n"]
+    lines = [f"## {slot_id}（{template.get('question_type', template.get('type', 'single_choice'))}）\n"]
     lines.append("### 当前推荐\n")
     lines.append(f"- **考察模式**: {topic_card.get('title', '')}\n")
     lines.append(f"- **知识点**: {topic_card.get('knowledge', '')}\n")
@@ -172,7 +172,7 @@ def _build_topic_yaml_lines(topic_card: dict, template: dict, slot_id: str) -> l
     """Build YAML contract lines from topic_mode_card."""
     lines = []
 
-    q_type = template.get("type", "single_choice")
+    q_type = template.get("question_type", template.get("type", "single_choice"))
     score = template.get("score", 2)
     knowledge = topic_card.get("knowledge", "")
 

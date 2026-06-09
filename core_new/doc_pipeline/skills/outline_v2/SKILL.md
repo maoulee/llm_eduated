@@ -249,6 +249,9 @@ model_routing:
 
 ## Phase 范围
 
-本技能在 Phase 1 实现路线1（真题组卷），Phase 2 实现路线2（单知识点），Phase 3 实现路线3（自由组卷）。
+- Phase 1 ✅: 路线1（真题组卷）— `compose_runner.py` + `outline_yaml_generator.py`
+- Phase 2 ✅: 路线2（单知识点）— `compose/topic_search.py` (grep + classify)
+- Phase 3 ✅: 路线3（自由组卷）— `compose/free_compose.py` (GLM draft + grep + classify)
+- Phase 4: 交互界面（待开发）
 
-当前版本仅定义路由规则和格式规范，具体实现分阶段推进。
+路由分发: `compose_runner.determine_route()` 自动选择路线。
