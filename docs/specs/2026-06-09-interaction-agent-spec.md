@@ -1,7 +1,7 @@
 # 交互智能体 Spec：信息收集 + 需求交接 + 设计分离
 
 > 日期: 2026-06-09
-> 状态: Phase 1 已实现（commit 806cf84）
+> 状态: Phase 1 核心能力已实现（代码 commit 806cf84；本文档后续修订见 06eb803+）
 > 前置: compose 三路线已实现（可复用为工具层）
 > 实现: interact agent + knowledge_index + grep_search_tool + scheduler 集成
 
@@ -36,7 +36,7 @@
 | 层次 | 产物 | 谁生成 | 谁消费 |
 |------|------|--------|--------|
 | 信息收集 | slot_option_cards.md, topic_mode_options.md, outline_proposal.md | 交互智能体 | 教师 |
-| 需求交接 | paper_request.yaml, slot_blueprint.yaml | 交接智能体 | 组卷智能体 |
+| 需求交接 | paper_request.yaml, slot_blueprint.yaml | 交互智能体或 Python 抽取器 | 组卷/出题流水线 |
 | 正式蓝图 | outline.md, design_card.md, paper_selection.yaml | 组卷/设计智能体 | 出题流水线 |
 
 ### 2.2 智能体边界
@@ -63,9 +63,9 @@
 
 两种路径：
 - **路径 A**：智能体 write_file 直接生成 yaml — 简单，但 yaml 格式对教师不友好
-- **路径 B**：智能体 write_file 生成 md，教师编辑后 Python extract_from_marked_doc() 抽取为 yaml — 推荐
+- **路径 B**：智能体 write_file 生成 md，教师编辑后 Python 抽取器抽取为 yaml — 推荐
 
-选择 **路径 B**：md 对教师可读可编辑，Python 处理结构化转换。
+选择 **路径 B**：md 对教师可读可编辑，Python 处理结构化转换。注意：当前仓库尚未提供可直接 import 的 `extract_from_marked_doc()` helper；Phase 1 只实现了 agent/tool 基础能力，标注文档抽取器仍需落地。
 
 #### 组卷/设计智能体（面向流水线）
 
@@ -164,7 +164,7 @@ skills:
 ---
 ```
 
-#### agent MD body（已实现，见 `agents/interact.md`）
+#### agent MD body（已实现，见 `core_new/doc_pipeline/agents/interact.md`）
 
 核心约束：
 - 3 状态 FSM：collecting → reviewing → confirmed（LLM 自行判断转换）
@@ -258,12 +258,12 @@ LLM 根据对话上下文自行决定当前处于什么状态。
 ## 工具使用指南
 
 ### grep_search：搜索题库
-- 输入：关键词列表
+- 输入：对象参数，`query` 为关键词字符串或关键词列表
 - 用于：找到相关题目，按考察模式分类
-- 示例：grep_search(["AVL", "平衡二叉树", "旋转"])
+- 示例：`{"query": ["AVL", "平衡二叉树", "旋转"], "max_results": 20, "subject": "数据结构"}`
 
 ### read_file：读取系统数据
-- KG 文件：data/computer_organization.md
+- KG 文件：data/kg/computer_organization.md
 - 经验卡：data/slot_experiences/Q{N}_experience.md
 - 题目经验：data/question_experiences/{id}.md
 
@@ -292,8 +292,11 @@ LLM 根据对话上下文自行决定当前处于什么状态。
 
 ### 确认后输出（交接阶段）
 
-智能体读取教师编辑后的文档，调用 Python 抽取函数，
-或直接用 write_file 生成 yaml。
+智能体读取教师编辑后的文档后，有两种落地方式：
+- 在 `exec_python` 传入代码中显式实现抽取逻辑，再写出 yaml
+- 由 LLM 根据已读取的标注文档直接生成 yaml
+
+当前仓库没有内置 `extract_from_marked_doc()` 可导入函数。
 
 ## 暂停点
 
@@ -305,7 +308,7 @@ LLM 根据对话上下文自行决定当前处于什么状态。
 
 ### 5.1 复用现有工具系统
 
-`doc_pipeline` 的 `scheduler.py` 已有工具注册机制。interact 智能体工具通过 agent MD frontmatter 的 `required_tools` 声明，由 `run_conversation_turn()` 动态注册：
+`doc_pipeline` 的 `scheduler.py` 已有工具注册机制。interact 智能体工具通过 agent MD frontmatter 的 `required_tools` 声明，由 `run_conversation_turn()` 动态注册并按 `required_tools` 过滤后暴露给模型：
 
 ```python
 # interact agent MD frontmatter 声明
@@ -314,7 +317,7 @@ required_tools: [read_file, write_file, grep_search, exec_python]
 # run_conversation_turn() 中动态注册
 registry = ToolRegistry()
 registry.register(WriteFileTool(workspace=ws))
-registry.register(ReadFileTool(workspace=ws))
+registry.register(ReadFileTool(workspace=ws, read_roots=[Path.cwd() / "data"]))
 if "exec_python" in required_tools:
     registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
 if "grep_search" in required_tools:
@@ -329,20 +332,23 @@ if "grep_search" in required_tools:
 class GrepSearchTool(Tool):
     """搜索题库工具 — 基于结构化知识点标签索引"""
 
-    async def execute(self, params: dict) -> dict:
-        query = params.get("query", "")
-        max_results = params.get("max_results", 20)
-        subject = params.get("subject")
+    async def execute(
+        self,
+        query: str | list[str] | None = None,
+        max_results: int = 30,
+        subject: str | None = None,
+        **_kwargs,
+    ) -> str:
         hits = search_questions(query, max_results=max_results, subject=subject)
-        return {
+        return json.dumps({
             "ok": True,
             "count": len(hits),
             "results": [
-                {"file": h.file_name, "score": round(h.score, 1),
+                {"file": h.file_name, "score": h.score,
                  "snippet": h.snippet[:200], "matched_tags": h.matched_tags}
                 for h in hits
-            ]
-        }
+            ],
+        }, ensure_ascii=False)
 ```
 
 ### 5.3 knowledge_index 模块（新增 → `compose/knowledge_index.py`）
@@ -359,7 +365,7 @@ class GrepSearchTool(Tool):
 | 新增 | 位置 | 说明 |
 |------|------|------|
 | `InteractSession` | scheduler.py | 多轮对话会话跟踪 |
-| `run_conversation_turn()` | scheduler.py | 单轮对话执行（session 管理 + LLM 调用 + 工具执行） |
+| `run_conversation_turn()` | scheduler.py | 单轮对话执行（session 管理 + LLM 调用 + 工具循环；工具结果会回灌给模型生成教师回复） |
 | `_trim_context()` | scheduler.py | 上下文压缩（替代已删除的 commit-only 模式） |
 | `GrepSearchTool` 注册 | scheduler.py | interact 角色工具注册 |
 
@@ -448,7 +454,9 @@ def extract_from_marked_doc(edited_md: str) -> dict:
   ↓
 API: POST /api/sessions/{id}/message
   ↓
-智能体读消息 → 调工具检索 → write_file 生成草案 md
+当前 API 仍走旧 InteractiveOrchestrator/FSM；Phase 2 目标是切换到 interact agent
+  ↓
+interact agent 读消息 → 调工具检索 → write_file 生成草案 md
   ↓
 右侧文档区自动刷新显示草案
   ↓
@@ -456,7 +464,7 @@ API: POST /api/sessions/{id}/message
   ↓
 教师点击 [确认提交] 或 发送消息 "确认"
   ↓
-Python extract_from_marked_doc() 从编辑后的 md 抽取
+Python 抽取器从编辑后的 md 抽取（待实现为正式 helper）
   ↓
 生成 paper_request.yaml / slot_blueprint.yaml
   ↓
@@ -465,12 +473,12 @@ Python extract_from_marked_doc() 从编辑后的 md 抽取
 
 ### 6.6 现有前端资产
 
-已存在 Vue.js 前端（可复用/扩展）：
+已存在 Vue.js 前端（可复用/扩展），但当前 API 仍接旧 FSM 路径，双栏文档编辑闭环尚未完整接入 interact agent：
 - `frontend/src/components/ChatMessage.vue` — 消息气泡 → 复用
 - `frontend/src/components/Composer.vue` — 输入框 → 复用
 - `frontend/src/views/SessionView.vue` — 会话视图 → 扩展为双栏
 - `frontend/src/components/OutlineEditor.vue` — 蓝图编辑 → 改造为文档编辑器
-- `api/routes/interact.py` — 交互 API → 扩展文档提交接口
+- `api/routes/interact.py` — 交互 API 当前调用 `InteractiveOrchestrator`；需在 Phase 2 扩展为可选择 `DocScheduler.run_conversation_turn()`
 
 ## 7. 迁移策略
 
@@ -519,13 +527,13 @@ Python extract_from_marked_doc() 从编辑后的 md 抽取
 - knowledge_index 索引 2058 文件，1772 标签段，搜索精度高于全文本 grep
 - scheduler `run_conversation_turn()` 集成完成，工具注册和执行链路通过单测
 - commit-only 模式已移除，替换为更温和的上下文修剪
-- 366 测试通过，0 失败
+- 806cf84 当时验证：366 测试通过，0 失败；后续修订需以当前测试结果为准
 
 ## 10. 与现有模块的兼容
 
-- `interact/orchestrator.py` — 重构（解耦 FSM 和流水线调用）
-- `interact/intent_router.py` — 合并到 skill（智能体自己判断意图）
-- `interact/session_manager.py` — 简化为 3 状态
+- `interact/orchestrator.py` — 旧 API 路径仍在使用；后续重构（解耦 FSM 和流水线调用）
+- `interact/intent_router.py` — 后续合并到 skill（智能体自己判断意图）
+- `interact/session_manager.py` — 旧 FSM 仍保留；后续由 interact agent 会话状态替换
 - `interact/blueprint_synthesizer.py` — 保留（数据注入逻辑有价值）
 - `interact/knowledge_retriever.py` — 路径已更新（`data/kg/`、`data/config/`）
 - `compose/topic_search.py` — `grep_question_bank()` 已改为委托 `knowledge_index.search_questions()`
@@ -569,4 +577,4 @@ Codex 提出的核心边界：
 
 Codex 提出的"两个智能体"：
 - 人类交互智能体 → 本 spec 的 interact agent
-- 文档交接智能体 → 简化为 Python extract_from_marked_doc()
+- 文档交接智能体 → 简化为 Python 抽取器（`extract_from_marked_doc()` 仍是待实现 helper 名称）

@@ -1,4 +1,4 @@
-"""ReadFileTool — agents read file content from the workspace.
+"""ReadFileTool — agents read file content from the workspace and read-only roots.
 
 Replicates Claude Code's Read tool patterns:
 - Line numbers (cat -n format) so agent knows exact strings for edit_file
@@ -18,13 +18,18 @@ _MAX_CHARS = 30000
 
 
 class ReadFileTool(Tool):
-    """Agent reads a file from the slot workspace.
+    """Agent reads a file from the slot workspace or explicit read-only roots.
 
     Returns content with line numbers (cat -n format).
     """
 
-    def __init__(self, workspace: str | Path):
+    def __init__(self, workspace: str | Path, read_roots: list[str | Path] | None = None):
         self.workspace = Path(workspace).resolve()
+        self.read_roots = [self.workspace]
+        for root in read_roots or []:
+            resolved = Path(root).resolve()
+            if resolved not in self.read_roots:
+                self.read_roots.append(resolved)
 
     @property
     def name(self) -> str:
@@ -70,12 +75,10 @@ class ReadFileTool(Tool):
 
         target = self._resolve(path)
 
-        # Path safety: must be under workspace
-        try:
-            target.relative_to(self.workspace)
-        except ValueError:
+        # Path safety: must be under workspace or an explicitly configured read root.
+        if not self._is_allowed(target):
             return json.dumps(
-                {"ok": False, "error": f"path escapes workspace: {path}"},
+                {"ok": False, "error": f"path escapes allowed read roots: {path}"},
                 ensure_ascii=False,
             )
 
@@ -108,7 +111,7 @@ class ReadFileTool(Tool):
             content = content[:_MAX_CHARS]
             truncated = True
 
-        rel = str(target.relative_to(self.workspace))
+        rel = self._display_path(target)
         result = {"ok": True, "path": rel, "total_lines": total_lines}
         if offset:
             result["offset"] = offset
@@ -120,5 +123,37 @@ class ReadFileTool(Tool):
         return json.dumps(result, ensure_ascii=False)
 
     def _resolve(self, path: str) -> Path:
+        raw = Path(path)
+        if raw.is_absolute():
+            return raw.resolve()
+
         clean = path.lstrip("/").lstrip("\\")
-        return (self.workspace / clean).resolve()
+        workspace_candidate = (self.workspace / clean).resolve()
+        cwd_candidate = (Path.cwd() / clean).resolve()
+        if self._is_allowed(cwd_candidate) and (cwd_candidate.exists() or clean.startswith("data/")):
+            return cwd_candidate
+
+        if self._is_allowed(workspace_candidate):
+            return workspace_candidate
+
+        if self._is_allowed(cwd_candidate):
+            return cwd_candidate
+
+        return workspace_candidate
+
+    def _is_allowed(self, path: Path) -> bool:
+        for root in self.read_roots:
+            try:
+                path.relative_to(root)
+                return True
+            except ValueError:
+                continue
+        return False
+
+    def _display_path(self, path: Path) -> str:
+        for root in self.read_roots:
+            try:
+                return str(path.relative_to(root))
+            except ValueError:
+                continue
+        return str(path)

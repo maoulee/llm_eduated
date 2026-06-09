@@ -1,7 +1,7 @@
 # Compose 重构设计：三条路线 + 按需加载 + 模型分层路由
 
 > 日期: 2026-06-09
-> 状态: 设计中（Phase 1 部分已实现）
+> 状态: 三路线代码路径已实现；教师选择 UI/交互闭环仍在接入中
 > 前置: intake layer Phase I0 已完成
 
 > **实现注记 (commit 806cf84)**:
@@ -10,6 +10,7 @@
 > - 新增 `grep_search_tool.py` 将搜索注册为 OpenAI tool
 > - 新增 `interact` agent + `interact_core` skill（本 spec 的 Phase 1 实现）
 > - 数据目录重组：KG → `data/kg/`，配置 → `data/config/`，统计 → `data/statistics/`
+> - 后续修补：`compose_route_2()` 兼容当前 `SlotBlueprint` 字段 `target_difficulty`、`excluded_modes`、`excluded_knowledge`
 
 ## 1. 核心发现
 
@@ -32,7 +33,7 @@
 2. **先卡片，后 YAML**：LLM 输出卡片让教师选择，确认后才转正式机器文档
 3. **KG 预加载**：图谱小（~5K/科），作为约束条件常驻
 4. **经验卡按需加载**：仅路线1需要，且只加载相关科目的相关slot
-5. **检索由 LLM 驱动**：grep 关键词由 LLM 生成，非系统固定规则
+5. **检索由 LLM 驱动**：搜索关键词由 LLM 生成，非系统固定规则；底层使用结构化标签索引而非全文 grep
 6. **决策权在教师**：每个关键节点由教师选择，LLM 不替人做决定
 7. **模型配置驱动**：所有模型选择通过 pipeline.yaml 配置，代码不硬编码
 8. **权限边界**：proposal 阶段禁止生成 CONTRACT/paper_selection/question/solution
@@ -44,7 +45,7 @@
 > 深度推理留给题目设计、求解和终审。
 
 LLM 在交互层只做归纳和呈现，核心能力是：
-- **grep 检索**：按知识点搜索题库
+- **标签索引检索**：由 `grep_search` / `grep_question_bank` 兼容命名入口按知识点搜索题库，底层为结构化标签索引
 - **文档读写**：读取 KG/经验卡 → 归纳 → 写出卡片
 - **格式化**：将已有数据组织为教师可读格式
 
@@ -92,15 +93,15 @@ slot_card:
 
 **流程**：
 ```
-知识点 → LLM 生成 grep 关键词
-  → grep 检索题库
+知识点 → LLM 生成搜索关键词
+  → grep_question_bank / knowledge_index 检索题库
     → 本地 Qwen 按考察模式分类归纳
       → 教师选择考察模式
         → Python 生成 YAML
 ```
 
 **LLM 参与**：
-- grep 关键词生成：api_vllm（简单）
+- 搜索关键词生成：api_vllm（简单）
 - 结果归纳：api_vllm（分类任务）
 - 或全部用一个 api_vllm 调用完成
 
@@ -143,7 +144,7 @@ Step 2 [系统]: 自动补全每个知识点的考点详情（从 KG 查）
 
 Step 3 [教师]: 批注/移除不想考的知识点 → 产生 diff
 
-Step 4 [api_vllm]: 读取 diff → 对保留的考点做 grep 检索题库
+Step 4 [api_vllm]: 读取 diff → 对保留的考点做标签索引检索题库
 
 Step 5 [api_vllm]: 归纳检索结果为考察模式
 
@@ -178,7 +179,7 @@ Step 6 [教师]: 选择考察模式 → Python 生成 YAML
 
 ```yaml
 model_routing:
-  # 交互层（intake + 渲染 + grep + 归纳）
+  # 交互层（intake + 渲染 + 标签索引检索 + 归纳）
   interaction: api_vllm       # 可改为 glm5.1 / glm4flash / qwen36_a35 等
 
   # 自由组卷初稿（路线3 Step1，唯一可能需要强模型的任务）
@@ -203,7 +204,7 @@ def get_model_for_task(task: str) -> str:
 | 任务 | 典型上下文 | 典型耗时 | 备注 |
 |------|-----------|---------|------|
 | 渲染经验卡（路线1） | ~2K/slot | <5s | 纯格式化 |
-| grep 关键词生成 | ~500 chars | <2s | 简单生成 |
+| 搜索关键词生成 | ~500 chars | <2s | 简单生成 |
 | 检索结果归纳 | ~3-5K | <10s | 分类任务 |
 | 自由组卷初稿（路线3 Step1） | ~5-8K | 视模型 | 唯一可能需要推理的任务 |
 | diff 后检索归纳（路线3 Step4-5） | ~3-5K/知识点 | <10s | 检索+分类 |
@@ -236,7 +237,7 @@ def load_experience_for_slots(slot_ids: list[str]) -> dict[str, str]:
     # 路线2/3: 不加载
 
 def search_question_bank(keywords: list[str], subject: str) -> list[dict]:
-    """LLM 驱动的 grep 检索"""
+    """LLM 驱动的题库检索（底层为 knowledge_index 标签索引）"""
     # 路线2: 知识点相关题目
     # 路线3 Step4: 保留考点的相关题目
 ```
@@ -255,24 +256,24 @@ route_gate 已在 intake 层实现路由判断，compose 层读取 route_gate �
 
 ## 7. 实施计划
 
-### Phase 1：按需加载 + 路线1（投入低，收益大）
+### Phase 1：按需加载 + 路线1（已实现）
 - 重构 `_build_shared_header()` → `load_kg_for_subjects()`
 - 重构 `_build_slot_contracts_md()` → `load_experience_for_slots()`
 - 路线1 实现：经验卡渲染 → 教师选择 → YAML
 - api_vllm (Qwen3.6-27B-FP8) 做渲染
 
-### Phase 2：路线2（中等投入）
-- LLM 驱动 grep 检索
+### Phase 2：路线2（代码路径已实现，教师选择闭环待接入）
+- LLM 驱动标签索引检索
 - api_vllm 归纳
 - 教师选择流程
 
-### Phase 3：路线3（高投入，核心功能）
+### Phase 3：路线3（代码路径已实现，真实多轮交互待接入）
 - GLM-5.1 自由组卷初稿
 - 系统自动补全考点
 - 多轮交互流程（教师 ↔ LLM）
 - diff 驱动的检索和归纳
 
-### Phase 4：交互界面
+### Phase 4：交互界面（待接入）
 - 基于 Phase 1-3 的流程设计 UI
 - 教师选择界面
 - diff 展示界面
@@ -287,7 +288,7 @@ route_gate 已在 intake 层实现路由判断，compose 层读取 route_gate �
 | compose 三路线分流 | `core_new/doc_pipeline/skills/outline_v2/SKILL.md` — 新增路线判断逻辑 |
 | 路线1 渲染格式 | `core_new/doc_pipeline/agents/paper_outline.md` — 更新输出格式规范 |
 | 路线3 多轮交互 | 新增 `core_new/doc_pipeline/skills/compose_free/SKILL.md` |
-| LLM 驱动 grep | 新增 `core_new/doc_pipeline/skills/question_search/SKILL.md` |
+| LLM 驱动检索 | 新增或更新 `core_new/doc_pipeline/skills/question_search/SKILL.md`，并说明底层为 `knowledge_index` |
 | 经验卡按需加载 | `compose_runner.py` 中加载逻辑重构，agent MD 中说明数据范围 |
 | YAML 生成改为 Python | `core_new/doc_pipeline/skills/outline_v2/SKILL.md` 中移除 YAML 生成的 LLM 指令 |
 
@@ -341,9 +342,9 @@ Step 4 [Python]: 教师选择 → outline_draft.md（CONTRACT marker YAML）
 ### 9.3 Skill: compose_topic_search（路线2）
 
 ```
-Step 1 [config:interaction, ~200 chars]: 生成 grep 关键词
-  Prompt: "给定知识点'{name}'，生成3-5个grep关键词搜索相关题目"
-Step 2 [Python]: grep 检索题库 data/question_experiences/*.md
+Step 1 [config:interaction, ~200 chars]: 生成搜索关键词
+  Prompt: "给定知识点'{name}'，生成3-5个关键词搜索相关题目"
+Step 2 [Python]: 调用 grep_question_bank()，由 knowledge_index 标签索引检索 data/question_experiences/*.md
 Step 3 [config:interaction, ~3-5K]: 按考察模式分类归纳
   Prompt: "将以下N道关于{topic}的题目按考察模式分类。每个模式给：名称、数量、1句话描述、1-2个代表题。"
 Step 4 [教师]: 选择考察模式
@@ -358,7 +359,7 @@ Step 1 [config:free_compose, ~5-8K]: 基于 KG 分配知识点
   输出: markdown表格(slot_id | 题型 | 知识点 | 考察方向 | 难度)
 Step 2 [Python]: KG 自动补全考点详情(父章节、兄弟知识点、子主题)
 Step 3 [教师]: 批注/移除知识点 → 产生 diff
-Step 4 [config:interaction, ~5K/知识点]: 对保留知识点执行路线2的 grep+归纳流程
+Step 4 [config:interaction, ~5K/知识点]: 对保留知识点执行路线2的检索+归纳流程
 Step 5 [教师]: 选择考察模式
 Step 6 [Python]: 生成 outline_draft.md
 ```
@@ -368,7 +369,7 @@ Step 6 [Python]: 生成 outline_draft.md
 | 步骤 | 路线 | 上下文 | 模型来源 | 可并行 |
 |------|------|--------|---------|--------|
 | 渲染卡片 | 1 | ~2K/slot | config:interaction | 是 |
-| grep关键词 | 2 | ~200 chars | config:interaction | 否 |
+| 搜索关键词 | 2 | ~200 chars | config:interaction | 否 |
 | 结果归纳 | 2/3 | ~3-5K | config:interaction | 是(按知识点) |
 | 知识点分配 | 3 | ~5-8K | config:free_compose | 否 |
 | KG补全 | 2/3 | N/A | Python | 是 |
@@ -383,7 +384,7 @@ Step 6 [Python]: 生成 outline_draft.md
 ## 11. 验证标准
 
 1. 路线1: 经验卡渲染 <5s，教师选择后 YAML 生成 <1s
-2. 路线2: grep 检索+归纳 <15s
+2. 路线2: 标签索引检索+归纳 <15s
 3. 路线3: GLM 初稿 <90s，后续每轮 <15s
 4. 总 token 消耗降低 50%+
 5. 不再出现 244s 的深度推理超时

@@ -29,7 +29,7 @@ Step 2 [exec_python]: 调用 extract_slot_recommendation() 解析经验卡
 Step 3 [LLM 渲染]: 将经验卡数据渲染为带标记位的 md 文档
 Step 4 [暂停]: 教师在文档上标记 √/x、写批注
 Step 5 [read_file]: 读取教师标注后的文档
-Step 6 [exec_python]: 调用 extract_from_marked_doc() 抽取结构化数据
+Step 6 [exec_python 或 LLM]: 显式解析标注文档，抽取结构化数据
 Step 7 [write_file]: 生成 paper_request.yaml
 ```
 
@@ -75,7 +75,7 @@ Step 4 [read_file]: 读取教师标注后的文档
 Step 5 [grep_search]: 对教师保留的知识点检索题库
 Step 6 [LLM 归纳]: 归纳检索结果，更新文档中的考察方式详情
 Step 7 [暂停]: 教师确认最终方案
-Step 8 [exec_python]: 调用 extract_from_marked_doc() 抽取结构化数据
+Step 8 [exec_python 或 LLM]: 显式解析标注文档，抽取结构化数据
 Step 9 [write_file]: 生成 paper_request.yaml
 ```
 
@@ -87,18 +87,14 @@ Step 9 [write_file]: 生成 paper_request.yaml
 
 ### grep_search：搜索题库
 
-搜索 `data/question_experiences/` 中的题目经验文档。
+搜索 `data/question_experiences/` 中的题目经验文档。工具名沿用
+`grep_search`，但底层不是全文 grep；当前实现委托
+`compose/knowledge_index.py` 的结构化标签索引，优先匹配知识点标签、标签叶节点、科目和文件名。
 
-加权策略：
-```
-knowledge: +5  # 知识点行
-title:    +3  # 标题行
-body:     +1  # 正文
-```
+调用方式必须使用对象参数：
 
-调用方式：
-```
-grep_search(["AVL", "平衡二叉树", "旋转"])
+```json
+{"query": ["AVL", "平衡二叉树", "旋转"], "max_results": 20, "subject": "数据结构"}
 ```
 
 返回格式：
@@ -121,12 +117,14 @@ results:
 
 ### exec_python：执行数据处理
 
-可调用的 Python 函数：
-- `extract_slot_recommendation(card_text)` — 从经验卡提取推荐模式
-- `extract_from_marked_doc(edited_md)` — 从教师标注后的 md 抽取结构化数据
-- `auto_complete_from_kg(knowledge_points, kg_text)` — KG 自动补全
-- `load_kg_for_subjects(subjects)` — 按需加载 KG
-- `compute_statistics()` — K 值统计
+`exec_python` 接收完整 Python 代码并返回 stdout/stderr。当前没有预注册的
+`extract_from_marked_doc()` 全局函数；如果需要从教师标注 md 抽取结构化数据，必须在传入代码中显式实现解析逻辑，或直接由 LLM 根据已读取的标注文档生成交接 YAML。
+
+可复用的现有模块/函数包括：
+- `compose.compose_runner.extract_slot_recommendation(card_text)` — 从经验卡提取推荐模式
+- `compose.compose_runner.load_kg_for_subjects(subjects)` — 按需加载 KG
+- `compose.free_compose.auto_complete_from_kg(knowledge_points, kg_text)` — KG 自动补全
+- `interact.knowledge_retriever.KnowledgeRetriever.compute_statistics()` — K 值统计
 
 ### write_file：输出文档
 
@@ -173,7 +171,8 @@ results:
 
 ### Python 抽取
 
-教师确认后，调用 `extract_from_marked_doc(edited_md)` 从标注后的 md 抽取：
+教师确认后，可以在 `exec_python` 传入代码中实现类似
+`extract_from_marked_doc(edited_md)` 的解析逻辑，从标注后的 md 抽取：
 
 ```python
 def extract_from_marked_doc(edited_md: str) -> dict:
@@ -271,7 +270,7 @@ score: 2
 target_subject: 数据结构
 target_family: 数据结构 > 树与二叉树 > 平衡二叉树
 primary_target_name: AVL树旋转
-difficulty_level: 3
+target_difficulty: 3
 examination_mode: ""
 teacher_annotation: ""
 active_selection:
@@ -279,13 +278,17 @@ active_selection:
   selected_knowledge:
     - AVL树旋转操作
     - 平衡因子计算
-excluded:
-  modes: []
-  knowledge: []
+excluded_modes: []
+excluded_knowledge: []
 routing:
   can_route: true
   next_action: run_single_pipeline
 ```
+
+兼容说明：下游 `compose/single_question_adapter.py` 仍接受旧别名
+`difficulty_level` 和旧嵌套字段 `excluded: {modes, knowledge}`，但新写出的
+`slot_blueprint.yaml` 应优先使用 `target_difficulty`、`excluded_modes`、
+`excluded_knowledge`。
 
 ## Phase 范围
 

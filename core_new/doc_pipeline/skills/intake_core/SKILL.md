@@ -91,15 +91,17 @@ kg_node_classification:
 
 ## 题库检索策略
 
-多字段加权 grep on data/question_experiences/*.md:
+使用 `grep_search` 工具检索 `data/question_experiences/*.md`。工具名保留为
+`grep_search` 以兼容现有 agent 配置，但底层已经不是全文 grep；当前实现委托
+`compose/knowledge_index.py`，基于题目经验文件中的 `知识点`、`科目`、`题型` 等结构化元数据建立标签反向索引。
 
-```python
-FIELD_WEIGHTS = {
-    "knowledge": 5,   # **知识点** 行
-    "title": 3,       # 标题行
-    "body": 1,        # 正文
-}
+调用参数必须是 OpenAI tool-call 对象形态：
+
+```json
+{"query": ["AVL", "平衡二叉树", "旋转"], "max_results": 20, "subject": "数据结构"}
 ```
+
+评分大致遵循：完整知识点匹配最高，标签叶节点/标签段次之，文件名匹配最低。检索结果用于给教师展示候选和归纳考察模式，不得把命中结果自动视为教师已确认需求。
 
 ## route_gate
 
@@ -128,7 +130,7 @@ single_question_route_gate:
     - primary_target_name
     - target_family 或 kg_node_path
     - question_type 或 default_question_type
-    - difficulty_level 或 difficulty.target
+    - target_difficulty / difficulty_level 或 difficulty.target
   output:
     - slot_blueprint.yaml
 ```
@@ -350,7 +352,7 @@ score: 2
 target_subject: 数据结构
 target_family: 数据结构 > 查找 > 字符串模式匹配
 primary_target_name: KMP算法
-difficulty_level: 3
+target_difficulty: 3
 k_target: ""
 examination_mode: ""
 teacher_annotation: ""
@@ -361,15 +363,19 @@ active_selection:
     - KMP算法
     - next数组构造
 candidate_pool_visible: []
-excluded:
-  modes: []
-  knowledge: []
+excluded_modes: []
+excluded_knowledge: []
 confidence:
   level: high | medium
 routing:
   can_route: true
   next_action: run_single_pipeline
 ```
+
+兼容说明：`compose/single_question_adapter.py` 会把旧别名
+`difficulty_level` 归一化为 `target_difficulty`，也会把旧的嵌套
+`excluded: {modes, knowledge}` 归一化为 `excluded_modes` /
+`excluded_knowledge`。新产物应优先使用上面的扁平字段。
 
 ### retrieval_query.yaml (仅用于 task_type=retrieval)
 

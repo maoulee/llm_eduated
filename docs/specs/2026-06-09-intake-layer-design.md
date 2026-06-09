@@ -8,7 +8,7 @@
 
 ## 1. 核心原则
 
-1. **KG 全量加载** — 4 个 KG 文件共 100KB，按科目加载进上下文，无需检索工具
+1. **KG 按科目加载** — 4 个 KG 文件共 100KB，单科只加载目标 KG，408 全科时可一次性加载全部，无需向量检索
 2. **题库结构化标签索引** — 2058 个真题经验文件，预解析知识点元数据，标签反向索引精确匹配（已替代加权 grep）
 3. **doc_pipeline 零改动，compose_runner 最小适配** — intake 只负责生成输入，下游出题链路不变
 4. **对话即状态** — 复用对话上下文管理多轮交互，不造新状态机
@@ -44,7 +44,7 @@ intake_agent (对话式，加载 KG + 标签索引搜索题库)
       │                                    │
       ├─ paper → paper_request.yaml ──→ compose_runner (不变)
       ├─ single → slot_blueprint.yaml → doc_pipeline (不变)
-      └─ retrieval → retrieval_query.yaml → grep 题库返回结果
+      └─ retrieval → retrieval_query.yaml → grep_search 标签索引返回结果
                                           │
                                     教师审核 outline (现有批注流程不变)
                                           ↓
@@ -57,7 +57,7 @@ intake_agent (对话式，加载 KG + 标签索引搜索题库)
 |------|---------|--------|
 | 新 agent 数量 | 2 (intake + handoff) | 1 (intake) |
 | 新 skill 数量 | 19 | 3 (core + single_q + paper) |
-| 新工具 | 5 个 | 0 (KG 直接读，题库 grep) |
+| 新工具 | 5 个 | 1 个工具包装（`grep_search`，底层为结构化标签索引；KG 直接读） |
 | 状态管理 | 3 层嵌套状态机 | 对话上下文 + 单文件 |
 | 中间产物 | topic_blueprint 等 | paper_request / slot_blueprint / retrieval_query |
 | doc_handoff agent | 独立 agent | 取消，职责合并进 intake |
@@ -118,19 +118,19 @@ intake agent 可以接收两类输入的合并：
 ```yaml
 kg_loading:
   data_structure:
-    file: data/data_structure.md
+    file: data/kg/data_structure.md
     size: 28KB
     load_when: 科目包含"数据结构"
   computer_organization:
-    file: data/computer_organization.md
+    file: data/kg/computer_organization.md
     size: 27KB
     load_when: 科目包含"组成原理"
   operating_system:
-    file: data/operating_system_knowledge.md
+    file: data/kg/operating_system_knowledge.md
     size: 27KB
     load_when: 科目包含"操作系统"
   computer_network:
-    file: data/computer_network.md
+    file: data/kg/computer_network.md
     size: 20KB
     load_when: 科目包含"计算机网络"
 ```
@@ -279,7 +279,7 @@ score: 2
 target_subject: 数据结构
 target_family: 数据结构 > 查找 > 字符串模式匹配
 primary_target_name: KMP算法
-difficulty_level: 3
+target_difficulty: 3
 k_target: ""
 examination_mode: ""
 teacher_annotation: ""
@@ -290,9 +290,8 @@ active_selection:
     - KMP算法
     - next数组构造
 candidate_pool_visible: []
-excluded:
-  modes: []
-  knowledge: []
+excluded_modes: []
+excluded_knowledge: []
 confidence:
   level: high | medium
 routing:
@@ -301,7 +300,9 @@ routing:
 ```
 
 注: 字段名以现有 `contracts.py` 中 `SlotBlueprint` dataclass 为准。
-此处 schema 用于 route_gate 校验和 skill 输出规范。
+新输出应使用 `target_difficulty`、`excluded_modes`、`excluded_knowledge`。
+`compose/single_question_adapter.py` 兼容旧别名 `difficulty_level` 和旧嵌套
+`excluded: {modes, knowledge}`，但它们不再作为推荐格式。
 
 ### 5.9 retrieval_query.yaml Schema (找题)
 
@@ -322,10 +323,11 @@ query:
 policy:
   max_scan: 2000
   top_k: 10
+  ranking: structured_tag_index
   search_fields:
-    knowledge: 5
-    title: 3
-    body: 1
+    knowledge_tags: primary
+    subject: filter
+    file_name: weak_match
 
 routing:
   can_route: true
@@ -349,7 +351,7 @@ routing:
 ### R1
 - path: data/question_experiences/2016_Q45.md
 - score: 8
-- matched_fields: knowledge=Cache组相联映射, title=Cache
+- matched_tags: Cache组相联映射, 主存块号计算, 组号计算
 - knowledge: Cache组相联映射, 主存块号计算, 组号计算
 - difficulty: 中等
 - question_type: comprehensive
@@ -434,7 +436,7 @@ intake agent 首先识别教师意图，采用规则优先：
 不同意图走不同路径，**输出不同的文件格式**：
 
 ```
-retrieval       → grep 题库，返回结果 (retrieval_result.md)
+retrieval       → grep_search 标签索引检索题库，返回结果 (retrieval_result.md)
 single_question → intake → slot_blueprint.yaml → doc_pipeline
 practice_set    → intake → 先检索题库 → 不足部分走 doc_pipeline
 paper           → intake → paper_request.yaml → compose_runner
@@ -496,7 +498,7 @@ single_question_route_gate:
     - primary_target_name
     - target_family 或 kg_node_path
     - question_type 或 default_question_type
-    - difficulty_level 或 difficulty.target
+    - target_difficulty / difficulty_level 或 difficulty.target
   output:
     - slot_blueprint.yaml
 ```
@@ -749,7 +751,7 @@ output_policy:
 流程:
   1. 加载对应科目 KG
   2. 展示该知识点的 KG 子树 (考法候选)
-  3. grep 题库找相似真题
+  3. grep_search 标签索引找相似真题
   4. 教师选择考法/难度
   5. 输出 SlotBlueprint 格式 (复用现有 contracts.py)
   6. 直接进 doc_pipeline
@@ -766,7 +768,7 @@ output_policy:
   1. 加载对应科目 KG (多科目时全加载)
   2. 如有预抽取信息，展示给教师确认
   3. 教师选择/调整考点范围、难度、题型
-  4. grep 题库统计已有题覆盖情况
+  4. grep_search 标签索引统计已有题覆盖情况
   5. 输出 paper_request.yaml
   6. 传给 compose_runner
 

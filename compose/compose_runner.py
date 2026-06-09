@@ -685,7 +685,10 @@ async def compose_route_2(
     # Build blueprint dict for downstream compatibility
     modes = topic_card.get("modes", [])
     selected_mode = modes[0]["name"] if modes else ""
-    difficulty = slot_blueprint.get("difficulty_level", 3)
+    difficulty = slot_blueprint.get(
+        "target_difficulty",
+        slot_blueprint.get("difficulty_level", 3),
+    )
     if isinstance(difficulty, str):
         try:
             difficulty = int(difficulty)
@@ -703,8 +706,14 @@ async def compose_route_2(
         score=slot_blueprint.get("score", 2),
         active_selection=slot_blueprint.get("active_selection", {}),
         candidate_pool_visible=[m["name"] for m in modes],
-        excluded_modes=slot_blueprint.get("excluded", {}).get("modes", []),
-        excluded_knowledge=slot_blueprint.get("excluded", {}).get("knowledge", []),
+        excluded_modes=slot_blueprint.get(
+            "excluded_modes",
+            slot_blueprint.get("excluded", {}).get("modes", []),
+        ),
+        excluded_knowledge=slot_blueprint.get(
+            "excluded_knowledge",
+            slot_blueprint.get("excluded", {}).get("knowledge", []),
+        ),
         teacher_annotation=slot_blueprint.get("teacher_annotation", ""),
     )
 

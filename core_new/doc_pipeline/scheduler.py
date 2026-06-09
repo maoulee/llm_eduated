@@ -525,7 +525,7 @@ class DocScheduler:
         if "edit_file" in required_tools:
             registry.register(EditFileTool(workspace=ws))
         if "read_file" in required_tools:
-            registry.register(ReadFileTool(workspace=ws))
+            registry.register(ReadFileTool(workspace=ws, read_roots=[Path.cwd() / "data"]))
         if "grep_search" in required_tools:
             registry.register(GrepSearchTool())
 
@@ -986,7 +986,7 @@ class DocScheduler:
 
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
-        registry.register(ReadFileTool(workspace=ws))
+        registry.register(ReadFileTool(workspace=ws, read_roots=[Path.cwd() / "data"]))
 
         required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_python" in required_tools:
@@ -1007,43 +1007,60 @@ class DocScheduler:
         response_text = ""
         files_written: list[str] = []
 
-        try:
-            raw = await self._streaming_chat_call(
-                gateway, session.messages,
-                max_tokens=effective_max_tokens,
-                thinking_budget=effective_thinking_budget,
-                tools=openai_tools,
-                tool_choice="auto",
-            )
-        except Exception as exc:
-            logger.error(
-                "[%s] Interact turn failed: %s: %s",
-                session_id, type(exc).__name__, str(exc)[:300],
-            )
-            return {
-                "status": "error",
-                "response_text": f"LLM call failed: {type(exc).__name__}",
-                "files_written": [],
-            }
+        available_names = {t["function"]["name"] for t in openai_tools}
+        total_tool_calls = 0
 
-        tool_calls = raw.get("tool_calls")
-        content = raw.get("content", "")
+        # Interact turns need a real tool loop: after read/search/write tools run,
+        # feed observations back to the model so the teacher receives a usable reply.
+        max_tool_rounds = 4
+        for round_index in range(max_tool_rounds + 1):
+            try:
+                raw = await self._streaming_chat_call(
+                    gateway, session.messages,
+                    max_tokens=effective_max_tokens,
+                    thinking_budget=effective_thinking_budget,
+                    tools=openai_tools,
+                    tool_choice="auto",
+                )
+            except Exception as exc:
+                logger.error(
+                    "[%s] Interact turn failed: %s: %s",
+                    session_id, type(exc).__name__, str(exc)[:300],
+                )
+                return {
+                    "status": "error",
+                    "response_text": f"LLM call failed: {type(exc).__name__}",
+                    "files_written": files_written,
+                }
 
-        # Try extracting tool calls from reasoning_content if nothing visible
-        if not tool_calls and not content:
-            reasoning = raw.get("reasoning_content") or raw.get("reasoning") or ""
-            if reasoning:
-                extracted = self._extract_textual_tool_call(reasoning)
+            tool_calls = raw.get("tool_calls")
+            content = raw.get("content", "")
+
+            # Qwen sometimes emits tool calls as JSON text instead of protocol tool_calls.
+            if not tool_calls and content and content.lstrip().startswith(("[", "{")):
+                extracted = self._extract_textual_tool_call(content)
                 if extracted:
                     tool_calls = extracted
 
-        # Execute tool calls if present
-        if tool_calls:
+            # Try extracting tool calls from reasoning_content if nothing visible.
+            if not tool_calls and not content:
+                reasoning = raw.get("reasoning_content") or raw.get("reasoning") or ""
+                if reasoning:
+                    extracted = self._extract_textual_tool_call(reasoning)
+                    if extracted:
+                        tool_calls = extracted
+
+            if not tool_calls:
+                response_text = content or response_text
+                if content:
+                    session.messages.append({"role": "assistant", "content": content})
+                break
+
             assistant_msg = {"role": "assistant", "content": content or None}
             assistant_msg["tool_calls"] = tool_calls
             session.messages.append(assistant_msg)
+            total_tool_calls += len(tool_calls)
 
-            available_names = {t["function"]["name"] for t in openai_tools}
             for tc in tool_calls:
                 fn_name = tc["function"]["name"]
                 fn_args_str = tc["function"]["arguments"]
@@ -1077,16 +1094,18 @@ class DocScheduler:
                         if written_path not in session.files_written:
                             session.files_written.append(written_path)
 
-            # If model produced tool calls but also text, include the text
-            if content:
-                response_text = content
-            else:
-                response_text = f"执行了 {len(tool_calls)} 个工具调用"
-        else:
-            # Pure text response
-            response_text = content or ""
-            if content:
-                session.messages.append({"role": "assistant", "content": content})
+            if round_index == max_tool_rounds:
+                response_text = (
+                    response_text
+                    or f"执行了 {total_tool_calls} 个工具调用，已达到本轮工具调用上限。"
+                )
+                logger.warning(
+                    "[%s] Interact turn hit tool round limit (%d)",
+                    session_id, max_tool_rounds,
+                )
+
+        if not response_text and total_tool_calls:
+            response_text = f"执行了 {total_tool_calls} 个工具调用"
 
         # Trim context if it grows too large (keep system + last 20 messages)
         if len(session.messages) > 30:
@@ -1426,7 +1445,7 @@ class DocScheduler:
         ws = expected_path.parent
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
-        registry.register(ReadFileTool(workspace=ws))
+        registry.register(ReadFileTool(workspace=ws, read_roots=[Path.cwd() / "data"]))
         required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_python" in required_tools:
             registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))

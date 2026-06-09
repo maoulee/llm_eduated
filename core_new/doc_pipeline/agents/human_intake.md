@@ -67,7 +67,7 @@ skills:
 
 ## KG 加载策略
 
-按科目选择性加载，文件位于 `data/*.md`：
+按科目选择性加载，文件位于 `data/kg/`：
 
 | 科目 | 文件 | 大小 |
 |-----|------|-----|
@@ -91,12 +91,13 @@ skills:
 
 ## 题库检索策略
 
-多字段加权 grep 搜索 `data/question_experiences/`：
+使用 `grep_search` 工具搜索 `data/question_experiences/`。工具名为历史兼容命名，实际底层是
+`compose/knowledge_index.py` 的结构化标签反向索引：优先匹配题目经验文件中的知识点标签、标签叶节点和科目字段，避免正文噪音。
 
-```
-knowledge: +5  # 知识点行
-title:    +3  # 标题行
-body:     +1  # 正文
+调用时使用对象参数，例如：
+
+```json
+{"query": ["Cache", "地址映射"], "max_results": 10, "subject": "计算机组成原理"}
 ```
 
 ## route_gate 校验
@@ -121,7 +122,7 @@ body:     +1  # 正文
 - `primary_target_name`
 - `target_family` 或 `kg_node_path`
 - `question_type` 或 `default_question_type`
-- `difficulty_level` 或 `difficulty.target`
+- `target_difficulty` / `difficulty_level` 或 `difficulty.target`
 
 ### retrieval_route_gate（找题）
 
