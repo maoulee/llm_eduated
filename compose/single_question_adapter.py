@@ -1,15 +1,44 @@
 """Single question adapter — loads slot_blueprint.yaml for individual question tasks.
 
 Reads intake layer output (slot_blueprint schema) and converts to SlotBlueprint dataclass.
+Handles field name differences between the LLM-generated YAML and the dataclass.
 """
 
-from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
 import yaml
 
 from core_new.doc_pipeline.contracts import SlotBlueprint
+
+
+def normalize_slot_blueprint_data(data: dict) -> dict:
+    """Normalize LLM-generated slot_blueprint YAML to match SlotBlueprint dataclass fields.
+
+    Handles: alias fields, nested→flat conversion, extra metadata removal.
+    """
+    data = dict(data)  # shallow copy
+
+    # Remove metadata / non-dataclass fields
+    for key in ("schema_version", "task_type", "routing", "confidence",
+                "constraints", "kg_node_path"):
+        data.pop(key, None)
+
+    # Alias: difficulty_level → target_difficulty
+    if "difficulty_level" in data and "target_difficulty" not in data:
+        data["target_difficulty"] = data.pop("difficulty_level")
+    else:
+        data.pop("difficulty_level", None)
+
+    # Nested excluded → flat excluded_modes / excluded_knowledge
+    excluded = data.pop("excluded", None)
+    if isinstance(excluded, dict):
+        data.setdefault("excluded_modes", excluded.get("modes", []))
+        data.setdefault("excluded_knowledge", excluded.get("knowledge", []))
+
+    # Only keep fields that exist in SlotBlueprint
+    allowed = set(SlotBlueprint.__dataclass_fields__)
+    return {k: v for k, v in data.items() if k in allowed}
 
 
 def load_slot_blueprint(path: str) -> Optional[SlotBlueprint]:
@@ -32,12 +61,8 @@ def load_slot_blueprint(path: str) -> Optional[SlotBlueprint]:
         if not data:
             return None
 
-        # Extract routing block if present (metadata only, not part of SlotBlueprint)
-        routing = data.pop("routing", None)
-        confidence = data.pop("confidence", None)
-
-        # Convert to SlotBlueprint
-        return SlotBlueprint(**data)
+        normalized = normalize_slot_blueprint_data(data)
+        return SlotBlueprint(**normalized)
     except Exception as e:
         print(f"  ERROR: Failed to load slot_blueprint from {path}: {e}")
         return None
@@ -48,11 +73,5 @@ def build_blueprint_map(blueprint: SlotBlueprint) -> dict:
 
     For single question tasks, this creates a singleton map compatible
     with downstream pipeline expecting dict[str, SlotBlueprint].
-
-    Args:
-        blueprint: SlotBlueprint instance
-
-    Returns:
-        Dict mapping slot_id to blueprint
     """
     return {blueprint.slot_id: blueprint}

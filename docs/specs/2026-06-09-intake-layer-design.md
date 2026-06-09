@@ -405,9 +405,17 @@ doc_pipeline 现有流程 (question_design → question_writer → solver → fi
 ```
 
 适配要点：
-- `SlotBlueprint` dataclass 已在 `contracts.py` 中定义，slot_blueprint.yaml 直接反序列化为该类型
+- `SlotBlueprint` dataclass 已在 `contracts.py` 中定义，slot_blueprint.yaml 通过 `normalize_slot_blueprint_data()` 反序列化为该类型
 - `generate_runner._load_blueprint_map()` 当前从 paper_selection.yaml 加载；适配后优先读 intake 输出的单文件
 - 无需创建 compose 目录结构，单题直接走 generate 流程
+
+### 5.13 Phase I0 中 paper_request 的作用边界
+
+> **Phase I0 中 `paper_request` 只增强 `user_requirements` 文本和 `model_routing`，
+> 不直接改变 slot_template 集合。题位过滤仍由外部 CLI / 组卷入口控制。**
+
+`map_paper_request_to_params()` 返回的 `subject_files` 和 `slot_templates_hints` 为后续 Phase 预留，
+Phase I0 中 compose_runner 不消费这两个字段。避免 team 误以为 `question_config` 已能决定题量和题型。
 
 ## 6. 意图路由
 
@@ -570,6 +578,10 @@ confidence:
   contradictions: []        # 检测到的矛盾
   unverified_scope: false   # 知识点不在 KG 中
   notes: ""                 # 给下游 agent 的提示
+
+warnings: []                # 教师偏好风险提示，例如：
+                            # "排除了 Cache 和虚拟内存，可能影响存储系统覆盖"
+                            # 前台应向教师确认此类 warning
 ```
 
 | level       | 是否可进下游 | 含义 |
@@ -799,8 +811,22 @@ compose/
 
 ## 11. 实施阶段
 
-### Phase I0: 最小可用 (仅 paper 路径)
+### Phase I0: 最小可用 (paper 路径正式可运行；single/retrieval 仅 schema + 离线验证)
 
+```
+目标: 端到端跑通 "教师输入 → intake → paper_request.yaml → compose_runner → outline"
+
+1. 创建 human_intake.md agent (behavior=artifact_writer, skills=[intake_core])
+2. 创建 intake_core skill (仅 paper 意图路由)
+3. 创建 paper_request.schema.yaml
+4. compose_runner 增加 load_paper_request()
+5. 测试用例 A/B/C
+
+paper 路径: 正式可运行，compose_runner 实际消费 paper_request。
+single_question / retrieval: 仅放 schema 定义 + adapter 代码 + 离线验证测试，
+不接入正式 agent 入口。这些在 Phase I3 才正式启用。
+
+不包含: intake_single_question skill、intake_retrieval skill、题库检索、预抽取合并。
 ```
 目标: 端到端跑通 "教师输入 → intake → paper_request.yaml → compose_runner → outline"
 

@@ -18,6 +18,9 @@ status_values:
   - ready
   - frontdesk_only
   - rejected
+behavior: artifact_writer
+skills:
+  - intake_core
 ---
 
 # 教师需求收集智能体（Human Intake）
