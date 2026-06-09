@@ -21,12 +21,25 @@
 
 ## 2. 设计原则
 
-1. **KG 预加载**：图谱小（~5K/科），作为约束条件常驻
-2. **经验卡按需加载**：仅路线1需要，且只加载相关科目的相关slot
-3. **检索由 LLM 驱动**：grep 关键词由 LLM 生成，非系统固定规则
-4. **LLM 只做三件事**：渲染归纳、grep 检索、自由组卷初稿
-5. **决策权在教师**：每个关键节点由教师选择，LLM 不替人做决定
-6. **模型分层路由**：简单任务用本地 Qwen，推理任务用远程 GLM
+1. **交互层是信息拆分器和选择界面生成器**：不承担深度推理，只做归纳和呈现
+2. **先卡片，后 YAML**：LLM 输出卡片让教师选择，确认后才转正式机器文档
+3. **KG 预加载**：图谱小（~5K/科），作为约束条件常驻
+4. **经验卡按需加载**：仅路线1需要，且只加载相关科目的相关slot
+5. **检索由 LLM 驱动**：grep 关键词由 LLM 生成，非系统固定规则
+6. **决策权在教师**：每个关键节点由教师选择，LLM 不替人做决定
+7. **模型配置驱动**：所有模型选择通过 pipeline.yaml 配置，代码不硬编码
+8. **权限边界**：proposal 阶段禁止生成 CONTRACT/paper_selection/question/solution
+9. **决策准则**：当前阶段应该生成什么给老师看？
+
+## 2.1 交互层职责定义
+
+> **交互层负责信息拆分、信息归纳、选择呈现。不负责最终规划正确性，也不负责题目设计推理。**
+> 深度推理留给题目设计、求解和终审。
+
+LLM 在交互层只做归纳和呈现，核心能力是：
+- **grep 检索**：按知识点搜索题库
+- **文档读写**：读取 KG/经验卡 → 归纳 → 写出卡片
+- **格式化**：将已有数据组织为教师可读格式
 
 ## 3. 三条路线
 
@@ -37,21 +50,33 @@
 **流程**：
 ```
 load slot 经验卡(仅相关科目, 仅相关slot)
-  → 本地 Qwen 渲染为固定格式表格
+  → 渲染为 slot_cards
     → 教师选择模式/知识点
       → Python 生成 YAML
 ```
 
-**LLM 参与**：api_vllm (Qwen3.6-27B-FP8) 做渲染归纳（无推理）
+**LLM 参与**：api_vllm 做渲染归纳（无推理）
 **数据加载**：仅加载 paper_request 指定的科目 + slot 范围
 
-**渲染格式示例**（每个slot一张卡片）：
-```
-## Q12（选择题 · 2分）
-推荐模式: 计算型——公式应用与单位换算 (53.8%)
-备选模式: 概念辨析型 (23.1%), 组合判断型 (23.1%)
-适用知识点: CPU执行时间公式, 单位换算, 性能公式
-教师操作: [确认推荐] [改选模式] [排除知识点]
+**slot_card 输出格式**（每个slot一张卡片）：
+```yaml
+slot_card:
+  slot_id: Q12
+  type: single_choice
+  score: 2
+  recommended_mode: 计算型——公式应用与单位换算
+  recommended_frequency: 53.8%
+  recommended_reason: 该模式在Q12题位出现频率最高，适合考察计算能力
+  alternatives:
+    - mode: 概念辨析型——核心定义与本质区分
+      frequency: 23.1%
+    - mode: 组合判断型——多维度特征匹配
+      frequency: 23.1%
+  applicable_knowledge:
+    - CPU执行时间公式
+    - 单位换算
+    - 性能公式
+  teacher_actions: [confirm | change_mode | exclude_knowledge | remove]
 ```
 
 ### 路线2：单知识点（给定知识点如"二叉树"）
@@ -72,24 +97,29 @@ load slot 经验卡(仅相关科目, 仅相关slot)
 - 结果归纳：api_vllm（分类任务）
 - 或全部用一个 api_vllm 调用完成
 
-**归纳输出格式**：
-```
-## AVL树旋转（LR型和RL型判断）
-相关题目: 23题
-
-模式A: 旋转判断型 (12题)
-  考察: 给定插入序列判断失衡类型和旋转方向
-  典型题: 2018年408第5题...
-  
-模式B: 平衡因子计算型 (7题)
-  考察: 计算各节点平衡因子，判断是否失衡
-  典型题: ...
-
-模式C: 综合应用型 (4题)
-  考察: 构造AVL树全过程，含多次旋转
-  典型题: ...
-
-教师操作: [选择模式] [组合模式]
+**topic_mode_card 输出格式**：
+```yaml
+topic_mode_card:
+  id: avl_rotation_judgment
+  title: 旋转类型判断
+  knowledge: AVL树旋转操作
+  sources:
+    - kg_node: 数据结构 > 树与二叉树 > 平衡二叉树 > 旋转操作
+    - question_bank_matches: 12
+    - experience_references: 3
+  modes:
+    - name: 旋转类型判断型
+      count: 7
+      description: 给定插入序列或局部结构，判断 LL/LR/RL/RR 旋转类型
+      suitable_types: [single_choice, comprehensive]
+      difficulty: medium
+      examples: [2018年408第5题, 2020年408第4题]
+    - name: 平衡因子计算型
+      count: 3
+      description: 计算各节点平衡因子，判断是否失衡
+      suitable_types: [single_choice]
+      difficulty: easy
+  teacher_actions: [select_mode | combine_modes | change_knowledge]
 ```
 
 ### 路线3：自由组卷（唯一需要深度思考）
