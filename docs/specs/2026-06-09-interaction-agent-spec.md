@@ -1,8 +1,9 @@
 # 交互智能体 Spec：信息收集 + 需求交接 + 设计分离
 
 > 日期: 2026-06-09
-> 状态: 需求分析
+> 状态: Phase 1 已实现（commit 806cf84）
 > 前置: compose 三路线已实现（可复用为工具层）
+> 实现: interact agent + knowledge_index + grep_search_tool + scheduler 集成
 
 ## 1. 核心问题
 
@@ -90,7 +91,8 @@
 
 | 函数 | 来源 | 用途 |
 |------|------|------|
-| `grep_question_bank(keywords)` | topic_search.py | 加权 grep 搜索题库 |
+| `search_questions(keywords)` | **knowledge_index.py** | 结构化标签索引搜索（已替代 grep） |
+| `grep_question_bank(keywords)` | topic_search.py | 薄包装 → 委托 knowledge_index |
 | `load_kg_for_subjects(subjects)` | compose_runner.py | 按需加载 KG |
 | `load_experience_for_slots(slot_ids)` | compose_runner.py | 按需加载经验卡 |
 | `extract_slot_recommendation(card)` | compose_runner.py | 从经验卡提取推荐 |
@@ -105,7 +107,9 @@
 | 模块 | 行数 | 保留原因 |
 |------|------|---------|
 | agent_loader.py | 281 | agent MD + skill MD 加载机制 |
-| scheduler.py | 1705 | 工具注册 + agent 调度 + 流式执行 |
+| scheduler.py | ~1800 | 工具注册 + agent 调度 + 流式执行 + 多轮对话 |
+| knowledge_index.py | ~286 | 结构化标签反向索引（2058 文件，1772 标签段） |
+| grep_search_tool.py | ~92 | 搜索题库工具（OpenAI tool schema 封装） |
 | doc_pipeline/orchestrator.py | 658 | 5层出题流水线 |
 | session_manager.py | 405 | FSM 会话管理 |
 | knowledge_retriever.py | 369 | 纯 Python 知识检索 |
@@ -133,47 +137,40 @@
 
 ## 4. 智能体设计
 
-### 4.1 交互智能体 agent MD
+### 4.1 交互智能体 agent MD（已实现）
 
 ```yaml
 ---
 name: interact
-phase: 0
-description: "教师交互智能体 — 收集需求、检索信息、呈现选项"
+phase: 0.5
+description: "教师交互智能体 — 收集需求、检索信息、呈现选项、教师标注后生成交接文档"
+output_file: interact_response.md
 required_tools:
   - read_file
   - write_file
   - grep_search
   - exec_python
+required_sections:
+  - interact_status
+  - scenario
+  - teacher_annotations
+status_values:
+  - collecting
+  - reviewing
+  - confirmed
 behavior: artifact_writer
 skills:
   - interact_core
 ---
 ```
 
-#### 最小约束的 agent MD body
+#### agent MD body（已实现，见 `agents/interact.md`）
 
-```markdown
-# 教师交互智能体
-
-## 身份
-你是教师的组卷助手。你通过对话收集教师的出题需求，
-利用工具检索系统中的知识点、题库和经验数据，
-将信息整理成教师可审阅、可编辑的文档。
-
-## 工作方式
-1. 读取教师消息，理解意图
-2. 根据需要调用工具检索信息
-3. 将信息整理成教师可选择的格式
-4. 等待教师确认或修改
-5. 生成信息收集文档
-
-## 禁止事项
-- 不生成正式蓝图（outline.md 含 CONTRACT）
-- 不生成 design_card
-- 不替教师做最终决策
-- 不写题目、不设计选项
-```
+核心约束：
+- 3 状态 FSM：collecting → reviewing → confirmed（LLM 自行判断转换）
+- output_policy：collecting/reviewing 阶段禁止写入交接 yaml，仅 confirmed 阶段输出恰好一个交接文档
+- 暂停点：生成草案后立即停止等待教师标注
+- interact_status.yaml 跟踪会话状态
 
 ### 4.2 interact_core skill MD（核心流程知识）
 
@@ -304,50 +301,67 @@ LLM 根据对话上下文自行决定当前处于什么状态。
 收到教师确认消息后继续。
 ```
 
-## 5. 工具注册
+## 5. 工具注册（已实现）
 
 ### 5.1 复用现有工具系统
 
-`doc_pipeline` 的 `scheduler.py` 已有工具注册机制：
+`doc_pipeline` 的 `scheduler.py` 已有工具注册机制。interact 智能体工具通过 agent MD frontmatter 的 `required_tools` 声明，由 `run_conversation_turn()` 动态注册：
 
 ```python
-# 现有工具
-ROLE_REQUIRED_TOOLS = {
-    "question_sc": ["write_file", "read_file", "exec_python"],
-    "review": ["write_file", "read_file"],
-    # ...
-}
+# interact agent MD frontmatter 声明
+required_tools: [read_file, write_file, grep_search, exec_python]
 
-# 新增交互智能体工具
-ROLE_REQUIRED_TOOLS["interact"] = [
-    "read_file",      # 读取 KG、经验卡、题目
-    "write_file",     # 写信息收集文档
-    "grep_search",    # 搜索题库
-    "exec_python",    # 执行数据处理
-]
+# run_conversation_turn() 中动态注册
+registry = ToolRegistry()
+registry.register(WriteFileTool(workspace=ws))
+registry.register(ReadFileTool(workspace=ws))
+if "exec_python" in required_tools:
+    registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
+if "grep_search" in required_tools:
+    registry.register(GrepSearchTool())
 ```
 
-### 5.2 grep_search 工具
+### 5.2 grep_search 工具（已实现 → `grep_search_tool.py`）
 
-将 `topic_search.py:grep_question_bank()` 注册为工具：
+底层使用 `knowledge_index.py` 的结构化标签索引，不再做全文本 grep：
 
 ```python
-class GrepSearchTool:
-    """搜索题库工具 — 供交互智能体使用"""
+class GrepSearchTool(Tool):
+    """搜索题库工具 — 基于结构化知识点标签索引"""
 
     async def execute(self, params: dict) -> dict:
-        keywords = params.get("keywords", [])
+        query = params.get("query", "")
         max_results = params.get("max_results", 20)
-        hits = grep_question_bank(keywords, max_results=max_results)
+        subject = params.get("subject")
+        hits = search_questions(query, max_results=max_results, subject=subject)
         return {
             "ok": True,
             "count": len(hits),
             "results": [
-                {"file": h.file_name, "score": h.score, "snippet": h.snippet[:200]}
+                {"file": h.file_name, "score": round(h.score, 1),
+                 "snippet": h.snippet[:200], "matched_tags": h.matched_tags}
                 for h in hits
             ]
         }
 ```
+
+### 5.3 knowledge_index 模块（新增 → `compose/knowledge_index.py`）
+
+替代全文本 grep 的结构化标签反向索引：
+
+- 预解析 2058 个题目经验文件的元数据（知识点、科目、题型、年份）
+- 按知识点标签段建立反向索引（1772 个标签段）
+- 评分策略：精确匹配(+10) > 子串匹配(+5) > 标签段匹配(+3) > 文件名(+2)
+- 单例模式，`data_dir` 变更时自动重建
+
+### 5.4 scheduler 新增（已实现）
+
+| 新增 | 位置 | 说明 |
+|------|------|------|
+| `InteractSession` | scheduler.py | 多轮对话会话跟踪 |
+| `run_conversation_turn()` | scheduler.py | 单轮对话执行（session 管理 + LLM 调用 + 工具执行） |
+| `_trim_context()` | scheduler.py | 上下文压缩（替代已删除的 commit-only 模式） |
+| `GrepSearchTool` 注册 | scheduler.py | interact 角色工具注册 |
 
 ## 6. 交互界面设计
 
@@ -495,10 +509,17 @@ Python extract_from_marked_doc() 从编辑后的 md 抽取
 
 ## 9. 待验证的假设
 
-1. **GLM-5.1 在 scheduler 工具循环中的可靠性**：对话中证明了能力，但需要在 scheduler 的流式执行环境中测试
-2. **上下文窗口管理**：智能体多轮对话会积累上下文，如何控制在合理范围
+1. ~~**GLM-5.1 在 scheduler 工具循环中的可靠性**~~：对话中证明了能力，但需要在 scheduler 的流式执行环境中测试
+2. **上下文窗口管理**：已实现 `_trim_context()` 压缩历史，需在真实多轮对话中验证效果
 3. **错误恢复**：智能体调错工具或生成错误信息时，如何恢复
 4. **md 标记规范的可解析性**：[✓]/[✗] 标记在教师编辑后是否仍然可靠解析
+
+### Phase 1 验证结果
+
+- knowledge_index 索引 2058 文件，1772 标签段，搜索精度高于全文本 grep
+- scheduler `run_conversation_turn()` 集成完成，工具注册和执行链路通过单测
+- commit-only 模式已移除，替换为更温和的上下文修剪
+- 366 测试通过，0 失败
 
 ## 10. 与现有模块的兼容
 
@@ -506,10 +527,35 @@ Python extract_from_marked_doc() 从编辑后的 md 抽取
 - `interact/intent_router.py` — 合并到 skill（智能体自己判断意图）
 - `interact/session_manager.py` — 简化为 3 状态
 - `interact/blueprint_synthesizer.py` — 保留（数据注入逻辑有价值）
-- `interact/knowledge_retriever.py` — 保留（纯 Python 检索）
-- `compose/topic_search.py` — Python 函数保留为工具，prompt 迁移到 skill
+- `interact/knowledge_retriever.py` — 路径已更新（`data/kg/`、`data/config/`）
+- `compose/topic_search.py` — `grep_question_bank()` 已改为委托 `knowledge_index.search_questions()`
+- `compose/knowledge_index.py` — 新增，结构化标签反向索引
 - `compose/free_compose.py` — Python 函数保留为工具，prompt 迁移到 skill
-- `compose/compose_runner.py` — 保留机械后处理，删除路线分发
+- `compose/compose_runner.py` — 路径已更新，保留机械后处理
+
+### 数据目录重组（已完成）
+
+```
+data/
+├── kg/                          # 知识图谱（从 data/ 根目录迁入）
+│   ├── computer_organization.md
+│   ├── data_structure.md
+│   ├── operating_system_knowledge.md
+│   ├── computer_network.md
+│   └── dagang.md
+├── config/                      # 配置文件（从 data/ 根目录迁入）
+│   ├── slot_templates.json
+│   ├── slot_templates_all.json
+│   └── type_difficulty_guides.json
+├── statistics/                  # 统计文件（从 data/ 根目录迁入）
+│   ├── per_question_k_ratings.json
+│   ├── slot_observations.json
+│   ├── slot_statistics.json
+│   ├── tag_normalization_map.json
+│   └── knowledge_registry.json
+├── question_experiences/        # 2058 个题目经验文件（80+ 已修复）
+└── structured_questions/        # 结构化题目 JSON（修复数据源）
+```
 
 ## 11. 与 Codex 讨论的对照
 

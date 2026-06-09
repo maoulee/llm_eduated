@@ -9,7 +9,7 @@
 ## 1. 核心原则
 
 1. **KG 全量加载** — 4 个 KG 文件共 100KB，按科目加载进上下文，无需检索工具
-2. **题库多字段加权匹配** — 2058 个真题经验文件，知识点(+5) + 标题(+3) + 正文(+1)
+2. **题库结构化标签索引** — 2058 个真题经验文件，预解析知识点元数据，标签反向索引精确匹配（已替代加权 grep）
 3. **doc_pipeline 零改动，compose_runner 最小适配** — intake 只负责生成输入，下游出题链路不变
 4. **对话即状态** — 复用对话上下文管理多轮交互，不造新状态机
 5. **无效需求不进下游** — 只有通过 route_gate 的结构化需求才允许进入下游团队
@@ -20,19 +20,19 @@
 ```
 教师自然语言
   ↓
-intake_agent (对话式，加载 KG + grep 题库)
+intake_agent (对话式，加载 KG + 标签索引搜索题库)
   │
   ├─ 识别意图: 组卷 / 单题 / 找题 / 练习集
   │
   ├─ 加载对应科目 KG 到上下文
-  │   data/computer_organization.md  (~27KB)
-  │   data/data_structure.md         (~28KB)
-  │   data/operating_system_knowledge.md (~27KB)
-  │   data/computer_network.md       (~20KB)
+  │   data/kg/computer_organization.md  (~27KB)
+  │   data/kg/data_structure.md         (~28KB)
+  │   data/kg/operating_system_knowledge.md (~27KB)
+  │   data/kg/computer_network.md       (~20KB)
   │
   ├─ 展示考点候选，教师选择
   │
-  ├─ grep 真题经验库匹配已有题 (data/question_experiences/)
+  ├─ knowledge_index 标签索引搜索题库 (data/question_experiences/)
   │
   ├─ route_gate 检查 ──────────────────────┐
   │   信息完整?  → 生成结构化输出            │
@@ -172,40 +172,33 @@ kg_node_classification:
 
 硬规则: KG 兄弟/邻居节点不得直接写入 focus_points。只有用户明确选择后才能升级为 confirmed。
 
-### 5.6 题库检索策略
+### 5.6 题库检索策略（已实现 → `compose/knowledge_index.py`）
 
-不构建向量检索，用多字段加权匹配：
+不构建向量检索，使用结构化标签反向索引（预解析元数据，替代全文本 grep）：
 
 ```python
-# 伪代码：多字段加权 grep 题库
-FIELD_WEIGHTS = {
-    "knowledge": 5,   # **知识点** 行
-    "title": 3,       # 标题行
-    "body": 1,        # 正文
-}
+# 已实现：compose/knowledge_index.py
+class KnowledgeIndex:
+    """预构建的知识点反向索引：tag_segment → [file_names]"""
 
-def search_questions(keywords: list[str], max_results: int = 20) -> list[tuple[str, int]]:
-    """在 data/question_experiences/ 中搜索匹配知识点的真题，返回 (path, score)"""
-    results = []
-    for fpath in glob("data/question_experiences/*.md"):
-        content = fpath.read_text()
-        score = 0
-        for kw in keywords:
-            knowledge_line = extract_field(content, "知识点")  # +5
-            title_line = extract_title(content)                 # +3
-            if kw in knowledge_line: score += 5
-            if kw in title_line: score += 3
-            if kw in content: score += 1
-        if score > 0:
-            results.append((fpath, score))
-    results.sort(key=lambda x: -x[1])
-    return results[:max_results]
+    def search(self, query, max_results=30, subject=None) -> list[SearchHit]:
+        # 评分策略：
+        # 精确匹配知识点: +10
+        # 子串匹配知识点: +5
+        # 匹配标签叶节点: +5
+        # 匹配标签段:     +3
+        # 匹配文件名:     +2
+        ...
+
+# 使用方式
+from compose.knowledge_index import search_questions
+hits = search_questions(["AVL树", "旋转"], max_results=20)
 ```
 
 实测：
-- "Cache" → 162 个文件
-- "KMP" → 5 个文件
-- "浮点数" → grep 可达
+- 2058 文件已索引，1772 个标签段
+- 精确匹配知识点比全文本 grep 更准确（避免正文噪音）
+- 支持按科目过滤
 
 注: 同义词问题 (Cache地址映射/Cache字段划分/主存块映射) 第一版可接受，
 后续可加同义词映射表补充，不需要上向量检索。

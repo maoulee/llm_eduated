@@ -1,8 +1,15 @@
 # Compose 重构设计：三条路线 + 按需加载 + 模型分层路由
 
 > 日期: 2026-06-09
-> 状态: 设计中
+> 状态: 设计中（Phase 1 部分已实现）
 > 前置: intake layer Phase I0 已完成
+
+> **实现注记 (commit 806cf84)**:
+> - `grep_question_bank()` 已改为委托 `compose/knowledge_index.py` 的结构化标签索引
+> - 底层不再做全文本 grep，而是预解析元数据（知识点、科目、题型）构建反向索引
+> - 新增 `grep_search_tool.py` 将搜索注册为 OpenAI tool
+> - 新增 `interact` agent + `interact_core` skill（本 spec 的 Phase 1 实现）
+> - 数据目录重组：KG → `data/kg/`，配置 → `data/config/`，统计 → `data/statistics/`
 
 ## 1. 核心发现
 
