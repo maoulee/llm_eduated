@@ -470,12 +470,16 @@ async def run_compose(
     paper_request = load_paper_request(compose_dir)
     if paper_request:
         mapped = map_paper_request_to_params(paper_request)
-        # Merge mapped params, existing CLI params take precedence for overrides
-        if not user_requirements:
-            user_requirements = mapped.get("user_requirements", "")
-        # Model routing merges with existing
+        # Merge: paper_request enhances existing requirements, not just fallback
+        mapped_req = mapped.get("user_requirements", "")
+        if mapped_req:
+            if user_requirements:
+                user_requirements = f"{user_requirements}\n\n[intake 补充] {mapped_req}"
+            else:
+                user_requirements = mapped_req
+        # Model routing: mapped is base, explicit CLI params take precedence
         if mapped.get("model_routing"):
-            model_routing = {**(model_routing or {}), **mapped["model_routing"]}
+            model_routing = {**mapped["model_routing"], **(model_routing or {})}
         print(f"  [intake] Merged paper_request params: {len(user_requirements)} chars requirements")
 
     templates = _filter_templates(slot_templates, slot_ids)
