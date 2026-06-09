@@ -14,6 +14,7 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
+from hashlib import md5
 from pathlib import Path
 from typing import Any
 
@@ -55,6 +56,56 @@ class InteractSession:
     scenario: str = "unknown"  # A_408_exp | B_knowledge_point | C_free_compose
     files_written: list[str] = field(default_factory=list)
     created_at: float = field(default_factory=time.time)
+    # Read dedup: path → content hash. Skip re-reading unchanged files.
+    read_cache: dict[str, str] = field(default_factory=dict)
+
+
+# KG attributes to strip (noise, not useful for question generation)
+_KG_NOISE_ATTRIBUTES = {"发展阶段", "发展阶段：", "规律", "语言层次"}
+
+# Subject keyword → KG file mapping
+_SUBJECT_KG_MAP = {
+    "数据结构": "data/kg/data_structure.md",
+    "组成原理": "data/kg/computer_organization.md",
+    "计算机组成原理": "data/kg/computer_organization.md",
+    "操作系统": "data/kg/operating_system_knowledge.md",
+    "计算机网络": "data/kg/computer_network.md",
+}
+
+
+def _load_stripped_kg(subjects: list[str], max_chars: int = 15000) -> str:
+    """Load KG files for given subjects, stripping noise attributes.
+
+    Returns concatenated KG content, limited to max_chars total.
+    """
+    parts: list[str] = []
+    total = 0
+    for subj in subjects:
+        kg_path = _SUBJECT_KG_MAP.get(subj)
+        if not kg_path:
+            continue
+        p = Path(kg_path)
+        if not p.exists():
+            continue
+        raw = p.read_text(encoding="utf-8")
+        # Strip lines with noise attributes
+        lines = []
+        for line in raw.split("\n"):
+            stripped = line.strip()
+            if any(attr in stripped for attr in _KG_NOISE_ATTRIBUTES):
+                continue
+            # Also strip parent lines whose only child was a noise attr
+            if stripped.startswith("- ") and stripped.endswith(":"):
+                continue
+            lines.append(line)
+        cleaned = "\n".join(lines)
+        if total + len(cleaned) > max_chars:
+            cleaned = cleaned[: max_chars - total]
+        parts.append(f"### {subj} 知识点图谱\n{cleaned}")
+        total += len(cleaned)
+        if total >= max_chars:
+            break
+    return "\n\n".join(parts)
 
 
 # Roles that must write a secondary file in addition to the primary expected file.
@@ -974,6 +1025,18 @@ class DocScheduler:
 
         # Build messages from session history
         system_prompt = AGENT_PROMPTS.get(role, "")
+
+        # Inject KG context for interact role (on first turn only)
+        if not session.messages and role == "interact":
+            # Detect subjects from teacher message
+            subjects = [s for s in _SUBJECT_KG_MAP if s in teacher_message]
+            kg_context = _load_stripped_kg(subjects) if subjects else ""
+            if kg_context:
+                system_prompt += (
+                    f"\n\n## 已加载的知识点图谱（只读参考）\n{kg_context}\n\n"
+                    "注意：以上 KG 已加载，无需再 read_file 读取 KG 文件。"
+                )
+
         if not session.messages:
             session.messages = [
                 {"role": "system", "content": system_prompt},
@@ -1078,8 +1141,29 @@ class DocScheduler:
                 except json.JSONDecodeError:
                     fn_args = {}
 
-                if fn_name in available_names:
+                # Read dedup: skip re-reading unchanged files
+                if fn_name == "read_file":
+                    read_path = fn_args.get("path", "")
                     result_str = await executor.execute(fn_name, fn_args)
+                    content_hash = md5(result_str.encode()).hexdigest()[:12]
+                    if read_path in session.read_cache:
+                        if session.read_cache[read_path] == content_hash:
+                            # File unchanged — return compact notice instead
+                            result_str = json.dumps(
+                                {"ok": True, "path": read_path,
+                                 "notice": "文件未修改，内容已在历史上下文中，无需重复读取。"},
+                                ensure_ascii=False,
+                            )
+                        else:
+                            session.read_cache[read_path] = content_hash
+                    else:
+                        session.read_cache[read_path] = content_hash
+                elif fn_name in available_names:
+                    result_str = await executor.execute(fn_name, fn_args)
+                    # Invalidate read cache for files written/edited
+                    if fn_name in ("write_file", "edit_file"):
+                        written_path = fn_args.get("path", "")
+                        session.read_cache.pop(written_path, None)
                 else:
                     result_str = json.dumps(
                         {"ok": False, "error": f"tool '{fn_name}' not available"},
