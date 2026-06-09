@@ -234,8 +234,12 @@ async def _compose_local(gateway, templates, user_requirements, exp_dir="data/sl
 
     t0 = time.monotonic()
     try:
-        result = await gateway.generate_text(messages, max_tokens=8192)
-        raw = result.content or ""
+        # Use stream_chat to avoid timeout on long compose responses (GLM thinking mode)
+        stream_result = await gateway.stream_chat(messages, max_tokens=30000)
+        raw = stream_result.get("content", "")
+        if not raw:
+            # Fallback: reasoning might contain the actual answer
+            raw = stream_result.get("reasoning_content", "")
     except Exception as e:
         print(f"  ERROR: Local compose failed: {e}")
         return "", {}

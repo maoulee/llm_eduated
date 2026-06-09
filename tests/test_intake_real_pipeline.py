@@ -24,7 +24,7 @@ from core_new.provider_router import set_routing_profile
 
 # ── Test 1: paper_request → compose_runner → outline ──────────────
 
-async def test_paper_request_through_compose():
+async def _test_paper_request_through_compose():
     """Feed T1 paper_request into real compose_runner, generate outline."""
     print("=" * 70)
     print("TEST 1: T1 paper_request → compose_runner → outline")
@@ -127,6 +127,11 @@ async def test_paper_request_through_compose():
         import traceback
         traceback.print_exc()
         return {"test": "T1_compose", "passed": False, "elapsed": elapsed, "error": str(e)}
+
+
+def test_paper_request_through_compose():
+    result = asyncio.run(_test_paper_request_through_compose())
+    assert result["passed"], f"compose failed: {result.get('error', 'unknown')}"
 
 
 # ── Test 2: slot_blueprint → adapter → BlueprintMap ────────────────
