@@ -201,7 +201,7 @@ def _extract_knowledge_graph(filename: str = "computer_organization.md") -> str:
     """
     import re as _re
 
-    kg_path = Path("data") / filename
+    kg_path = Path("data/kg") / filename
     if not kg_path.exists():
         return ""
 

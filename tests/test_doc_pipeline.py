@@ -266,6 +266,7 @@ class TestAgentPrompts:
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
+            "interact", "human_intake",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -274,6 +275,7 @@ class TestAgentPrompts:
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
+            "interact", "human_intake",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -462,8 +464,8 @@ class TestDocSchedulerToolProtocol:
         assert result == "## status\ndraft"
         assert (tmp_path / "S4" / "outline.md").exists()
 
-    def test_normal_workflow_does_not_trigger_commit_only(self, tmp_path):
-        """A normal read→write workflow should NOT trigger commit-only."""
+    def test_normal_workflow_keeps_full_history(self, tmp_path):
+        """A normal read→write workflow keeps full message history."""
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
         calls = []
         responses = [
@@ -494,43 +496,27 @@ class TestDocSchedulerToolProtocol:
         tool_names = [t["function"]["name"] for t in second_call["tools"]]
         assert "write_file" in tool_names
         assert "read_file" in tool_names
-        # No exec_file — question_comp does not verify
         assert "exec_file" not in tool_names
-        # No commit-only — messages should be normal history, not rebuilt context.
+        # Normal history preserved — 1 system prompt
         assert len([m for m in second_call["messages"] if m["role"] == "system"]) == 1
 
-    def test_no_file_progress_triggers_commit_only(self, tmp_path):
-        """4+ rounds with zero file writes should trigger commit-only."""
+    def test_context_trim_after_many_no_progress_rounds(self, tmp_path):
+        """Many rounds with zero file writes should trigger context trimming."""
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
         calls = []
-        # 4 rounds of only read_file (no file writes), then commit-only write.
-        responses = [
-            {
+        # 8 rounds of only read_file (no file writes), then a write.
+        responses = []
+        for i in range(8):
+            responses.append({
                 "content": "",
                 "reasoning_content": "",
-                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_1")],
-            },
-            {
-                "content": "",
-                "reasoning_content": "",
-                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_2")],
-            },
-            {
-                "content": "",
-                "reasoning_content": "",
-                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_3")],
-            },
-            {
-                "content": "",
-                "reasoning_content": "",
-                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, "call_4")],
-            },
-            {
-                "content": "",
-                "reasoning_content": "",
-                "tool_calls": [_write_file_call("question.md", "## status\ndraft\n\n## 题干\nT", "call_5")],
-            },
-        ]
+                "tool_calls": [_tool_call("read_file", {"path": "assembled.md"}, f"call_{i}")],
+            })
+        responses.append({
+            "content": "",
+            "reasoning_content": "",
+            "tool_calls": [_write_file_call("question.md", "## status\ndraft\n\n## 题干\nT", "call_final")],
+        })
 
         async def fake_stream(provider, messages, **kwargs):
             calls.append({"messages": list(messages), **kwargs})
@@ -541,15 +527,11 @@ class TestDocSchedulerToolProtocol:
         result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S6"))
 
         assert result.startswith("## status")
-        # The 5th call (index 4) should be in commit-only mode — only write_file.
-        fifth_call = calls[4]
-        assert [t["function"]["name"] for t in fifth_call["tools"]] == ["write_file"]
-        assert fifth_call["tool_choice"] == {
-            "type": "function",
-            "function": {"name": "write_file"},
-        }
-        # Commit-only rebuilds messages: system + user (task) + user (recovery prompt).
-        assert [m["role"] for m in fifth_call["messages"]] == ["system", "user", "user"]
+        # The final call should have trimmed context — system + 1 compressed user message
+        final_call = calls[-1]
+        assert final_call["messages"][0]["role"] == "system"
+        # Trimmed history: system + compressed summary (fewer messages than raw 8 rounds)
+        assert len(final_call["messages"]) < 20
 
     def test_final_review_secondary_output_uses_write_file_only(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -1197,6 +1179,7 @@ class TestAgentLoader:
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
+            "interact", "human_intake",
         }
         assert set(specs.keys()) == expected
 
@@ -1204,7 +1187,7 @@ class TestAgentLoader:
         for name, spec in load_agents().items():
             assert isinstance(spec, AgentSpec)
             assert spec.name == name
-            assert spec.output_file.endswith((".md", ".py"))
+            assert spec.output_file.endswith((".md", ".py", ".yaml"))
             assert len(spec.prompt) > 0
 
     def test_prompt_includes_write_file_suffix(self):
@@ -1228,6 +1211,7 @@ class TestAgentLoader:
             "outline", "question_design", "question_sc", "question_comp",
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
+            "interact", "human_intake",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles

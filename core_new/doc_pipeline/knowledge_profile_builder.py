@@ -44,8 +44,8 @@ def _pct(counter: Counter, total: int) -> dict:
 
 
 def build_profiles(
-    ratings_path: str = "data/per_question_k_ratings.json",
-    observations_path: str = "data/slot_observations.json",
+    ratings_path: str = "data/statistics/per_question_k_ratings.json",
+    observations_path: str = "data/statistics/slot_observations.json",
     output_dir: str = "data/knowledge_profiles",
 ) -> dict:
     """Build knowledge domain profiles from ratings and observations.

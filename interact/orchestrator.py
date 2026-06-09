@@ -255,7 +255,7 @@ class InteractiveOrchestrator:
     @staticmethod
     def _load_compose_assets() -> tuple[dict, dict]:
         """Load slot templates and experience cards from disk."""
-        tpl_path = "data/slot_templates.json"
+        tpl_path = "data/config/slot_templates.json"
         templates = {}
         if os.path.exists(tpl_path):
             with open(tpl_path, encoding="utf-8") as f:

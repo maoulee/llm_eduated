@@ -37,7 +37,7 @@ class KnowledgeRetriever:
 
     def __init__(self, data_root: str = "data"):
         self._data_root = data_root
-        self._registry_path = os.path.join(data_root, "knowledge_registry.json")
+        self._registry_path = os.path.join(data_root, "statistics/knowledge_registry.json")
         self._experiences_dir = os.path.join(data_root, "question_experiences")
         self._profiles_dir = os.path.join(data_root, "knowledge_profiles")
 
@@ -49,10 +49,10 @@ class KnowledgeRetriever:
 
         # Knowledge graph files for fallback heading search
         self._kg_files: dict[str, str] = {
-            "CO": os.path.join(data_root, "computer_organization.md"),
-            "DS": os.path.join(data_root, "data_structure.md"),
-            "OS": os.path.join(data_root, "operating_system_knowledge.md"),
-            "CN": os.path.join(data_root, "computer_network.md"),
+            "CO": os.path.join(data_root, "kg/computer_organization.md"),
+            "DS": os.path.join(data_root, "kg/data_structure.md"),
+            "OS": os.path.join(data_root, "kg/operating_system_knowledge.md"),
+            "CN": os.path.join(data_root, "kg/computer_network.md"),
         }
 
     # ------------------------------------------------------------------

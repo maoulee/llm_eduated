@@ -59,7 +59,7 @@ SUBJECTS = {
 
 def _load_templates(slot_ids: list[str]) -> dict:
     """Load slot templates from JSON, filtered to given slot IDs."""
-    tpl_path = Path("data/slot_templates.json")
+    tpl_path = Path("data/config/slot_templates.json")
     if not tpl_path.exists():
         print(f"ERROR: {tpl_path} not found")
         return {}

@@ -20,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 EXP_DIR = Path("data/question_experiences")
-OUTPUT_TPL = Path("data/slot_templates_all.json")
+OUTPUT_TPL = Path("data/config/slot_templates_all.json")
 OUTPUT_EXP_DIR = Path("data/slot_experiences_all")
 
 # 408 standard slot → subject mapping

@@ -71,10 +71,10 @@ skills:
 
 | 科目 | 文件 | 大小 |
 |-----|------|-----|
-| 数据结构 | data/data_structure.md | ~28KB |
-| 计算机组成原理 | data/computer_organization.md | ~27KB |
-| 操作系统 | data/operating_system_knowledge.md | ~27KB |
-| 计算机网络 | data/computer_network.md | ~20KB |
+| 数据结构 | data/kg/data_structure.md | ~28KB |
+| 计算机组成原理 | data/kg/computer_organization.md | ~27KB |
+| 操作系统 | data/kg/operating_system_knowledge.md | ~27KB |
+| 计算机网络 | data/kg/computer_network.md | ~20KB |
 
 ### KG 使用边界
 

@@ -4,7 +4,7 @@ Phase 1: Per-question trajectory extraction (LLM batch)
   slot_observations.json (165 questions)
   → SLOT_SINGLE_EVAL_PROMPT per question
   → generate_text_batch via local vLLM
-  → Parse Markdown → data/per_question_k_ratings.json + data/question_experiences/*.md
+  → Parse Markdown → data/statistics/per_question_k_ratings.json + data/question_experiences/*.md
 
 Phase 2: Per-slot structural pattern synthesis (LLM batch)
   per_question trajectories grouped by slot_id
@@ -1068,7 +1068,7 @@ async def main():
     args = parser.parse_args()
 
     # Load observations
-    obs_path = "data/slot_observations.json"
+    obs_path = "data/statistics/slot_observations.json"
     if not os.path.exists(obs_path):
         print(f"Observations not found: {obs_path}")
         return
@@ -1096,12 +1096,12 @@ async def main():
     print("\n" + "=" * 60)
     print("Phase 1: Per-question K1-K5 evaluation")
     print("=" * 60)
-    resume_path = "data/per_question_k_ratings.json" if args.resume else None
+    resume_path = "data/statistics/per_question_k_ratings.json" if args.resume else None
     evals = await run_phase1(observations, gateway, concurrency=args.concurrency, resume_path=resume_path)
 
     if args.eval_only:
         # Save just the evaluations
-        with open("data/per_question_k_ratings.json", "w", encoding="utf-8") as f:
+        with open("data/statistics/per_question_k_ratings.json", "w", encoding="utf-8") as f:
             json.dump(evals, f, ensure_ascii=False, indent=2)
         print(f"\nSaved evaluations: {len(evals)} ratings")
         return

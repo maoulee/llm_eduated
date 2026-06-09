@@ -117,9 +117,10 @@ def grep_question_bank(
     data_dir: str = "data/question_experiences",
     max_results: int = 30,
 ) -> list[GrepHit]:
-    """Weighted grep search across question experience files.
+    """Knowledge-point-based search across question experience files.
 
-    Scoring: knowledge field match (+5), title/heading match (+3), body match (+1).
+    Uses structured tag index instead of full-text grep.
+    Delegates to knowledge_index.search_questions() and converts to GrepHit.
 
     Args:
         keywords: Search keywords from LLM
@@ -129,64 +130,21 @@ def grep_question_bank(
     Returns:
         List of GrepHit sorted by score descending
     """
-    exp_dir = Path(data_dir)
-    if not exp_dir.exists():
+    from .knowledge_index import search_questions
+
+    if not keywords:
         return []
 
-    hits: dict[str, GrepHit] = {}
-
-    for md_file in sorted(exp_dir.glob("*.md")):
-        try:
-            text = md_file.read_text(encoding="utf-8")
-        except Exception:
-            continue
-
-        score = 0.0
-        for kw in keywords:
-            pattern = re.compile(re.escape(kw), re.IGNORECASE)
-            # Knowledge field (## 基本信息 section, 知识点: line)
-            k_matches = len(pattern.findall(text))
-            if k_matches == 0:
-                continue
-
-            # Check if keyword appears in knowledge field
-            knowledge_match = re.search(
-                r"知识点[：:]\s*(.+)", text
-            )
-            if knowledge_match and pattern.search(knowledge_match.group(1)):
-                score += 5 * len(pattern.findall(knowledge_match.group(1)))
-
-            # Title/heading matches
-            headings = "\n".join(line for line in text.split("\n") if line.startswith("#"))
-            heading_hits = len(pattern.findall(headings))
-            score += 3 * heading_hits
-
-            # Body matches (capped)
-            body_hits = min(k_matches, 10)
-            score += 1 * body_hits
-
-        if score > 0:
-            # Extract snippet: first 500 chars after ## 题干原文 or start
-            snippet_start = 0
-            snippet_match = re.search(r"## 题干原文", text)
-            if snippet_match:
-                snippet_start = snippet_match.end()
-            snippet = text[snippet_start:snippet_start + 500].strip()
-
-            # Also extract examination mode if present
-            mode_match = re.search(r"## 考察模式\s*-\s*\*{2}模式\*{2}[：:]\s*(.+)", text)
-            if mode_match:
-                snippet += f"\n[考察模式: {mode_match.group(1).strip()}]"
-
-            hits[md_file.name] = GrepHit(
-                file_path=str(md_file),
-                file_name=md_file.name,
-                score=score,
-                snippet=snippet,
-            )
-
-    sorted_hits = sorted(hits.values(), key=lambda h: h.score, reverse=True)
-    return sorted_hits[:max_results]
+    hits = search_questions(keywords, max_results=max_results, data_dir=data_dir)
+    return [
+        GrepHit(
+            file_path=h.file_path,
+            file_name=h.file_name,
+            score=h.score,
+            snippet=h.snippet,
+        )
+        for h in hits
+    ]
 
 
 async def classify_by_modes(

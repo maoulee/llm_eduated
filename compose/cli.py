@@ -119,7 +119,7 @@ async def main():
             return
 
         # Load templates and experience cards for re-assembly
-        tpl_path = "data/slot_templates.json"
+        tpl_path = "data/config/slot_templates.json"
         if not os.path.exists(tpl_path):
             print(f"Templates not found: {tpl_path}")
             return
@@ -184,7 +184,7 @@ async def main():
             print(f"[Slots] Filtered to: {discovered_slot_ids}")
     slot_ids = discovered_slot_ids or args.slots
 
-    tpl_path = "data/slot_templates.json"
+    tpl_path = "data/config/slot_templates.json"
     if not os.path.exists(tpl_path):
         print(f"Templates not found: {tpl_path}")
         print("Run slot_extractor.py first.")

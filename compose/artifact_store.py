@@ -306,7 +306,7 @@ def _extract_knowledge_graph_section(target_family: str) -> str:
         return ""
 
     kg_filename = _KG_FILE_MAP.get(domain, "computer_organization.md")
-    kg_path = os.path.join("data", kg_filename)
+    kg_path = os.path.join("data/kg", kg_filename)
     if not os.path.exists(kg_path):
         return ""
 

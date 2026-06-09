@@ -52,7 +52,7 @@ async def test_cross_subject():
     ]
 
     # ── Load data ──
-    tpl_path = "data/slot_templates_all.json"
+    tpl_path = "data/config/slot_templates_all.json"
     with open(tpl_path, encoding="utf-8") as f:
         all_templates = json.load(f).get("templates", {})
 

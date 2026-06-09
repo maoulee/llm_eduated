@@ -44,7 +44,7 @@ async def test_full_compose():
     # ── Phase 0: Load inputs ──────────────────────────────────
     report.append("## Phase 0: 输入数据\n")
 
-    tpl_path = "data/slot_templates.json"
+    tpl_path = "data/config/slot_templates.json"
     if not os.path.exists(tpl_path):
         report.append(f"**错误**: {tpl_path} 不存在\n")
         _write(report)

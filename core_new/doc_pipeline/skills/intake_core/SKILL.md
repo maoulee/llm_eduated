@@ -39,19 +39,19 @@ adaptation      → slot_blueprint.yaml (改编约束)
 ```yaml
 kg_loading:
   data_structure:
-    file: data/data_structure.md
+    file: data/kg/data_structure.md
     size: 28KB
     load_when: 科目包含"数据结构"
   computer_organization:
-    file: data/computer_organization.md
+    file: data/kg/computer_organization.md
     size: 27KB
     load_when: 科目包含"组成原理"
   operating_system:
-    file: data/operating_system_knowledge.md
+    file: data/kg/operating_system_knowledge.md
     size: 27KB
     load_when: 科目包含"操作系统"
   computer_network:
-    file: data/computer_network.md
+    file: data/kg/computer_network.md
     size: 20KB
     load_when: 科目包含"计算机网络"
 ```

@@ -11,7 +11,7 @@ from collections import Counter, defaultdict
 
 # Paths
 CLEANED_JSONL = Path("/zhaoshu/llm_eduated/408_export/questions_cleaned.jsonl")
-TAG_MAP_PATH = Path("/zhaoshu/llm_eduated/data/tag_normalization_map.json")
+TAG_MAP_PATH = Path("/zhaoshu/llm_eduated/data/statistics/tag_normalization_map.json")
 OUTPUT_DIR = Path("/zhaoshu/llm_eduated/data/structured_questions")
 REAL_EXAM_PATH = Path("/zhaoshu/llm_eduated/data/structured_questions/real_exam_all.json")
 

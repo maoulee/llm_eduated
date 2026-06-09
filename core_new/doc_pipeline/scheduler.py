@@ -12,6 +12,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -37,9 +39,22 @@ from .edit_file_tool import EditFileTool
 from .exec_file_tool import ExecFileTool
 from .exec_python_tool import ExecPythonTool
 from .read_file_tool import ReadFileTool
+from .grep_search_tool import GrepSearchTool
 from .write_file_tool import WriteFileTool
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class InteractSession:
+    """Session state for interact agent conversations."""
+    session_id: str
+    role: str = "interact"
+    messages: list[dict] = field(default_factory=list)
+    status: str = "collecting"  # collecting | reviewing | confirmed
+    scenario: str = "unknown"  # A_408_exp | B_knowledge_point | C_free_compose
+    files_written: list[str] = field(default_factory=list)
+    created_at: float = field(default_factory=time.time)
 
 
 # Roles that must write a secondary file in addition to the primary expected file.
@@ -124,6 +139,7 @@ class DocScheduler:
         # so track every key we open and clean it when the pipeline finishes.
         self._webgpt_session_keys: set[str] = set()
         self._webgpt_call_counts: dict[str, int] = {}
+        self._interact_sessions: dict[str, InteractSession] = {}
 
     def _get_gateway_for_role(self, role: str) -> LLMGateway:
         """Return the unified gateway for all roles.
@@ -510,6 +526,8 @@ class DocScheduler:
             registry.register(EditFileTool(workspace=ws))
         if "read_file" in required_tools:
             registry.register(ReadFileTool(workspace=ws))
+        if "grep_search" in required_tools:
+            registry.register(GrepSearchTool())
 
         # 4. Convert to OpenAI tool schemas and build executor
         tool_list = [registry.get(name) for name in required_tools if registry.get(name) is not None]
@@ -529,17 +547,18 @@ class DocScheduler:
         final_text = ""
 
         # Model decides when to call tools. Boundary detection (streak counters)
-        # and commit-only mode handle stuck situations — no need to force tool
+        # and context trimming handle stuck situations — no need to force tool
         # calls upfront.  Qwen3's text-embedded tool calls are handled by
         # _extract_textual_tool_call and reasoning_content extraction fallbacks.
         forced_tool_choice = "auto"
+        context_trimmed = False
 
         # Progress tracking — distinguishes productive intermediate steps
         # from genuine stuck loops.
         #
         # no_file_streak: consecutive rounds with ZERO file writes (any file).
-        #   Resets whenever write_file or edit_file succeeds.  Only triggers
-        #   commit-only when the model keeps calling exec/read without ever
+        #   Resets whenever write_file or edit_file succeeds.  Triggers context
+        #   trimming when the model keeps calling exec/read without ever
         #   producing a file artifact — a genuine stuck signal.
         #
         # total_non_target_rounds: total rounds without writing the *expected*
@@ -549,8 +568,6 @@ class DocScheduler:
         total_non_target_rounds = 0
         no_output_streak = 0
         intermediate_text_count = 0
-        commit_only_mode = False
-        commit_only_entered_at = -1  # attempt index when commit-only started
 
         # Trace file for per-round diagnostics
         _trace_path = ws / "trace.jsonl"
@@ -562,40 +579,9 @@ class DocScheduler:
             with open(_trace_path, "a", encoding="utf-8") as _tf:
                 _tf.write(_json.dumps(event, ensure_ascii=False) + "\n")
 
-        _COMMIT_ONLY_BUDGET = 3  # max attempts after entering commit-only
-        _MAX_INTERMEDIATE_TEXT = 2  # max intermediate reasoning rounds before boundary
-
-        def enter_commit_only_mode(reason: str) -> None:
-            nonlocal openai_tools, forced_tool_choice
-            nonlocal messages, commit_only_mode, commit_only_entered_at
-            if commit_only_mode:
-                return
-            commit_only_entered_at = attempt
-            logger.warning(
-                "[%s] Agent '%s': entering commit-only mode for %s (%s)",
-                slot_id, role, expected_fn, reason,
-            )
-            commit_only_mode = True
-            openai_tools = write_only_tools
-            forced_tool_choice = forced_write_choice
-            messages = self._build_commit_only_messages(
-                system_prompt=system_prompt,
-                full_task=full_task,
-                history=messages,
-                workspace=ws,
-                expected_fn=expected_fn,
-                reason=reason,
-            )
+        _MAX_INTERMEDIATE_TEXT = 2  # max intermediate reasoning rounds before trimming
 
         for attempt in range(MAX_AGENT_ATTEMPTS):
-            # Cap attempts after entering commit-only to prevent infinite loops.
-            if commit_only_mode and attempt - commit_only_entered_at >= _COMMIT_ONLY_BUDGET:
-                logger.warning(
-                    "[%s] Agent '%s': commit-only budget exhausted after %d attempts",
-                    slot_id, role, _COMMIT_ONLY_BUDGET,
-                )
-                break
-
             try:
                 raw = await self._streaming_chat_call(
                     gateway, messages,
@@ -743,35 +729,25 @@ class DocScheduler:
                 # Intervention tier 1: no files written at all for 4+ rounds
                 # (model keeps calling exec/read without producing artifacts)
                 if no_file_streak >= 4:
-                    if not commit_only_mode:
-                        enter_commit_only_mode(
-                            f"no file progress: {no_file_streak} rounds without any file write"
+                    if not context_trimmed:
+                        logger.info(
+                            "[%s] %s: Trimming context (no_file_streak=%d)",
+                            slot_id, role, no_file_streak,
                         )
-                    else:
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"仍未写入 {expected_fn}。当前阶段只有 write_file 可用；"
-                                f"请调用 write_file(path=\"{expected_fn}\", content=\"完整最终内容\")。"
-                            ),
-                        })
+                        messages[:] = self._trim_context(messages, full_task)
+                        context_trimmed = True
                     continue
 
                 # Intervention tier 2: files being written but never the target
                 # (endless verification loop with intermediate .py files)
                 if total_non_target_rounds >= 7:
-                    if not commit_only_mode:
-                        enter_commit_only_mode(
-                            f"verification loop: {total_non_target_rounds} rounds without {expected_fn}"
+                    if not context_trimmed:
+                        logger.info(
+                            "[%s] %s: Trimming context (non_target=%d)",
+                            slot_id, role, total_non_target_rounds,
                         )
-                    else:
-                        messages.append({
-                            "role": "user",
-                            "content": (
-                                f"已执行 {total_non_target_rounds} 轮验证但未写入 {expected_fn}。"
-                                f"请调用 write_file(path=\"{expected_fn}\", content=\"完整最终内容\")。"
-                            ),
-                        })
+                        messages[:] = self._trim_context(messages, full_task)
+                        context_trimmed = True
                     continue
                 continue
 
@@ -810,12 +786,15 @@ class DocScheduler:
                     slot_id, role, attempt + 1, len(payload),
                     intermediate_text_count, _MAX_INTERMEDIATE_TEXT,
                 )
-                # Boundary: too many reasoning rounds — enter commit-only
+                # Boundary: too many reasoning rounds — trim context
                 if intermediate_text_count > _MAX_INTERMEDIATE_TEXT:
-                    if not commit_only_mode:
-                        enter_commit_only_mode(
-                            f"intermediate_text limit: {intermediate_text_count} reasoning rounds"
+                    if not context_trimmed:
+                        logger.info(
+                            "[%s] %s: Trimming context (intermediate=%d)",
+                            slot_id, role, intermediate_text_count,
                         )
+                        messages[:] = self._trim_context(messages, full_task)
+                        context_trimmed = True
                     continue
                 # Keep full reasoning text in context (incremental mode — no truncation)
                 messages.append({"role": "assistant", "content": payload})
@@ -842,11 +821,12 @@ class DocScheduler:
                     "[%s] Agent '%s' attempt %d content (first 500 chars): %s",
                     slot_id, role, attempt + 1, content[:500],
                 )
-            if not commit_only_mode and (total_non_target_rounds >= 3 or no_output_streak >= 2):
-                enter_commit_only_mode(
-                    f"unusable output: no_output_streak={no_output_streak}, "
-                    f"total_non_target_rounds={total_non_target_rounds}"
+            if not context_trimmed and (total_non_target_rounds >= 3 or no_output_streak >= 2):
+                logger.info(
+                    "[%s] %s: Trimming context (no_output=%d)", slot_id, role, no_output_streak,
                 )
+                messages[:] = self._trim_context(messages, full_task)
+                context_trimmed = True
                 continue
 
             retry_prompt = (
@@ -958,6 +938,166 @@ class DocScheduler:
             )
 
         return final_text
+
+    # ── Interact-mode conversation turn ────────────────────────────
+
+    async def run_conversation_turn(
+        self,
+        session_id: str,
+        teacher_message: str,
+        *,
+        role: str = "interact",
+        max_tokens: int | None = None,
+    ) -> dict[str, Any]:
+        """Execute a single interact-mode conversation turn.
+
+        Simpler than run_agent(): no commit-only recovery, no file-streak
+        tracking, no single-file success gate.  One LLM call per turn,
+        execute any tool calls, return a structured result dict.
+
+        Args:
+            session_id: Unique session identifier.
+            teacher_message: The teacher's message for this turn.
+            role: Agent role key (default "interact").
+            max_tokens: Override default max_tokens for this call.
+
+        Returns:
+            {"status": str, "response_text": str, "files_written": [...]}
+        """
+        # Retrieve or create session
+        if session_id not in self._interact_sessions:
+            self._interact_sessions[session_id] = InteractSession(
+                session_id=session_id,
+                role=role,
+            )
+        session = self._interact_sessions[session_id]
+
+        # Build messages from session history
+        system_prompt = AGENT_PROMPTS.get(role, "")
+        if not session.messages:
+            session.messages = [
+                {"role": "system", "content": system_prompt},
+            ]
+        session.messages.append({"role": "user", "content": teacher_message})
+
+        # Build tool registry for interact role
+        ws = self.workspace / session_id
+        ws.mkdir(parents=True, exist_ok=True)
+
+        registry = ToolRegistry()
+        registry.register(WriteFileTool(workspace=ws))
+        registry.register(ReadFileTool(workspace=ws))
+
+        required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
+        if "exec_python" in required_tools:
+            registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
+        if "edit_file" in required_tools:
+            registry.register(EditFileTool(workspace=ws))
+        if "grep_search" in required_tools:
+            registry.register(GrepSearchTool())
+
+        tool_list = [registry.get(name) for name in required_tools if registry.get(name) is not None]
+        executor = ToolExecutor(tool_list)
+        openai_tools = [t.to_openai_tool() for t in tool_list]
+
+        gateway = self._get_gateway_for_role(role)
+        effective_max_tokens = max_tokens or self.max_tokens
+        effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
+
+        response_text = ""
+        files_written: list[str] = []
+
+        try:
+            raw = await self._streaming_chat_call(
+                gateway, session.messages,
+                max_tokens=effective_max_tokens,
+                thinking_budget=effective_thinking_budget,
+                tools=openai_tools,
+                tool_choice="auto",
+            )
+        except Exception as exc:
+            logger.error(
+                "[%s] Interact turn failed: %s: %s",
+                session_id, type(exc).__name__, str(exc)[:300],
+            )
+            return {
+                "status": "error",
+                "response_text": f"LLM call failed: {type(exc).__name__}",
+                "files_written": [],
+            }
+
+        tool_calls = raw.get("tool_calls")
+        content = raw.get("content", "")
+
+        # Try extracting tool calls from reasoning_content if nothing visible
+        if not tool_calls and not content:
+            reasoning = raw.get("reasoning_content") or raw.get("reasoning") or ""
+            if reasoning:
+                extracted = self._extract_textual_tool_call(reasoning)
+                if extracted:
+                    tool_calls = extracted
+
+        # Execute tool calls if present
+        if tool_calls:
+            assistant_msg = {"role": "assistant", "content": content or None}
+            assistant_msg["tool_calls"] = tool_calls
+            session.messages.append(assistant_msg)
+
+            available_names = {t["function"]["name"] for t in openai_tools}
+            for tc in tool_calls:
+                fn_name = tc["function"]["name"]
+                fn_args_str = tc["function"]["arguments"]
+                try:
+                    fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
+                except json.JSONDecodeError:
+                    fn_args = {}
+
+                if fn_name in available_names:
+                    result_str = await executor.execute(fn_name, fn_args)
+                else:
+                    result_str = json.dumps(
+                        {"ok": False, "error": f"tool '{fn_name}' not available"},
+                        ensure_ascii=False,
+                    )
+                session.messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result_str,
+                })
+
+                # Track files written
+                try:
+                    parsed = json.loads(result_str)
+                except json.JSONDecodeError:
+                    parsed = {}
+                if parsed.get("ok") and fn_name in ("write_file", "edit_file"):
+                    written_path = parsed.get("path", "")
+                    if written_path:
+                        files_written.append(written_path)
+                        if written_path not in session.files_written:
+                            session.files_written.append(written_path)
+
+            # If model produced tool calls but also text, include the text
+            if content:
+                response_text = content
+            else:
+                response_text = f"执行了 {len(tool_calls)} 个工具调用"
+        else:
+            # Pure text response
+            response_text = content or ""
+            if content:
+                session.messages.append({"role": "assistant", "content": content})
+
+        # Trim context if it grows too large (keep system + last 20 messages)
+        if len(session.messages) > 30:
+            session.messages = [session.messages[0]] + session.messages[-20:]
+            logger.info("[%s] Interact context trimmed to 21 messages", session_id)
+
+        return {
+            "status": "ok",
+            "response_text": response_text,
+            "files_written": files_written,
+        }
 
     # ── WebGPT direct-output adapter ───────────────────────────────
 
@@ -1292,6 +1432,8 @@ class DocScheduler:
             registry.register(ExecPythonTool(timeout=PYTHON_EXEC_TIMEOUT))
         if "edit_file" in required_tools:
             registry.register(EditFileTool(workspace=ws))
+        if "grep_search" in required_tools:
+            registry.register(GrepSearchTool())
 
         # Always include read_file + write_file for hybrid modification support
         hybrid_tool_names = list(set(required_tools) | {"write_file", "read_file"})
@@ -1416,59 +1558,21 @@ class DocScheduler:
             finally:
                 self._webgpt_session_keys.discard(key)
 
-    # ── Commit-only recovery ─────────────────────────────────────────
+    # ── Context trimming ────────────────────────────────────────────
 
-    @staticmethod
-    def _build_commit_only_messages(
-        *,
-        system_prompt: str,
-        full_task: str,
-        history: list[dict[str, Any]],
-        workspace: Path,
-        expected_fn: str,
-        reason: str,
-    ) -> list[dict[str, str]]:
-        """Build a short, clean context for the final write_file turn.
-
-        Once an agent has spent several turns validating without writing the
-        target file, keeping the full assistant/tool history tends to amplify
-        malformed tool-call output.  This recovery prompt preserves the original
-        task and compact verification evidence, but removes prior assistant
-        tool-call messages from the next request.
-        """
-        override = (
-            "\n\n【提交阶段覆盖规则】验证/探索阶段已经结束。"
-            "现在只有 write_file 工具可用。禁止调用或书写 exec_file、edit_file、read_file、"
-            "exec_python、JSON工具调用正文或XML工具调用。"
-            f"必须一次调用 write_file(path=\"{expected_fn}\", content=\"完整最终内容\")。"
-            "不要输出正文说明。"
+    def _trim_context(self, messages: list[dict], full_task: str) -> list[dict]:
+        """Compress message history to save context window."""
+        if not messages:
+            return messages
+        trimmed = [messages[0]]  # Keep system prompt
+        summary = self._summarize_tool_history(messages, max_items=8)
+        compressed = (
+            f"[历史对话摘要]\n{summary}\n\n"
+            f"[原始任务]\n{full_task}\n\n"
+            f"请基于以上摘要继续完成任务，直接输出目标文件。"
         )
-        evidence_parts = []
-        tool_summary = DocScheduler._summarize_tool_history(history)
-        if tool_summary:
-            evidence_parts.append("## 已执行工具摘要\n" + tool_summary)
-        artifact_summary = DocScheduler._summarize_workspace_artifacts(workspace, expected_fn)
-        if artifact_summary:
-            evidence_parts.append("## 当前工作区已写文件摘要\n" + artifact_summary)
-
-        recovery_prompt = (
-            f"系统进入最终提交阶段。\n\n"
-            f"触发原因: {reason}\n\n"
-            f"目标文件: {expected_fn}\n\n"
-            "请基于原始任务和以下验证事实，直接提交最终文件。"
-            "不要再验证、不要重写验证脚本、不要请求额外工具。\n"
-        )
-        if evidence_parts:
-            recovery_prompt += "\n\n" + "\n\n".join(evidence_parts)
-        recovery_prompt += (
-            f"\n\n唯一允许动作: write_file(path=\"{expected_fn}\", content=\"完整最终内容\")"
-        )
-
-        return [
-            {"role": "system", "content": (system_prompt or "") + override},
-            {"role": "user", "content": full_task},
-            {"role": "user", "content": recovery_prompt},
-        ]
+        trimmed.append({"role": "user", "content": compressed})
+        return trimmed
 
     @staticmethod
     def _summarize_tool_history(history: list[dict[str, Any]], max_items: int = 8) -> str:
@@ -1559,7 +1663,7 @@ class DocScheduler:
         if not isinstance(parsed, list) or not parsed:
             return None
 
-        _ALLOWED = ("write_file", "exec_file", "edit_file", "read_file")
+        _ALLOWED = ("write_file", "exec_file", "edit_file", "read_file", "exec_python", "grep_search")
         tool_calls = []
         for item in parsed:
             name = item.get("name") or (item.get("function", {}) or {}).get("name")
