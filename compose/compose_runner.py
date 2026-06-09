@@ -52,15 +52,122 @@ _OUTLINE_SYSTEM_PROMPT = (
 )
 
 
+def get_model_for_task(task: str, model_routing: dict | None = None) -> str:
+    """从配置读取模型，不硬编码。
+
+    Args:
+        task: 任务类型（如 'interaction', 'free_compose', 'paper_composer'）
+        model_routing: 可选的模型路由字典（CLI 覆盖）
+
+    Returns:
+        模型名称（如 'api_vllm', 'glm5.1'）
+    """
+    # 如果 task 存在于 model_routing 中，直接返回
+    if model_routing and task in model_routing:
+        return model_routing[task]
+
+    # 从 pipeline.yaml 读取默认配置
+    import yaml
+    from pathlib import Path
+    # compose_runner.py 在 compose/ 目录下，需要向上两级到达项目根目录
+    config_path = Path(__file__).resolve().parent.parent / "config" / "pipeline.yaml"
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+        routing = raw.get("model_routing", {})
+        if task in routing:
+            return routing[task]
+        # task 不在 model_routing 中，使用 interaction 作为默认
+        return routing.get("interaction", "api_vllm")
+
+    # 最终 fallback
+    return "api_vllm"
+
+
+def load_kg_for_subjects(subjects: list[str]) -> str:
+    """Load knowledge graphs for specified subjects only.
+
+    Args:
+        subjects: List of subject names (e.g., ["计算机组成原理", "数据结构"])
+
+    Returns:
+        Markdown string with K-radar definitions + requested subject KGs.
+    """
+    from core_new.slot_prompts import K_RADAR_DEFINITIONS
+
+    parts: list[str] = []
+
+    # 1. K-radar definitions (always included, small and常驻)
+    parts.append("# 共享参考信息（所有题位公用）")
+    parts.append("")
+    parts.append(K_RADAR_DEFINITIONS.strip())
+    parts.append("")
+
+    # 2. Knowledge point graphs for specified subjects only
+    subject_files = {
+        "计算机组成原理": "computer_organization.md",
+        "数据结构": "data_structure.md",
+        "操作系统": "operating_system_knowledge.md",
+        "计算机网络": "computer_network.md",
+    }
+
+    for subject_name in subjects:
+        filename = subject_files.get(subject_name)
+        if filename:
+            kg = _extract_knowledge_graph(filename)
+            if kg:
+                kg = _translate_kg(kg)
+                parts.append(f"## {subject_name}知识点图谱")
+                parts.append("")
+                parts.append(f"> 以下是{subject_name}的完整知识点层级结构，供规划知识点覆盖时参考。")
+                parts.append("")
+                parts.append(kg)
+
+    return "\n".join(parts)
+
+
+def load_experience_for_slots(slot_ids: list[str], exp_dir: str = "data/slot_experiences") -> dict[str, str]:
+    """Load experience cards for specified slot IDs only.
+
+    Args:
+        slot_ids: List of slot IDs to load (e.g., ["Q41", "Q42"])
+        exp_dir: Directory containing experience markdown files
+
+    Returns:
+        Dict mapping slot_id -> experience content. Missing slots return empty string.
+    """
+    _exp_dir = Path(exp_dir)
+    experience_cards: dict[str, str] = {}
+
+    for sid in slot_ids:
+        exp_path = _exp_dir / f"{sid}_experience.md"
+        if exp_path.exists():
+            experience_cards[sid] = exp_path.read_text(encoding="utf-8")
+        else:
+            experience_cards[sid] = ""
+
+    return experience_cards
+
+
+def _build_shared_header() -> str:
+    """Build shared header: K-radar definitions + knowledge point graphs for all subjects.
+
+    Compatibility wrapper for load_kg_for_subjects. Loads all subjects for backward compatibility.
+    """
+    all_subjects = ["计算机组成原理", "数据结构", "操作系统", "计算机网络"]
+    return load_kg_for_subjects(all_subjects)
+
+
 def _build_slot_contracts_md(templates: dict, exp_dir: str = "data/slot_experiences") -> str:
-    """Build shared header + concatenated slot contracts for compose prompts."""
+    """Build shared header + concatenated slot contracts for compose prompts.
+
+    Compatibility wrapper that uses the new on-demand loading functions internally.
+    """
     from core_new.slot_contract import build_slot_contract
 
-    _exp_dir = Path(exp_dir)
-    experience_cards = {}
-    for path in sorted(_exp_dir.glob("*_experience.md")):
-        sid = path.stem.replace("_experience", "")
-        experience_cards[sid] = path.read_text(encoding="utf-8")
+    # Load only required experience cards
+    slot_ids = list(templates.keys())
+    experience_cards = load_experience_for_slots(slot_ids, exp_dir)
 
     # Build per-slot contracts
     contracts = {}
@@ -84,38 +191,6 @@ def _build_slot_contracts_md(templates: dict, exp_dir: str = "data/slot_experien
     # Translate all abbreviated codes in the combined output
     combined = header + "\n\n---\n\n" + slot_sections
     return _translate_kg(combined)
-
-
-def _build_shared_header() -> str:
-    """Build shared header: K-radar definitions + knowledge point graphs for all subjects."""
-    from core_new.slot_prompts import K_RADAR_DEFINITIONS
-
-    parts: list[str] = []
-
-    # 1. K-radar definitions
-    parts.append("# 共享参考信息（所有题位公用）")
-    parts.append("")
-    parts.append(K_RADAR_DEFINITIONS.strip())
-    parts.append("")
-
-    # 2. Knowledge point graphs for all subjects
-    subject_files = {
-        "计算机组成原理": "computer_organization.md",
-        "数据结构": "data_structure.md",
-        "操作系统": "operating_system_knowledge.md",
-        "计算机网络": "computer_network.md",
-    }
-    for subject_name, filename in subject_files.items():
-        kg = _extract_knowledge_graph(filename)
-        if kg:
-            kg = _translate_kg(kg)
-            parts.append(f"## {subject_name}知识点图谱")
-            parts.append("")
-            parts.append(f"> 以下是{subject_name}的完整知识点层级结构，供规划知识点覆盖时参考。")
-            parts.append("")
-            parts.append(kg)
-
-    return "\n".join(parts)
 
 
 def _extract_knowledge_graph(filename: str = "computer_organization.md") -> str:
@@ -163,6 +238,154 @@ def _translate_kg(text: str) -> str:
     """Translate abbreviated codes (DS-1, CO-1 etc.) to full chapter names."""
     from core_new.subject_map import translate_code
     return translate_code(text)
+
+
+def extract_slot_recommendation(experience_card: str) -> dict:
+    """Extract recommendation data from experience card.
+
+    Args:
+        experience_card: Raw markdown content of experience card
+
+    Returns:
+        Dict with:
+        - recommended_mode: str (mode with highest frequency)
+        - recommended_frequency: str (e.g., "53.8%")
+        - alternatives: list[dict] with {mode, frequency}
+        - applicable_knowledge: list[str] (knowledge points from recommended mode)
+    """
+    import re
+
+    result = {
+        "recommended_mode": "",
+        "recommended_frequency": "",
+        "alternatives": [],
+        "applicable_knowledge": [],
+    }
+
+    if not experience_card:
+        return result
+
+    # Find考察模式分布 section
+    dist_section_match = re.search(r'## 考察模式分布\s*(.*?)---', experience_card, re.DOTALL)
+    if not dist_section_match:
+        return result
+
+    dist_section = dist_section_match.group(1)
+    lines = [line.strip() for line in dist_section.split("\n") if line.strip()]
+
+    # Parse mode distribution lines: "- **模式名**：X/Y (Z%)"
+    modes_with_freq = []
+    for line in lines:
+        # Match pattern: - **mode**: X/Y (Z%)
+        # The mode name can contain Chinese characters, letters, dashes, etc.
+        mode_match = re.match(r'-\s*\*{2}([^*]+?)\*{2}：\s*(\d+)/(\d+)\s*\(([\d.]+)%\)', line)
+        if mode_match:
+            mode_name = mode_match.group(1).strip()
+            freq_percent = mode_match.group(4) + "%"
+            modes_with_freq.append((mode_name, freq_percent))
+
+    # Sort by frequency (extract number) and pick highest
+    if modes_with_freq:
+        modes_with_freq.sort(key=lambda x: float(x[1].rstrip('%')), reverse=True)
+        result["recommended_mode"] = modes_with_freq[0][0]
+        result["recommended_frequency"] = modes_with_freq[0][1]
+        result["alternatives"] = [{"mode": m, "frequency": f} for m, f in modes_with_freq[1:]]
+
+    # Find applicable knowledge from the first mode (recommended mode)
+    # Look for "适用知识点范围" in the experience card
+    knowledge_match = re.search(r'适用知识点范围[^：:]*[：:]\s*(.+?)(?=\n-|$)', experience_card, re.DOTALL)
+    if knowledge_match:
+        knowledge_text = knowledge_match.group(1).strip()
+        # Split by common delimiters
+        points = re.split(r'[、,，]', knowledge_text)
+        result["applicable_knowledge"] = [p.strip() for p in points if p.strip()]
+
+    return result
+
+
+def render_slot_card(slot_id: str, template: dict, experience_card: str, gateway=None) -> dict:
+    """Render a slot card with recommendation data.
+
+    Args:
+        slot_id: Slot identifier (e.g., "Q12")
+        template: Slot template dict with type, score, etc.
+        experience_card: Raw markdown content of experience card
+        gateway: Optional gateway for LLM-based recommendation reasoning
+
+    Returns:
+        Dict with slot_card data including recommended_mode, frequency, alternatives, etc.
+    """
+    # Extract data from experience card
+    extracted = extract_slot_recommendation(experience_card)
+
+    # Build base card
+    card = {
+        "slot_card": {
+            "slot_id": slot_id,
+            "type": template.get("question_type", "unknown"),
+            "score": template.get("score", 0),
+            "recommended_mode": extracted["recommended_mode"],
+            "recommended_frequency": extracted["recommended_frequency"],
+            "recommended_reason": "",
+            "alternatives": extracted["alternatives"],
+            "applicable_knowledge": extracted["applicable_knowledge"],
+            "teacher_actions": ["confirm", "change_mode", "exclude_knowledge", "remove"],
+        }
+    }
+
+    # If gateway provided, use LLM for recommendation reasoning
+    if gateway and extracted["recommended_mode"]:
+        card["slot_card"]["recommended_reason"] = _generate_recommendation_reason(
+            slot_id, extracted["recommended_mode"], extracted["recommended_frequency"], gateway
+        )
+    else:
+        card["slot_card"]["recommended_reason"] = f"该模式在{slot_id}题位出现频率最高({extracted['recommended_frequency']})"
+
+    return card
+
+
+def _generate_recommendation_reason(slot_id: str, mode: str, frequency: str, gateway) -> str:
+    """Generate recommendation reasoning using LLM (lightweight call)."""
+    prompt = f"""你是组卷专家。请简短解释为什么推荐以下模式：
+
+题位：{slot_id}
+推荐模式：{mode}
+频率：{frequency}
+
+请用一句话给出推荐理由，不超过50字。只输出理由，不要其他内容。"""
+
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        result = gateway.generate_text(messages, max_tokens=200)
+        return result.content.strip() if result.content else f"该模式在{slot_id}题位出现频率最高({frequency})"
+    except Exception:
+        return f"该模式在{slot_id}题位出现频率最高({frequency})"
+
+
+async def render_all_slot_cards(slot_ids: list[str], templates: dict, exp_dir: str = "data/slot_experiences", gateway=None) -> list[dict]:
+    """Render slot cards for multiple slots.
+
+    Args:
+        slot_ids: List of slot IDs to render
+        templates: Dict of slot_id -> template data
+        exp_dir: Directory containing experience cards
+        gateway: Optional gateway for LLM-based reasoning
+
+    Returns:
+        List of slot card dicts
+    """
+    # Load experience cards on-demand
+    experience_cards = load_experience_for_slots(slot_ids, exp_dir)
+
+    cards = []
+    for slot_id in slot_ids:
+        template = templates.get(slot_id, {})
+        exp_card = experience_cards.get(slot_id, "")
+
+        card = render_slot_card(slot_id, template, exp_card, gateway)
+        cards.append(card)
+
+    return cards
 
 
 async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_experiences") -> tuple[str, dict]:
@@ -499,6 +722,14 @@ async def run_compose(
     routing_profile = "unknown"
     if model_routing:
         routing_profile = model_routing.get("paper_composer", "all_local")
+    else:
+        # 如果没有提供 model_routing，从 pipeline.yaml 读取默认配置
+        model_routing = {
+            "paper_composer": get_model_for_task("free_compose", model_routing=None),
+            "interaction": get_model_for_task("interaction", model_routing=None),
+        }
+        routing_profile = model_routing.get("paper_composer", "all_local")
+        print(f"  [config] Loaded model_routing from pipeline.yaml: {model_routing}")
 
     # Step 1: Compose
     outline_md, blueprint = await compose_paper(gateway, templates, user_requirements, model_routing=model_routing, exp_dir=exp_dir)
