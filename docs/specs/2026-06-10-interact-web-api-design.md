@@ -1,7 +1,7 @@
 # Interact Agent Web API 设计文档
 
 > 日期: 2026-06-10
-> 状态: **实施就绪** — spec 已对齐代码结构，待拉起 team
+> 状态: **已实现并复核** — V2 API、schema/service、draft parser 已落地
 > 前置: K-radar 升级 + 端到端验证通过
 
 ## 1. 目标
@@ -60,13 +60,13 @@ class InteractSession:
     turn_count: int
     last_draft_write_turn: int
 
-def run_conversation_turn(session_id: str, teacher_message: str) -> str:
-    """核心入口 — 一个教师消息 → agent 回复"""
+async def run_conversation_turn(session_id: str, teacher_message: str) -> dict:
+    """核心入口 — 一个教师消息 → agent 回复、写入文件列表、状态"""
 ```
 
 ## 3. 实施策略
 
-**Scheduler 零改动**：`run_conversation_turn()` 不变。API 层负责：
+**Scheduler 低侵入适配**：最新 scheduler 已提供 `InteractSession`、`run_conversation_turn()`、工具循环和上下文裁剪能力；Web API 层不再追加修改 scheduler 行为，只做 HTTP/JSON 适配。API 层负责：
 1. 接收前端请求 → 转为 `teacher_message` 字符串
 2. 调用 `run_conversation_turn()`
 3. 解析 agent 回复中的草案 markdown → 结构化 JSON
@@ -95,17 +95,17 @@ def run_conversation_turn(session_id: str, teacher_message: str) -> str:
 ```
 Frontend                              Backend
    │                                     │
-   │  POST /v2/interact/sessions         │
+   │  POST /api/v2/interact/sessions     │
    │  {provider: "glm5.1"}              │
    │─────────────────────────────────────►│  → new InteractSession
    │  ← {session_id: "abc"}              │
    │                                     │
-   │  POST /v2/interact/sessions/abc/turn│
+   │  POST /api/v2/interact/sessions/abc/turn│
    │  {message: "出一道Cache映射选择题"}   │
    │─────────────────────────────────────►│  → run_conversation_turn()
    │  ← {response_text, has_draft: true} │
    │                                     │
-   │  GET /v2/interact/sessions/abc/draft│
+   │  GET /api/v2/interact/sessions/abc/draft│
    │─────────────────────────────────────►│  → parse draft MD → JSON
    │  ← {sections: [{options: [...]}]}   │  ← 渲染为卡片 UI
    │                                     │
@@ -169,7 +169,7 @@ class SlotAnnotation(BaseModel):
     kept_options: list[str]     # 保留的 option_id（通常只有 1 个）
     removed_options: list[str]  # 被移除的 option_id
     annotation: str = ""
-    modified_text: dict = {}    # {option_id: 修改后的文本}
+    modified_text: dict = Field(default_factory=dict)  # {option_id: 修改后的文本}
 
 class AnnotationSubmission(BaseModel):
     draft_id: str
@@ -184,7 +184,7 @@ class InteractTurnResponse(BaseModel):
     session_state: str           # collecting | reviewing | confirmed
     has_draft: bool              # 是否有可解析的草案
     has_result: bool             # 是否有交接 YAML
-    files_written: list[str]     # 本轮写入的文件
+    files_written: list[str] = Field(default_factory=list)  # 本轮写入的文件
 ```
 
 ## 6. 文件结构（新增/修改）
@@ -196,15 +196,15 @@ api/
 │   └── interact_v2.py          # [NEW] V2 路由 — 调用 scheduler
 ├── services/
 │   └── interact_v2_service.py  # [NEW] 服务层 — session 管理 + draft 解析
-├── schemas/
-│   └── interact_v2.py          # [NEW] Pydantic models
+├── schemas.py                  # V1 schemas（保持模块文件，避免导入冲突）
+├── schemas_interact_v2.py      # [NEW] V2 Pydantic models
 ├── app.py                      # [MOD] 注册 V2 router
 └── deps.py                     # [MOD] 新增 get_scheduler() 依赖
 
 core_new/doc_pipeline/
 ├── agents/interact.md          # [MOD] 硬编码修复
 ├── skills/interact_core/SKILL.md  # [MOD] 硬编码修复
-└── scheduler.py                # [不改动] 零变更
+└── scheduler.py                # [依赖现有] V2 工具循环入口
 ```
 
 ## 7. 硬编码修复
@@ -248,7 +248,7 @@ SKILL.md 和 interact.md 中的硬编码需改为**通用占位格式**，明确
 | 任务 | 文件 | 工时 |
 |------|------|------|
 | 硬编码修复 | SKILL.md + interact.md | 0.5 天 |
-| Pydantic schemas | `api/schemas/interact_v2.py` | 0.5 天 |
+| Pydantic schemas | `api/schemas_interact_v2.py` | 0.5 天 |
 | Draft 解析器 | `api/services/draft_parser.py` | 0.5 天 |
 | V2 路由 + 服务层 | `api/routes/interact_v2.py` + `api/services/interact_v2_service.py` | 1.5 天 |
 
@@ -276,7 +276,7 @@ V2 路由+服务 ←── 依赖 schemas + draft_parser
 
 ## 9. 约束
 
-- `scheduler.py` **零改动** — API 层适配，不改 scheduler
+- API 层不再改 scheduler 语义 — 依赖现有 `run_conversation_turn()` 和工具循环能力
 - vLLM 兼容：system message 只在 position 0，draft hint 追加到 messages[0]
 - K 值不暴露给教师 — API 响应中的 draft 不含 K1-K5
 - 端口 8888 是代理，业务逻辑不使用

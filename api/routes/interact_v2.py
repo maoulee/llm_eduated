@@ -6,7 +6,7 @@ annotation and result retrieval.
 
 from fastapi import APIRouter, HTTPException
 
-from api.schemas.interact_v2 import (
+from api.schemas_interact_v2 import (
     AnnotationResponse,
     AnnotationSubmission,
     DraftData,
@@ -22,6 +22,14 @@ router = APIRouter(prefix="/v2/interact", tags=["interact-v2"])
 _service = InteractV2Service()
 
 
+def _status_for_value_error(exc: ValueError) -> int:
+    """Map service validation failures to stable HTTP status codes."""
+    msg = str(exc)
+    if msg.startswith("Session ") and msg.endswith(" not found"):
+        return 404
+    return 400
+
+
 @router.post("/sessions", response_model=InteractSessionInfo)
 async def create_session(body: InteractSessionCreate):
     """Create a new interact session."""
@@ -34,13 +42,16 @@ async def send_turn(session_id: str, body: InteractTurnRequest):
     try:
         return await _service.send_turn(session_id, body.message)
     except ValueError as e:
-        raise HTTPException(status_code=400 if "Invalid" in str(e) else 404, detail=str(e))
+        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
 
 
 @router.get("/sessions/{session_id}/draft", response_model=DraftData)
 async def get_draft(session_id: str):
     """Get the latest parsed draft for a session."""
-    draft = _service.get_draft(session_id)
+    try:
+        draft = _service.get_draft(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
     if not draft:
         raise HTTPException(404, "No draft available")
     return draft
@@ -52,7 +63,7 @@ async def submit_annotation(session_id: str, body: AnnotationSubmission):
     try:
         ok = _service.submit_annotation(session_id, body)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
     if not ok:
         raise HTTPException(404, "No draft to annotate")
     return AnnotationResponse(ok=True)
@@ -61,7 +72,10 @@ async def submit_annotation(session_id: str, body: AnnotationSubmission):
 @router.get("/sessions/{session_id}/result")
 async def get_result(session_id: str):
     """Get the parsed YAML result for a session."""
-    result = _service.get_result(session_id)
+    try:
+        result = _service.get_result(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
     if not result:
         raise HTTPException(404, "No result available")
     return result
@@ -76,7 +90,10 @@ async def list_sessions():
 @router.get("/sessions/{session_id}", response_model=InteractSessionInfo)
 async def get_session(session_id: str):
     """Get session info."""
-    info = _service.get_session_info(session_id)
+    try:
+        info = _service.get_session_info(session_id)
+    except ValueError as e:
+        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
     if not info:
         raise HTTPException(404, f"Session {session_id} not found")
     return info

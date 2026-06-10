@@ -96,8 +96,13 @@ def _build_yaml_lines(slot_data: dict, template: dict, slot_id: str) -> list[str
     k_radar = slot_data.get("k_radar", {})
     if k_radar:
         lines.append("k_radar:\n")
+        known_dims = {"K1", "K2", "K3", "K4", "K5"}
+        for k in ("K1", "K2", "K3", "K4", "K5"):
+            if k in k_radar:
+                lines.append(f"  {k}: {k_radar[k]}\n")
         for k, v in k_radar.items():
-            lines.append(f"  {k}: {v}\n")
+            if k not in known_dims:
+                lines.append(f"  {k}: {v}\n")
     k_dominant = slot_data.get("k_dominant", slot_data.get("k_target", ""))
     if k_dominant:
         lines.append(f'k_dominant: "{k_dominant}"\n')

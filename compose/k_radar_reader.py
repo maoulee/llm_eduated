@@ -27,6 +27,25 @@ _RE_QUESTION_K = re.compile(r"\*\*K(\d)\s*=\s*(\d)")
 
 # Project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
+_K_DIMS = tuple(f"K{i}" for i in range(1, 6))
+
+
+def _resolve_project_path(path: str | Path) -> Path:
+    """Resolve repo-relative data paths independently of the process cwd."""
+    p = Path(path)
+    if p.is_absolute() or p.exists():
+        return p
+    return _PROJECT_ROOT / p
+
+
+def _radar_from_matches(matches: list[tuple[str, str]]) -> dict[str, int]:
+    """Convert regex matches to a stable K1-K5 ordered radar dict."""
+    parsed: dict[str, int] = {}
+    for dim_str, val_str in matches:
+        dim = f"K{dim_str}"
+        if dim in _K_DIMS:
+            parsed[dim] = int(val_str)
+    return {dim: parsed[dim] for dim in _K_DIMS if dim in parsed}
 
 
 # ── K1.1: Slot experience card reader ───────────────────────────
@@ -40,7 +59,7 @@ def read_slot_k_radar(slot_id: str, data_dir: str | Path = "data/slot_experience
         dict like {"K1": 3, "K2": 1, "K3": 1, "K4": 2, "K5": 3}
         Empty dict if file not found or no K data.
     """
-    exp_path = _PROJECT_ROOT / data_dir / f"{slot_id}_experience.md"
+    exp_path = _resolve_project_path(data_dir) / f"{slot_id}_experience.md"
     if not exp_path.exists():
         return {}
 
@@ -49,10 +68,7 @@ def read_slot_k_radar(slot_id: str, data_dir: str | Path = "data/slot_experience
     if not matches:
         return {}
 
-    result = {}
-    for dim_str, val_str in matches:
-        result[f"K{dim_str}"] = int(val_str)
-    return result
+    return _radar_from_matches(matches)
 
 
 # ── K1.2: Question experience file aggregator ───────────────────
@@ -62,7 +78,7 @@ def read_question_k_radar(question_path: str | Path) -> dict[str, int]:
 
     Parses format: - **K1 = 3**: 评分理由...
     """
-    path = Path(question_path)
+    path = _resolve_project_path(question_path)
     if not path.exists():
         return {}
 
@@ -71,10 +87,7 @@ def read_question_k_radar(question_path: str | Path) -> dict[str, int]:
     if not matches:
         return {}
 
-    result = {}
-    for dim_str, val_str in matches:
-        result[f"K{dim_str}"] = int(val_str)
-    return result
+    return _radar_from_matches(matches)
 
 
 def aggregate_question_k_radar(
@@ -106,7 +119,7 @@ def aggregate_question_k_radar(
         return {}
 
     # Average and round
-    return {dim: round(sums[dim] / counts[dim]) for dim in sums}
+    return {dim: round(sums[dim] / counts[dim]) for dim in _K_DIMS if dim in sums}
 
 
 # ── K1.3: Heuristic fallback ───────────────────────────────────
@@ -190,4 +203,6 @@ def compute_k_dominant(k_radar: dict[str, int]) -> str:
     """
     if not k_radar:
         return "K3"
+    if any(dim in k_radar for dim in _K_DIMS):
+        return max(_K_DIMS, key=lambda dim: k_radar.get(dim, 0))
     return max(k_radar, key=lambda k: k_radar.get(k, 0))

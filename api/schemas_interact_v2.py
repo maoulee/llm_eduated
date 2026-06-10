@@ -6,7 +6,7 @@ in the pruning-based teacher interaction flow.
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 # ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ class SlotAnnotation(BaseModel):
     kept_options: list[str]  # option_ids the teacher kept (usually just 1)
     removed_options: list[str]  # option_ids the teacher removed
     annotation: str = ""
-    modified_text: dict[str, str] = {}  # {option_id: modified text}
+    modified_text: dict[str, str] = Field(default_factory=dict)  # {option_id: modified text}
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -168,7 +168,7 @@ class InteractSessionCreate(BaseModel):
 
     provider: str = "api_vllm"  # provider name from config.py
     thinking: bool = False  # enable GLM thinking mode
-    ui_mode: str = "api"  # "api" | "file"
+    ui_mode: Literal["api", "file"] = "api"
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -202,7 +202,7 @@ class InteractTurnResponse(BaseModel):
     session_state: Literal["collecting", "reviewing", "confirmed"]
     has_draft: bool = False  # parseable draft available
     has_result: bool = False  # handoff YAML available
-    files_written: list[str] = []  # files written this turn
+    files_written: list[str] = Field(default_factory=list)  # files written this turn
 
     model_config = ConfigDict(
         json_schema_extra={

@@ -12,7 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from api.schemas.interact_v2 import (
+from api.schemas_interact_v2 import (
     AnnotationSubmission,
     DraftData,
     DraftOption,
@@ -51,6 +51,14 @@ _SCENARIO_PATTERNS: list[tuple[re.Pattern, str]] = [
     (re.compile(r"考察模式"), "C"),
     (re.compile(r"专项练习|强化训练"), "B"),
 ]
+
+_K_TERM_MAP = {
+    "1": "基础认知",
+    "2": "单步代入",
+    "3": "多步推演",
+    "4": "组合分析",
+    "5": "综合设计",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -266,8 +274,8 @@ def _parse_section_body(
             options.append(
                 DraftOption(
                     id=f"opt_{section_idx}_{opt_counter}",
-                    text=text,
-                    cognitive_desc=cog,
+                    text=_sanitize_teacher_text(text),
+                    cognitive_desc=_sanitize_teacher_text(cog),
                 )
             )
             continue
@@ -280,12 +288,12 @@ def _parse_section_body(
             options.append(
                 DraftOption(
                     id=f"opt_{section_idx}_{opt_counter}",
-                    text=text,
-                    cognitive_desc=cog,
+                    text=_sanitize_teacher_text(text),
+                    cognitive_desc=_sanitize_teacher_text(cog),
                 )
             )
 
-    return options, annotation
+    return options, _sanitize_teacher_text(annotation)
 
 
 def _split_cognitive(text: str) -> tuple[str, str]:
@@ -293,11 +301,34 @@ def _split_cognitive(text: str) -> tuple[str, str]:
 
     "地址字段划分计算（需一步公式推导）" → ("地址字段划分计算", "需一步公式推导")
     """
-    match = _RE_COGNITIVE.search(text)
-    if not match:
+    matches = list(_RE_COGNITIVE.finditer(text))
+    if not matches:
+        return text, ""
+
+    match = matches[-1]
+    if text[match.end():].strip():
         return text, ""
 
     cog = match.group(1).strip()
     # Remove the trailing cognitive parenthetical from display text
     clean = text[: match.start()].strip()
     return clean, cog
+
+
+def _sanitize_teacher_text(text: str) -> str:
+    """Remove internal K1-K5 labels from teacher-facing API text."""
+    if not text:
+        return text
+
+    sanitized = re.sub(r"K([1-5])\s*[:=]\s*[1-5]", lambda m: _K_TERM_MAP[m.group(1)], text)
+
+    def replace_k_term(match: re.Match) -> str:
+        label = _K_TERM_MAP[match.group(1)]
+        following = sanitized[match.end():].lstrip(" ：:=，,")
+        if following.startswith(label):
+            return ""
+        if following.startswith(f"（{label}") or following.startswith(f"({label}"):
+            return ""
+        return label
+
+    return re.sub(r"K([1-5])", replace_k_term, sanitized)

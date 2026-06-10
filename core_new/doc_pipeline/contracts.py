@@ -20,7 +20,7 @@ class SlotBlueprint:
     k_target: str = ""  # Legacy alias for k_dominant — kept for backward compat
     k_radar: dict[str, int] = field(default_factory=dict)  # 5D cognitive radar {"K1":n, "K2":n, ...}
     k_dominant: str = ""  # Dominant K dimension (highest score)
-    k_source: str = ""  # Data source: "experience_card" | "question_aggregate" | "llm_estimate"
+    k_source: str = ""  # Data source: "experience_card" | "question_aggregate" | "heuristic"
     difficulty_rationale: str = ""
     question_type: str = "single_choice"
     # v2 fields for mode selection

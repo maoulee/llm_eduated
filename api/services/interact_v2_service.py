@@ -15,7 +15,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from api.schemas.interact_v2 import (
+from api.schemas_interact_v2 import (
     AnnotationSubmission,
     DraftData,
     InteractSessionInfo,
@@ -146,9 +146,15 @@ class InteractV2Service:
                 session["scenario"] = interact_session.scenario
                 session["turn_count"] = interact_session.turn_count
 
-        # Detect draft in response
+        has_result = self._find_result_path(session_id) is not None
+
+        # Prefer draft files written by the agent; fall back to response text.
         has_draft = False
-        if _detect_draft:
+        draft = self._load_draft_from_files(session_id, files_written)
+        if draft:
+            self._drafts[session_id] = draft
+            has_draft = True
+        elif _detect_draft:
             has_draft = _detect_draft(response_text)
             if has_draft and _parse_draft:
                 try:
@@ -163,15 +169,10 @@ class InteractV2Service:
                     )
                     has_draft = False
 
-        # Check for result YAML files
-        has_result = False
-        if interact_session:
-            for f in files_written:
-                if f.endswith((".yaml", ".yml")) and (
-                    "paper_request" in f or "slot_blueprint" in f
-                ):
-                    has_result = True
-                    break
+        if has_result:
+            session["state"] = "confirmed"
+        elif has_draft and session.get("state") == "collecting":
+            session["state"] = "reviewing"
 
         return InteractTurnResponse(
             response_text=response_text,
@@ -200,9 +201,18 @@ class InteractV2Service:
         the next turn.
         """
         validate_session_id(session_id)
+        session = self._sessions.get(session_id)
+        if not session:
+            raise ValueError(f"Session {session_id} not found")
+
         draft = self._drafts.get(session_id)
         if not draft:
             return False
+
+        if annotation.draft_id != draft.draft_id:
+            raise ValueError(
+                f"Draft ID mismatch: got {annotation.draft_id!r}, expected {draft.draft_id!r}"
+            )
 
         if not _render_annotated:
             logger.error("draft_parser not available, cannot render annotation")
@@ -211,10 +221,6 @@ class InteractV2Service:
         annotated_md = _render_annotated(draft, annotation)
 
         # Write to workspace draft path
-        session = self._sessions.get(session_id)
-        if not session:
-            return False
-
         scheduler = self._get_scheduler(
             provider=session["provider"],
             thinking=session["thinking"],
@@ -224,6 +230,7 @@ class InteractV2Service:
         draft_path = Path(scheduler.workspace) / session_id / "compose" / "interact_draft.md"
         draft_path.parent.mkdir(parents=True, exist_ok=True)
         draft_path.write_text(annotated_md, encoding="utf-8")
+        session["state"] = "reviewing"
         logger.info("[%s] Annotation written to %s", session_id, draft_path)
         return True
 
@@ -238,26 +245,17 @@ class InteractV2Service:
         if not session:
             return None
 
-        scheduler = self._get_scheduler(
-            provider=session["provider"],
-            thinking=session["thinking"],
-        )
-        # Scheduler workspace for this session
-        ws = Path(scheduler.workspace) / session_id
-
-        # Try common YAML filenames the agent writes
-        for yaml_name in ["slot_blueprint.yaml", "paper_request.yaml"]:
-            p = ws / yaml_name
-            if p.exists():
-                logger.info("[%s] Found result YAML: %s", session_id, p)
-                if _parse_yaml:
-                    return _parse_yaml(str(p))
-                # Fallback: parse YAML ourselves
-                try:
-                    import yaml
-                    return yaml.safe_load(p.read_text(encoding="utf-8"))
-                except Exception:
-                    return None
+        p = self._find_result_path(session_id)
+        if p:
+            logger.info("[%s] Found result YAML: %s", session_id, p)
+            if _parse_yaml:
+                return _parse_yaml(str(p))
+            # Fallback: parse YAML ourselves
+            try:
+                import yaml
+                return yaml.safe_load(p.read_text(encoding="utf-8"))
+            except Exception:
+                return None
         return None
 
     # ------------------------------------------------------------------
@@ -311,3 +309,108 @@ class InteractV2Service:
             )
             self._scheduler_cache[cache_key] = scheduler
         return self._scheduler_cache[cache_key]
+
+    # ------------------------------------------------------------------
+    # Workspace helpers
+    # ------------------------------------------------------------------
+
+    def _get_session_workspace(self, session_id: str) -> Path | None:
+        """Return the scheduler workspace directory for a session."""
+        session = self._sessions.get(session_id)
+        if not session:
+            return None
+        scheduler = self._get_scheduler(
+            provider=session["provider"],
+            thinking=session["thinking"],
+        )
+        return Path(scheduler.workspace) / session_id
+
+    @staticmethod
+    def _safe_workspace_path(ws: Path, rel_path: str) -> Path | None:
+        """Resolve a relative tool path under a session workspace."""
+        clean = rel_path.lstrip("/").lstrip("\\")
+        path = (ws / clean).resolve()
+        try:
+            path.relative_to(ws.resolve())
+        except ValueError:
+            return None
+        return path
+
+    def _load_draft_from_files(
+        self,
+        session_id: str,
+        files_written: list[str],
+    ) -> DraftData | None:
+        """Load a parseable draft from files written by the agent."""
+        if not _parse_draft:
+            return None
+
+        session = self._sessions.get(session_id)
+        ws = self._get_session_workspace(session_id)
+        if not session or ws is None:
+            return None
+
+        candidates: list[Path] = []
+        for rel in files_written:
+            if not rel.endswith(".md"):
+                continue
+            if "interact_draft" not in rel and "interact_response" not in rel:
+                continue
+            path = self._safe_workspace_path(ws, rel)
+            if path:
+                candidates.append(path)
+
+        for rel in (
+            "compose/interact_draft.md",
+            "interact_draft.md",
+            "interact_response.md",
+        ):
+            path = self._safe_workspace_path(ws, rel)
+            if path:
+                candidates.append(path)
+
+        seen: set[Path] = set()
+        for path in candidates:
+            if path in seen:
+                continue
+            seen.add(path)
+            if not path.exists() or not path.is_file():
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+                if not text.strip():
+                    continue
+                draft = _parse_draft(
+                    text,
+                    draft_id=f"{session_id}_turn{session['turn_count']}",
+                )
+                if draft.sections:
+                    return draft
+            except Exception:
+                logger.warning("[%s] Failed to parse draft file %s", session_id, path)
+        return None
+
+    def _find_result_path(self, session_id: str) -> Path | None:
+        """Find a handoff YAML result in the session workspace."""
+        ws = self._get_session_workspace(session_id)
+        if ws is None:
+            return None
+
+        names = ("slot_blueprint.yaml", "paper_request.yaml", "retrieval_query.yaml")
+        candidates: list[Path] = []
+        for name in names:
+            for rel in (name, f"compose/{name}"):
+                path = self._safe_workspace_path(ws, rel)
+                if path:
+                    candidates.append(path)
+
+        for path in candidates:
+            if path.exists() and path.is_file():
+                return path
+
+        if not ws.exists():
+            return None
+        for path in ws.rglob("*.yaml"):
+            if path.name in names and path.is_file():
+                return path
+        return None

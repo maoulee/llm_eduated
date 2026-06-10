@@ -19,6 +19,7 @@ from compose.k_radar_reader import (
     aggregate_question_k_radar,
     compute_k_dominant,
     estimate_k_radar_heuristic,
+    read_question_k_radar,
     read_slot_k_radar,
     resolve_k_radar,
 )
@@ -53,6 +54,14 @@ class TestReadSlotKRadar:
 
 class TestAggregateQuestionKRadar:
     """Test aggregating K values across multiple question experience files."""
+
+    def test_project_relative_path_independent_of_cwd(self, monkeypatch, tmp_path):
+        """Agent-provided data/... paths should work outside the repo cwd."""
+        monkeypatch.chdir(tmp_path)
+
+        k_radar = read_question_k_radar("data/question_experiences/2009_Q5.md")
+
+        assert k_radar == {"K1": 3, "K2": 3, "K3": 3, "K4": 4, "K5": 1}
 
     def test_empty_list(self):
         """Empty file list returns empty dict."""
@@ -151,6 +160,10 @@ class TestComputeKDominant:
         """Partial radar still works."""
         assert compute_k_dominant({"K2": 5}) == "K2"
 
+    def test_tie_uses_k_dimension_order_not_dict_insertion(self):
+        """Tie → returns K1 even when the input dict starts with K4."""
+        assert compute_k_dominant({"K4": 3, "K2": 3, "K1": 3}) == "K1"
+
 
 # ── 6. single_question_adapter backward compat ─────────────────
 
@@ -208,6 +221,19 @@ class TestOutlineYamlGenerator:
         assert "K2: 4" in output
         assert 'k_dominant: "K2"' in output
         assert 'k_source: "experience_card"' in output
+
+    def test_k_radar_output_order_is_stable(self):
+        """K-radar YAML always emits known dimensions in K1-K5 order."""
+        from compose.outline_yaml_generator import _build_yaml_lines
+
+        slot_data = {
+            "slot_id": "Q1",
+            "k_radar": {"K4": 4, "K2": 2, "K1": 1},
+        }
+
+        output = "".join(_build_yaml_lines(slot_data, {}, "Q1"))
+
+        assert "k_radar:\n  K1: 1\n  K2: 2\n  K4: 4\n" in output
 
     def test_fallback_to_k_target(self):
         """Old data with only k_target should still produce k_dominant."""
