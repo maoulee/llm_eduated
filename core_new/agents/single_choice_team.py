@@ -763,7 +763,15 @@ def _dump_sc_blueprint_md(blueprint: dict) -> str:
     lines.append(f"- **核心考点**: {blueprint.get('primary_target_name', '未指定')}")
     lines.append(f"- **知识域**: {blueprint.get('target_family', '未指定')}")
     lines.append(f"- **目标难度**: {blueprint.get('difficulty_level', blueprint.get('target_difficulty', '未指定'))}")
-    lines.append(f"- **K值目标**: {blueprint.get('k_target', '未指定')}")
+    k_radar = blueprint.get("k_radar", {})
+    if k_radar:
+        lines.append(
+            f"- **认知雷达**: K1={k_radar.get('K1', '-')} K2={k_radar.get('K2', '-')} "
+            f"K3={k_radar.get('K3', '-')} K4={k_radar.get('K4', '-')} K5={k_radar.get('K5', '-')}"
+        )
+    else:
+        k_target = blueprint.get("k_target", blueprint.get("k_dominant", "未指定"))
+        lines.append(f"- **K值目标**: {k_target}")
     lines.append(f"- **难度说明**: {blueprint.get('difficulty_rationale', '无')}")
     lines.append(f"- **考察模式**: {blueprint.get('examination_mode', '未指定')}")
 

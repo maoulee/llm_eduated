@@ -82,8 +82,15 @@ def assemble_slot_experience_doc(
         if outline_entry.get("difficulty_level") or outline_entry.get("target_difficulty"):
             dl = outline_entry.get("difficulty_level", outline_entry.get("target_difficulty", ""))
             req_lines.append(f"- **难度**: {dl}")
-        if outline_entry.get("k_target"):
-            req_lines.append(f"- **K目标**: {outline_entry['k_target']}")
+        k_radar = outline_entry.get("k_radar", {})
+        if k_radar:
+            req_lines.append(
+                f"- **认知雷达**: K1={k_radar.get('K1', '-')} K2={k_radar.get('K2', '-')} "
+                f"K3={k_radar.get('K3', '-')} K4={k_radar.get('K4', '-')} K5={k_radar.get('K5', '-')}"
+            )
+        k_dominant = outline_entry.get("k_dominant", outline_entry.get("k_target", ""))
+        if k_dominant:
+            req_lines.append(f"- **主导维度**: {k_dominant}")
         if outline_entry.get("difficulty_rationale"):
             req_lines.append(f"- **难度说明**: {outline_entry['difficulty_rationale']}")
         req_lines.append(f"- **考察模式**: {examination_mode}")

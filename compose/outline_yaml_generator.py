@@ -92,10 +92,18 @@ def _build_yaml_lines(slot_data: dict, template: dict, slot_id: str) -> list[str
     difficulty = slot_data.get("target_difficulty", template.get("target_difficulty", 3))
     lines.append(f"target_difficulty: {difficulty}\n")
 
-    # K target
-    k_target = slot_data.get("k_target", "")
-    if k_target:
-        lines.append(f"k_target: {k_target}\n")
+    # K-radar 5D cognitive vector
+    k_radar = slot_data.get("k_radar", {})
+    if k_radar:
+        lines.append("k_radar:\n")
+        for k, v in k_radar.items():
+            lines.append(f"  {k}: {v}\n")
+    k_dominant = slot_data.get("k_dominant", slot_data.get("k_target", ""))
+    if k_dominant:
+        lines.append(f'k_dominant: "{k_dominant}"\n')
+    k_source = slot_data.get("k_source", "")
+    if k_source:
+        lines.append(f'k_source: "{k_source}"\n')
 
     # Examination mode
     exam_mode = slot_data.get("recommended_mode", "")

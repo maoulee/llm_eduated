@@ -30,6 +30,12 @@ def normalize_slot_blueprint_data(data: dict) -> dict:
     else:
         data.pop("difficulty_level", None)
 
+    # Legacy k_target → k_dominant alias
+    if "k_target" in data and "k_dominant" not in data:
+        data["k_dominant"] = data.pop("k_target")
+    else:
+        data.pop("k_target", None)
+
     # Nested excluded → flat excluded_modes / excluded_knowledge
     excluded = data.pop("excluded", None)
     if isinstance(excluded, dict):

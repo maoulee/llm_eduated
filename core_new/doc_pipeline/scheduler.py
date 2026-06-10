@@ -58,6 +58,9 @@ class InteractSession:
     created_at: float = field(default_factory=time.time)
     # Read dedup: path → content hash. Skip re-reading unchanged files.
     read_cache: dict[str, str] = field(default_factory=dict)
+    # Turn tracking for draft-write enforcement
+    turn_count: int = 0
+    last_draft_write_turn: int = 0  # last turn where a draft file was written
 
 
 # KG attributes to strip (noise, not useful for question generation)
@@ -1022,6 +1025,7 @@ class DocScheduler:
                 role=role,
             )
         session = self._interact_sessions[session_id]
+        session.turn_count += 1
 
         # Build messages from session history
         system_prompt = AGENT_PROMPTS.get(role, "")
@@ -1072,12 +1076,23 @@ class DocScheduler:
         response_text = ""
         files_written: list[str] = []
 
+        # Pre-trim context before entering the tool loop to prevent overflow.
+        # Keep system prompt + last N messages. Long conversations accumulate tokens
+        # from tool results and draft content.
+        _MAX_INTERACT_MESSAGES = 20
+        if len(session.messages) > _MAX_INTERACT_MESSAGES:
+            session.messages = [session.messages[0]] + session.messages[-_MAX_INTERACT_MESSAGES:]
+            logger.info(
+                "[%s] Interact context pre-trimmed to %d messages",
+                session_id, len(session.messages),
+            )
+
         available_names = {t["function"]["name"] for t in openai_tools}
         total_tool_calls = 0
 
         # Interact turns need a real tool loop: after read/search/write tools run,
         # feed observations back to the model so the teacher receives a usable reply.
-        max_tool_rounds = 10
+        max_tool_rounds = 15
         for round_index in range(max_tool_rounds + 1):
             try:
                 raw = await self._streaming_chat_call(
@@ -1189,6 +1204,9 @@ class DocScheduler:
                         files_written.append(written_path)
                         if written_path not in session.files_written:
                             session.files_written.append(written_path)
+                        # Track draft file writes for turn-counter fallback
+                        if "interact_draft" in written_path or "interact_response" in written_path:
+                            session.last_draft_write_turn = session.turn_count
 
             if round_index == max_tool_rounds:
                 response_text = (
@@ -1203,16 +1221,68 @@ class DocScheduler:
         if not response_text and total_tool_calls:
             response_text = f"执行了 {total_tool_calls} 个工具调用"
 
-        # Trim context if it grows too large (keep system + last 20 messages)
-        if len(session.messages) > 30:
-            session.messages = [session.messages[0]] + session.messages[-20:]
-            logger.info("[%s] Interact context trimmed to 21 messages", session_id)
+        # ── Draft-write enforcement (方案 B + 轻量 A) ──
+
+        # Detect: draft content in response but no file written this turn
+        draft_written_this_turn = any(
+            "interact_draft" in f or "interact_response" in f
+            for f in files_written
+        )
+        if (response_text
+                and not draft_written_this_turn
+                and session.status in ("collecting", "reviewing")
+                and self._response_contains_draft(response_text)):
+            hint = (
+                "\n\n[系统提示] 你在回复中展示了草案内容但未写入文件。"
+                "请使用 write_file 将草案写入 compose/interact_draft.md，"
+                "或在下一轮征得教师确认后写入。"
+            )
+            # Append to existing system message — vLLM rejects system msgs not at position 0
+            if session.messages and session.messages[0]["role"] == "system":
+                session.messages[0]["content"] += hint
+            logger.info(
+                "[%s] Draft-in-response detected without write_file, injected hint",
+                session_id,
+            )
+
+        # Fallback: ≥4 turns since last draft update
+        turns_since_draft = session.turn_count - session.last_draft_write_turn
+        if turns_since_draft >= 4 and session.status in ("collecting", "reviewing"):
+            reminder = (
+                f"\n\n[系统提醒] 草案文件已 {turns_since_draft} 轮未更新"
+                f"（上次更新：第 {session.last_draft_write_turn} 轮）。"
+                "建议征得教师确认后，使用 write_file 更新草案文件。"
+            )
+            # Append to existing system message
+            if session.messages and session.messages[0]["role"] == "system":
+                session.messages[0]["content"] += reminder
+            logger.info(
+                "[%s] Draft stale for %d turns, injected reminder",
+                session_id, turns_since_draft,
+            )
+
+        # Trim context if it grew during this turn (keep system + last N messages)
+        if len(session.messages) > _MAX_INTERACT_MESSAGES:
+            session.messages = [session.messages[0]] + session.messages[-_MAX_INTERACT_MESSAGES:]
+            logger.info("[%s] Interact context post-trimmed to %d messages", session_id, len(session.messages))
 
         return {
             "status": "ok",
             "response_text": response_text,
             "files_written": files_written,
         }
+
+    @staticmethod
+    def _response_contains_draft(text: str) -> bool:
+        """Heuristic: does the response contain draft-like content that should be a file?
+
+        Detects patterns like marked checkboxes, section headings with Q numbers,
+        and table rows with knowledge point options.
+        """
+        check_marks = text.count("[ ]") + text.count("[✓]") + text.count("[✗]")
+        has_section = bool(re.search(r"##\s*(Q\d|考察模式|知识点|选择题|综合题)", text))
+        has_table = "|" in text and "知识点" in text
+        return check_marks >= 3 and (has_section or has_table)
 
     # ── WebGPT direct-output adapter ───────────────────────────────
 
