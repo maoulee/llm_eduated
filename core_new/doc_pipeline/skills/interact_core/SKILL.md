@@ -21,19 +21,35 @@
 ### 场景 A：408 组卷（有预抽取信息）
 
 教师说："出一套408模拟卷" 或 "出一套组成原理期末卷"
-系统有：经验卡、KG、题位模板
+系统有：经验卡（含每题位的考察模式统计）、KG、题位模板
+
+经验卡已预总结考察模式（如"Q{N}: {考察模式1}占比%、{考察模式2}占比%"），因此可以**一轮完成**。
 
 ```
 Step 1 [read_file]: 加载经验卡（仅相关题位）
 Step 2 [exec_python]: 调用 extract_slot_recommendation() 解析经验卡
-Step 3 [LLM 渲染]: 将经验卡数据渲染为带标记位的 md 文档
+Step 3 [LLM 渲染]: 为每个题位展示知识点+考察模式（从经验卡提取）
+
+  <!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
+  每个题位格式：
+  ## Q{N}（{题型}·{分值}分）
+  [ ] {知识点A} — {考察模式1}：{描述}（{认知特征}）
+  [ ] {知识点A} — {考察模式2}：{描述}（{认知特征}）
+  [ ] {知识点B} — {考察模式3}：{描述}（{认知特征}）
+
+  关键：每个选项 = 知识点 × 考察模式，不是单独的知识点。
+  经验卡中已按知识点分组的考察模式直接渲染，不编造。
+
 Step 4 [暂停]: 教师在文档上标记 √/x、写批注
 Step 5 [read_file]: 读取教师标注后的文档
-Step 6 [exec_python 或 LLM]: 显式解析标注文档，抽取结构化数据
-Step 7 [write_file]: 生成 paper_request.yaml
+Step 6 [exec_python 或 LLM]: 解析标注，抽取知识点+考察模式
+Step 7 [write_file]: 生成 paper_request.yaml（每个slot含 k_radar + k_dominant + k_source + difficulty_rationale）
 ```
 
 信息来源：系统预抽取（经验卡 + KG）。LLM 只做渲染和归纳，不编造信息。
+
+**下游对接**：paper_request.yaml 中的 `examination_mode` + `excluded_knowledge`
+决定下游 artifact_store 取哪段经验卡、标记排除哪些知识点和往年题。
 
 ### 场景 B：知识点出题
 
@@ -57,31 +73,54 @@ Step 7 [write_file]: 生成 slot_blueprint.yaml
 教师说："出一套数据结构期末卷"（系统无经验卡）
 系统无：经验卡、预抽取信息
 
+无经验卡时缺少考察模式数据，需**两轮迭代**：先选知识点，再展开考察模式。
+
 ```
+═══ Round 1：知识点选择（粗筛）═══
+
 Step 1 [LLM，不加外部上下文]:
-  纯粹基于自身内部知识，为每个题位分配知识点和考察方式。
+  纯粹基于自身内部知识，为每个题位分配知识点候选。
   不加载 KG、不加载经验卡。快且不触发深度思考。
 
-  输出格式（md 表格）：
-  | 题号 | 题型 | 知识点 | 考察方式选项 | 难度 |
-
-  例：
-  | Q1 | 选择题 | 栈与队列 | 栈的操作序列/队列的应用场景/双端队列辨析 | 3 |
-  | Q2 | 选择题 | 二叉树遍历 | 前中后序遍历/层序遍历/遍历序列还原 | 3 |
+  <!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
+  每个题位只列知识点（不展开考察模式）：
+  ## Q{N}（{题型}·{分值}分）
+  [ ] {知识点A} — {简要描述}
+  [ ] {知识点B} — {简要描述}
+  [ ] {知识点C} — {简要描述}
 
 Step 2 [write_file]: 生成带标记位的 md 文档
-Step 3 [暂停]: 教师在文档上标记 √/x、改知识点、加批注
+Step 3 [暂停]: 教师在每个题位选择一个知识点，可修改/添加批注
 Step 4 [read_file]: 读取教师标注后的文档
-Step 5 [grep_search]: 对教师保留的知识点检索题库
-Step 6 [LLM 归纳]: 归纳检索结果，更新文档中的考察方式详情
-Step 7 [暂停]: 教师确认最终方案
-Step 8 [exec_python 或 LLM]: 显式解析标注文档，抽取结构化数据
-Step 9 [write_file]: 生成 paper_request.yaml
+
+═══ Round 2：考察模式展开（细筛）═══
+
+Step 5 [grep_search]: 对教师选中的知识点检索题库
+Step 6 [LLM 归纳]:
+  基于检索结果归纳真实考察模式（优先）；
+  若检索不足则用 LLM 内部知识补充。
+  为每个已选知识点展示 3-5 个考察模式：
+
+  ## Q{N} {知识点} — 考察模式
+  [ ] 栈的操作序列合法性判断（需多步推演）
+  [ ] 队列的应用场景辨析（概念辨析）
+  [ ] 双端队列的操作特性（概念辨析）
+  > 教师批注: 重点考操作序列
+
+Step 7 [write_file]: 更新草案文档
+Step 8 [暂停]: 教师选择考察模式
+Step 9 [read_file]: 读取教师标注后的文档
+Step 10 [write_file]: 生成 paper_request.yaml（每个slot含 k_radar + k_dominant + k_source + difficulty_rationale）
 ```
 
-信息来源：LLM 内部知识（初稿）→ 教师筛选 → grep 验证和补充。
+信息来源：LLM 内部知识（知识点初稿）→ 教师筛选 → grep 验证（考察模式）→ 教师确认。
 
-**关键点**：场景 C 的 Step 1 不加载 KG、不加载经验卡。LLM 纯粹基于自身知识出大纲。只有教师确认后，才对保留的知识点做精确检索。
+**关键点**：
+- Round 1 不加载 KG、不加载经验卡，纯粹用 LLM 内部知识选知识点
+- Round 2 对选中的知识点做精确检索，从检索结果中归纳考察模式
+- 若 grep 结果不足（题库未覆盖），fallback 到 LLM 生成考察模式
+
+**下游对接**：同场景 A，examination_mode + excluded_knowledge 决定下游组装范围。
 
 ## 工具使用指南
 
@@ -91,10 +130,20 @@ Step 9 [write_file]: 生成 paper_request.yaml
 `grep_search`，但底层不是全文 grep；当前实现委托
 `compose/knowledge_index.py` 的结构化标签索引，优先匹配知识点标签、标签叶节点、科目和文件名。
 
-调用方式必须使用对象参数：
+**多关键词批量搜索**：`query` 接受字符串数组，多个关键词在一次调用中搜索。
+多关键词命中同一文件时会累加分数，不会重复返回。
 
+<!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
 ```json
-{"query": ["AVL", "平衡二叉树", "旋转"], "max_results": 20, "subject": "数据结构"}
+{"query": ["{关键词1}", "{关键词2}", "{关键词3}"], "max_results": 20, "subject": "{科目}"}
+```
+
+**重要**：检查多个相关知识点时，务必用数组一次搜索，不要逐个关键词调用。
+例如检查多个题位的覆盖情况时：
+
+<!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
+```json
+{"query": ["{关键词1}", "{关键词2}", "{关键词3}", "{关键词4}"], "max_results": 30}
 ```
 
 返回格式：
@@ -105,15 +154,21 @@ results:
   - file: "2009_Q5.md"
     score: 15.0
     snippet: "..."
+    matched_tags: ["平衡二叉树", "旋转"]
 ```
 
 ### read_file：读取系统数据
 
+**注意**：如果 system prompt 中已包含"已加载的知识点图谱"段落，说明 KG 已预加载，
+无需再 read_file 读取 KG 文件。
+
 可读取的文件：
-- KG 文件：`data/kg/computer_organization.md`、`data/kg/data_structure.md`、`data/kg/operating_system_knowledge.md`、`data/kg/computer_network.md`
 - 经验卡：`data/slot_experiences/Q{N}_experience.md`
 - 题目经验：`data/question_experiences/{id}.md`
 - 教师标注后的文档：`compose/interact_draft.md`
+
+**去重规则**：已读过的文件不会重复返回完整内容。如果文件未修改，系统会返回
+"文件未修改，内容已在历史上下文中"。写文件后对应缓存自动失效。
 
 ### exec_python：执行数据处理
 
@@ -137,20 +192,47 @@ results:
 
 ### 信息收集文档格式
 
+**面向教师的草案只使用自然语言描述认知特征，不使用数字评分或 K 值术语。**
+
+草案格式因场景而异，但核心结构一致：每个选项行用 `[ ]` 标记，括号内标注认知特征话术。
+
+**场景 A/C — 组卷草案（多题位）：**
+
+<!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
 ```markdown
 # 试卷大纲草案
 
-## Q1（选择题·2分）
-[✓] CPU性能指标 — 公式计算 (难度3)
-[ ] 浮点数表示 — IEEE754标准 (难度4)
-[✗] 指令流水线 — 冲突检测 (难度3)
-[ ] Cache映射 — 地址翻译 (难度5)
-> 教师批注: Cache映射要考直接映射和组相联的对比
+## Q{N}（{题型}·{分值}分）
+[✓] {知识点A} — {考察模式}：{描述}（{认知特征}）
+[ ] {知识点B} — {考察模式}：{描述}（{认知特征}）
+[✗] {知识点C} — {考察模式}：{描述}（{认知特征}）
+> 教师批注: {批注内容}
 
-## Q2（选择题·2分）
-[✓] 中断系统 — 中断处理流程 (难度3)
-> 教师批注: 要考硬件中断和软件中断的区别
+## Q{N+1}（{题型}·{分值}分）
+[✓] {知识点D} — {考察模式}：{描述}（{认知特征}）
 ```
+
+**场景 B — 单题考察模式草案：**
+
+<!-- 以下仅为格式参考，实际内容由经验卡/检索结果填充 -->
+```markdown
+# {知识点} — 考察模式草案
+
+[ ] {考察模式1}：{描述}（{认知特征}）
+[✓] {考察模式2}：{描述}（{认知特征}）
+[✗] {考察模式3}：{描述}（{认知特征}）
+> 教师批注: {批注内容}
+```
+
+**认知特征话术对照（仅内部使用，不暴露给教师）：**
+
+| 考察特征 | 教师看到的话术 | 内部映射 |
+|----------|--------------|---------|
+| 需记忆概念/术语 | （概念辨析） | K1 |
+| 需一步公式代入 | （需一步公式推导） | K2 |
+| 需多步流程推演 | （需多步推演） | K3 |
+| 需多知识点交叉 | （综合性分析） | K4 |
+| 需设计/开放推理 | （综合运用） | K5 |
 
 ### 标记含义
 
@@ -230,7 +312,7 @@ source:
 
 assessment:
   type: course_final | kaoyan_408 | topic_practice
-  subjects: ["计算机组成原理"]
+  subjects: ["{科目}"]
   total_score: 100
   duration_minutes: 120
 
@@ -253,12 +335,36 @@ difficulty:
     medium: 50
     hard: 20
 
+slots:
+  - slot_id: Q1
+    question_type: single_choice
+    score: 2
+    target_subject: "{科目}"
+    target_family: "{科目} > {章节} > {知识点}"
+    primary_target_name: "{知识点名称}"
+    target_difficulty: 3
+    k_radar:
+      K1: 2
+      K2: 4
+      K3: 1
+      K4: 3
+      K5: 1
+    k_dominant: "K2"
+    k_source: "{数据来源}"
+    difficulty_rationale: "{难度判据描述}"
+    examination_mode: "{考察模式描述}"
+    teacher_annotation: ""
+
 teacher_preferences:
   require: []
   avoid: []
   style_notes: ""
   annotations: {}
 ```
+
+**重要**：每个 slot 必须包含 `k_radar`（5 维认知向量）、`k_dominant`、`k_source`
+和 `difficulty_rationale`。K 值不向教师展示，仅在交接 YAML 中出现。
+获取方式见 interact.md 中的"K-radar 数据获取规则"。
 
 ### slot_blueprint.yaml（仅用于 task_type=single_question）
 
@@ -267,17 +373,26 @@ schema_version: slot_blueprint_v1
 slot_id: TOPIC_001
 question_type: single_choice
 score: 2
-target_subject: 数据结构
-target_family: 数据结构 > 树与二叉树 > 平衡二叉树
-primary_target_name: AVL树旋转
+target_subject: "{科目}"
+target_family: "{科目} > {章节} > {知识点}"
+primary_target_name: "{知识点名称}"
 target_difficulty: 3
+k_radar:
+  K1: 1
+  K2: 2
+  K3: 4
+  K4: 2
+  K5: 1
+k_dominant: "K3"
+k_source: "question_aggregate"
+difficulty_rationale: "{难度判据描述}"
 examination_mode: ""
 teacher_annotation: ""
 active_selection:
   mode_id: topic_selected
   selected_knowledge:
-    - AVL树旋转操作
-    - 平衡因子计算
+    - "{知识点1}"
+    - "{知识点2}"
 excluded_modes: []
 excluded_knowledge: []
 routing:
@@ -285,10 +400,10 @@ routing:
   next_action: run_single_pipeline
 ```
 
-兼容说明：下游 `compose/single_question_adapter.py` 仍接受旧别名
-`difficulty_level` 和旧嵌套字段 `excluded: {modes, knowledge}`，但新写出的
-`slot_blueprint.yaml` 应优先使用 `target_difficulty`、`excluded_modes`、
-`excluded_knowledge`。
+兼容说明：下游 `compose/single_question_adapter.py` 仍接受旧字段
+`difficulty_level`、`k_target` 和旧嵌套字段 `excluded: {modes, knowledge}`，
+但新写出的 `slot_blueprint.yaml` 应优先使用 `k_radar`、`k_dominant`、`k_source`、
+`target_difficulty`、`excluded_modes`、`excluded_knowledge`。
 
 ## Phase 范围
 

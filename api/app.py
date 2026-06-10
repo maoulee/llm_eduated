@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from api.routes import session, interact, compose, artifacts, events, health
+from api.routes import session, interact, compose, artifacts, events, health, interact_v2
 
 app = FastAPI(title="EduTeacher Workbench", version="0.1.0")
 
@@ -24,6 +24,7 @@ app.include_router(compose.router, prefix="/api")
 app.include_router(artifacts.router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(health.router, prefix="/api")
+app.include_router(interact_v2.router, prefix="/api")
 
 # Serve static frontend files (built Vue app) if available
 static_dir = os.path.join(
