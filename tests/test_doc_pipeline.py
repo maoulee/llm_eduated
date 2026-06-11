@@ -252,6 +252,16 @@ class TestDocParser:
         status = get_doc_status(path)
         assert status == "pass"
 
+    def test_get_status_accepts_bold_inline_status(self):
+        path = self._write_doc("review.md", "## 审核结论\n\n**status: pass**\n")
+        status = get_doc_status(path, allowed={"pass", "needs_fix"})
+        assert status == "pass"
+
+    def test_get_status_accepts_plain_inline_status(self):
+        path = self._write_doc("review.md", "## 审核结论\n\nstatus: needs_fix\n")
+        status = get_doc_status(path, allowed={"pass", "needs_fix"})
+        assert status == "needs_fix"
+
     def test_get_status_missing_file(self):
         with pytest.raises(FileNotFoundError):
             get_doc_status(os.path.join(self.tmpdir, "nonexistent.md"))
@@ -299,6 +309,14 @@ class TestAgentPrompts:
         for role, prompt in AGENT_PROMPTS.items():
             expected_file = AGENT_OUTPUT_FILES[role]
             assert expected_file in prompt, f"{role} prompt doesn't mention its output file {expected_file}"
+
+    def test_solve_prompt_prioritizes_minimal_question_fix(self):
+        prompt = AGENT_PROMPTS["solve"]
+        assert "参数搜索仅作为兜底" in prompt
+        assert "最小修改" in prompt
+        assert "选项值" in prompt
+        assert "不得为了匹配选项而枚举搜索参数" in prompt
+        assert "数值题不得跳过参数校验直接求解" not in prompt
 
 
 # ── Integration: WriteFileTool + DocParser round-trip ────────────
@@ -532,6 +550,29 @@ class TestDocSchedulerToolProtocol:
         assert final_call["messages"][0]["role"] == "system"
         # Trimmed history: system + compressed summary (fewer messages than raw 8 rounds)
         assert len(final_call["messages"]) < 20
+
+    def test_intermediate_text_loop_aborts_before_exhausting_attempts(self, tmp_path):
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append({"messages": list(messages), **kwargs})
+            return {
+                "content": "这是一段中间分析，不包含目标文件结构，也没有调用 write_file。" * 4,
+                "reasoning_content": "",
+                "tool_calls": None,
+                "finish_reason": "stop",
+            }
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S6B"))
+
+        assert result == ""
+        assert len(calls) == 10
+        assert not (tmp_path / "S6B" / "question.md").exists()
+        trace = (tmp_path / "S6B" / "trace.jsonl").read_text(encoding="utf-8")
+        assert "abort_intermediate_loop" in trace
 
     def test_final_review_secondary_output_uses_write_file_only(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)

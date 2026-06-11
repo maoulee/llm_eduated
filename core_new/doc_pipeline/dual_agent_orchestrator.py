@@ -189,18 +189,19 @@ class DualAgentOrchestrator:
                     "现在进入 Step 2（独立求解）。\n"
                     "严格按序执行：\n"
                     "1. read_file(question.md) 读取题干（跳过设计说明）\n"
-                    "2. 数值题：write_file(verify.py) → exec_file(verify.py) → 如不自洽 edit question.md\n"
-                    "3. write_file(solution.md) 写求解过程\n"
-                    "4. 数值题：write_file(solve.py) → exec_file(solve.py) → 对比答案\n"
+                    "2. 数值题：write_file(solve.py) → exec_file(solve.py) → 用题面参数独立求解\n"
+                    "3. 若计算结果不匹配题干/选项，先定位最小不一致，再 edit question.md 中的数值、单位或选项值\n"
+                    "4. write_file(solution.md) 写求解过程\n"
+                    "5. 数值题复跑 solve.py，对比 solution.md 答案\n"
                     "完成后停止，等待终审。\n"
-                    "概念题跳过参数校验，直接求解。\n\n"
+                    "概念题跳过代码验证和不匹配处理，直接求解。\n\n"
                     "注意：你的最终目标文件是 solution.md，不是 question.md。"
                 )
             else:
                 phase2_task = (
                     "solution.md 尚未写入。请立即执行：\n"
-                    "1. 如果已完成参数校验（verify.py 已执行），直接 write_file(solution.md)\n"
-                    "2. 如果未完成校验，先 write_file(verify.py) → exec_file → 再 write_file(solution.md)\n"
+                    "1. 如果已完成 solve.py 验证，直接 write_file(solution.md)\n"
+                    "2. 如果未完成验证，先 write_file(solve.py) → exec_file → 再 write_file(solution.md)\n"
                     "你的最终目标是 write_file(solution.md)。"
                 )
 
@@ -344,10 +345,10 @@ class DualAgentOrchestrator:
                 solved_again = await self.scheduler.run_agent(
                     "creator",
                     "题目已修正。请重新执行 Step 2（独立求解）：\n"
-                    "1. write_file(verify.py) → exec_file(verify.py)\n"
-                    "2. 如参数不自洽 edit question.md\n"
+                    "1. write_file(solve.py) → exec_file(solve.py)\n"
+                    "2. 如计算结果不匹配题干/选项，先定位最小不一致，再 edit question.md\n"
                     "3. write_file(solution.md)\n"
-                    "4. write_file(solve.py) → exec_file(solve.py) → 对比答案",
+                    "4. 复跑 solve.py → exec_file(solve.py) → 对比答案",
                     slot_id=slot_id,
                     continue_session=True,
                     max_tokens=self.max_tokens,

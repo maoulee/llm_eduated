@@ -561,11 +561,23 @@ class LLMGateway:
         )
 
         stream = await provider.client.chat.completions.create(**params)
+        _chunk_count = 0
+        _last_monitor = 0
         async for chunk in stream:
+            _chunk_count += 1
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]
             delta = choice.delta
+
+            # Monitor: log every 50 chunks to detect stuck streams
+            if _chunk_count - _last_monitor >= 50:
+                _last_monitor = _chunk_count
+                logger.info(
+                    "[stream_chat] streaming... chunks=%d reasoning=%d content=%d provider=%s",
+                    _chunk_count, sum(len(p) for p in reasoning_parts), sum(len(p) for p in content_parts),
+                    self._provider_name,
+                )
 
             if choice.finish_reason:
                 finish_reason = choice.finish_reason

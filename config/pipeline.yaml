@@ -187,6 +187,7 @@ context_providers:
 
   role_bindings:
     outline: [experience_doc, k_definitions]
+    question_design: [assembled]
     question_sc: [design_card, assembled, review_comments]
     question_comp: [design_card, assembled, review_comments]
     review: [assembled, question]

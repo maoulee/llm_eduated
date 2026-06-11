@@ -66,14 +66,51 @@ class GrepSearchTool(Tool):
             )
 
         # Normalize: ensure list form for multi-keyword handling
+        # Handle double-encoded JSON: agent may pass query as ["AVL","旋转"]
+        # which arrives as a single-element list ['["AVL","旋转"]']
         if isinstance(query, str):
-            query = [query]
+            try:
+                parsed = json.loads(query)
+                if isinstance(parsed, list):
+                    query = parsed
+                else:
+                    query = [query]
+            except (json.JSONDecodeError, TypeError):
+                query = [query]
+        elif isinstance(query, list) and len(query) == 1 and isinstance(query[0], str):
+            # Check if the single element is itself a JSON array
+            first = query[0]
+            if first.startswith("["):
+                try:
+                    parsed = json.loads(first)
+                    if isinstance(parsed, list):
+                        query = parsed
+                except (json.JSONDecodeError, TypeError):
+                    pass
+
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        _logger.warning(
+            "[GREP-DEBUG] query=%s subject=%s max_results=%d cwd=%s",
+            query, subject, max_results,
+            __import__("os").getcwd(),
+        )
+
+        from compose.knowledge_index import get_index
+        _idx = get_index()
+        _logger.warning(
+            "[GREP-DEBUG] query=%s subject=%s cwd=%s index_files=%d built=%s",
+            query, subject, __import__("os").getcwd(),
+            len(_idx._files), _idx._built,
+        )
 
         hits = search_questions(
             query=query,
             max_results=max_results,
             subject=subject,
         )
+
+        _logger.warning("[GREP-DEBUG] result_count=%d", len(hits))
 
         results = [
             {

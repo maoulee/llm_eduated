@@ -20,7 +20,7 @@ class DraftOption(BaseModel):
     id: str  # "opt_1_1"
     text: str  # option display text
     cognitive_desc: str = ""  # e.g. "需一步公式推导" (never expose K values)
-    status: Literal["unselected", "kept"] = "unselected"
+    status: Literal["unselected", "kept", "selected"] = "unselected"
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -38,7 +38,9 @@ class DraftSlot(BaseModel):
     """A question slot within a draft."""
 
     slot_id: str  # "Q1"
+    display_id: str = ""  # teacher-facing display id, e.g. "1"
     title: str  # "Q1（选择题·2分）— 拓扑排序"
+    phase: Literal["knowledge", "examination", "combined", "question_type"] = "combined"
     options: list[DraftOption]
     annotation: str = ""  # teacher annotation
 
@@ -46,7 +48,9 @@ class DraftSlot(BaseModel):
         json_schema_extra={
             "example": {
                 "slot_id": "Q1",
+                "display_id": "1",
                 "title": "Q1（选择题·2分）— 拓扑排序",
+                "phase": "combined",
                 "options": [
                     {
                         "id": "opt_1_1",
@@ -114,8 +118,9 @@ class SlotAnnotation(BaseModel):
     """Teacher annotation for a single slot — pruning-based selection."""
 
     slot_id: str
-    kept_options: list[str]  # option_ids the teacher kept (usually just 1)
-    removed_options: list[str]  # option_ids the teacher removed
+    selected_option_id: str | None = None  # preferred by the v7 frontend
+    kept_options: list[str] = Field(default_factory=list)  # option_ids the teacher kept
+    removed_options: list[str] = Field(default_factory=list)  # option_ids the teacher removed
     annotation: str = ""
     modified_text: dict[str, str] = Field(default_factory=dict)  # {option_id: modified text}
 
@@ -123,6 +128,7 @@ class SlotAnnotation(BaseModel):
         json_schema_extra={
             "example": {
                 "slot_id": "Q1",
+                "selected_option_id": "opt_1_2",
                 "kept_options": ["opt_1_2"],
                 "removed_options": ["opt_1_1"],
                 "annotation": "保留Kahn算法描述，删除DFS变体",
@@ -167,8 +173,9 @@ class InteractSessionCreate(BaseModel):
     """Request to create a new interact session."""
 
     provider: str = "api_vllm"  # provider name from config.py
-    thinking: bool = False  # enable GLM thinking mode
+    thinking: bool = True  # enable thinking mode by default
     ui_mode: Literal["api", "file"] = "api"
+    user_id: str = "default"  # tester/user namespace for session isolation
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -176,6 +183,7 @@ class InteractSessionCreate(BaseModel):
                 "provider": "api_vllm",
                 "thinking": False,
                 "ui_mode": "api",
+                "user_id": "tester_a",
             }
         }
     )
@@ -224,6 +232,9 @@ class InteractSessionInfo(BaseModel):
     state: str
     scenario: str = "unknown"
     provider: str = ""
+    thinking: bool = False
+    user_id: str = "default"
+    title: str = ""
     created_at: float = 0
     turn_count: int = 0
 
@@ -232,3 +243,48 @@ class AnnotationResponse(BaseModel):
     """Response after submitting an annotation."""
 
     ok: bool
+
+
+# ---------------------------------------------------------------------------
+# Teacher-facing display result models
+# ---------------------------------------------------------------------------
+
+
+class DisplayQuestion(BaseModel):
+    """A generated question formatted for the teacher UI."""
+
+    slot_id: str
+    display_id: str = ""
+    title: str = ""
+    status: Literal["waiting", "generating", "completed", "failed", "regenerating"] = "waiting"
+    progress_label: str = ""  # e.g. "求解中", "审核中", "已完成"
+    stem: str = ""
+    options: list[str] = Field(default_factory=list)
+    answer: str = ""
+    explanation: str = ""
+    annotation: str = ""
+
+
+class DisplayResult(BaseModel):
+    """Teacher-facing aggregate result for the v7 frontend."""
+
+    status: Literal["pending", "partial", "completed", "failed"]
+    message: str = ""
+    title: str = "题目结果"
+    questions: list[DisplayQuestion] = Field(default_factory=list)
+    paper_markdown: str = ""
+
+
+class QuestionAnnotationRequest(BaseModel):
+    """Teacher annotation request for one generated question."""
+
+    annotation: str
+    action: Literal["comment_only", "regenerate_question"] = "comment_only"
+
+
+class QuestionAnnotationResponse(BaseModel):
+    """Response after saving a teacher's per-question annotation."""
+
+    ok: bool
+    status: Literal["recorded", "regeneration_started"]
+    message: str = ""

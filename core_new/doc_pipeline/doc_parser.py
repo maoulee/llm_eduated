@@ -193,6 +193,8 @@ def get_doc_status(filepath: str | Path, allowed: set[str] | frozenset[str] | No
         r"最终判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"路由判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|expression_fix|question_error|solution_error)\b",
         r"\*\*(?:审核结论|判定|状态|status)\*\*[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
+        r"\*\*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*(pass|needs_fix|expression_fix|question_error|solution_error)\*\*",
+        r"(?:^|\n)\s*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"##\s*(?:审核结论|判定)\s*\n+\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
     ):
         m = re.search(pattern, text, re.IGNORECASE)

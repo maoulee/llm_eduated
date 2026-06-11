@@ -137,10 +137,12 @@ class DocPipelineOrchestrator:
     ) -> dict[str, str]:
         """Resolve context injection for a role via registry, or use fallback."""
         if self._registry is not None:
-            return await self._registry.resolve_for_role(
+            resolved = await self._registry.resolve_for_role(
                 role, self.workspace, slot_id, phase,
                 runtime_args=self._runtime_args,
             )
+            if resolved:
+                return resolved
         return dict(fallback or {})
 
     async def run_pipeline(

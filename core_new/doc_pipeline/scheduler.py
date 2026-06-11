@@ -342,16 +342,18 @@ class DocScheduler:
             "正文若符合目标文件结构（含 ## status），系统会自动保存；否则视为中间输出。\n\n"
             "## 工作流程（数值题）\n"
             "1. read_file(question.md) 读取题干\n"
-            "2. 参数校验：write_file(verify.py) → exec_file(verify.py)\n"
-            "   - 校验参数封闭性、整除性、单位换算、推导路径等价\n"
-            "   - 参数不自洽时：edit_file 修改 question.md 中的数值（只改数值，不改结构）\n"
-            "3. 求解：write_file(solution.md) 写出完整求解过程\n"
-            "4. 代码验证：write_file(solve.py) → exec_file(solve.py)，对比答案\n"
-            "   - 不一致时 edit_file 修正\n\n"
-            "概念题跳过步骤2和4，直接推理后 write_file(solution.md)。\n\n"
+            "2. 求解验证：write_file(solve.py) → exec_file(solve.py)\n"
+            "   - 用题面参数直接计算，不硬编码答案\n"
+            "   - 输出计算结果、选项匹配情况和 ANSWER 行\n"
+            "3. 不匹配处理：如果计算结果不匹配任何选项，先定位题干数值、单位、边界条件或选项值中的最小不一致\n"
+            "   - read_file 查看当前题面后，用 edit_file 最小修改 question.md\n"
+            "   - 不得为了匹配选项而枚举搜索参数\n"
+            "   - 参数搜索仅在题面明确存在占位符/取值范围时作为一次性兜底诊断\n"
+            "4. 求解输出：write_file(solution.md) 写出完整求解过程，内容必须与 solve.py 输出一致\n\n"
+            "概念题跳过代码验证与不匹配处理，直接推理后 write_file(solution.md)。\n\n"
             "## 求解策略\n"
             "- 概念/逻辑题：直接推理分析，不需要代码\n"
-            "- 数值题：必须先校验参数再求解，代码只使用标准库\n"
+            "- 数值题：必须先用题面参数独立求解并运行代码验证，代码只使用标准库\n"
             "- 有数值就必须有 solve.py — 这是硬性要求\n\n"
             "## 输出格式\n"
             "Markdown格式（solution.md），按顺序包含以下章节：\n"
@@ -366,6 +368,7 @@ class DocScheduler:
             "4. 数值题代码只用标准库，变量命名体现物理含义\n"
             "5. 代码必须打印 ANSWER: ... 行\n"
             "6. 结果对比验证：代码计算出答案后，选择至少一个子问题用手算交叉验证\n"
+            "7. 若答案与选项不一致，优先修正题干/选项的最小错误，不做参数枚举匹配\n"
         ),
         "review": (
             "# 408考研题目审核专家\n\n"
@@ -633,7 +636,8 @@ class DocScheduler:
             with open(_trace_path, "a", encoding="utf-8") as _tf:
                 _tf.write(_json.dumps(event, ensure_ascii=False) + "\n")
 
-        _MAX_INTERMEDIATE_TEXT = 2  # max intermediate reasoning rounds before trimming
+        _MAX_INTERMEDIATE_TEXT = 2  # max intermediate reasoning rounds before intervention
+        _MAX_INTERMEDIATE_TEXT_HARD = 10  # hard stop before exhausting all attempts
 
         for attempt in range(MAX_AGENT_ATTEMPTS):
             try:
@@ -703,6 +707,8 @@ class DocScheduler:
                 "reasoning_len": len(reasoning_text),
                 "finish_reason": raw.get("finish_reason"),
                 "tool_calls": [tc["function"]["name"] for tc in tool_calls] if tool_calls else [],
+                "content_preview": (content or "")[:500],
+                "reasoning_preview": reasoning_text[:500] if reasoning_text else "",
             })
             if action == "execute_tools":
                 no_output_streak = 0
@@ -840,7 +846,21 @@ class DocScheduler:
                     slot_id, role, attempt + 1, len(payload),
                     intermediate_text_count, _MAX_INTERMEDIATE_TEXT,
                 )
-                # Boundary: too many reasoning rounds — trim context
+                if intermediate_text_count >= _MAX_INTERMEDIATE_TEXT_HARD:
+                    logger.error(
+                        "[%s] Agent '%s' aborted after %d intermediate_text rounds "
+                        "without writing %s",
+                        slot_id, role, intermediate_text_count, expected_fn,
+                    )
+                    _write_trace({
+                        "attempt": attempt + 1,
+                        "action": "abort_intermediate_loop",
+                        "target": expected_fn,
+                        "intermediate_text_count": intermediate_text_count,
+                    })
+                    break
+
+                # Boundary: too many reasoning rounds — trim context and force write_file
                 if intermediate_text_count > _MAX_INTERMEDIATE_TEXT:
                     if not context_trimmed:
                         logger.info(
@@ -849,6 +869,16 @@ class DocScheduler:
                         )
                         messages[:] = self._trim_context(messages, full_task)
                         context_trimmed = True
+                    forced_tool_choice = forced_write_choice
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"你已经连续输出 {intermediate_text_count} 轮中间分析，"
+                            f"但还没有写入目标文件 `{expected_fn}`。\n"
+                            f"下一轮必须调用 write_file(path=\"{expected_fn}\", "
+                            f"content=\"完整Markdown内容\")，不要再输出分析正文。"
+                        ),
+                    })
                     continue
                 # Keep full reasoning text in context (incremental mode — no truncation)
                 messages.append({"role": "assistant", "content": payload})
@@ -1030,6 +1060,11 @@ class DocScheduler:
         # Build messages from session history
         system_prompt = AGENT_PROMPTS.get(role, "")
 
+        # Inject skill content (SKILL.md) into system prompt for interact role
+        skill_content = ROLE_SKILLS.get(role, "")
+        if skill_content:
+            system_prompt += f"\n\n## 工作规范\n{skill_content}"
+
         # Inject KG context for interact role (on first turn only)
         if not session.messages and role == "interact":
             # Detect subjects from teacher message
@@ -1092,7 +1127,7 @@ class DocScheduler:
 
         # Interact turns need a real tool loop: after read/search/write tools run,
         # feed observations back to the model so the teacher receives a usable reply.
-        max_tool_rounds = 15
+        max_tool_rounds = 35
         for round_index in range(max_tool_rounds + 1):
             try:
                 raw = await self._streaming_chat_call(
@@ -1134,6 +1169,12 @@ class DocScheduler:
                 response_text = content or response_text
                 if content:
                     session.messages.append({"role": "assistant", "content": content})
+                # ── TOOL LOOP EXIT MONITOR ──
+                logger.warning(
+                    "[TOOL-MONITOR][%s] LOOP EXIT after %d rounds, %d total tool calls. response=%s",
+                    session_id, round_index, total_tool_calls,
+                    (response_text or "")[:300].replace("\n", "\\n"),
+                )
                 break
 
             assistant_msg = {"role": "assistant", "content": content or None}
@@ -1155,6 +1196,15 @@ class DocScheduler:
                     fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
                 except json.JSONDecodeError:
                     fn_args = {}
+
+                # ── TOOL CALL MONITOR ──
+                _monitor_args = {k: (v[:120] + "...") if isinstance(v, str) and len(v) > 120 else v
+                                 for k, v in fn_args.items()}
+                logger.warning(
+                    "[TOOL-MONITOR][%s] round=%d tool=%s args=%s",
+                    session_id, round_index, fn_name,
+                    json.dumps(_monitor_args, ensure_ascii=False),
+                )
 
                 # Read dedup: skip re-reading unchanged files
                 if fn_name == "read_file":
@@ -1184,6 +1234,13 @@ class DocScheduler:
                         {"ok": False, "error": f"tool '{fn_name}' not available"},
                         ensure_ascii=False,
                     )
+                # ── TOOL RESULT MONITOR ──
+                _result_preview = result_str[:300] if result_str else ""
+                logger.warning(
+                    "[TOOL-MONITOR][%s] round=%d tool=%s result_len=%d preview=%s",
+                    session_id, round_index, fn_name, len(result_str),
+                    _result_preview.replace("\n", "\\n"),
+                )
                 # Truncate large tool results to prevent context overflow
                 if len(result_str) > 4000:
                     result_str = result_str[:3800] + "\n... [truncated]"

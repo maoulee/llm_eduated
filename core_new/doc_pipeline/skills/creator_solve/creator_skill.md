@@ -181,10 +181,11 @@ for k, v in result.items():
 ### 执行
 
 1. read_file(question.md) — 只读题干和子问题（禁止读设计说明）
-2. 数值题：write_file(verify.py) → exec_file(verify.py) → 如参数不自洽 edit question.md
-3. write_file(solution.md)
-4. 数值题：write_file(solve.py) → exec_file(solve.py) → 对比答案
-5. 不一致则修正
+2. 数值题：write_file(solve.py) → exec_file(solve.py) → 用题面参数独立求解
+3. 若计算结果不匹配题干/选项，先定位最小不一致，再 edit question.md 中的数值、单位或选项值
+4. write_file(solution.md)
+5. 数值题复跑 solve.py，对比 solution.md 答案
+6. 不一致则做最小修正；不得为了匹配选项而枚举搜索参数
 
 ### solution.md 格式
 
