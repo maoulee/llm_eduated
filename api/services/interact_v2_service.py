@@ -15,11 +15,14 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import re
 import shutil
 import time
 from pathlib import Path
 from typing import Optional
+
+_ENABLE_SCENARIO_C_INTERCEPTION = os.getenv("ENABLE_SCENARIO_C_INTERCEPTION", "true") == "true"
 
 from api.schemas_interact_v2 import (
     AnnotationSubmission,
@@ -110,7 +113,7 @@ class InteractV2Service:
 
     def create_session(
         self,
-        provider: str = "api_vllm",
+        provider: str = "glm5.1",
         thinking: bool = True,
         ui_mode: str = "api",
         user_id: str = "default",
@@ -186,25 +189,50 @@ class InteractV2Service:
         ws = self._get_session_workspace(session_id)
         self._session_mgr._append_session_message(session_id, "teacher", raw_message, workspace_path=ws)
 
-        pending = session.get("pending_clarification")
-        if pending and pending.get("kind") == "scenario_c_structure":
-            scenario_c_requirements = self._merge_scenario_c_requirements(
-                str(pending.get("requirements", "")),
-                raw_message,
-            )
-            if not self._has_scenario_c_structure(scenario_c_requirements):
+        if _ENABLE_SCENARIO_C_INTERCEPTION:
+            pending = session.get("pending_clarification")
+            if pending and pending.get("kind") == "scenario_c_structure":
+                scenario_c_requirements = self._merge_scenario_c_requirements(
+                    str(pending.get("requirements", "")),
+                    raw_message,
+                )
+                if not self._has_scenario_c_structure(scenario_c_requirements):
+                    session["pending_clarification"] = {
+                        "kind": "scenario_c_structure",
+                        "requirements": scenario_c_requirements,
+                    }
+                    session["state"] = "collecting"
+                    session["scenario"] = "C"
+                    session["turn_count"] = int(session.get("turn_count", 0)) + 1
+                    # Persist updated clarification to disk
+                    self._session_mgr._persist_pending_clarification(
+                        session_id, session["pending_clarification"], workspace_path=ws,
+                    )
+                    response_text = self._scenario_c_clarification_message(scenario_c_requirements)
+                    self._session_mgr._append_session_message(session_id, "agent", response_text, workspace_path=ws)
+                    return InteractTurnResponse(
+                        response_text=response_text,
+                        session_state=session["state"],
+                        has_draft=False,
+                        has_result=False,
+                        files_written=[],
+                    )
+                session.pop("pending_clarification", None)
+                # Delete persisted clarification file
+                self._session_mgr._clear_pending_clarification_file(session_id, workspace_path=ws)
+            elif session["turn_count"] == 0 and self._needs_scenario_c_clarification(raw_message):
                 session["pending_clarification"] = {
                     "kind": "scenario_c_structure",
-                    "requirements": scenario_c_requirements,
+                    "requirements": raw_message,
                 }
                 session["state"] = "collecting"
                 session["scenario"] = "C"
-                session["turn_count"] = int(session.get("turn_count", 0)) + 1
-                # Persist updated clarification to disk
+                session["turn_count"] = 1
+                # Persist clarification to disk
                 self._session_mgr._persist_pending_clarification(
                     session_id, session["pending_clarification"], workspace_path=ws,
                 )
-                response_text = self._scenario_c_clarification_message(scenario_c_requirements)
+                response_text = self._scenario_c_clarification_message(raw_message)
                 self._session_mgr._append_session_message(session_id, "agent", response_text, workspace_path=ws)
                 return InteractTurnResponse(
                     response_text=response_text,
@@ -213,47 +241,24 @@ class InteractV2Service:
                     has_result=False,
                     files_written=[],
                 )
-            session.pop("pending_clarification", None)
-            # Delete persisted clarification file
-            self._session_mgr._clear_pending_clarification_file(session_id, workspace_path=ws)
-        elif session["turn_count"] == 0 and self._needs_scenario_c_clarification(raw_message):
-            session["pending_clarification"] = {
-                "kind": "scenario_c_structure",
-                "requirements": raw_message,
-            }
-            session["state"] = "collecting"
-            session["scenario"] = "C"
-            session["turn_count"] = 1
-            # Persist clarification to disk
-            self._session_mgr._persist_pending_clarification(
-                session_id, session["pending_clarification"], workspace_path=ws,
-            )
-            response_text = self._scenario_c_clarification_message(raw_message)
-            self._session_mgr._append_session_message(session_id, "agent", response_text, workspace_path=ws)
-            return InteractTurnResponse(
-                response_text=response_text,
-                session_state=session["state"],
-                has_draft=False,
-                has_result=False,
-                files_written=[],
-            )
 
-        should_prepare_scenario_c = bool(scenario_c_requirements) or (
-            session["turn_count"] == 0 and self._looks_like_scenario_c(raw_message)
-        )
-        if should_prepare_scenario_c:
-            outline_requirements = scenario_c_requirements or raw_message
-            outline_context = await self._pregenerate_outline(outline_requirements)
-            if outline_context:
-                logger.info("[%s] Scenario C: pre-generated GLM outline (%d chars)",
-                            session_id, len(outline_context))
-                # Write outline to workspace for the agent to reference
-                if ws:
-                    compose_dir = ws / "compose"
-                    compose_dir.mkdir(parents=True, exist_ok=True)
-                    (compose_dir / "glm_outline.md").write_text(
-                        outline_context, encoding="utf-8"
-                    )
+        if _ENABLE_SCENARIO_C_INTERCEPTION:
+            should_prepare_scenario_c = bool(scenario_c_requirements) or (
+                session["turn_count"] == 0 and self._looks_like_scenario_c(raw_message)
+            )
+            if should_prepare_scenario_c:
+                outline_requirements = scenario_c_requirements or raw_message
+                outline_context = await self._pregenerate_outline(outline_requirements)
+                if outline_context:
+                    logger.info("[%s] Scenario C: pre-generated GLM outline (%d chars)",
+                                session_id, len(outline_context))
+                    # Write outline to workspace for the agent to reference
+                    if ws:
+                        compose_dir = ws / "compose"
+                        compose_dir.mkdir(parents=True, exist_ok=True)
+                        (compose_dir / "glm_outline.md").write_text(
+                            outline_context, encoding="utf-8"
+                        )
 
         revision_pending = self._annotation_requests_revision(session_id)
         if revision_pending:
@@ -266,7 +271,7 @@ class InteractV2Service:
             effective_message = message
             if revision_pending:
                 effective_message = self._build_revision_turn_message(message)
-            elif outline_context:
+            elif _ENABLE_SCENARIO_C_INTERCEPTION and outline_context:
                 outline_requirements = scenario_c_requirements or raw_message
                 effective_message = (
                     f"{outline_requirements}\n\n"
@@ -290,11 +295,11 @@ class InteractV2Service:
 
             # Extract scenario tag from response_text: [SCENARIO: A/B/C]
             _scenario_tag = None
-            _scenario_match = re.search(r"\[SCENARIO:\s*([ABC])\]", response_text)
+            _scenario_match = re.search(r"\[SCENARIO:\s*([ABCD])\]", response_text)
             if _scenario_match:
                 _scenario_tag = _scenario_match.group(1)
                 # Strip the tag from displayed text
-                response_text = re.sub(r"\[SCENARIO:\s*[ABC]\]\s*", "", response_text).strip()
+                response_text = re.sub(r"\[SCENARIO:\s*[ABCD]\]\s*", "", response_text).strip()
             # Also try reading scenario from draft file content
             if not _scenario_tag:
                 if ws:
@@ -303,7 +308,7 @@ class InteractV2Service:
                         if dp and dp.exists():
                             try:
                                 head = dp.read_text(encoding="utf-8")[:200]
-                                fm = re.search(r"\[SCENARIO:\s*([ABC])\]", head)
+                                fm = re.search(r"\[SCENARIO:\s*([ABCD])\]", head)
                                 if fm:
                                     _scenario_tag = fm.group(1)
                                     break

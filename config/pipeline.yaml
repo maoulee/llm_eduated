@@ -12,6 +12,7 @@ pipeline:
 
   features:
     enable_question_design: true  # Phase 1: generate design_card.md before question writer
+    enable_pipeline_graph: false  # declarative signal+edge state machine (off by default; legacy paths remain as fallback)
 
   sampling:
     temperature: 0.2
@@ -121,7 +122,7 @@ routing:
 # ── Model routing ──────────────────────────────────────────────
 model_routing:
   # 交互层模型（渲染/grep/归纳）
-  interaction: api_vllm
+  interaction: glm5.1
   # 自由组卷模型（路线3 Step1）
   free_compose: glm5.1
 

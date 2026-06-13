@@ -1,0 +1,361 @@
+"""Pipeline trigger — connects interact agent output to question generation.
+
+Reads paper_request.yaml / slot_blueprint.yaml produced by the interact agent,
+feeds each slot through DocPipeline, and writes per-question output files
+that the display_result_service can pick up.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+import re
+import time
+from pathlib import Path
+from typing import Any, Callable
+
+logger = logging.getLogger(__name__)
+
+# Progress stages per question
+STAGES = ["流水线生成中", "选项设计中", "求解中", "审核中", "排版中"]
+
+
+class PipelineProgress:
+    """Mutable progress tracker for a single generation job."""
+
+    def __init__(self, session_id: str, total_slots: int) -> None:
+        self.session_id = session_id
+        self.total_slots = total_slots
+        self.slot_status: dict[str, dict[str, str]] = {}  # slot_id → {status, stage, label}
+        self.started_at = time.monotonic()
+        self.finished_at: float | None = None
+        self.error: str | None = None
+
+    @property
+    def status(self) -> str:
+        """Coarse job status for API consumers."""
+        if self.error:
+            return "failed"
+        if not self.slot_status:
+            return "pending"
+
+        statuses = [s.get("status") for s in self.slot_status.values()]
+        if all(s == "completed" for s in statuses):
+            return "completed"
+        if all(s in ("completed", "failed") for s in statuses):
+            return "failed" if self.completed_count == 0 else "partial"
+        if any(s == "generating" for s in statuses):
+            return "running"
+        return "pending"
+
+    @property
+    def is_done(self) -> bool:
+        if self.error:
+            return True
+        return all(
+            s.get("status") in ("completed", "failed")
+            for s in self.slot_status.values()
+        )
+
+    @property
+    def completed_count(self) -> int:
+        return sum(
+            1 for s in self.slot_status.values()
+            if s.get("status") == "completed"
+        )
+
+    @property
+    def failed_count(self) -> int:
+        return sum(
+            1 for s in self.slot_status.values()
+            if s.get("status") == "failed"
+        )
+
+    def mark_failed(self, message: str) -> None:
+        """Mark a setup-level job failure and close unfinished slots."""
+        self.error = message
+        self.finished_at = time.monotonic()
+        for sid, slot in list(self.slot_status.items()):
+            if slot.get("status") not in ("completed", "failed"):
+                self.slot_status[sid] = {
+                    **slot,
+                    "status": "failed",
+                    "stage": f"失败: {message[:50]}",
+                }
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "session_id": self.session_id,
+            "status": self.status,
+            "total_slots": self.total_slots,
+            "completed": self.completed_count,
+            "failed": self.failed_count,
+            "is_done": self.is_done,
+            "elapsed_s": round(
+                (self.finished_at or time.monotonic()) - self.started_at, 1
+            ),
+            "slots": dict(self.slot_status),
+            "error": self.error,
+        }
+
+
+# Global registry of active pipeline jobs
+_jobs: dict[str, PipelineProgress] = {}
+
+
+def get_job(session_id: str) -> PipelineProgress | None:
+    _cleanup_jobs()
+    return _jobs.get(session_id)
+
+
+def mark_job_failed(session_id: str, message: str) -> PipelineProgress:
+    """Record a setup-level failure even if trigger_generation crashed early."""
+    progress = _jobs.get(session_id)
+    if progress is None:
+        progress = PipelineProgress(session_id, 0)
+        _jobs[session_id] = progress
+    progress.mark_failed(message)
+    return progress
+
+
+def _cleanup_jobs() -> None:
+    ttl = _job_ttl_seconds()
+    if ttl <= 0:
+        return
+    now = time.monotonic()
+    expired = [
+        sid for sid, job in _jobs.items()
+        if job.finished_at is not None and now - job.finished_at > ttl
+    ]
+    for sid in expired:
+        _jobs.pop(sid, None)
+
+
+def _job_ttl_seconds() -> int:
+    raw = os.getenv("PIPELINE_JOB_TTL_SECONDS", "3600")
+    try:
+        return int(raw)
+    except ValueError:
+        logger.warning("Invalid PIPELINE_JOB_TTL_SECONDS=%r, using 3600", raw)
+        return 3600
+
+
+async def trigger_generation(
+    session_id: str,
+    handoff_yaml_path: Path,
+    workspace: Path,
+    *,
+    provider: str = "glm5.1",
+    on_slot_complete: Callable[[str, str], None] | None = None,
+) -> PipelineProgress:
+    """Trigger question generation from a handoff YAML file.
+
+    Args:
+        session_id: Session identifier.
+        handoff_yaml_path: Path to paper_request.yaml or slot_blueprint.yaml.
+        workspace: Session workspace directory.
+        provider: LLM provider name.
+        on_slot_complete: Optional callback(slot_id, status) after each slot.
+
+    Returns:
+        PipelineProgress with live status.
+    """
+    _cleanup_jobs()
+    progress = PipelineProgress(session_id, 0)
+    _jobs[session_id] = progress
+
+    try:
+        import yaml
+        from core_new.doc_pipeline import DocPipeline
+        from core_new.llm_gateway import get_gateway
+
+        with open(handoff_yaml_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        if not isinstance(data, dict):
+            raise ValueError(f"Invalid handoff YAML: {handoff_yaml_path}")
+
+        # Determine if paper (multiple slots) or single question
+        slots_data = data.get("slots", [])
+        if not slots_data:
+            # Single question blueprint
+            slots_data = [data]
+        if not isinstance(slots_data, list):
+            raise ValueError("handoff YAML field 'slots' must be a list")
+
+        total = len(slots_data)
+        progress.total_slots = total
+        for sb in slots_data:
+            if not isinstance(sb, dict):
+                raise ValueError("handoff YAML slots must be mappings")
+            sid = str(sb.get("slot_id", "Q1"))
+            progress.slot_status[sid] = {
+                "status": "waiting",
+                "stage": STAGES[0],
+                "label": f"第{_num_from_slot(sid)}题",
+            }
+
+        gateway = get_gateway(provider)
+        output_dir = workspace / "questions"
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load experience cards
+        exp_cards = _load_experience_cards(slots_data)
+
+        # Augment experience cards with reference questions from paper_request.yaml
+        for sb in slots_data:
+            sid = str(sb.get("slot_id", "Q1"))
+            ref_qs = sb.get("reference_questions", [])
+            if ref_qs:
+                ref_content = []
+                for qf in ref_qs:
+                    path = _resolve_reference_question_path(qf, handoff_yaml_path, workspace)
+                    if path is not None:
+                        try:
+                            ref_content.append(path.read_text(encoding="utf-8"))
+                        except Exception:
+                            logger.warning("Failed to read reference question: %s", path)
+                if ref_content:
+                    existing = exp_cards.get(sid, "")
+                    exp_cards[sid] = (
+                        existing
+                        + "\n\n=== 参考题目（教师选中考察模式对应的真题） ===\n"
+                        + "\n---\n".join(ref_content)
+                    )
+
+        try:
+            from core_new.slot_prompts import K_RADAR_DEFINITIONS
+        except ImportError:
+            K_RADAR_DEFINITIONS = ""
+
+        slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", "2"))
+        semaphore = asyncio.Semaphore(max(1, slot_concurrency))
+
+        async def _generate_one(sb: dict) -> dict:
+            sid = str(sb.get("slot_id", "Q1"))
+            num = _num_from_slot(sid)
+            exp_card = exp_cards.get(sid, "")
+
+            async with semaphore:
+                # Update progress
+                progress.slot_status[sid] = {
+                    "status": "generating",
+                    "stage": STAGES[0],
+                    "label": f"第{num}题",
+                }
+
+                try:
+                    doc_workspace = str(output_dir / sid)
+                    dp = DocPipeline(
+                        gateway=gateway,
+                        workspace=doc_workspace,
+                        model_routing={"_default": provider},
+                        enable_thinking=(provider in ("api_vllm", "vllm")),
+                    )
+
+                    # Run the actual pipeline
+                    result = await dp.run(
+                        slot_id=sid,
+                        slot_data=sb,
+                        experience_card=exp_card,
+                        k_definitions=K_RADAR_DEFINITIONS,
+                    )
+
+                    if result.ok and result.final_content:
+                        # Write output files
+                        q_dir = output_dir / sid
+                        q_dir.mkdir(parents=True, exist_ok=True)
+                        (q_dir / "final.md").write_text(
+                            result.final_content, encoding="utf-8"
+                        )
+                        progress.slot_status[sid] = {
+                            "status": "completed",
+                            "stage": "已完成",
+                            "label": f"第{num}题",
+                        }
+                    else:
+                        error_msg = result.error or "generation failed"
+                        q_dir = output_dir / sid
+                        q_dir.mkdir(parents=True, exist_ok=True)
+                        (q_dir / "error.md").write_text(error_msg, encoding="utf-8")
+                        progress.slot_status[sid] = {
+                            "status": "failed",
+                            "stage": f"失败: {error_msg[:50]}",
+                            "label": f"第{num}题",
+                        }
+
+                    if on_slot_complete:
+                        on_slot_complete(sid, progress.slot_status[sid]["status"])
+                    return progress.slot_status[sid]
+
+                except Exception as e:
+                    logger.exception("[%s] Slot %s generation failed", session_id, sid)
+                    q_dir = output_dir / sid
+                    q_dir.mkdir(parents=True, exist_ok=True)
+                    (q_dir / "error.md").write_text(str(e), encoding="utf-8")
+                    progress.slot_status[sid] = {
+                        "status": "failed",
+                        "stage": f"失败: {str(e)[:50]}",
+                        "label": f"第{num}题",
+                    }
+                    if on_slot_complete:
+                        on_slot_complete(sid, "failed")
+                    return progress.slot_status[sid]
+
+        # Run all slots concurrently (bounded by semaphore)
+        tasks = [_generate_one(sb) for sb in slots_data]
+        await asyncio.gather(*tasks)
+
+        progress.finished_at = time.monotonic()
+        logger.info(
+            "[%s] Pipeline done: %d/%d completed in %.1fs",
+            session_id,
+            progress.completed_count,
+            total,
+            (progress.finished_at - progress.started_at),
+        )
+        return progress
+    except Exception as e:
+        logger.exception("[%s] Pipeline generation setup failed", session_id)
+        progress.mark_failed(str(e))
+        raise
+
+
+def _num_from_slot(slot_id: str) -> str:
+    digits = re.sub(r"\D+", "", slot_id)
+    return str(int(digits)) if digits else slot_id
+
+
+def _resolve_reference_question_path(
+    path_value: Any,
+    handoff_yaml_path: Path,
+    workspace: Path,
+) -> Path | None:
+    """Resolve a reference question path from YAML in session context."""
+    if not path_value:
+        return None
+    raw_path = Path(str(path_value))
+    candidates = [raw_path] if raw_path.is_absolute() else [
+        handoff_yaml_path.parent / raw_path,
+        workspace / raw_path,
+        raw_path,
+    ]
+    for candidate in candidates:
+        if candidate.exists() and candidate.is_file():
+            return candidate
+    logger.warning("Reference question not found: %s", path_value)
+    return None
+
+
+def _load_experience_cards(slots_data: list[dict]) -> dict[str, str]:
+    """Load experience cards for slots that have them."""
+    cards: dict[str, str] = {}
+    exp_dir = Path("data/slot_experiences")
+    if not exp_dir.is_dir():
+        return cards
+    for sb in slots_data:
+        sid = sb.get("slot_id", "")
+        path = exp_dir / f"{sid}_experience.md"
+        if path.exists():
+            cards[sid] = path.read_text(encoding="utf-8")
+    return cards

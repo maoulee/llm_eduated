@@ -1105,7 +1105,15 @@ class DocScheduler:
         gateway = self._get_gateway_for_role(role)
         effective_max_tokens = max_tokens or self.max_tokens
         if role == "interact" and not max_tokens:
-            effective_max_tokens = min(effective_max_tokens, 4096)
+            # Entry D (past paper reference) needs more tokens for multi-plan drafts
+            _is_scenario_d = bool(
+                re.search(r"(往年|试卷参考|past.?paper)", teacher_message, re.IGNORECASE)
+            ) or session.scenario == "D"
+            if _is_scenario_d:
+                effective_max_tokens = min(effective_max_tokens, 8192)
+                session.scenario = "D"
+            else:
+                effective_max_tokens = min(effective_max_tokens, 4096)
         effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
 
         response_text = ""
@@ -1114,7 +1122,7 @@ class DocScheduler:
         # Pre-trim context before entering the tool loop to prevent overflow.
         # Keep system prompt + last N messages. Long conversations accumulate tokens
         # from tool results and draft content.
-        _MAX_INTERACT_MESSAGES = 20
+        _MAX_INTERACT_MESSAGES = 40
         if len(session.messages) > _MAX_INTERACT_MESSAGES:
             session.messages = [session.messages[0]] + session.messages[-_MAX_INTERACT_MESSAGES:]
             logger.info(
