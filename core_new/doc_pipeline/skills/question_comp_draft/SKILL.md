@@ -1,34 +1,43 @@
-# 综合应用题出题技能
+# 综合应用题出题技能（具体逻辑）
 
-> 行为约束（契约忠实、K难度忠实、子问结构忠实、格式红线）已定义在 agents/question_comp.md。
-> 本文件定义出题的执行步骤、领域模板和经验卡消费规范。
+> 通用行为（角色、思考控制、核心原则、红线）定义在 agents/question_comp.md。
+> 本文件定义出题流程、领域模板、经验卡消费规范。**不放通用干扰模式**（那些归 design_card_v1/SKILL.md）。
 
-## 工作流程
+## 出题流程（code-as-truth 标准题）
 
-### 设计题干（写 question.md）
+### Step 1：读设计卡
 
-**目标**：基于设计卡设计完整题目，**直接产出 question.md**。
+优先读取 design_card.md：
+- blueprint_contract（考点范围）
+- core_knowledge_intent（核心知识点意图）
+- question_structure_plan（题型结构和子问规划）
+- parameter_plan（参数规划）
+- terminology_and_expression_constraints（术语约束）
+- 干扰策略（设计卡已选定用哪些干扰类型，你只实现，不自己选）
 
-1. **优先读取 design_card.md**：
-   - blueprint_contract（考点范围）
-   - core_knowledge_intent（核心知识点意图）
-   - question_structure_plan（题型结构和子问规划）
-   - parameter_plan（参数规划）
-   - terminology_and_expression_constraints（术语约束）
-2. **assembled.md 仅用于补充**：
-   - 经验卡中的 should_be / should_not_be
-   - 选中模式的考察结构模式
-   - 历年题型风格参考
-3. **不得**把 design_card 未选择的 assembled 候选知识点加入题目
-4. **直接 write_file(question.md)** — 不做数值校验
+assembled.md 仅用于补充经验卡的 should_be / should_not_be 与考察结构模式，**不得**把 design_card 未选的知识点加入题目。
 
-**只关注**：
-- 知识点与 design_card 对齐
-- 考察形式符合要求
-- 子问结构与 design_card 一致
-- 题干风格像408真题
+### Step 2：设计题干 + 子问结构
 
-**数值参数校验不在此阶段** — 参数自洽性和数值修订由求解智能体负责。
+按综合题题干标准格式（见下）设计题干，并按子问设计模式规划子问链。题干给参数、给系统状态、给提问，**不给答案值**。
+
+### Step 3：写 solve.py（计算逻辑）
+
+编写 solve.py：参数定义 + 正确算法 + 错误算法（覆盖所有子问）。
+
+**solve.py 输出契约**（不给代码模板，结构由你自主决定）：
+1. 从题干参数 + 前序子问结果计算每个子问的正确答案
+2. 串行子问：前问输出作为后问输入
+3. 干扰/中间量由"错误算法"产生（对应设计卡选定的干扰策略），**非硬编码常量**
+4. print 每个子问的正确值（+ 必要的干扰/中间值）+ 对应逻辑标签
+
+代码结构、函数组织方式由你自主决定。本技能不给代码骨架。
+
+### Step 4：输出
+
+- write_file(question.md) — 题干 + 子问 + 设计说明（不含答案值）
+- write_file(solve.py) — 计算逻辑（正确算法 + 错误算法，覆盖所有子问）
+- **不写子问答案值** — 答案由 solve 阶段执行 solve.py 后确定
 
 ---
 
@@ -102,9 +111,10 @@ assembled.md 中包含经验卡的考察结构模式分析和出题指导，作�
 - should_not_be排查：逐条确认未触犯
 - 知识点选取理由
 - 参数选择理由（为何选 2^n 基底）
+- solve.py 错误算法实现（每个干扰/中间量对应的错误算法，对应设计卡选定的干扰类型）
 - 与契约 K 值的对齐说明
 ```
 
-## 参数校验关注点
+## 概念题出题（complexity == "conceptual"）
 
-数值参数校验由求解智能体负责，出题阶段不校验。
+综合题极少为概念题；若 complexity == "conceptual"，走轻量路径：正常设计题干 + 子问，直接写 solution.md（推理基于标准教材定义），不写 solve.py、不脑内算。

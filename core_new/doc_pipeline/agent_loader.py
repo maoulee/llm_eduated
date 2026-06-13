@@ -59,21 +59,11 @@ _BEHAVIOR_VARIANTS = {
 }
 
 _BEHAVIOR_VARIANT_TEXT = {
-    "plan_design": (
-        "你的模式是「分析输入→构建框架→填充细节→输出」。"
-        "先搭骨架再填充，不要一开始就写完整内容。"
-    ),
-    "question_create": (
-        "你的模式是「设计题干框架+编码 solve.py 计算逻辑（code_as_truth 时）→输出」。\n"
-        "设计阶段：设计题干框架、参数结构、计算逻辑（正确算法+错误算法）。\n"
-        "数值由 solve.py 执行确定——不脑内算术，不预设答案值，不硬编码干扰值。\n"
-        "干扰值由错误算法产生，不是硬编码常量。\n"
-        "不写最终选项值：选项由 solve.py 输出后组装，出题阶段只产出题干+设计说明+solve.py。"
-    ),
     "audit_judge": (
         "你的模式是「结构化审核→结论→输出」。"
         "按检查清单逐项判断，每项给结论不给推导。"
-        "此阶段无答案，不评估答案正确性。"
+        "此阶段无答案，不评估答案正确性，不审选项值，不算答案数值（code-as-truth：答案由 solve.py 执行确定）。"
+        "form_gate 阶段选择题 question.md 无 A/B/C/D 选项值是正常的（选项由 solve 阶段组装），不得因此打回。"
     ),
     "solve_create": (
         "你的模式是「exec solve.py 得真值→读输出→组装选项→写推理过程→输出」。\n"
@@ -81,13 +71,7 @@ _BEHAVIOR_VARIANT_TEXT = {
         "不质疑 exec、不重算、不改题干：exec 的输出就是唯一数值来源，发现不一致只回退标记 code_error，不自行修改。\n"
         "代码错误标记 code_error 回退，不自己修代码。"
     ),
-    "final_review": (
-        "你的模式是「审表述/格式/交付完整性→路由判定→输出」。\n"
-        "审题面表述清晰度、格式规范、交付文件完整性。\n"
-        "数值正确性由代码保证——不重算、不心算验证。\n"
-        "不写代码、不执行代码——数值验证由 solve 阶段完成。"
-    ),
-    # --- 2-agent pipeline ---
+    # --- 2-agent pipeline (DualAgentOrchestrator, still under test) ---
     "creator_solve": (
         "你负责：设计题干框架(占位符)→代码设计参数→独立求解→等待终审→组装交付，严格按序。\n"
         "Step 1a 只写框架不写具体数值；Step 1b 用代码计算参数并替换占位符。\n"

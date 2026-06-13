@@ -22,7 +22,7 @@ from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, Age
 from core_new.doc_pipeline.dual_agent_orchestrator import DualAgentOrchestrator
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
-from core_new.doc_pipeline.scheduler import DocScheduler
+from core_new.doc_pipeline.scheduler import DocScheduler, ROLE_SKILLS
 from core_new.agent_roles import TransportRetryPolicy
 from core_new.llm_gateway import LLMGateway
 
@@ -328,6 +328,26 @@ class TestAgentPrompts:
         # Old minimal-fix / parameter-search behavior is explicitly gone.
         assert "参数搜索仅作为兜底" not in prompt
         assert "不得为了匹配选项而枚举搜索参数" not in prompt
+
+    def test_review_prompt_is_form_gate_not_answer_checker(self):
+        # Form Gate (spec §15 Layer 3): review must NOT treat a choice question
+        # missing its A/B/C/D option values as a defect. Under code-as-truth the
+        # option values are assembled by the solve stage after solve.py runs —
+        # at form_gate time question.md legitimately has no option values. A
+        # reviewer that demanded options here would dead-loop question↔form_gate
+        # until MAX_NODE_VISITS. Review must also never compute answer values.
+        prompt = AGENT_PROMPTS["review"]
+        skill = ROLE_SKILLS.get("review", "")
+
+        # form_gate must not fail a choice question for lacking option values
+        assert "不得因选择题缺选项值" in prompt or "不得因选择题缺选项值" in skill
+        # review must not compute / propose answer numbers
+        assert ("不得脑内算答案" in prompt or "不得脑内算答案" in skill)
+        assert "计算/提出/建议任何答案" in prompt or "不得出现答案数值" in skill
+        # The old checklist item that demanded "选项/子问题是否结构正确" with
+        # "4选项1正确" is gone — replaced by solve.py logic / structure review.
+        assert "4选项1正确" not in skill
+        assert "选项/子问题是否结构正确" not in prompt
 
 
 # ── Integration: WriteFileTool + DocParser round-trip ────────────

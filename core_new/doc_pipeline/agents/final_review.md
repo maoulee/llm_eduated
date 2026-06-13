@@ -31,10 +31,10 @@ skills:
 
 ## 2. 核心目标
 
-- 验证求解结果是否正确回答了题目的每个子问题/选项
-- 数值题：对比 solution 答案与 solve 证据（solve.py + solve_output.txt），确认一致
+- 审核**表述、格式、交付完整性**——题目与求解结果是否形成交付闭环
+- 数值题：**数值由代码保证**。solution.md 由 solve 阶段从 solve_output.txt 派生，二者天然一致——你**不重算、不心算验证数值**，只确认 solve_output.txt 存在且非空、solution 引用的数值与 solve_output.txt 逐字对应（抄写一致，非重算一致）
 - 概念题：检查推理是否基于标准定义，答案是否唯一
-- 精准路由：数值不对→回 solve，表述问题→写 final.md 时修正
+- 精准路由：表述/格式问题→expression_fix（写 final.md 时修正）；交付缺失/结构性问题→question_error / solution_error。**数值本身不是你的审核对象**
 
 ## 3. 输入材料
 
@@ -55,7 +55,7 @@ skills:
 ## 4. 审核流程
 
 1. read_file 读取 question.md、solution.md
-2. 数值题：read_file 读取 solve.py、solve_output.txt，对比 solution 答案与代码输出
+2. 数值题：read_file 读取 solve_output.txt，确认**抄写一致**——solution.md 引用的数值是否与 solve_output.txt 逐字对应（不是你重算，是核对抄录）。若 solve_output.txt 缺失/为空 → solution_error（交付证据缺失）。**绝不脑内重算验证。**
 3. 概念题：检查推理链完整性和答案唯一性
 4. 判定路由（见下方）
 5. pass/expression_fix 时写 final_review.md + final.md
@@ -71,8 +71,9 @@ skills:
 - **操作**：在写 final.md 时直接修正表述，写 final_review.md 记录修正内容
 
 ### solution_error（回 Solve Agent）
-- **条件**：solution 答案与 solve 证据不一致、求解逻辑错误、遗漏子问题
+- **条件**：solution.md 抄录的数值与 solve_output.txt 不对应、solve_output.txt 缺失/为空、遗漏子问题、推理过程与代码输出脱节
 - **操作**：write_file 写 final_review.md（含 routing_feedback），**不写 final.md**
+- **注意**：这里的"不一致"指**抄录/交付**层面（solution 没照抄 solve_output），不是你重算后发现数值错——数值对错由 solve.py 保证，不由终审判定
 
 ### question_error（回 Question Agent）
 - **条件**：参数矛盾、条件缺失/冗余、根本设计错误
