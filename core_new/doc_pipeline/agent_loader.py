@@ -64,10 +64,11 @@ _BEHAVIOR_VARIANT_TEXT = {
         "先搭骨架再填充，不要一开始就写完整内容。"
     ),
     "question_create": (
-        "你的模式是「设计→输出」。\n"
-        "设计阶段：深入思考知识点覆盖、逻辑关联、题干表述、消除歧义。\n"
-        "数值参数校验不在此阶段——由求解智能体负责。\n"
-        "不写答案：答案由独立的求解智能体产出，你只输出题干+选项/子问题+设计说明。"
+        "你的模式是「设计题干框架+编码 solve.py 计算逻辑（code_as_truth 时）→输出」。\n"
+        "设计阶段：设计题干框架、参数结构、计算逻辑（正确算法+错误算法）。\n"
+        "数值由 solve.py 执行确定——不脑内算术，不预设答案值，不硬编码干扰值。\n"
+        "干扰值由错误算法产生，不是硬编码常量。\n"
+        "不写最终选项值：选项由 solve.py 输出后组装，出题阶段只产出题干+设计说明+solve.py。"
     ),
     "audit_judge": (
         "你的模式是「结构化审核→结论→输出」。"
@@ -75,15 +76,15 @@ _BEHAVIOR_VARIANT_TEXT = {
         "此阶段无答案，不评估答案正确性。"
     ),
     "solve_create": (
-        "你的模式是「读题→独立求解→代码验证→最小题面修订→输出」。\n"
-        "数值题先用题面参数求解并执行 solve.py；若结果不匹配选项，优先基于求解证据最小修改题干数值、单位或选项值。\n"
-        "不得为了匹配选项而枚举搜索参数；参数搜索仅在明确有占位符/范围时作为一次性兜底诊断。\n"
-        "概念题直接推理，跳过代码校验。禁止阅读设计说明——只看题干。"
+        "你的模式是「exec solve.py 得真值→读输出→组装选项→写推理过程→输出」。\n"
+        "exec 输出即真值：执行 solve.py 得到正确答案+干扰值，据此组装选项、写 solution.md 推理过程。\n"
+        "不质疑 exec、不重算、不改题干：exec 的输出就是唯一数值来源，发现不一致只回退标记 code_error，不自行修改。\n"
+        "代码错误标记 code_error 回退，不自己修代码。"
     ),
     "final_review": (
-        "你的模式是「读取证据→核对一致性→路由判定→输出」。\n"
-        "数值题：read_file 读取 solve 证据，对比 solution 答案与代码输出，不一致则 solution_error 回求解。\n"
-        "概念题：检查推理链完整性和答案唯一性。\n"
+        "你的模式是「审表述/格式/交付完整性→路由判定→输出」。\n"
+        "审题面表述清晰度、格式规范、交付文件完整性。\n"
+        "数值正确性由代码保证——不重算、不心算验证。\n"
         "不写代码、不执行代码——数值验证由 solve 阶段完成。"
     ),
     # --- 2-agent pipeline ---
@@ -194,8 +195,12 @@ class AgentSpec:
             core = _load_behavior_file("CORE")
             mode = _load_behavior_file(self.behavior)
             role = body.strip()
-            skills_text = self._load_skills_new()
-            parts = [p for p in [core, mode, role, skills_text] if p]
+            # NOTE: skill content is intentionally NOT added here.
+            # self.skill_content is returned by get_agent_dicts() as ROLE_SKILLS,
+            # and the scheduler already injects it into the user message
+            # (scheduler.py ROLE_SKILLS). Adding it to the system prompt too
+            # caused the SKILL to be injected twice. Keep it in one place.
+            parts = [p for p in [core, mode, role] if p]
             return "\n\n".join(parts) + suffix
         # Old path: _BEHAVIOR_CORE + identity + variant_text + suffix
         variant_text = _BEHAVIOR_VARIANT_TEXT.get(self.behavior_type, "")

@@ -310,13 +310,24 @@ class TestAgentPrompts:
             expected_file = AGENT_OUTPUT_FILES[role]
             assert expected_file in prompt, f"{role} prompt doesn't mention its output file {expected_file}"
 
-    def test_solve_prompt_prioritizes_minimal_question_fix(self):
+    def test_solve_prompt_encodes_code_as_truth(self):
+        # New code-as-truth solve role (spec §15): exec output is the sole
+        # source of truth. The legacy assertions encoded the *old* behavior
+        # (minimal question-stem fix, parameter-search fallback when a computed
+        # result mismatched an option). Under code-as-truth the solver no longer
+        # touches the stem or searches parameters — exec failures route back via
+        # code_error instead. This test now asserts the new contract.
         prompt = AGENT_PROMPTS["solve"]
-        assert "参数搜索仅作为兜底" in prompt
-        assert "最小修改" in prompt
+        # exec output is the truth, written into solution.md verbatim.
+        assert "exec 输出即真值" in prompt or "exec 即真值" in prompt
+        # solver never edits the question stem; option values come from exec.
+        assert "不得改题干" in prompt
         assert "选项值" in prompt
-        assert "不得为了匹配选项而枚举搜索参数" in prompt
-        assert "数值题不得跳过参数校验直接求解" not in prompt
+        # exec failure routes code_error, not self-repair.
+        assert "code_error" in prompt
+        # Old minimal-fix / parameter-search behavior is explicitly gone.
+        assert "参数搜索仅作为兜底" not in prompt
+        assert "不得为了匹配选项而枚举搜索参数" not in prompt
 
 
 # ── Integration: WriteFileTool + DocParser round-trip ────────────
