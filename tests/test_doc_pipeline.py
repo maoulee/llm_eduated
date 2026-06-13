@@ -704,6 +704,10 @@ class TestDocPipelineOrchestrator:
 
         scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
         orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+        # start_layer resume is a legacy-path feature; the graph uses
+        # pipeline_state.json instead, so disable the graph here to exercise
+        # the legacy resume contract.
+        orchestrator._use_graph_enabled = False
 
         result = run_async(orchestrator.run_pipeline(
             "S6",
@@ -727,6 +731,8 @@ class TestDocPipelineOrchestrator:
 
         scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
         orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+        # start_layer resume is a legacy-path feature; disable the graph here.
+        orchestrator._use_graph_enabled = False
 
         result = run_async(orchestrator.run_pipeline(
             "S7",
@@ -1295,3 +1301,197 @@ class TestAgentLoader:
         bad_file.write_text("No frontmatter here", encoding="utf-8")
         with pytest.raises(ValueError, match="no valid YAML frontmatter"):
             _parse_agent_md(bad_file)
+
+
+# ── Graph routing + code-as-truth (spec §15) ────────────────────────
+
+
+class _GraphTestScheduler:
+    """Scheduler that writes controlled artifacts so graph routing can be
+    asserted deterministically.
+
+    - question_sc / question_comp write a stem-only question.md
+    - question_sc also writes solve.py (code-as-truth: Question writes it)
+    - review / final_review statuses are configurable
+    - solve agent always writes solution.md (post-exec assembly)
+    """
+
+    def __init__(self, workspace, *, review_status="pass", final_status="pass",
+                 solve_py=None, conceptual=False):
+        self.workspace = Path(workspace)
+        self.calls = []
+        self.review_status = review_status
+        self.final_status = final_status
+        self.solve_py = solve_py or (
+            "print('正确: 10')\nprint('干扰1: 11')\nprint('干扰2: 12')\nprint('干扰3: 13')\n"
+        )
+        self.conceptual = conceptual
+
+    async def run_agent(self, role, task, *, slot_id, inject_files=None,
+                        continue_session=False, max_tokens=None):
+        self.calls.append({"role": role})
+        ws = self.workspace / slot_id
+        ws.mkdir(parents=True, exist_ok=True)
+
+        if role == "outline":
+            (ws / "outline.md").write_text(
+                "## status\nready\n\n## 考点\nCache\n\n## 难度目标\nK1=2",
+                encoding="utf-8",
+            )
+        elif role == "question_design":
+            # design card is optional / non-blocking; write a minimal stub
+            (ws / "design_card.md").write_text(
+                "## status\nready\n\n## blueprint_contract\nCache", encoding="utf-8",
+            )
+        elif role in ("question_sc", "question_comp"):
+            (ws / "question.md").write_text(
+                "## status\ndraft\n\n## 题干\n计算题。\n\n## 设计说明\ncode-as-truth",
+                encoding="utf-8",
+            )
+            if not self.conceptual:
+                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
+        elif role == "review":
+            (ws / "review.md").write_text(
+                f"## status\n{self.review_status}\n\n## summary\nOK\n\n## corrections\n无",
+                encoding="utf-8",
+            )
+        elif role == "solve":
+            (ws / "solution.md").write_text(
+                "## status\nsolved\n\n## 求解过程\n基于 exec 输出\n\n## 最终答案\n10",
+                encoding="utf-8",
+            )
+        elif role == "final_review":
+            (ws / "final_review.md").write_text(
+                f"## status\n{self.final_status}\n\n## summary\nOK\n\n## corrections\n无\n\n## routing_feedback\n修一下",
+                encoding="utf-8",
+            )
+        return ""
+
+
+class TestPipelineGraphRouting:
+    def _orch(self, scheduler, tmp_path):
+        orch = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+        # graph is the default path now; pin it on explicitly.
+        orch._use_graph_enabled = True
+        return orch
+
+    def test_standard_graph_runs_full_path_and_assembles_result(self, tmp_path):
+        sched = _GraphTestScheduler(tmp_path)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("G1", {"slot_id": "G1"}))
+
+        assert result.ok is True
+        roles = [c["role"] for c in sched.calls]
+        # outline → design_card → question → form_gate → solve → final
+        assert roles == [
+            "outline", "question_design", "question_sc", "review", "solve", "final_review",
+        ]
+        # code-as-truth: orchestrator exec'd Question's solve.py → solve_output.txt
+        assert (tmp_path / "G1" / "solve_output.txt").exists()
+        # final.md assembled
+        assert (tmp_path / "G1" / "final.md").exists()
+
+    def test_conceptual_graph_skips_solve_and_final(self, tmp_path):
+        sched = _GraphTestScheduler(tmp_path, conceptual=True)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline(
+            "G2", {"slot_id": "G2", "complexity": "conceptual"}
+        ))
+
+        assert result.ok is True
+        roles = [c["role"] for c in sched.calls]
+        # conceptual lightweight path: outline → design_card → question → done.
+        # No form_gate/solve/final review (graph routes question → done for conceptual).
+        assert roles == ["outline", "question_design", "question_sc"]
+        assert "review" not in roles
+        assert "solve" not in roles
+        assert "final_review" not in roles
+
+    def test_code_error_exec_failure_routes_back_to_question(self, tmp_path):
+        # solve.py that exits non-zero → exec fails → code_error → back to question
+        bad_solve = "raise RuntimeError('boom')\n"
+        sched = _GraphTestScheduler(tmp_path, solve_py=bad_solve)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("G3", {"slot_id": "G3"}))
+
+        # code_error routes solve → question. Question rewrites solve.py (same
+        # bad content in the fake), so exec keeps failing until the graph's
+        # MAX_NODE_VISITS safety net forces done. Either way the graph must
+        # not crash and must record a solve attempt that emitted code_error.
+        state = json.loads((tmp_path / "G3" / "pipeline_state.json").read_text())
+        solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
+        assert "code_error" in solve_signals
+        # and it bounced back to question at least once
+        assert state["visit_counts"].get("question", 0) >= 2
+        # B1: a slot that never solved must NOT be reported as a false success.
+        assert result.ok is False
+        assert "never succeeded" in result.error
+        # and no final.md should be assembled for a failed slot
+        assert not (tmp_path / "G3" / "final.md").exists()
+
+    def test_code_error_duplicate_values_routes_back_to_question(self, tmp_path):
+        # solve.py prints 4 identical values → value validation fails → code_error
+        dup_solve = (
+            "print('正确: 7')\nprint('干扰1: 7')\nprint('干扰2: 7')\nprint('干扰3: 7')\n"
+        )
+        sched = _GraphTestScheduler(tmp_path, solve_py=dup_solve)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("G4", {"slot_id": "G4"}))
+
+        state = json.loads((tmp_path / "G4" / "pipeline_state.json").read_text())
+        solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
+        assert "code_error" in solve_signals
+        # B1: duplicate-value loop never solved → must report failure.
+        assert result.ok is False
+
+    def test_code_error_partial_duplicates_routes_back_to_question(self, tmp_path):
+        # W1: 3 distractors collapse to one value (10/11/11/11) → only 2
+        # distinct values, not a valid 4-option choice → code_error.
+        partial_dup = (
+            "print('正确: 10')\nprint('干扰1: 11')\nprint('干扰2: 11')\nprint('干扰3: 11')\n"
+        )
+        sched = _GraphTestScheduler(tmp_path, solve_py=partial_dup)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("G5", {"slot_id": "G5"}))
+
+        state = json.loads((tmp_path / "G5" / "pipeline_state.json").read_text())
+        solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
+        assert "code_error" in solve_signals
+        assert result.ok is False
+
+
+class TestEvidenceSolverCodeAsTruth:
+    def test_behavior_file_is_code_as_truth(self):
+        """behavior/evidence_solver.md must agree with solve.md body (no
+        legacy 'write own solve.py' / 'parameter search' / 'edit stem')."""
+        from core_new.doc_pipeline.agent_loader import _load_behavior_file
+        text = _load_behavior_file("evidence_solver")
+
+        # code-as-truth contract present
+        assert "exec 输出即真值" in text or "exec 即真值" in text
+        assert "code_error" in text
+        assert "组装选项" in text
+        assert "追加" in text  # append options, never overwrite stem
+        # legacy anti-patterns explicitly gone (no endorsement of param search)
+        assert "参数搜索仅作为兜底" not in text
+        assert "不得为了匹配选项而枚举搜索参数" not in text
+        # the file forbids writing its own solve.py
+        assert "写自己的 solve.py" in text
+
+    def test_solve_system_prompt_resolves_contradiction(self):
+        """The assembled solve prompt (CORE + behavior + body) must carry the
+        code-as-truth contract and must NOT carry legacy stem-edit / parameter
+        search language. This is the headline contradiction fix."""
+        prompt = AGENT_PROMPTS["solve"]
+        # new contract tokens
+        assert "exec 即真值" in prompt or "exec 输出即真值" in prompt
+        assert "不得改题干" in prompt
+        assert "code_error" in prompt
+        # legacy contradictions purged
+        assert "参数搜索仅作为兜底" not in prompt
+        assert "不得为了匹配选项而枚举搜索参数" not in prompt

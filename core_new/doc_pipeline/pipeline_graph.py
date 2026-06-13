@@ -328,12 +328,16 @@ class SolveNode(_OrchestratorNode):
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         fail, exec_result = await self.orch._run_solve(
-            state.slot_id, ws, start_layer=1
+            state.slot_id, ws, start_layer=1,
+            question_type=state.slot_data.get("question_type"),
         )
         if fail is not None:
             state.result = fail
             return AgentResult(signal="code_error", feedback=fail.error)
-        if not exec_result.get("ok", True) and not exec_result.get("skipped", True):
+        # code-as-truth: any failed exec (non-zero exit / value validation)
+        # is a code_error that routes back to Question. ``ok`` defaults to True
+        # only when no solve.py existed (conceptual skip).
+        if not exec_result.get("ok", True):
             return AgentResult(
                 signal="code_error",
                 feedback=exec_result.get("stderr", "")[:200],

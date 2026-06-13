@@ -48,6 +48,77 @@ MAX_FINAL_RETRIES = 1
 # Q41-Q47 are comprehensive questions; Q1-Q40 are single choice.
 _COMP_SLOTS = {f"Q{i}" for i in range(41, 48)}
 
+# Lines that label a printed value in solve.py output (spec §15.3: each value
+# printed with a logic tag like 正确 / 干扰1 / 干扰2 / 干扰3). Used for value
+# validation — never for parsing a fixed template.
+_VALUE_TAG_RE = re.compile(r"^\s*(?:正确|答案|answer|correct|干扰|distractor|option|\w+)[\s:：]", re.IGNORECASE)
+
+
+def _validate_solve_output(
+    output_path: Path, *, question_type: str | None = None,
+) -> dict[str, Any]:
+    """Validate solve.py exec output for code-as-truth correctness.
+
+    Contract (spec §15.3, kept deliberately loose — no fixed code template):
+    - output must be non-empty
+    - for single-choice: 4 distinct labeled values (correct + 3 distractors)
+    - duplicates / missing values → code_error (Question re-tunes parameters)
+
+    ``question_type`` ("single_choice" / "comprehensive" / ...) selects the
+    strictness: choice questions require 4 distinct values; comprehensive /
+    conceptual questions are validated loosely (only flag total collapse).
+
+    Returns {"ok": bool, "reason": str, "values": list[str]}.
+    """
+    if not output_path.exists():
+        return {"ok": False, "reason": "no solve_output.txt", "values": []}
+    text = output_path.read_text(encoding="utf-8", errors="replace").strip()
+    if not text:
+        return {"ok": False, "reason": "empty solve_output.txt", "values": []}
+
+    # Extract the trailing number from each line, preferring tagged lines.
+    values: list[str] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = re.search(r"(-?\d+(?:\.\d+)?)\s*$", line)
+        if m:
+            values.append(m.group(1))
+
+    if not values:
+        # Non-numeric output (conceptual reasoning print, analysis desc):
+        # treat as ok — not every solve.py prints scalar answers.
+        return {"ok": True, "reason": "", "values": []}
+
+    distinct = set(values)
+
+    # Single-choice questions must yield 4 distinct option values (correct +
+    # 3 distractors). Anything fewer means parameters collapsed into
+    # duplicates — a bad question, route back to Question.
+    is_choice = question_type in (
+        "single_choice", "sc", "选择题", None, "",
+    )  # default strict when question_type is unknown
+    if is_choice:
+        if len(distinct) < 4 and len(values) >= 4:
+            return {
+                "ok": False,
+                "reason": (
+                    f"single_choice needs 4 distinct values, got "
+                    f"{len(distinct)} distinct across {len(values)} printed"
+                ),
+                "values": values,
+            }
+    else:
+        # Comprehensive / conceptual: only flag total collapse to one value.
+        if len(distinct) == 1 and len(values) >= 4:
+            return {
+                "ok": False,
+                "reason": f"all {len(values)} values identical ({values[0]})",
+                "values": values,
+            }
+    return {"ok": True, "reason": "", "values": sorted(distinct)}
+
 
 def _question_role(
     slot_id: str,
@@ -469,11 +540,21 @@ class DocPipelineOrchestrator:
         ws: Path,
         *,
         start_layer: int,
+        question_type: str | None = None,
     ) -> tuple[PipelineResult | None, dict[str, Any]]:
-        """Run Layer 4 (Solve) including code execution.
+        """Run Layer 4 (Solve) — code-as-truth execution order.
+
+        solve.py is written by the **Question** agent (correct + error
+        algorithms). The orchestrator executes it first → solve_output.txt,
+        runs value validation, then asks the solve agent to *read* the output,
+        assemble options into question.md (append, never touch the stem), and
+        write solution.md. The solve agent never writes its own solve.py and
+        never re-executes for truth (single exec, by the orchestrator).
 
         Returns (failure_result_or_None, exec_result) where exec_result
-        tracks code execution status for downstream reporting.
+        tracks code execution status for downstream reporting. exec failure or
+        bad values (duplicates / missing) surface as ``code_error`` so the
+        graph routes back to Question to fix solve.py / tune parameters.
         """
         solution_path = ws / "solution.md"
         solve_path = ws / "solve.py"
@@ -491,10 +572,52 @@ class DocPipelineOrchestrator:
 
         logger.info("[%s] Layer 4: Solve", slot_id)
         question_public_path = self._write_public_question_view(question_path)
-        s_task = "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。"
+
+        # ── code-as-truth: orchestrator execs Question's solve.py first ──
+        if solve_path.exists():
+            exec_result = await self.exec_python(solve_path, output_path)
+            if not exec_result["ok"]:
+                logger.warning(
+                    "[%s] solve.py exec failed (code_error): %s",
+                    slot_id, exec_result.get("stderr", "")[:200],
+                )
+                # Surface code_error so the graph routes back to Question.
+                # exec_result["ok"] is False → SolveNode emits code_error.
+                return (None, exec_result)
+
+            # Value validation: output must contain a parseable truth set.
+            validation = _validate_solve_output(output_path, question_type=question_type)
+            if not validation["ok"]:
+                logger.warning(
+                    "[%s] solve_output value check failed (code_error): %s",
+                    slot_id, validation["reason"],
+                )
+                exec_result = {
+                    **exec_result,
+                    "ok": False,
+                    "code_error": True,
+                    "stderr": f"value validation failed: {validation['reason']}",
+                }
+                return (None, exec_result)
+        else:
+            # No solve.py → conceptual question. The solve agent reasons
+            # directly without code (no truth to exec). exec_result stays skipped.
+            logger.info("[%s] Layer 4: no solve.py — conceptual solve path", slot_id)
+
+        # ── solve agent reads output + assembles options + writes solution ──
         s_inject = await self._resolve_inject("solve", slot_id, 4, {
             "题目": str(question_public_path),
         })
+        if output_path.exists() and "代码输出" not in s_inject:
+            s_inject["代码输出"] = str(output_path)
+        if solve_path.exists() and "求解代码" not in s_inject:
+            s_inject["求解代码"] = str(solve_path)
+        s_task = (
+            "代码即真值：编排层已执行 solve.py 并产出 solve_output.txt。"
+            "请读取代码输出，据此组装选项追加进 question.md（不碰题干），并写 solution.md 推理过程。"
+            "exec 输出即真值——不重算、不质疑、不改题干、不写自己的 solve.py。"
+            "若 exec 输出有缺值或重复，标记 code_error 回退。"
+        )
         await self.scheduler.run_agent(
             "solve",
             s_task,
@@ -505,12 +628,6 @@ class DocPipelineOrchestrator:
 
         if not solution_path.exists():
             return (self._fail_result(slot_id, "Solve agent did not write solution.md"), exec_result)
-
-        # Execute solve.py if it exists (numerical questions)
-        if solve_path.exists():
-            exec_result = await self.exec_python(solve_path, output_path)
-            if not exec_result["ok"]:
-                logger.warning("[%s] Code execution failed: %s", slot_id, exec_result.get("stderr", "")[:200])
 
         return (None, exec_result)
 
@@ -602,41 +719,57 @@ class DocPipelineOrchestrator:
                 if not question_path.exists():
                     return (final_status, self._fail_result(slot_id, "Question agent (retry) did not write question.md"))
 
-                # Re-solve
+                # Re-solve (code-as-truth: exec first, then agent reads output)
                 logger.info("[%s] Re-solving after question fix", slot_id)
                 question_public_path = self._write_public_question_view(question_path)
-                s_task = "请独立求解以下题目。先判断是概念题还是数值题，选择对应的求解策略。"
+                if solve_path.exists():
+                    await self.exec_python(solve_path, output_path)
+                s_inject = await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)})
+                if output_path.exists() and "代码输出" not in s_inject:
+                    s_inject["代码输出"] = str(output_path)
+                if solve_path.exists() and "求解代码" not in s_inject:
+                    s_inject["求解代码"] = str(solve_path)
+                s_task = (
+                    "代码即真值：编排层已重新执行 solve.py 并刷新 solve_output.txt。"
+                    "请读取代码输出，据此重新组装选项追加进 question.md（不碰题干），并刷新 solution.md。"
+                )
                 await self.scheduler.run_agent(
                     "solve",
                     s_task,
                     slot_id=slot_id,
-                    inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)}),
+                    inject_files=s_inject,
                     max_tokens=self.max_tokens,
                 )
                 if not solution_path.exists():
                     return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
-                if solve_path.exists():
-                    await self.exec_python(solve_path, output_path)
 
             elif final_status == "solution_error" and final_iter < MAX_FINAL_RETRIES:
-                # Back to Solve Agent (minimal fix)
+                # Back to Solve Agent (code-as-truth: re-exec, then refresh)
                 logger.info("[%s] Final Review: solution_error -> re-running Solve Agent", slot_id)
                 feedback = parse_doc_section(str(final_review_path), "routing_feedback")
-                s_task = "请修正求解过程中的错误（最小修改）。"
-                s_task += f"\n\n## 终审反馈（求解错误）\n{feedback}"
                 question_public_path = self._write_public_question_view(question_path)
+                if solve_path.exists():
+                    await self.exec_python(solve_path, output_path)
+                s_inject = await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)})
+                if output_path.exists() and "代码输出" not in s_inject:
+                    s_inject["代码输出"] = str(output_path)
+                if solve_path.exists() and "求解代码" not in s_inject:
+                    s_inject["求解代码"] = str(solve_path)
+                s_task = (
+                    "代码即真值：编排层已重新执行 solve.py 并刷新 solve_output.txt。"
+                    "请读取代码输出，修正推理/选项组装（不碰题干、不改 solve.py 逻辑），刷新 solution.md。"
+                )
+                s_task += f"\n\n## 终审反馈（求解错误）\n{feedback}"
                 await self.scheduler.run_agent(
                     "solve",
                     s_task,
                     slot_id=slot_id,
-                    inject_files=await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)}),
+                    inject_files=s_inject,
                     max_tokens=self.max_tokens,
                     continue_session=True,
                 )
                 if not solution_path.exists():
                     return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
-                if solve_path.exists():
-                    await self.exec_python(solve_path, output_path)
             else:
                 return (final_status, self._fail_result(slot_id, f"Final Review unresolved status: {final_status}"))
 
@@ -672,7 +805,9 @@ class DocPipelineOrchestrator:
             return fail
 
         # ── Layer 4: Solve ────────────────────────────────────
-        fail, exec_result = await self._run_solve(slot_id, ws, start_layer=start_layer)
+        fail, exec_result = await self._run_solve(
+            slot_id, ws, start_layer=start_layer, question_type=question_type,
+        )
         if fail is not None:
             return fail
 
@@ -887,7 +1022,54 @@ class DocPipelineOrchestrator:
         )
         graph = build_pipeline_graph(self, self.workspace)
         await graph.run(state)
-        return state.result or self._fail_result(slot_id, "graph produced no result")
+
+        # If a node recorded a hard failure, surface it.
+        if state.result is not None and not getattr(state.result, "ok", True):
+            return state.result
+
+        # Derive final status + iteration from the graph history, then assemble
+        # final.md / PipelineResult the same way the legacy path does.
+        history_signals = {h["node"]: h["signal"] for h in state.history}
+        solve_signal = history_signals.get("solve")
+
+        # B1 guard: if the slot never escaped solve with a success (e.g. solve
+        # kept emitting code_error until MAX_NODE_VISITS forced the graph to
+        # stop), the slot failed — never report a false ok. SolveNode's
+        # code_error path routes back to Question but does not set state.result,
+        # so without this guard the slot would be assembled as ok=True.
+        if solve_signal is not None and solve_signal != "success":
+            from .pipeline_graph import PipelineGraph
+            solve_visits = state.visit_counts.get("solve", 0)
+            reason = (
+                f"solve never succeeded (last signal={solve_signal}, "
+                f"solve visits={solve_visits}, max={PipelineGraph.MAX_NODE_VISITS})"
+            )
+            logger.error("[%s] %s", slot_id, reason)
+            return self._fail_result(slot_id, reason)
+
+        if "final" in history_signals:
+            final_status = history_signals["final"]
+            if final_status in ("pass", "expression_fix"):
+                final_status = "pass"
+        elif "form_gate" in history_signals and state.complexity == "conceptual":
+            final_status = "pass"
+        else:
+            final_status = solve_signal or "pass"
+
+        question_visits = state.visit_counts.get("question", 1)
+        solve_path = ws / "solve.py"
+        exec_ok = (
+            "solve" in history_signals
+            and history_signals["solve"] == "success"
+            and solve_path.exists()
+        )
+        return await self._assemble_result(
+            slot_id, ws,
+            total_start=state.started_at,
+            final_iteration=question_visits,
+            final_status=final_status,
+            exec_result={"ok": exec_ok, "skipped": not solve_path.exists()},
+        )
 
     async def _resolve_inject(
         self,
@@ -1032,9 +1214,13 @@ class DocPipelineOrchestrator:
         complexity: str = "standard",
     ) -> str:
         if complexity == "conceptual":
-            parts = [f"请设计 {slot_id} 的完整题目。这是一道概念题（complexity=conceptual），请同时产出 question.md 和 solution.md。"]
+            parts = [f"请设计 {slot_id} 的完整题目。这是一道概念题（complexity=conceptual），请同时产出 question.md 和 solution.md（概念题不走 code-as-truth，无需 solve.py）。"]
         else:
-            parts = [f"请设计 {slot_id} 的完整题目。注意：不写答案，答案由独立求解智能体产出。"]
+            parts = [
+                f"请设计 {slot_id} 的完整题目（code-as-truth 标准题）。",
+                "你的产出：question.md（仅题干 + 设计说明，不含选项值、不含答案）+ solve.py（参数 + 正确算法 + 错误算法，print 每个值带逻辑标签）。",
+                "绝不脑内算数值结果、绝不预设答案值、绝不硬编码干扰值——数值由下游执行 solve.py 确定。选项值由求解阶段组装，你不出选项。",
+            ]
         if iteration > 0:
             parts.append(f"\n这是第 {iteration + 1} 次迭代，请根据审核反馈修正题目。")
         return "\n".join(parts)

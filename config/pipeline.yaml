@@ -12,7 +12,7 @@ pipeline:
 
   features:
     enable_question_design: true  # Phase 1: generate design_card.md before question writer
-    enable_pipeline_graph: false  # declarative signal+edge state machine (off by default; legacy paths remain as fallback)
+    enable_pipeline_graph: true  # code-as-truth: declarative signal+edge graph is the sole path; legacy _run_standard_pipeline/_run_conceptual_pipeline kept as fallback
 
   sampling:
     temperature: 0.2
