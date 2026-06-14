@@ -1025,8 +1025,8 @@ class DocPipelineOrchestrator:
         return self._use_graph_enabled
 
     def _should_use_split_design(self) -> bool:
-        """Feature flag (§17): use the split-focused design graph
-        (exam_form → skeleton_design → form_gate → solve → distractor_assembly).
+        """Feature flag (§19): use the split-focused design graph
+        (exam_form → design(P1) → form_gate → solve → design(P2) → final).
 
         Gated independently of enable_pipeline_graph so the split architecture
         can be A/B-tested without disturbing the stable graph path.
@@ -1098,25 +1098,17 @@ class DocPipelineOrchestrator:
         history_signals = {h["node"]: h["signal"] for h in state.history}
         solve_signal = history_signals.get("solve")
 
-        # B1 guard: if the slot never escaped solve with a success (e.g. solve
-        # kept emitting code_error until MAX_NODE_VISITS forced the graph to
-        # stop), the slot failed — never report a false ok. SolveNode's
-        # code_error path routes back to Question but does not set state.result,
-        # so without this guard the slot would be assembled as ok=True.
-        # In the §17 split path, distractor_assembly looping on distractor_error
-        # is treated the same way (never reached a clean final).
+        # B1 guard: §19.5 — if solve never escaped with ``success`` (the solver
+        # self-retried internally, exhausted, and escalated to ``failed``), the
+        # slot failed and must never report a false ok. SolveNode sets
+        # state.result on escalation, so this guard is belt-and-suspenders.
         last_signal = state.history[-1]["signal"] if state.history else ""
-        failed_terminal = (
-            (solve_signal is not None and solve_signal != "success")
-            or (use_split and last_signal == "distractor_error")
-        )
+        failed_terminal = solve_signal is not None and solve_signal != "success"
         if failed_terminal:
             solve_visits = state.visit_counts.get("solve", 0)
             reason = (
                 f"solve never succeeded (last signal={solve_signal}, "
                 f"solve visits={solve_visits}, max={PipelineGraph.MAX_NODE_VISITS})"
-                if not (use_split and last_signal == "distractor_error")
-                else "distractor_assembly never produced 4 distinct options"
             )
             logger.error("[%s] %s", slot_id, reason)
             return self._fail_result(slot_id, reason)

@@ -833,3 +833,27 @@ design_card → exam_form → design(P1: 题干+设问+经验值参数)
 - §18 的"solver 修不好→回设计调参" → §19 改为"清空上下文重试→仍失败则升级失败"
 - §18 的纪律①"大胆给" → §19 细化为"给经验值，不设计/不推演参数"
 - §17.6 考点融合 → §19 保留，迁入 design_draft_skill Step4
+
+## 20. 思考记忆（preserve/retain thinking）— 后续任务
+
+> 日期: 2026-06-14 | 状态: 待实施
+
+### 20.1 发现
+
+实测发现：开启思考记忆（保留 reasoning_content 传回下一轮）后，工具调用场景的模型**反而不过度思考**——模型能"接着想"而非从头重推，减少重复思考 + 减少 tool-call 循环次数；KV 缓存复用还省 token。
+
+### 20.2 当前缺口
+
+- **本地 vLLM**：`remote_api.py` 已发 `chat_template_kwargs.preserve_thinking=True`（codex 加），但 scheduler 构造 assistant_msg 时**丢弃 reasoning_content**（line 780 等 4 处），导致请求侧"保留"而回传侧"丢弃"——preserve_thinking 实际未生效。
+- **线上 API**：未开 `clear_thinking=False`（线上保留思考开关），也未传回 reasoning_content。
+
+### 20.3 方案（待实施）
+
+**全局开**（所有 agent 保留思考记忆，A 方案）：
+1. scheduler 构造 assistant_msg 时，原样塞回模型返回的 reasoning_content（4 处：line 780, 1078, 1306, 1845）。约束：**原样传回，不截断/不重排**（线上要求，否则降效 + 影响缓存命中）。
+2. `remote_api.py` 加线上 `clear_thinking=False` 控制（对应线上保留思考），默认开。
+3. A/B 测试：先跑 §19 基线（思考被丢），再开思考记忆跑第二轮，对比 token 消耗 + 过度思考程度。
+
+### 20.4 与 §19 的关系
+
+思考记忆对 design P1（经验值出题）和 solve（brief-think-then-code）的 token 消耗影响最大。**先验证 §19 审核干净 + 跑基线，再做思考记忆改造对比**，隔离独立收益。
