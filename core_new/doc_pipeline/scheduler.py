@@ -779,6 +779,14 @@ class DocScheduler:
 
                 assistant_msg = {"role": "assistant", "content": content or None}
                 assistant_msg["tool_calls"] = payload
+                # §20 preserve/retain thinking: echo back the model's
+                # reasoning_content verbatim so the next turn can "continue
+                # thinking" instead of re-deriving. Reduces over-thinking in
+                # tool-call loops (esp. comprehensive questions). The string is
+                # passed through unmodified (online APIs require exact match
+                # for cache hits); only present when the model emitted it.
+                if reasoning_text:
+                    assistant_msg["reasoning_content"] = reasoning_text
                 messages.append(assistant_msg)
 
                 wrote_expected_file = False
@@ -984,8 +992,12 @@ class DocScheduler:
                         ),
                     })
                     continue
-                # Keep full reasoning text in context (incremental mode — no truncation)
-                messages.append({"role": "assistant", "content": payload})
+                # Keep full reasoning text in context (incremental mode — no truncation).
+                # §20: echo reasoning_content back so the next turn continues thinking.
+                inter_msg = {"role": "assistant", "content": payload}
+                if reasoning_text:
+                    inter_msg["reasoning_content"] = reasoning_text
+                messages.append(inter_msg)
                 total_non_target_rounds += 1
                 continue
 
