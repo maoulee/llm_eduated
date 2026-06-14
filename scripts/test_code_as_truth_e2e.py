@@ -49,7 +49,7 @@ COMP_ASSEMBLED_PATH = "docs/compose/Q41_assembled.md"  # AVL tree (comprehensive
 
 
 async def run_one(label, slot_id, slot_data, output_sub, question_type,
-                  assembled_doc=""):
+                  assembled_doc="", provider="glm5.1"):
     from core_new.doc_pipeline import DocPipeline
     from core_new.llm_gateway import get_gateway
 
@@ -57,10 +57,9 @@ async def run_one(label, slot_id, slot_data, output_sub, question_type,
     out.mkdir(parents=True, exist_ok=True)
 
     print(f"\n{'='*70}")
-    print(f"  [{label}] question_type={question_type}")
+    print(f"  [{label}] question_type={question_type} provider={provider}")
     print(f"{'='*70}")
 
-    provider = "api_vllm"
     try:
         gateway = get_gateway(provider)
     except Exception as e:
@@ -137,19 +136,24 @@ async def run_one(label, slot_id, slot_data, output_sub, question_type,
 async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", choices=["single", "comp"], default=None)
+    ap.add_argument("--provider", default="glm5.1", choices=["glm5.1", "api_vllm"])
     args = ap.parse_args()
 
+    if args.provider == "api_vllm":
+        os.environ.setdefault("VLLM_MODEL", "/zhaoshu/llm/Qwen3.6-27B-FP8")
+        os.environ.setdefault("VLLM_API_BASE", "http://127.0.0.1:8000/v1")
+
     print("=" * 70)
-    print("  code-as-truth E2E test (local Qwen vLLM, graph path)")
-    print(f"  VLLM_MODEL={os.environ.get('VLLM_MODEL')}")
-    print(f"  VLLM_API_BASE={os.environ.get('VLLM_API_BASE')}")
+    print(f"  code-as-truth E2E test — provider={args.provider}, graph path")
+    if args.provider == "api_vllm":
+        print(f"  VLLM_MODEL={os.environ.get('VLLM_MODEL')}")
     print("=" * 70)
 
     results = []
 
     if args.only in (None, "single"):
         r = await run_one("SINGLE_CHOICE", "TEST_SC", SINGLE_CHOICE_SLOT,
-                          "single", "single_choice")
+                          "single", "single_choice", provider=args.provider)
         if r:
             results.append(r)
 
@@ -167,7 +171,8 @@ async def main():
                 "complexity": "standard",
             }
             r = await run_one("COMPREHENSIVE", "TEST_COMP", comp_slot,
-                              "comp", "comprehensive", assembled_doc=assembled)
+                              "comp", "comprehensive", assembled_doc=assembled,
+                              provider=args.provider)
             if r:
                 results.append(r)
 
