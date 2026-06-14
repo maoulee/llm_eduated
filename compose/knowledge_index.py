@@ -37,6 +37,10 @@ class SearchHit:
     score: float
     snippet: str
     matched_tags: list[str] = field(default_factory=list)
+    subject: str = ""
+    question_type: str = ""
+    year: int = 0
+    slot_id: str = ""
 
 
 class KnowledgeIndex:
@@ -70,6 +74,7 @@ class KnowledgeIndex:
         query: str | list[str],
         max_results: int = 30,
         subject: str | None = None,
+        question_type: str | None = None,
     ) -> list[SearchHit]:
         """Search by knowledge point keywords.
 
@@ -77,6 +82,7 @@ class KnowledgeIndex:
             query: Single keyword or list of keywords
             max_results: Maximum results to return
             subject: Optional subject filter (e.g. "数据结构")
+            question_type: Optional type filter (e.g. "选择题" / "综合题")
 
         Returns:
             List of SearchHit sorted by score descending
@@ -99,6 +105,14 @@ class KnowledgeIndex:
             candidates = set(self._by_subject.get(subject, []))
         else:
             candidates = set(self._files.keys())
+        if question_type:
+            candidates = {
+                fname for fname in candidates
+                if _question_type_matches(
+                    self._files.get(fname).question_type if self._files.get(fname) else "",
+                    question_type,
+                )
+            }
 
         for kw in keywords:
             kw_lower = kw.lower()
@@ -128,6 +142,10 @@ class KnowledgeIndex:
                 score=scores[fname],
                 snippet=meta.snippet,
                 matched_tags=matched.get(fname, []),
+                subject=meta.subject,
+                question_type=meta.question_type,
+                year=meta.year,
+                slot_id=meta.slot_id,
             ))
 
         return results
@@ -285,8 +303,37 @@ def search_questions(
     query: str | list[str],
     max_results: int = 30,
     subject: str | None = None,
+    question_type: str | None = None,
     data_dir: str = "data/question_experiences",
 ) -> list[SearchHit]:
     """Convenience function: search questions by knowledge point keywords."""
     idx = get_index(data_dir)
-    return idx.search(query, max_results=max_results, subject=subject)
+    return idx.search(
+        query,
+        max_results=max_results,
+        subject=subject,
+        question_type=question_type,
+    )
+
+
+def _normalize_question_type(value: str | None) -> str:
+    """Normalize common Chinese/English question type labels."""
+    text = (value or "").strip().lower()
+    if not text:
+        return ""
+    if text in {"single_choice", "sc", "choice", "选择", "选择题", "单选", "单选题"}:
+        return "single_choice"
+    if text in {"comprehensive", "comp", "综合", "综合题", "综合应用题", "大题"}:
+        return "comprehensive"
+    if "选择题" in text or "单选" in text:
+        return "single_choice"
+    if "综合" in text or "大题" in text:
+        return "comprehensive"
+    return text
+
+
+def _question_type_matches(actual: str | None, expected: str | None) -> bool:
+    expected_norm = _normalize_question_type(expected)
+    if not expected_norm:
+        return True
+    return _normalize_question_type(actual) == expected_norm

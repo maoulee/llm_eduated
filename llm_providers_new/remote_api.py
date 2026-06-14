@@ -39,6 +39,13 @@ _shared_client: Optional[httpx.AsyncClient] = None
 _shared_client_timeout: float = 300.0
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
 async def _get_shared_client(timeout: float = 300.0) -> httpx.AsyncClient:
     """Get or create the shared httpx.AsyncClient with connection pooling."""
     global _shared_client, _shared_client_timeout
@@ -103,6 +110,9 @@ class RemoteAPIProvider(BaseLLMProvider):
         # - chat_template_kwargs: send vLLM-style
         #   {"chat_template_kwargs": {"enable_thinking": bool}}.
         self.thinking_control_method = kwargs.get("thinking_control_method", "prompt")
+        self.preserve_thinking = bool(
+            kwargs.get("preserve_thinking", _env_bool("VLLM_PRESERVE_THINKING", False))
+        )
         self.prompt_template_style = kwargs.get("prompt_template_style", "qwen")
         self.supports_response_format = bool(kwargs.get("supports_response_format", True))
         self.batch_size = max(1, int(kwargs.get("batch_size", 8)))
@@ -160,7 +170,10 @@ class RemoteAPIProvider(BaseLLMProvider):
         if self.thinking_control_method == "param":
             return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
         if self.thinking_control_method == "chat_template_kwargs":
-            return {"chat_template_kwargs": {"enable_thinking": bool(enable_thinking)}}
+            chat_template_kwargs = {"enable_thinking": bool(enable_thinking)}
+            if enable_thinking and self.preserve_thinking:
+                chat_template_kwargs["preserve_thinking"] = True
+            return {"chat_template_kwargs": chat_template_kwargs}
         return {}
 
     def _messages_to_prompt(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> str:

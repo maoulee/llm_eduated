@@ -422,10 +422,9 @@ class DocPipelineOrchestrator:
         self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
         *, feedback: str = "",
     ) -> PipelineResult | None:
-        """§16.2/§17.3 skeleton_design: reuse past-paper skeleton → symbolic stem + solve.py.
+        """§16.2/§18 skeleton_design: reuse cached skeleton → stem + questions + initial params.
 
-        Writes question.md (symbolic stem, no options/answers) + solve.py
-        (correct-algorithm DAG, §17.5 — no error algorithms).
+        Writes question.md (stem, questions, initial params, no options/answers).
         """
         question_path = ws / "question.md"
         design_card_path = ws / "design_card.md"
@@ -437,9 +436,11 @@ class DocPipelineOrchestrator:
             sk_inject["考察形式"] = str(exam_form_path)
         sk_inject = await self._resolve_inject("skeleton_design", slot_id, 2, sk_inject)
         sk_task = (
-            "§16.2/§17.3 骨架复用出题：检索同题型往年题→分析复用骨架→符号化题干（参数符号占位）"
-            "+ 写 solve.py（正确算法 DAG，§17.5 只算正确，不编码错误算法/干扰值）。"
-            "只出题干+设问，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
+            "§16.2/§18 骨架复用出题：读取上游经验缓存→分析复用骨架→题干+设问+初步参数。"
+            "若规划/设计材料已有往年真题经验、参考经验摘要或模式概览，不要重复检索；"
+            "只有缓存缺失/完全无关时才做一次粗粒度 fallback 检索。"
+            "聚焦复杂题面设计和条件充分性，大胆给初步参数，不脑内验证。"
+            "只出题干+设问+设计说明，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
         )
         if feedback:
             sk_task += f"\n\n## 审核反馈\n{feedback}"
@@ -1327,12 +1328,12 @@ class DocPipelineOrchestrator:
         complexity: str = "standard",
     ) -> str:
         if complexity == "conceptual":
-            parts = [f"请设计 {slot_id} 的完整题目。这是一道概念题（complexity=conceptual），请同时产出 question.md 和 solution.md（概念题不走 code-as-truth，无需 solve.py）。"]
+            parts = [f"请设计 {slot_id} 的完整题目。这是一道概念题（complexity=conceptual），请同时产出 question.md 和 solution.md（概念题跳过代码求解）。"]
         else:
             parts = [
-                f"请设计 {slot_id} 的完整题目（code-as-truth 标准题）。",
-                "你的产出：question.md（仅题干 + 设计说明，不含选项值、不含答案）+ solve.py（参数 + 正确算法 + 错误算法，print 每个值带逻辑标签）。",
-                "绝不脑内算数值结果、绝不预设答案值、绝不硬编码干扰值——数值由下游执行 solve.py 确定。选项值由求解阶段组装，你不出选项。",
+                f"请设计 {slot_id} 的完整题目（标准题）。",
+                "你的产出：question.md（题干 + 设问/子问 + 设计说明，不含选项值、不含答案）。",
+                "聚焦复杂题面设计、条件充分性、解题意图与干扰意图；绝不脑内算数值结果、绝不预设答案值、绝不硬编码干扰值。答案和选项值由后续阶段确定。",
             ]
         if iteration > 0:
             parts.append(f"\n这是第 {iteration + 1} 次迭代，请根据审核反馈修正题目。")

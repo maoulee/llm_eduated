@@ -423,8 +423,7 @@ def build_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
 #                                       → form_gate → solve(解题代码, solver writes solve.py)
 #   solve success → [选择题] distractor_assembly(第2遍: 基于答案设计干扰选项) → final
 #                 → [主观题] final (答案填回题干, 直接前进不回退)
-#   solve code_error → skeleton_design (tune params; §18: solver writes solve.py,
-#                      skeleton only retunes the stem/params)
+#   solve code_error → skeleton_design (tune stem/params)
 #   Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
 
 
@@ -451,9 +450,8 @@ class ExamFormNode(_OrchestratorNode):
 class SkeletonDesignNode(_OrchestratorNode):
     """§16.2/§18 skeleton_design: reuse skeleton → stem + questions + initial params.
 
-    Bold-no-verify (discipline ①). Does NOT write solve.py (solver does, §18.4).
-    Single run per visit; form_gate/code_error feedback threads through the
-    state's feedback_buffer. Reports ``ok``.
+    Bold-no-verify (discipline ①). Single run per visit; form_gate/code_error
+    feedback threads through the state's feedback_buffer. Reports ``ok``.
     """
 
     name = "skeleton_design"
@@ -511,7 +509,7 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
     Branch after solve (§18.5):
       - 选择题: solve → distractor_assembly(第2遍: 基于答案设计干扰选项) → final
       - 主观题: solve → distractor_assembly(no-op) → final (答案填回题干, 直接前进)
-    solve code_error → skeleton_design (retune stem/params; §18: solver writes solve.py).
+    solve code_error → skeleton_design (retune stem/params).
     Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
 
     Note: ``scheduler`` is the ``DocPipelineOrchestrator`` instance.

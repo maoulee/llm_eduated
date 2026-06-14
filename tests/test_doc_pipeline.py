@@ -20,11 +20,14 @@ from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section
 from core_new.doc_pipeline.context import ContextRegistry, FileProvider, InlineProvider, ProviderDef
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
 from core_new.doc_pipeline.dual_agent_orchestrator import DualAgentOrchestrator
+from core_new.doc_pipeline.grep_search_tool import GrepSearchTool
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
 from core_new.doc_pipeline.scheduler import DocScheduler, ROLE_SKILLS, ROLE_REQUIRED_TOOLS
 from core_new.agent_roles import TransportRetryPolicy
 from core_new.llm_gateway import LLMGateway
+from compose.knowledge_index import KnowledgeIndex
+from llm_providers_new.remote_api import RemoteAPIProvider
 
 
 def run_async(coro):
@@ -588,6 +591,119 @@ class TestDocSchedulerToolProtocol:
         assert final_call["messages"][0]["role"] == "system"
         # Trimmed history: system + compressed summary (fewer messages than raw 8 rounds)
         assert len(final_call["messages"]) < 20
+
+    def test_skeleton_design_grep_limit_forces_question_write(self, tmp_path):
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+        responses = [
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call(
+                    "grep_search",
+                    {"query": ["二叉树遍历"], "subject": "数据结构", "question_type": "综合题"},
+                    "grep_1",
+                )],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call(
+                    "grep_search",
+                    {"query": ["前序", "中序"], "subject": "数据结构", "question_type": "综合题"},
+                    "grep_2",
+                )],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call(
+                    "grep_search",
+                    {"query": ["还原二叉树"], "subject": "数据结构", "question_type": "综合题"},
+                    "grep_3",
+                )],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call(
+                    "question.md",
+                    "## status\ndraft\n\n## 题干\nT\n\n## 设计说明\n复用骨架",
+                    "write_after_limit",
+                )],
+            },
+        ]
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append({"messages": list(messages), **kwargs})
+            return responses.pop(0)
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent("skeleton_design", "task", slot_id="S6A"))
+
+        assert result.startswith("## status")
+        assert (tmp_path / "S6A" / "question.md").exists()
+        assert calls[-1]["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "write_file"},
+        }
+        assert "grep_search 上限" in calls[-1]["messages"][-1]["content"]
+
+    def test_skeleton_design_uses_upstream_cache_instead_of_grep(self, tmp_path):
+        slot_dir = tmp_path / "S6CACHE"
+        slot_dir.mkdir()
+        (slot_dir / "assembled.md").write_text(
+            "## 参考经验摘要\n"
+            "- 历史模式: 给定二叉树遍历序列，还原结构并追问性质\n"
+            "- 难度锚点: n=7-8, 2-3问\n",
+            encoding="utf-8",
+        )
+
+        scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
+        calls = []
+        responses = [
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_tool_call(
+                    "grep_search",
+                    {"query": ["二叉树遍历"], "subject": "数据结构", "question_type": "综合题"},
+                    "grep_should_skip",
+                )],
+            },
+            {
+                "content": "",
+                "reasoning_content": "",
+                "tool_calls": [_write_file_call(
+                    "question.md",
+                    "## status\ndraft\n\n## 题干\nT\n\n## 设计说明\n复用缓存骨架",
+                    "write_after_cache",
+                )],
+            },
+        ]
+
+        async def fake_stream(provider, messages, **kwargs):
+            calls.append({"messages": list(messages), **kwargs})
+            return responses.pop(0)
+
+        scheduler._streaming_chat_call = fake_stream
+
+        result = run_async(scheduler.run_agent(
+            "skeleton_design",
+            "task",
+            slot_id="S6CACHE",
+            inject_files={"规划": str(slot_dir / "assembled.md")},
+        ))
+
+        assert result.startswith("## status")
+        assert calls[-1]["tool_choice"] == {
+            "type": "function",
+            "function": {"name": "write_file"},
+        }
+        assert "上游已提供经验缓存" in calls[-1]["messages"][-1]["content"]
+        trace = (slot_dir / "trace.jsonl").read_text(encoding="utf-8")
+        assert '"cache_present": true' in trace
 
     def test_intermediate_text_loop_aborts_before_exhausting_attempts(self, tmp_path):
         scheduler = DocScheduler(FakeGateway(), workspace=tmp_path)
@@ -1171,6 +1287,25 @@ class TestRunSlotCompositionArtifacts:
 
 
 class TestGatewayStreamChat:
+    def test_vllm_preserve_thinking_extra_body(self):
+        provider = RemoteAPIProvider(
+            model_name="qwen-test",
+            api_base_url="http://127.0.0.1:8000/v1",
+            api_key="EMPTY",
+            thinking_control_method="chat_template_kwargs",
+            preserve_thinking=True,
+        )
+
+        assert provider._extra_body_for_thinking(True) == {
+            "chat_template_kwargs": {
+                "enable_thinking": True,
+                "preserve_thinking": True,
+            }
+        }
+        assert provider._extra_body_for_thinking(False) == {
+            "chat_template_kwargs": {"enable_thinking": False}
+        }
+
     def test_stream_chat_does_not_send_thinking_budget_to_remote_provider(self):
         provider = SimpleNamespace(
             model_name="glm-test",
@@ -1349,7 +1484,7 @@ class _GraphTestScheduler:
     asserted deterministically.
 
     - question_sc / question_comp write a stem-only question.md
-    - question_sc also writes solve.py (code-as-truth: Question writes it)
+    - solve writes solve.py (solver owns problem-solving code)
     - review / final_review statuses are configurable
     - solve agent always writes solution.md (post-exec assembly)
     """
@@ -1386,14 +1521,14 @@ class _GraphTestScheduler:
                 "## status\ndraft\n\n## 题干\n计算题。\n\n## 设计说明\ncode-as-truth",
                 encoding="utf-8",
             )
-            if not self.conceptual:
-                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
         elif role == "review":
             (ws / "review.md").write_text(
                 f"## status\n{self.review_status}\n\n## summary\nOK\n\n## corrections\n无",
                 encoding="utf-8",
             )
         elif role == "solve":
+            if not self.conceptual:
+                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
             (ws / "solution.md").write_text(
                 "## status\nsolved\n\n## 求解过程\n基于 exec 输出\n\n## 最终答案\n10",
                 encoding="utf-8",
@@ -1429,7 +1564,7 @@ class TestPipelineGraphRouting:
         assert roles == [
             "outline", "question_design", "question_sc", "review", "solve", "final_review",
         ]
-        # code-as-truth: orchestrator exec'd Question's solve.py → solve_output.txt
+        # code-as-truth: orchestrator exec'd solver's solve.py → solve_output.txt
         assert (tmp_path / "G1" / "solve_output.txt").exists()
         # final.md assembled
         assert (tmp_path / "G1" / "final.md").exists()
@@ -1459,8 +1594,8 @@ class TestPipelineGraphRouting:
 
         result = run_async(orch.run_pipeline("G3", {"slot_id": "G3"}))
 
-        # code_error routes solve → question. Question rewrites solve.py (same
-        # bad content in the fake), so exec keeps failing until the graph's
+        # code_error routes solve → question. The fake solver keeps producing
+        # the same bad code, so exec keeps failing until the graph's
         # MAX_NODE_VISITS safety net forces done. Either way the graph must
         # not crash and must record a solve attempt that emitted code_error.
         state = json.loads((tmp_path / "G3" / "pipeline_state.json").read_text())
@@ -1564,8 +1699,8 @@ class TestEvidenceSolverCodeAsTruth:
 class _SplitTestScheduler:
     """Scheduler for the §17 split-design graph. Handles the new roles:
     exam_form, skeleton_design, distractor_assembly (+ outline/design_card/
-    review/solve/final_review). skeleton_design writes the symbolic question.md
-    + solve.py (correct-only). distractor_assembly appends options.
+    review/solve/final_review). skeleton_design writes the symbolic question.md;
+    solve writes problem-solving code. distractor_assembly appends options.
     """
 
     def __init__(self, workspace, *, review_status="pass", final_status="pass",
@@ -1598,8 +1733,7 @@ class _SplitTestScheduler:
                 encoding="utf-8",
             )
         elif role == "skeleton_design":
-            # §18.4: skeleton_design writes ONLY question.md (stem + params),
-            # NOT solve.py (the solver writes solve.py).
+            # §18: skeleton_design writes question.md (stem + params).
             (ws / "question.md").write_text(
                 "## status\ndraft\n\n## 题干\n题干 + 初步参数。\n\n## 设计说明\n骨架复用，大胆不验证",
                 encoding="utf-8",
@@ -1712,22 +1846,18 @@ class TestSplitDesignGraph:
         # B1: never solved → failure
         assert result.ok is False
 
-    def test_split_solver_writes_solve_py_not_skeleton(self, tmp_path):
-        # §18.4: the SOLVER writes solve.py (problem-solving code), not
-        # skeleton_design. Verify solve.py exists only after the solve role ran,
-        # and skeleton_design did not create it.
+    def test_split_solver_writes_solve_py_after_design(self, tmp_path):
+        # §18: the solver writes solve.py (problem-solving code) after
+        # skeleton_design has produced the stem and initial params.
         sched = _SplitTestScheduler(tmp_path)
         orch = self._orch(sched, tmp_path)
 
         result = run_async(orch.run_pipeline("SP5", {"slot_id": "SP5"}))
 
         assert result.ok is True
-        # solve.py produced (by the solver role) and exec'd → solve_output.txt
+        # solve.py produced by the solver role and exec'd → solve_output.txt
         assert (tmp_path / "SP5" / "solve.py").exists()
         assert (tmp_path / "SP5" / "solve_output.txt").exists()
-        # skeleton_design must NOT have been the one to write solve.py: it ran
-        # before solve, and the split scheduler only writes solve.py in the
-        # solve role. Confirm ordering: skeleton_design precedes solve.
         roles = [c["role"] for c in sched.calls]
         assert roles.index("skeleton_design") < roles.index("solve")
 
@@ -1740,20 +1870,30 @@ class TestSplitDesignAgents:
         ef = AGENT_PROMPTS["exam_form"]
         assert "考察形式" in ef and "判断任务" in ef
         sk = AGENT_PROMPTS["skeleton_design"]
-        # §18.4: skeleton_design does NOT write solve.py; §18.2 discipline ① bold-no-verify
-        assert "不写 solve.py" in sk or "不得写 solve.py" in sk
+        # §18 prompt style: skeleton_design focuses on design and does not discuss solve.py.
+        assert "solve.py" not in sk
         assert "大胆" in sk  # discipline ①: bold design, no verify
 
-    def test_skeleton_does_not_write_solve_py(self):
-        # §18.4: skeleton_design must NOT write solve.py (solver writes it).
-        # skeleton only emits stem + questions + initial parameters (bold, no verify).
+    def test_skeleton_skill_omits_solve_py_contract(self):
+        # skeleton only emits stem + questions + initial parameters (bold, no verify);
+        # the design skill should not spend tokens on solve.py file ownership.
         sk = ROLE_SKILLS.get("skeleton_design", "")
-        assert "不写 solve.py" in sk or "不得写 solve.py" in sk
+        assert "solve.py" not in sk
         # §18.2 discipline ①: bold-give-no-verify (no brain-sim of structure validity)
         assert "大胆" in sk
         assert "不脑内验证" in sk or "不验证" in sk
         # skeleton does NOT emit options (choice questions have no A/B/C/D here)
         assert "不出 A/B/C/D" in sk or "不出答案/选项" in sk
+
+    def test_question_design_skills_omit_solve_py_construction(self):
+        # Legacy question agents share the same responsibility boundary:
+        # design the problem, leave problem solving to the solve stage.
+        for role in ("question_sc", "question_comp"):
+            prompt = AGENT_PROMPTS[role]
+            skill = ROLE_SKILLS.get(role, "")
+            assert "solve.py" not in prompt
+            assert "solve.py" not in skill
+            assert "求解阶段" in prompt or "求解阶段" in skill
 
     def test_solve_agent_carries_18_disciplines(self):
         # §18: solve = problem-solving code. The solver writes solve.py, execs,
@@ -1791,3 +1931,60 @@ class TestSplitDesignAgents:
             "(强制分析不发明); missing it causes invention→over-thinking"
         )
 
+    def test_skeleton_prompt_uses_upstream_cache_before_grep(self):
+        # The skeleton agent consumes the upstream retrieval/design cache.  It
+        # should only use grep as a coarse fallback when that cache is absent.
+        prompt = AGENT_PROMPTS["skeleton_design"]
+        skill = ROLE_SKILLS["skeleton_design"]
+        assert "缓存优先" in prompt and "缓存优先" in skill
+        assert "缓存存在则不 grep" in skill
+        assert "缓存存在时不 grep" in prompt
+        assert "不得再调用 `grep_search`" in prompt
+        assert "粗粒度 fallback" in prompt and "粗粒度 fallback" in skill
+        assert "question_type" in prompt and "question_type" in skill
+
+    def test_knowledge_index_filters_by_question_type(self, tmp_path):
+        (tmp_path / "choice.md").write_text(
+            "## 基本信息\n"
+            "- **年份**: 2010  **题位**: Q5  **题型**: 选择题\n"
+            "- **知识点**: DS-5 > 5.1 树的基本概念 > 叶结点\n"
+            "- **科目**: 数据结构\n\n"
+            "## 题干原文\n选择题题干\n",
+            encoding="utf-8",
+        )
+        (tmp_path / "comp.md").write_text(
+            "## 基本信息\n"
+            "- **年份**: 2016  **题位**: Q42  **题型**: 综合题\n"
+            "- **知识点**: DS-5 > 5.1 树的基本概念 > 叶结点\n"
+            "- **科目**: 数据结构\n\n"
+            "## 题干原文\n综合题题干\n",
+            encoding="utf-8",
+        )
+
+        idx = KnowledgeIndex(str(tmp_path))
+        hits = idx.search(
+            ["DS-5", "树的基本概念", "叶结点"],
+            subject="数据结构",
+            question_type="综合题",
+        )
+
+        assert [h.file_name for h in hits] == ["comp.md"]
+        assert hits[0].question_type == "综合题"
+        assert hits[0].slot_id == "Q42"
+
+    def test_grep_search_tool_supports_question_type_filter(self):
+        tool = GrepSearchTool()
+        assert "question_type" in tool.parameters["properties"]
+
+        raw = run_async(tool.execute(
+            query=["DS-5", "5.1", "树的基本概念", "叶结点"],
+            subject="数据结构",
+            question_type="综合题",
+            max_results=5,
+        ))
+        payload = json.loads(raw)
+
+        assert payload["ok"] is True
+        assert payload["count"] > 0
+        assert all("综合" in r["question_type"] for r in payload["results"])
+        assert {"year", "slot_id", "subject", "question_type"} <= set(payload["results"][0])

@@ -45,6 +45,8 @@ from .write_file_tool import WriteFileTool
 
 logger = logging.getLogger(__name__)
 
+_SKELETON_GREP_SEARCH_LIMIT = 2
+
 
 @dataclass
 class InteractSession:
@@ -127,6 +129,22 @@ def _tool_result_ok(messages: list[dict], tool_call_id: str) -> bool:
             except (json.JSONDecodeError, ValueError, TypeError):
                 return False
     return False
+
+
+def _has_upstream_experience_cache(text: str) -> bool:
+    """Return True when injected upstream docs already carry retrieval results.
+
+    The skeleton agent should consume this cache instead of re-querying the
+    question bank.  Keep this based on injected document content only; the
+    prompt/skill text itself also mentions these section names.
+    """
+    markers = (
+        "## 往年真题经验",
+        "## 参考经验摘要",
+        "## 模式概览",
+        "参考题",
+    )
+    return any(marker in text for marker in markers)
 
 
 def _extract_terminology_ref(task: str) -> str:
@@ -496,6 +514,7 @@ class DocScheduler:
 
         # 1. Build task with skill content and inject files
         full_task = task
+        injected_contents: list[str] = []
 
         # Inject domain-specific skill content into user message
         skill_content = ROLE_SKILLS.get(role, "")
@@ -510,7 +529,20 @@ class DocScheduler:
                     logger.warning("Inject file not found: %s", fpath)
                     continue
                 content = path.read_text(encoding="utf-8")
+                injected_contents.append(content)
                 full_task += f"\n\n## {label}\n{content}"
+
+        skeleton_has_experience_cache = (
+            role == "skeleton_design"
+            and any(_has_upstream_experience_cache(content) for content in injected_contents)
+        )
+        skeleton_grep_limit = 0 if skeleton_has_experience_cache else _SKELETON_GREP_SEARCH_LIMIT
+        if skeleton_has_experience_cache:
+            full_task += (
+                "\n\n## 检索缓存状态\n"
+                "上游规划/设计材料已包含经验缓存（往年真题经验/参考经验摘要/模式概览）。"
+                "本轮不得再调用 grep_search；直接基于缓存做粗粒度骨架复用并写 question.md。"
+            )
 
         # 2. Build or continue message history
         system_prompt = AGENT_PROMPTS.get(role, "")
@@ -625,6 +657,7 @@ class DocScheduler:
         total_non_target_rounds = 0
         no_output_streak = 0
         intermediate_text_count = 0
+        grep_search_count = 0
 
         # Trace file for per-round diagnostics
         _trace_path = ws / "trace.jsonl"
@@ -729,6 +762,7 @@ class DocScheduler:
                 messages.append(assistant_msg)
 
                 wrote_expected_file = False
+                grep_limit_hit = False
                 available_names = {t["function"]["name"] for t in openai_tools}
                 for tc in payload:
                     fn_name = tc["function"]["name"]
@@ -738,10 +772,42 @@ class DocScheduler:
                     except json.JSONDecodeError:
                         fn_args = {}
 
-                    logger.info("[%s] Executing tool: %s(%s)", slot_id, fn_name, str(fn_args)[:100])
-                    if fn_name in available_names:
+                    if (
+                        role == "skeleton_design"
+                        and fn_name == "grep_search"
+                        and grep_search_count >= skeleton_grep_limit
+                    ):
+                        logger.info(
+                            "[%s] Skipping tool: %s(%s) — skeleton_design grep limit reached (%d)",
+                            slot_id, fn_name, str(fn_args)[:100], skeleton_grep_limit,
+                        )
+                        grep_limit_hit = True
+                        result_str = json.dumps(
+                            {
+                                "ok": False,
+                                "error": (
+                                    "grep_search limit reached for skeleton_design; "
+                                    "use existing retrieved examples and write question.md"
+                                ),
+                                "limit": skeleton_grep_limit,
+                                "cache_present": skeleton_has_experience_cache,
+                            },
+                            ensure_ascii=False,
+                        )
+                        _write_trace({
+                            "attempt": attempt + 1,
+                            "action": "grep_search_limit_hit",
+                            "limit": skeleton_grep_limit,
+                            "cache_present": skeleton_has_experience_cache,
+                            "requested_args": fn_args,
+                        })
+                    elif fn_name in available_names:
+                        logger.info("[%s] Executing tool: %s(%s)", slot_id, fn_name, str(fn_args)[:100])
+                        if fn_name == "grep_search":
+                            grep_search_count += 1
                         result_str = await executor.execute(fn_name, fn_args)
                     else:
+                        logger.info("[%s] Rejecting unavailable tool: %s(%s)", slot_id, fn_name, str(fn_args)[:100])
                         result_str = json.dumps(
                             {"ok": False, "error": f"tool '{fn_name}' not available; available: {available_names}"},
                             ensure_ascii=False,
@@ -785,6 +851,24 @@ class DocScheduler:
                     slot_id, role, attempt + 1, expected_fn,
                     no_file_streak, total_non_target_rounds,
                 )
+
+                if grep_limit_hit:
+                    forced_tool_choice = forced_write_choice
+                    cache_hint = (
+                        "上游已提供经验缓存，直接复用缓存中的考察模式/参考经验；"
+                        if skeleton_has_experience_cache
+                        else "基于已返回的候选题骨架，"
+                    )
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            f"你已经达到 grep_search 上限（{skeleton_grep_limit} 次）。"
+                            f"不要再检索；{cache_hint}立即调用 "
+                            f"write_file(path=\"{expected_fn}\", content=\"完整Markdown内容\")。"
+                            "保持题干+设问+初步参数，不写答案/选项值，不做脑内验证。"
+                        ),
+                    })
+                    continue
 
                 # Intervention tier 1: no files written at all for 4+ rounds
                 # (model keeps calling exec/read without producing artifacts)

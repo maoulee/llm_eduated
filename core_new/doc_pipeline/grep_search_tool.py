@@ -25,7 +25,7 @@ class GrepSearchTool(Tool):
         return (
             "按知识点关键词搜索题目经验文件。"
             "query 为关键词（字符串或数组），返回匹配文件列表及分数。"
-            "可按科目 subject 过滤。"
+            "可按科目 subject 和题型 question_type 过滤。"
         )
 
     @property
@@ -48,6 +48,10 @@ class GrepSearchTool(Tool):
                     "type": "string",
                     "description": "按科目过滤（如 '数据结构'）",
                 },
+                "question_type": {
+                    "type": "string",
+                    "description": "按题型过滤（如 '选择题'/'综合题' 或 'single_choice'/'comprehensive'）",
+                },
             },
             "required": ["query"],
         }
@@ -57,6 +61,7 @@ class GrepSearchTool(Tool):
         query: str | list[str] | None = None,
         max_results: int = 30,
         subject: str | None = None,
+        question_type: str | None = None,
         **_kwargs: Any,
     ) -> str:
         if not query:
@@ -90,17 +95,17 @@ class GrepSearchTool(Tool):
 
         import logging as _log
         _logger = _log.getLogger(__name__)
-        _logger.warning(
-            "[GREP-DEBUG] query=%s subject=%s max_results=%d cwd=%s",
-            query, subject, max_results,
+        _logger.debug(
+            "[GREP-DEBUG] query=%s subject=%s question_type=%s max_results=%d cwd=%s",
+            query, subject, question_type, max_results,
             __import__("os").getcwd(),
         )
 
         from compose.knowledge_index import get_index
         _idx = get_index()
-        _logger.warning(
-            "[GREP-DEBUG] query=%s subject=%s cwd=%s index_files=%d built=%s",
-            query, subject, __import__("os").getcwd(),
+        _logger.debug(
+            "[GREP-DEBUG] query=%s subject=%s question_type=%s cwd=%s index_files=%d built=%s",
+            query, subject, question_type, __import__("os").getcwd(),
             len(_idx._files), _idx._built,
         )
 
@@ -108,14 +113,19 @@ class GrepSearchTool(Tool):
             query=query,
             max_results=max_results,
             subject=subject,
+            question_type=question_type,
         )
 
-        _logger.warning("[GREP-DEBUG] result_count=%d", len(hits))
+        _logger.debug("[GREP-DEBUG] result_count=%d", len(hits))
 
         results = [
             {
                 "file": h.file_name,
                 "score": h.score,
+                "year": h.year,
+                "slot_id": h.slot_id,
+                "subject": h.subject,
+                "question_type": h.question_type,
                 "snippet": h.snippet[:200] if h.snippet else "",
                 "matched_tags": h.matched_tags,
             }
