@@ -685,3 +685,151 @@ solve.py 就是**这道题的解题代码**：拿到题干，brief 想解法，�
 - 设计不写 solve.py（solver 写）
 - 设计大胆不验证（纪律①），代码验证纠错（纪律②）
 - 选择题第2遍选项设计归设计智能体（基于答案）；主观题直接填回终审
+
+## 19. 题目设计合一 + solver 分支 + 三层边界（最终架构）
+
+> 日期: 2026-06-14 | 状态: 定型，实施中
+
+### 19.1 核心思想（修正 §18 的 agent 拆分）
+
+§18 的 agent 拆分（skeleton_design 出题干 + distractor_assembly 出选项）造成**题意知识分裂**：两个 agent 都要理解题意，distractor 要重读题面，重复消耗。§19 修正：
+
+- **题面合一**：一个 `design` 智能体拥有全部题面知识，跑两 pass（P1 出题 / P2 基于解定稿）。
+- **solver 分支**：solve 是纯计算分支节点（算题→返回解），概念/不计算题直接跳过。
+- **solve 不碰选项**：solve 只算解，选项设计是 design P2 的任务。
+
+### 19.2 两纪律细化（修正 §18.2）
+
+**① 设计纪律：经验值大胆给，不脑内算**
+P1 **不设计/不推演参数**，而是给一个**符合要求的经验值**（如 AVL 题 n 取 7-8，给 8），交给 solve 验证。区别：
+
+| | 设计参数（✗禁止） | 经验值（✓正确） |
+|---|---|---|
+| 心智 | "我要算出 n=7 让 AVL 平衡" | "AVL 题经验上 n 取 7-8，给 8" |
+| 来源 | 脑内推演 | 骨架/经验缓存里的经验值表 |
+
+**② 代码纪律：代码错误就地循环，不回退**
+solve 的 exec 报错（语法/索引/类型）= **代码 bug，与逻辑/参数无关**，solver **内部循环 fix**，不冒泡、不回退。逻辑错误（exec 成功但算错值）solver 发现不了，由 design P2 / final 比对意图捕获。
+
+### 19.3 三层边界（以 behavior/*.md 为铆钉，修正"流程塞进 agent md"）
+
+```
+behavior md ←→ 行为契约：模式、边界、禁止行为、工具优先级（与领域无关）
+skill       ←→ 领域流程：具体步骤、模板、经验值表、触发条件（与领域强相关）
+agent md    ←→ 角色身份 + 思考控制表 + 高层红线 + 指向 behavior/skill
+```
+
+**铁律：agent md 不含任何具体 Step / 模板 / 经验值表 / 触发条件（那些归 skill）。**
+
+### 19.4 design 双模式加载（一个 agent，两套 skill）
+
+`design` agent md 一个，但 orchestrator 按 pass 注入不同 skill：
+
+```
+_run_design_pass1():
+  run_agent("design", task, skill_override="design_draft_skill", ...)
+_run_design_pass2():
+  run_agent("design", task, skill_override="design_finalize_skill", ...)
+```
+
+scheduler `run_agent` 加 `skill_override: str | None` 参数（默认用 `ROLE_SKILLS[role]`，传入则用指定 skill）。
+
+### 19.5 失败处理（核心：solver 不回退）
+
+| 问题 | 检测方 | 处理 | 路由 |
+|------|--------|------|------|
+| 代码错误（exec 报错） | solver exec | **内部循环 fix** | solve 内部，不冒泡 |
+| 逻辑错误（exec 成功但算错） | design P2 / final | P2 改参数数值（仅数字）→ re-solve → P2 | P2 内部 |
+| solver fix 超限 | solver | **清空 solver 上下文，重跑同一题** | solver 自重置 |
+| 重跑仍超限 | solver | 升级失败（不回退 design） | 失败 |
+
+**删掉 §18 的 `solve code_error → design` 回退边**。结构问题本应被 form_gate 拦截；漏到 solver 仍失败的，solver 不判断结构，直接升级失败。
+
+### 19.6 流程图
+
+```
+design_card → exam_form → design(P1: 题干+设问+经验值参数)
+                              │
+                  conceptual/不计算│ 需计算
+                              ▼        ▼
+              ┌─ 直达 P2 ──┐    form_gate → solve(分支: brief→写py→exec→内部fix→解)
+              │ (P1含答案) │              │ success
+              │            │              ▼
+              └────────────┴──► design(P2: 收到解)
+                                     选择题 → 基于解设 3 干扰选项
+                                     主观题 → 解填回题干
+                                     │
+                                     ▼
+                                  final → done
+```
+
+- **P2 内部**：参数致答案不对 → 改参数数值 → re-solve → P2 再比对（cap=1）
+- **form_gate needs_fix → design P1**：形式不合规，重设计（可动结构/题干）
+- **conceptual**：design P1 含答案 → 跳 form_gate/solve → 直达 P2 填回
+
+### 19.7 归档清单（实施前清场）
+
+归档到 `agents/_archive/` 和 `skills/_archive/`：
+
+**agent md**：`question_sc.md`、`question_comp.md`、`skeleton_design.md`、`distractor_assembly.md`、`creator.md`、`reviewer.md`
+
+**skill 目录**：`skeleton_design_skill/`、`question_sc_draft/`、`question_comp_draft/`、`creator_solve/`、`checkpoint_review/`
+
+**保留不动**：`question_design.md`（design_card 智能体）、`exam_form`、`review`、`final_review`、`outline`、`paper_outline`、`human_intake`、`interact` + 各自 skill + `behavior/CORE.md`、`artifact_writer.md`、`audit_gate.md`。
+
+### 19.8 新建文件
+
+**`agents/design.md`**（角色身份 + 思考控制 + 高层红线，**无流程**）：
+- frontmatter: `name: design`, `phase: 2`, `behavior: artifact_writer`, `skills: []`（运行时注入）
+- §1 角色身份：经验值出题者（P1）+ 解后定稿者（P2）
+- §2 思考控制表（P1 快速给经验值 / P2 读解设选项 / 脑内算禁止）
+- §3 两纪律（①经验值大胆给不脑内算；P2 只读解不重算）
+- §4 高层红线（P1 不得脑内算/不得脑内验证；P2 不得改逻辑/不得重算解/不得碰 solve.py）
+
+**`skills/design_draft_skill/SKILL.md`**（P1 流程）：
+- Step1 读缓存（assembled/design_card/exam_form）
+- Step2 复用骨架（去特化留结构，缓存优先，fallback grep 粗粒度一次）
+- Step3 经验值参数（**经验值表**：按题型给友好值，如 AVL n∈{7,8}、页表 frames∈{3,4}）
+- Step4 §17.6 条件融合（仅 K3-K4 高难度 + 单骨架不足；难度达标不额外融合）
+- Step5 输出（题干+设问+经验值参数+设计说明）
+- 题干模板（综合题/选择题）+ 设计说明必写项
+
+**`skills/design_finalize_skill/SKILL.md`**（P2 流程）：
+- Step1 读解（solve_output.txt / solution.md）
+- Step2 质检比对（解 vs 预期解题意图，仅可机械判定：整数性/平凡值/越界）
+  - 参数致答案不对 → 改参数数值（仅数字）→ re-solve（cap=1）→ 再比对
+- Step3 选择题设选项（基于解派生 3 干扰，只设不求对）/ 主观题答案填回题干
+- Step4 输出（含选项的 question.md / 填回的 question.md）
+
+### 19.9 behavior 改动
+
+**`behavior/evidence_solver.md`**：
+- 删 line 55-61「code_error 回退让设计调参」整段
+- 删「凑答案会陷入循环」（旧 fear，新架构 P2 改参数不是凑答案）
+- 改为「代码错误内部循环 fix，不回退；超限清空上下文重试；重跑仍失败升级失败」
+
+**`agent_loader.py` `_BEHAVIOR_VARIANT_TEXT["solve_create"]`**：删末句「反复修不好标记 code_error 回退」。
+
+**`behavior/audit_gate.md`、`CORE.md`、`artifact_writer.md`**：不动。
+
+### 19.10 实施断点清单（归档造成的引用，§19 实施接回）
+
+| 文件 | 断点 | §19 改法 |
+|------|------|---------|
+| `agent_loader.py` `_BEHAVIOR_VARIANTS` | question_sc/question_comp/creator/reviewer 死映射 | 删死映射，加 `"design": "artifact_writer"` |
+| `agent_loader.py` `_BEHAVIOR_VARIANT_TEXT` | creator_solve/checkpoint_review 死文本 | 删 |
+| `pipeline_graph.py` `QuestionNode` | legacy graph question 节点 | 改用 design P1 |
+| `pipeline_graph.py` `SkeletonDesignNode/DistractorNode` | split graph 死节点 | 合并为 DesignNode（P1/P2） |
+| `pipeline_graph.py` edges | `code_error→question/skeleton_design` | 删（solver 不回退） |
+| `orchestrator.py` `_resolve_question_role` | 返回 question_sc/question_comp | 删，统一 design |
+| `orchestrator.py` `_run_skeleton_design/_run_distractor_assembly/_run_question_only` | 死方法 | 重写为 `_run_design_pass1/pass2` |
+| `orchestrator.py` `_run_solve` | code_error 回退 | 加超限清空重试，删回退 |
+| `scheduler.py` `run_agent` | 无 skill_override | 加参数 |
+
+### 19.11 与 §18 的关系（修正）
+
+- §18 的 skeleton_design + distractor_assembly 双 agent → §19 合并为 design 双 pass（题面知识合一）
+- §18 的 code_error 回退 → §19 删除（代码错误内部循环，不回退）
+- §18 的"solver 修不好→回设计调参" → §19 改为"清空上下文重试→仍失败则升级失败"
+- §18 的纪律①"大胆给" → §19 细化为"给经验值，不设计/不推演参数"
+- §17.6 考点融合 → §19 保留，迁入 design_draft_skill Step4
