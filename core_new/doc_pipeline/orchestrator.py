@@ -454,21 +454,21 @@ class DocPipelineOrchestrator:
     async def _run_distractor_assembly(
         self, slot_id: str, slot_data: dict[str, Any], ws: Path,
     ) -> PipelineResult | None:
-        """§17.5 distractor light-give: after solve computes correct, give 3
-        plausible wrong values (NOT code-computed), verify 4 distinct, append
-        options to question.md. Only for single-choice questions.
+        """§18.5 design-2nd pass (single-choice only): after solve computes the
+        correct answer, design the distractor options based on the answer +
+        solution (the design agent knows the question intent best). Give 3
+        plausible wrong values, verify 4 distinct, append A/B/C/D to question.md.
 
-        Returns None on success; a failed result only on hard failure.
-        Distinctness problems surface via the returned exec_result-like dict
-        consumed by the caller (DistractorNode emits distractor_error).
+        Comprehensive questions skip this (correct answers fill back the stem →
+        straight to final, no design-2nd, no back-routing).
         """
         question_type = slot_data.get("question_type")
         is_choice = _question_role(
             slot_id, question_type=question_type, slot_data=slot_data,
         ) == "question_sc"
         if not is_choice:
-            # Comprehensive questions: correct answers fill back into the
-            # symbolic stem via the solve/solution stage — no distractor step.
+            # Comprehensive questions: solve's answers fill back into the stem;
+            # no design-2nd pass, no option assembly.
             return None
 
         question_path = ws / "question.md"
@@ -480,11 +480,12 @@ class DocPipelineOrchestrator:
         if solution_path.exists():
             da_inject["求解结果"] = str(solution_path)
         da_task = (
-            "§17.5 干扰项轻给（选择题）：solve 已算出正确答案（见 solve_output.txt / solution.md）。"
-            "基于 correct + 题目情境，直接给 3 个合理错误值（plausible 范围/风格，或从 correct 派生："
-            "±offset / off-by-one / 符号 / 单位）。非代码计算。"
+            "§18.5 第2遍选项设计（选择题）：solve 已算出正确答案（见 solve_output.txt / solution.md）。"
+            "基于 correct + 题目情境 + solution，设计 3 个干扰选项（合理错值：plausible 范围/风格，"
+            "或从 correct 派生 ±offset / off-by-one / 符号 / 单位）。非代码计算——干扰本就要求错。"
             "verify 4 值（correct + 3 干扰）两两不同 + 干扰不撞正确值。"
-            "用 edit_file 把 A/B/C/D 选项（correct + 3 干扰，随机化顺序）追加进 question.md 选项区，不碰题干。"
+            "用 edit_file 把 A/B/C/D（correct + 3 干扰，随机化顺序）追加进 question.md 选项区，不碰题干。"
+            "完成后直接传终审，不再循环。"
         )
         await self.scheduler.run_agent(
             "distractor_assembly", da_task, slot_id=slot_id, inject_files=da_inject,
@@ -620,19 +621,17 @@ class DocPipelineOrchestrator:
         start_layer: int,
         question_type: str | None = None,
     ) -> tuple[PipelineResult | None, dict[str, Any]]:
-        """Run Layer 4 (Solve) — code-as-truth execution order.
+        """Run Layer 4 (Solve) — §18: solve = problem-solving code.
 
-        solve.py is written by the **Question** agent (correct + error
-        algorithms). The orchestrator executes it first → solve_output.txt,
-        runs value validation, then asks the solve agent to *read* the output,
-        assemble options into question.md (append, never touch the stem), and
-        write solution.md. The solve agent never writes its own solve.py and
-        never re-executes for truth (single exec, by the orchestrator).
+        The solver reads the stem, **brief-thinks** the approach, writes
+        solve.py itself (problem-solving code, not a DAG), execs it, fixes the
+        code (never the stem, discipline ②), and writes solution.md. After the
+        agent run, the orchestrator execs the resulting solve.py →
+        solve_output.txt for downstream reporting + value validation.
 
-        Returns (failure_result_or_None, exec_result) where exec_result
-        tracks code execution status for downstream reporting. exec failure or
-        bad values (duplicates / missing) surface as ``code_error`` so the
-        graph routes back to Question to fix solve.py / tune parameters.
+        Returns (failure_result_or_None, exec_result). exec failure / missing
+        correct answer surface as ``code_error`` so the graph routes back to
+        design (tune parameters) — never the solver editing the stem.
         """
         solution_path = ws / "solution.md"
         solve_path = ws / "solve.py"
@@ -651,7 +650,34 @@ class DocPipelineOrchestrator:
         logger.info("[%s] Layer 4: Solve", slot_id)
         question_public_path = self._write_public_question_view(question_path)
 
-        # ── code-as-truth: orchestrator execs Question's solve.py first ──
+        # ── §18.6: solver writes solve.py, execs, fixes code, writes solution ──
+        # The solver owns the whole solve loop (brief-think → write code →
+        # exec → fix code → solution). The orchestrator does NOT pre-write or
+        # pre-exec solve.py — the agent does it with its write_file/exec_file/
+        # edit_file tools. After the run we exec the resulting solve.py once
+        # for a clean solve_output.txt + downstream value validation.
+        s_inject = await self._resolve_inject("solve", slot_id, 4, {
+            "题目": str(question_public_path),
+        })
+        s_task = (
+            "§18 求解即解题代码：读题干 → brief 想解法（不深推）→ write_file(solve.py) 写解题代码"
+            "（能算出答案即可，非 DAG/参数搜索）→ exec_file 执行 → 出错只改 solve.py（绝不改题干，"
+            "纪律②）→ 快速迭代直到算出答案 → 读 exec 输出 → write_file(solution.md) 写推理过程。"
+            "exec 输出即真值，不重算、不质疑。只算正确答案，不算干扰值。"
+            "若反复修不好（参数无解），标记 code_error 回退，不改题面凑答案。"
+        )
+        await self.scheduler.run_agent(
+            "solve",
+            s_task,
+            slot_id=slot_id,
+            inject_files=s_inject,
+            max_tokens=self.max_tokens,
+        )
+
+        if not solution_path.exists():
+            return (self._fail_result(slot_id, "Solve agent did not write solution.md"), exec_result)
+
+        # ── exec the solver's solve.py once → solve_output.txt + validation ──
         if solve_path.exists():
             exec_result = await self.exec_python(solve_path, output_path)
             if not exec_result["ok"]:
@@ -659,11 +685,8 @@ class DocPipelineOrchestrator:
                     "[%s] solve.py exec failed (code_error): %s",
                     slot_id, exec_result.get("stderr", "")[:200],
                 )
-                # Surface code_error so the graph routes back to Question.
-                # exec_result["ok"] is False → SolveNode emits code_error.
                 return (None, exec_result)
 
-            # Value validation: output must contain a parseable truth set.
             validation = _validate_solve_output(output_path, question_type=question_type)
             if not validation["ok"]:
                 logger.warning(
@@ -678,36 +701,11 @@ class DocPipelineOrchestrator:
                 }
                 return (None, exec_result)
         else:
-            # No solve.py → conceptual question. The solve agent reasons
-            # directly without code (no truth to exec). exec_result stays skipped.
+            # No solve.py → conceptual question (solve agent reasoned directly).
             logger.info("[%s] Layer 4: no solve.py — conceptual solve path", slot_id)
 
-        # ── solve agent reads output + assembles options + writes solution ──
-        s_inject = await self._resolve_inject("solve", slot_id, 4, {
-            "题目": str(question_public_path),
-        })
-        if output_path.exists() and "代码输出" not in s_inject:
-            s_inject["代码输出"] = str(output_path)
-        if solve_path.exists() and "求解代码" not in s_inject:
-            s_inject["求解代码"] = str(solve_path)
-        s_task = (
-            "代码即真值：编排层已执行 solve.py 并产出 solve_output.txt。"
-            "请读取代码输出，据此组装选项追加进 question.md（不碰题干），并写 solution.md 推理过程。"
-            "exec 输出即真值——不重算、不质疑、不改题干、不写自己的 solve.py。"
-            "若 exec 输出有缺值或重复，标记 code_error 回退。"
-        )
-        await self.scheduler.run_agent(
-            "solve",
-            s_task,
-            slot_id=slot_id,
-            inject_files=s_inject,
-            max_tokens=self.max_tokens,
-        )
-
-        if not solution_path.exists():
-            return (self._fail_result(slot_id, "Solve agent did not write solution.md"), exec_result)
-
         return (None, exec_result)
+
 
     # ── Layer 5: Final Review ─────────────────────────────────────
 

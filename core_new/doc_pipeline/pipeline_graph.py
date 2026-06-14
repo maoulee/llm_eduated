@@ -416,18 +416,16 @@ def build_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     return g
 
 
-# ── §17 split-focused design nodes + graph ─────────────────────────
+# ── §17/§18 split-focused design nodes + graph ────────────────────
 #
-# Split path (feature-flagged via enable_split_design):
-#   design_card → exam_form → skeleton_design → form_gate → solve
-#                                                  │            │
-#                                          needs_fix       code_error
-#                                                  ↓            ↓
-#                                            skeleton_design (regenerates stem + solve.py)
-#                                                              │
-#   solve success → distractor_assembly (choice only) → final
-#                 → final (comprehensive: correct fills back symbolic stem)
-# Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
+# Split path (feature-flagged via enable_split_design), §18 form:
+#   design_card → exam_form → skeleton_design(题干+参数, 大胆不验证)
+#                                       → form_gate → solve(解题代码, solver writes solve.py)
+#   solve success → [选择题] distractor_assembly(第2遍: 基于答案设计干扰选项) → final
+#                 → [主观题] final (答案填回题干, 直接前进不回退)
+#   solve code_error → skeleton_design (tune params; §18: solver writes solve.py,
+#                      skeleton only retunes the stem/params)
+#   Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
 
 
 class ExamFormNode(_OrchestratorNode):
@@ -451,8 +449,9 @@ class ExamFormNode(_OrchestratorNode):
 
 
 class SkeletonDesignNode(_OrchestratorNode):
-    """§16.2/§17.3 skeleton_design: reuse skeleton → symbolic stem + solve.py.
+    """§16.2/§18 skeleton_design: reuse skeleton → stem + questions + initial params.
 
+    Bold-no-verify (discipline ①). Does NOT write solve.py (solver does, §18.4).
     Single run per visit; form_gate/code_error feedback threads through the
     state's feedback_buffer. Reports ``ok``.
     """
@@ -476,12 +475,12 @@ class SkeletonDesignNode(_OrchestratorNode):
 
 
 class DistractorNode(_OrchestratorNode):
-    """§17.5 distractor light-give (single-choice only).
-
-    After solve computes the correct answer, give 3 plausible wrong values
-    (NOT code-computed), verify 4 distinct, append options. Comprehensive
-    questions skip this node (correct fills back the symbolic stem).
-    signal: ``success`` → final; ``distractor_error`` → back to solve/skeleton.
+    """§18.5 design-2nd pass (single-choice only): design distractor options
+    based on the correct answer + solution (the design agent knows the question
+    intent best). Give 3 plausible wrong values (NOT code-computed), verify 4
+    distinct, append A/B/C/D. Comprehensive questions skip this node (correct
+    fills back the stem → straight to final).
+    signal: ``success`` → final; ``distractor_error`` → back to solve.
     """
 
     name = "distractor_assembly"
@@ -505,12 +504,15 @@ class DistractorNode(_OrchestratorNode):
 
 
 def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
-    """Declare the §17 split-focused design graph.
+    """Declare the §18 split-focused design graph.
 
-    exam_form → skeleton_design → form_gate → solve → distractor_assembly → final.
-    Conceptual questions short-circuit skeleton_design → done. Back-routing
-    (needs_fix / code_error) returns to skeleton_design, which regenerates the
-    symbolic stem AND solve.py (both live in the question/skeleton stage).
+    design_card → exam_form → skeleton_design(stem+params, bold-no-verify)
+        → form_gate → solve(problem-solving code; solver writes solve.py).
+    Branch after solve (§18.5):
+      - 选择题: solve → distractor_assembly(第2遍: 基于答案设计干扰选项) → final
+      - 主观题: solve → distractor_assembly(no-op) → final (答案填回题干, 直接前进)
+    solve code_error → skeleton_design (retune stem/params; §18: solver writes solve.py).
+    Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
 
     Note: ``scheduler`` is the ``DocPipelineOrchestrator`` instance.
     """

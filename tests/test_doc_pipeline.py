@@ -22,7 +22,7 @@ from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, Age
 from core_new.doc_pipeline.dual_agent_orchestrator import DualAgentOrchestrator
 from core_new.doc_pipeline.orchestrator import DocPipelineOrchestrator
 from core_new.doc_pipeline.scheduler import AGENT_PROMPTS, AGENT_OUTPUT_FILES, MULTI_TURN_AGENTS
-from core_new.doc_pipeline.scheduler import DocScheduler, ROLE_SKILLS
+from core_new.doc_pipeline.scheduler import DocScheduler, ROLE_SKILLS, ROLE_REQUIRED_TOOLS
 from core_new.agent_roles import TransportRetryPolicy
 from core_new.llm_gateway import LLMGateway
 
@@ -315,21 +315,24 @@ class TestAgentPrompts:
             assert expected_file in prompt, f"{role} prompt doesn't mention its output file {expected_file}"
 
     def test_solve_prompt_encodes_code_as_truth(self):
-        # §17.5: solve only computes the CORRECT answer. The legacy solve.py
-        # contract (3 error algorithms producing 3 distractor values) is gone —
-        # distractors are now given by a separate light step, not computed by
-        # solve.py. This test asserts the new solve-only-correct contract.
+        # §18: solve = problem-solving code (brief-think-then-code). The solver
+        # writes solve.py itself, execs, fixes the CODE (never the stem,
+        # discipline ②), and writes solution. This is NOT a DAG / parameter
+        # search — it's just solving the problem in code.
         prompt = AGENT_PROMPTS["solve"]
-        # exec output is the truth, written into solution.md verbatim.
-        assert "exec 输出即真值" in prompt or "exec 即真值" in prompt
-        # solver never edits the question stem.
-        assert "不得改题干" in prompt
-        # §17.5: solve only computes correct — no error algorithms in solve.py.
+        # §18.6: brief-think-then-code is the discipline.
+        assert "brief" in prompt
+        # §18.2 discipline ②: exec error → fix solve.py, never the stem.
+        assert "不得改题干" in prompt or "绝不改题干" in prompt
+        # solve only computes correct — no error algorithms / distractors.
         assert "只算正确" in prompt or "只计算正确" in prompt
-        assert "不编码错误算法" in prompt or "不输出干扰值" in prompt or "错误算法" in prompt
-        # exec failure routes code_error, not self-repair.
+        assert "错误算法" in prompt
+        # exec failure routes code_error (not self-editing the stem).
         assert "code_error" in prompt
-        # Old minimal-fix / parameter-search behavior is explicitly gone.
+        # §18.3: solve.py is problem-solving code, NOT a DAG / parameter search.
+        assert "解题代码" in prompt
+        assert "参数搜索" in prompt  # mentioned as "not this" — over-architecture purged
+        # Old minimal-fix / parameter-search endorsement is explicitly gone.
         assert "参数搜索仅作为兜底" not in prompt
         assert "不得为了匹配选项而枚举搜索参数" not in prompt
 
@@ -695,6 +698,10 @@ class TestDocPipelineOrchestrator:
     def test_orchestrator_runs_without_llm_gateway(self, tmp_path):
         scheduler = FakeAgentSchedulerForOrchestration(tmp_path)
         orchestrator = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+        # This test exercises the stable graph path (FakeAgentScheduler handles
+        # the stable roles only). Pin the §17 split path OFF so the stable path
+        # is under test regardless of the config flag.
+        orchestrator._split_design_enabled = False
 
         result = run_async(orchestrator.run_pipeline("S5", {"slot_id": "S5"}))
 
@@ -1404,6 +1411,10 @@ class TestPipelineGraphRouting:
         orch = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
         # graph is the default path now; pin it on explicitly.
         orch._use_graph_enabled = True
+        # These tests exercise the STABLE graph (question/form_gate/solve).
+        # Pin the §17 split-design path OFF regardless of the config flag so
+        # the stable path is what's under test here.
+        orch._split_design_enabled = False
         return orch
 
     def test_standard_graph_runs_full_path_and_assembles_result(self, tmp_path):
@@ -1507,34 +1518,41 @@ class TestPipelineGraphRouting:
 
 class TestEvidenceSolverCodeAsTruth:
     def test_behavior_file_is_code_as_truth(self):
-        """behavior/evidence_solver.md must agree with solve.md body (no
-        legacy 'write own solve.py' / 'parameter search' / 'edit stem')."""
+        """behavior/evidence_solver.md must carry the §18 solve = problem-solving
+        code contract: solver writes solve.py, brief-think-then-code, fix code
+        never stem (discipline ②), no DAG/parameter-search, only correct."""
         from core_new.doc_pipeline.agent_loader import _load_behavior_file
         text = _load_behavior_file("evidence_solver")
 
-        # code-as-truth + §17.5 (solve only computes correct) contract present
-        assert "exec 输出即真值" in text or "exec 即真值" in text
+        # §18.6: brief-think-then-code is the solve discipline.
+        assert "brief" in text
+        # §18.2 discipline ②: exec error → fix solve.py, never the stem.
+        assert "绝不改题干" in text or "不得改题干" in text
         assert "code_error" in text
-        # §17.5: solve only computes the correct answer, no error algorithms.
+        # §18.3: solve.py is problem-solving code, only correct answer.
+        assert "解题代码" in text
         assert "只算正确" in text
-        assert "不编码错误算法" in text or "错误算法" in text
-        # distractors are NOT solve's job under §17.5
-        assert "干扰项不由你给" in text or "不由 solve 阶段给" in text
-        # legacy anti-patterns explicitly gone (no endorsement of param search)
+        assert "错误算法" in text
+        # distractors are NOT solve's job (choice options assembled in design 2nd pass)
+        assert "干扰项不由 solve 给" in text or "干扰值不由 solve" in text
+        # §18.3: no DAG / parameter search over-architecture.
+        assert "参数搜索" in text  # mentioned as forbidden
+        # legacy anti-patterns explicitly gone
         assert "参数搜索仅作为兜底" not in text
         assert "不得为了匹配选项而枚举搜索参数" not in text
-        # the file forbids writing its own solve.py
-        assert "写自己的 solve.py" in text
 
     def test_solve_system_prompt_resolves_contradiction(self):
         """The assembled solve prompt (CORE + behavior + body) must carry the
-        code-as-truth contract and must NOT carry legacy stem-edit / parameter
-        search language. This is the headline contradiction fix."""
+        §18 solve = problem-solving code contract and must NOT carry legacy
+        DAG / stem-edit / parameter-search endorsement."""
         prompt = AGENT_PROMPTS["solve"]
-        # new contract tokens
-        assert "exec 即真值" in prompt or "exec 输出即真值" in prompt
-        assert "不得改题干" in prompt
+        # §18 contract tokens
+        assert "brief" in prompt
+        assert "解题代码" in prompt
+        assert "不得改题干" in prompt or "绝不改题干" in prompt
         assert "code_error" in prompt
+        # §18.3: DAG/parameter-search over-architecture purged
+        assert "参数搜索" in prompt  # mentioned as "not this"
         # legacy contradictions purged
         assert "参数搜索仅作为兜底" not in prompt
         assert "不得为了匹配选项而枚举搜索参数" not in prompt
@@ -1580,18 +1598,21 @@ class _SplitTestScheduler:
                 encoding="utf-8",
             )
         elif role == "skeleton_design":
+            # §18.4: skeleton_design writes ONLY question.md (stem + params),
+            # NOT solve.py (the solver writes solve.py).
             (ws / "question.md").write_text(
-                "## status\ndraft\n\n## 题干\n符号化题干（参数占位）。\n\n## 设计说明\n骨架复用",
+                "## status\ndraft\n\n## 题干\n题干 + 初步参数。\n\n## 设计说明\n骨架复用，大胆不验证",
                 encoding="utf-8",
             )
-            if not self.conceptual:
-                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
         elif role == "review":
             (ws / "review.md").write_text(
                 f"## status\n{self.review_status}\n\n## summary\nOK\n\n## corrections\n无",
                 encoding="utf-8",
             )
         elif role == "solve":
+            # §18: the solver writes solve.py (problem-solving code) + solution.md.
+            if not self.conceptual:
+                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
             (ws / "solution.md").write_text(
                 "## status\nsolved\n\n## 求解过程\n基于 exec\n\n## 最终答案\n10", encoding="utf-8",
             )
@@ -1673,9 +1694,10 @@ class TestSplitDesignGraph:
         assert "## 选项" not in q
 
     def test_split_code_error_routes_back_to_skeleton(self, tmp_path):
-        # solve.py exec fails → code_error → back to skeleton_design (regenerates
-        # stem + solve.py). Skeleton keeps writing the same bad solve.py in the
-        # fake, so it loops until MAX_NODE_VISITS → ok=False (B1 guard).
+        # §18: solver writes solve.py; if exec fails repeatedly (params unsolvable)
+        # → code_error → back to skeleton_design (retune stem/params). The fake
+        # solver keeps writing the same bad solve.py, so it loops until
+        # MAX_NODE_VISITS → ok=False (B1 guard).
         bad_solve = "raise RuntimeError('boom')\n"
         sched = _SplitTestScheduler(tmp_path, solve_py=bad_solve)
         orch = self._orch(sched, tmp_path)
@@ -1690,33 +1712,82 @@ class TestSplitDesignGraph:
         # B1: never solved → failure
         assert result.ok is False
 
+    def test_split_solver_writes_solve_py_not_skeleton(self, tmp_path):
+        # §18.4: the SOLVER writes solve.py (problem-solving code), not
+        # skeleton_design. Verify solve.py exists only after the solve role ran,
+        # and skeleton_design did not create it.
+        sched = _SplitTestScheduler(tmp_path)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("SP5", {"slot_id": "SP5"}))
+
+        assert result.ok is True
+        # solve.py produced (by the solver role) and exec'd → solve_output.txt
+        assert (tmp_path / "SP5" / "solve.py").exists()
+        assert (tmp_path / "SP5" / "solve_output.txt").exists()
+        # skeleton_design must NOT have been the one to write solve.py: it ran
+        # before solve, and the split scheduler only writes solve.py in the
+        # solve role. Confirm ordering: skeleton_design precedes solve.
+        roles = [c["role"] for c in sched.calls]
+        assert roles.index("skeleton_design") < roles.index("solve")
+
 
 class TestSplitDesignAgents:
     def test_exam_form_and_skeleton_agents_load(self):
-        # §17.3 new agents exist and carry the split-design contract
+        # §17.3/§18 new agents exist and carry the split-design contract
         for role in ("exam_form", "skeleton_design", "distractor_assembly"):
             assert role in AGENT_PROMPTS, f"{role} agent not loaded"
         ef = AGENT_PROMPTS["exam_form"]
         assert "考察形式" in ef and "判断任务" in ef
         sk = AGENT_PROMPTS["skeleton_design"]
-        assert "只算正确" in sk and "不发明" in sk  # skeleton writes correct-only solve.py
+        # §18.4: skeleton_design does NOT write solve.py; §18.2 discipline ① bold-no-verify
+        assert "不写 solve.py" in sk or "不得写 solve.py" in sk
+        assert "大胆" in sk  # discipline ①: bold design, no verify
 
-    def test_skeleton_solve_contract_is_correct_only(self):
-        # §17.5: skeleton_design skill must instruct correct-only solve.py
-        # (no error algorithms / distractors in solve.py)
+    def test_skeleton_does_not_write_solve_py(self):
+        # §18.4: skeleton_design must NOT write solve.py (solver writes it).
+        # skeleton only emits stem + questions + initial parameters (bold, no verify).
         sk = ROLE_SKILLS.get("skeleton_design", "")
-        assert "只算正确" in sk
-        assert "不编码错误算法" in sk or "错误算法" in sk
+        assert "不写 solve.py" in sk or "不得写 solve.py" in sk
+        # §18.2 discipline ①: bold-give-no-verify (no brain-sim of structure validity)
+        assert "大胆" in sk
+        assert "不脑内验证" in sk or "不验证" in sk
         # skeleton does NOT emit options (choice questions have no A/B/C/D here)
         assert "不出 A/B/C/D" in sk or "不出答案/选项" in sk
 
-    def test_split_flag_default_off_keeps_stable_graph(self, tmp_path):
-        # The §17 split path is feature-flagged OFF by default so the stable
-        # graph path is unaffected. Verify the orchestrator picks the stable
-        # builder when the flag is unset.
-        from core_new.doc_pipeline.pipeline_graph import (
-            build_pipeline_graph, build_split_pipeline_graph,
-        )
+    def test_solve_agent_carries_18_disciplines(self):
+        # §18: solve = problem-solving code. The solver writes solve.py, execs,
+        # fixes the CODE (never the stem, discipline ②), brief-think-then-code.
+        prompt = AGENT_PROMPTS["solve"]
+        assert "brief" in prompt  # brief-think-then-code
+        assert "解题代码" in prompt  # §18.3: not a DAG/parameter search
+        assert "绝不改题干" in prompt or "不得改题干" in prompt  # discipline ②
+        # the solver writes solve.py (edit_file present for fixing the code)
+        tools = ROLE_REQUIRED_TOOLS.get("solve", [])
+        assert "write_file" in tools and "exec_file" in tools and "edit_file" in tools
+
+    def test_split_flag_resolves_from_config_and_can_be_pinned(self, tmp_path):
+        # The §17 split path is feature-flagged via enable_split_design.
+        # Verify the orchestrator resolves the flag from config, and that
+        # pinning _split_design_enabled overrides it (so tests can force either
+        # path regardless of the config default).
         orch = DocPipelineOrchestrator(scheduler=_SplitTestScheduler(tmp_path), workspace=tmp_path)
+        # Reads the config flag (whatever it currently is) — must not error.
+        config_value = orch._should_use_split_design()
+        assert isinstance(config_value, bool)
+        # Pinning overrides the cached config value.
+        orch._split_design_enabled = False
         assert orch._should_use_split_design() is False
+        orch._split_design_enabled = True
+        assert orch._should_use_split_design() is True
+
+    def test_skeleton_design_has_grep_search_tool(self):
+        # §17 fix: skeleton_design MUST have grep_search so it can retrieve
+        # same-type past papers (analysis, not invention). Without it the agent
+        # invents structure → 60k over-thinking (T3 root cause).
+        tools = ROLE_REQUIRED_TOOLS.get("skeleton_design", [])
+        assert "grep_search" in tools, (
+            "skeleton_design must have grep_search to retrieve past papers "
+            "(强制分析不发明); missing it causes invention→over-thinking"
+        )
 

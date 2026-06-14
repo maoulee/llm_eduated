@@ -13,7 +13,7 @@ pipeline:
   features:
     enable_question_design: true  # Phase 1: generate design_card.md before question writer
     enable_pipeline_graph: true  # code-as-truth: declarative signal+edge graph is the sole path; legacy _run_standard_pipeline/_run_conceptual_pipeline kept as fallback
-    enable_split_design: false   # §17 split-focused design (exam_form→skeleton_design→form_gate→solve→distractor_assembly). Off by default; A/B-test gate.
+    enable_split_design: true   # §18 split design (exam_form→skeleton→form_gate→solve→distractor) is the default path; set false to fall back to the stable graph.
 
   sampling:
     temperature: 0.2

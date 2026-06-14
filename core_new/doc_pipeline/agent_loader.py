@@ -66,10 +66,10 @@ _BEHAVIOR_VARIANT_TEXT = {
         "form_gate 阶段选择题 question.md 无 A/B/C/D 选项值是正常的（选项由 solve 阶段组装），不得因此打回。"
     ),
     "solve_create": (
-        "你的模式是「exec solve.py 得正确答案→读输出→写推理过程→输出」（§17.5：只算正确）。\n"
-        "exec 输出即真值：执行 solve.py 得到正确答案，据此写 solution.md 推理过程。solve.py 只算正确，不算干扰值——干扰项由后续轻步骤给。\n"
-        "不质疑 exec、不重算、不改题干：exec 的输出就是唯一数值来源，发现不一致只回退标记 code_error，不自行修改。\n"
-        "代码错误标记 code_error 回退，不自己修代码。"
+        "你的模式是「读题干→brief想解法→写解题代码→exec→fix代码→答案+solution」（§18 求解即解题代码）。\n"
+        "solve.py 是这道题的解题代码（非 DAG/参数搜索），你自己从题干写。exec 出错只改代码（绝不改题干，纪律②），快速迭代。\n"
+        "exec 输出即真值，不重算、不质疑。只算正确答案，不算干扰值（干扰项由第2遍设计给）。\n"
+        "反复修不好（参数无解）标记 code_error 回退，不改题面凑答案。"
     ),
     # --- 2-agent pipeline (DualAgentOrchestrator, still under test) ---
     "creator_solve": (
