@@ -490,6 +490,12 @@ class DocPipelineOrchestrator:
             "design", p2_task, slot_id=slot_id, inject_files=p2_inject,
             skill_override="design_finalize_skill",
         )
+        # §19/§20 边界约束：agent 之间不传递思考过程，只通过文档协作。
+        # P1 和 P2 共用 role="design"（session key 相同）。P2 跑完后清掉 design
+        # session，避免 final 打回 P1 时 P1 读到 P2 的 reasoning_content（P2 思考
+        # 污染 P1 出题）。P1 回退时会以 continue_session=True 重建干净 session。
+        if hasattr(self.scheduler, "clear_session"):
+            self.scheduler.clear_session(slot_id, "design")
         return None
 
     async def _run_review_only(
