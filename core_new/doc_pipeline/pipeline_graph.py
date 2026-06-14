@@ -320,7 +320,9 @@ class FormGateNode(_OrchestratorNode):
 class SolveNode(_OrchestratorNode):
     """Layer 4 (Solve). Runs solver + exec.
 
-    signal: ``success`` → final review; ``code_error`` → back to question.
+    §19.5: solver self-retries internally (context-clear + rerun) and only
+    surfaces a hard failure. signal ``success`` → next; ``failed`` → terminal
+    (no back-route to design; structural issues are form_gate's job).
     """
 
     name = "solve"
@@ -333,13 +335,12 @@ class SolveNode(_OrchestratorNode):
         )
         if fail is not None:
             state.result = fail
-            return AgentResult(signal="code_error", feedback=fail.error)
-        # code-as-truth: any failed exec (non-zero exit / value validation)
-        # is a code_error that routes back to Question. ``ok`` defaults to True
-        # only when no solve.py existed (conceptual skip).
+            return AgentResult(signal="failed", feedback=fail.error)
         if not exec_result.get("ok", True):
+            # Defensive: _run_solve returns a fail result on exhaustion, so
+            # reaching here means a soft skip (no solve.py / conceptual).
             return AgentResult(
-                signal="code_error",
+                signal="failed",
                 feedback=exec_result.get("stderr", "")[:200],
                 params={"exec_result": exec_result},
             )
@@ -409,22 +410,22 @@ def build_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     g.edge("form_gate", "pass", "solve")
     g.edge("form_gate", "needs_fix", "question")
     g.edge("solve", "success", "final")
-    g.edge("solve", "code_error", "question")
+    # §19.5: solve never back-routes; failure is terminal.
+    g.edge("solve", "failed", "done")
     g.edge("final", "pass", "done")
     g.edge("final", "question_error", "question")
     g.edge("final", "solution_error", "solve")
     return g
 
 
-# ── §17/§18 split-focused design nodes + graph ────────────────────
+# ── §19 split-focused design nodes + graph ──────────────────────
 #
-# Split path (feature-flagged via enable_split_design), §18 form:
-#   design_card → exam_form → skeleton_design(题干+参数, 大胆不验证)
+# Split path (feature-flagged via enable_split_design), §19 form:
+#   design_card → exam_form → design(P1: 题干+设问+经验值参数, 大胆不验证)
 #                                       → form_gate → solve(解题代码, solver writes solve.py)
-#   solve success → [选择题] distractor_assembly(第2遍: 基于答案设计干扰选项) → final
-#                 → [主观题] final (答案填回题干, 直接前进不回退)
-#   solve code_error → skeleton_design (tune stem/params)
-#   Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
+#   solve success → design2(P2: 基于解设选项/答案填回) → final
+#   solve failed → done (terminal; no back-route — §19.5 solver self-retry only)
+#   Conceptual: design → done (skip form_gate/solve/design2/final).
 
 
 class ExamFormNode(_OrchestratorNode):
@@ -447,96 +448,83 @@ class ExamFormNode(_OrchestratorNode):
         return AgentResult(signal="ok")
 
 
-class SkeletonDesignNode(_OrchestratorNode):
-    """§16.2/§18 skeleton_design: reuse skeleton → stem + questions + initial params.
-
-    Bold-no-verify (discipline ①). Single run per visit; form_gate/code_error
-    feedback threads through the state's feedback_buffer. Reports ``ok``.
+class DesignNode(_OrchestratorNode):
+    """§19 design Pass 1: read upstream cache → reuse skeleton → stem +
+    questions + experience-value params (bold-give, discipline ①). Writes
+    question.md. Single run per visit; form_gate feedback threads through
+    the state's feedback_buffer. Reports ``ok``.
     """
 
-    name = "skeleton_design"
+    name = "design"
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         ref_path = DesignCardNode._ref_path(state)
-        feedback = (
-            state.feedback_buffer.get("form_gate", "")
-            or state.feedback_buffer.get("solve", "")
-        )
-        fail = await self.orch._run_skeleton_design(
+        feedback = state.feedback_buffer.get("form_gate", "")
+        fail = await self.orch._run_design_pass1(
             state.slot_id, state.slot_data, ws, ref_path, feedback=feedback,
         )
         if fail is not None:
             state.result = fail
-            return AgentResult(signal="ok", feedback=f"skeleton_design failed: {fail.error}")
+            return AgentResult(signal="ok", feedback=f"design P1 failed: {fail.error}")
         return AgentResult(signal="ok", feedback=feedback)
 
 
-class DistractorNode(_OrchestratorNode):
-    """§18.5 design-2nd pass (single-choice only): design distractor options
-    based on the correct answer + solution (the design agent knows the question
-    intent best). Give 3 plausible wrong values (NOT code-computed), verify 4
-    distinct, append A/B/C/D. Comprehensive questions skip this node (correct
-    fills back the stem → straight to final).
-    signal: ``success`` → final; ``distractor_error`` → back to solve.
+class DesignFinalizeNode(_OrchestratorNode):
+    """§19 design Pass 2: after solve computes the answer, finalize the
+    question. Choice → design 3 distractors based on the solution (only-set,
+    never-compute, verify distinct); comprehensive → fill answers back into the
+    stem. Solution comes from solve; never recompute. Reports ``ok``.
     """
 
-    name = "distractor_assembly"
+    name = "design2"
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
-        # Comprehensive questions: no distractor step — route straight through.
-        q_role = state.slot_data.get("question_type")
-        from .orchestrator import _question_role as _qr
-        if _qr(state.slot_id, question_type=q_role, slot_data=state.slot_data) != "question_sc":
-            return AgentResult(signal="success")
-
-        fail = await self.orch._run_distractor_assembly(
+        fail = await self.orch._run_design_pass2(
             state.slot_id, state.slot_data, ws,
         )
         if fail is not None:
             state.result = fail
-            return AgentResult(signal="distractor_error", feedback=fail.error)
-        # Verify 4 distinct option values landed in question.md (best-effort).
-        return AgentResult(signal="success")
+            return AgentResult(signal="ok", feedback=f"design P2 failed: {fail.error}")
+        return AgentResult(signal="ok")
 
 
 def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
-    """Declare the §18 split-focused design graph.
+    """Declare the §19 split-focused design graph.
 
-    design_card → exam_form → skeleton_design(stem+params, bold-no-verify)
-        → form_gate → solve(problem-solving code; solver writes solve.py).
-    Branch after solve (§18.5):
-      - 选择题: solve → distractor_assembly(第2遍: 基于答案设计干扰选项) → final
-      - 主观题: solve → distractor_assembly(no-op) → final (答案填回题干, 直接前进)
-    solve code_error → skeleton_design (retune stem/params).
-    Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
+    design_card → exam_form → design(P1: 题干+设问+经验值参数, 大胆不验证)
+        → form_gate → solve(解题代码, solver writes solve.py; 自重试不回退).
+    Branch after solve (§19):
+      solve success → design2(P2: 基于解设选项/答案填回) → final
+      solve failed → terminal (no back-route; structural issues are form_gate's job).
+    Conceptual: design → done (skip form_gate/solve/design2/final).
 
     Note: ``scheduler`` is the ``DocPipelineOrchestrator`` instance.
     """
     g = PipelineGraph()
     g.add_node("design_card", DesignCardNode(scheduler, workspace))
     g.add_node("exam_form", ExamFormNode(scheduler, workspace))
-    g.add_node("skeleton_design", SkeletonDesignNode(scheduler, workspace))
+    g.add_node("design", DesignNode(scheduler, workspace))
     g.add_node("form_gate", FormGateNode(scheduler, workspace))
     g.add_node("solve", SolveNode(scheduler, workspace))
-    g.add_node("distractor_assembly", DistractorNode(scheduler, workspace))
+    g.add_node("design2", DesignFinalizeNode(scheduler, workspace))
     g.add_node("final", FinalNode(scheduler, workspace))
 
     g.edge("design_card", "ok", "exam_form")
-    g.edge("exam_form", "ok", "skeleton_design")
-    # Conceptual: skip form_gate/solve/distractor/final.
-    g.edge("skeleton_design", "ok", "done", condition=lambda s: s.complexity == "conceptual")
-    g.edge("skeleton_design", "ok", "form_gate", condition=lambda s: s.complexity != "conceptual")
+    g.edge("exam_form", "ok", "design")
+    # Conceptual: skip form_gate/solve/design2/final.
+    g.edge("design", "ok", "done", condition=lambda s: s.complexity == "conceptual")
+    g.edge("design", "ok", "form_gate", condition=lambda s: s.complexity != "conceptual")
     g.edge("form_gate", "pass", "done", condition=lambda s: s.complexity == "conceptual")
     g.edge("form_gate", "pass", "solve")
-    g.edge("form_gate", "needs_fix", "skeleton_design")
-    g.edge("solve", "success", "distractor_assembly")
-    g.edge("solve", "code_error", "skeleton_design")
-    # distractor_assembly: choice → final; comprehensive already routed through.
-    g.edge("distractor_assembly", "success", "final")
-    g.edge("distractor_assembly", "distractor_error", "solve")
+    g.edge("form_gate", "needs_fix", "design")
+    g.edge("solve", "success", "design2")
+    # §19.5: solve never back-routes; failure is terminal.
+    g.edge("solve", "failed", "done")
+    # design2 always → final (both choice and comprehensive finalize here).
+    g.edge("design2", "ok", "final")
     g.edge("final", "pass", "done")
-    g.edge("final", "question_error", "skeleton_design")
+    g.edge("final", "question_error", "design")
     g.edge("final", "solution_error", "solve")
     return g

@@ -276,23 +276,23 @@ class TestDocParser:
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
         expected_roles = {
-            "outline", "question_design", "question_sc", "question_comp",
+            "outline", "question_design",
             "review", "solve", "final_review",
-            "creator", "reviewer", "paper_outline",
+            "paper_outline",
             "interact", "human_intake",
-            # §17 split-focused design agents
-            "exam_form", "skeleton_design", "distractor_assembly",
+            # §19 split-focused design agents
+            "design", "exam_form",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
     def test_all_roles_have_output_files(self):
         expected_roles = {
-            "outline", "question_design", "question_sc", "question_comp",
+            "outline", "question_design",
             "review", "solve", "final_review",
-            "creator", "reviewer", "paper_outline",
+            "paper_outline",
             "interact", "human_intake",
-            # §17 split-focused design agents
-            "exam_form", "skeleton_design", "distractor_assembly",
+            # §19 split-focused design agents
+            "design", "exam_form",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -300,13 +300,13 @@ class TestAgentPrompts:
         for role, filename in AGENT_OUTPUT_FILES.items():
             assert "." in filename, f"{role} output file '{filename}' has no extension"
 
-    def test_question_roles_share_output_file(self):
-        assert AGENT_OUTPUT_FILES["question_sc"] == "question.md"
-        assert AGENT_OUTPUT_FILES["question_comp"] == "question.md"
+    def test_design_role_owns_question_md(self):
+        # §19: design replaces question_sc/question_comp; both passes write question.md.
+        assert AGENT_OUTPUT_FILES["design"] == "question.md"
 
     def test_multi_turn_agents(self):
-        assert "question_sc" in MULTI_TURN_AGENTS
-        assert "question_comp" in MULTI_TURN_AGENTS
+        # §19: design is multi-turn (P1 feedback rounds across form_gate retries).
+        assert "design" in MULTI_TURN_AGENTS
 
     def test_prompts_mention_write_file(self):
         for role, prompt in AGENT_PROMPTS.items():
@@ -330,8 +330,8 @@ class TestAgentPrompts:
         # solve only computes correct — no error algorithms / distractors.
         assert "只算正确" in prompt or "只计算正确" in prompt
         assert "错误算法" in prompt
-        # exec failure routes code_error (not self-editing the stem).
-        assert "code_error" in prompt
+        # §19.5: exec errors = code bugs, fixed internally (no code_error back-route).
+        assert "内部循环" in prompt or "内部 fix" in prompt
         # §18.3: solve.py is problem-solving code, NOT a DAG / parameter search.
         assert "解题代码" in prompt
         assert "参数搜索" in prompt  # mentioned as "not this" — over-architecture purged
@@ -486,7 +486,7 @@ class TestDocSchedulerToolProtocol:
 
         result = run_async(
             scheduler.run_agent(
-                "creator",
+                "design",
                 "fix",
                 slot_id="S3B",
                 target_file="question.md",
@@ -546,7 +546,7 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S5"))
+        result = run_async(scheduler.run_agent("design", "task", slot_id="S5", skill_override="design_draft_skill"))
 
         assert result.startswith("## status")
         # 2 calls: read assembled.md, then write question.md
@@ -583,7 +583,7 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S6"))
+        result = run_async(scheduler.run_agent("design", "task", slot_id="S6", skill_override="design_draft_skill"))
 
         assert result.startswith("## status")
         # The final call should have trimmed context — system + 1 compressed user message
@@ -640,7 +640,9 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("skeleton_design", "task", slot_id="S6A"))
+        result = run_async(scheduler.run_agent(
+            "design", "task", slot_id="S6A", skill_override="design_draft_skill",
+        ))
 
         assert result.startswith("## status")
         assert (tmp_path / "S6A" / "question.md").exists()
@@ -690,9 +692,10 @@ class TestDocSchedulerToolProtocol:
         scheduler._streaming_chat_call = fake_stream
 
         result = run_async(scheduler.run_agent(
-            "skeleton_design",
+            "design",
             "task",
             slot_id="S6CACHE",
+            skill_override="design_draft_skill",
             inject_files={"规划": str(slot_dir / "assembled.md")},
         ))
 
@@ -720,7 +723,7 @@ class TestDocSchedulerToolProtocol:
 
         scheduler._streaming_chat_call = fake_stream
 
-        result = run_async(scheduler.run_agent("question_comp", "task", slot_id="S6B"))
+        result = run_async(scheduler.run_agent("design", "task", slot_id="S6B", skill_override="design_draft_skill"))
 
         assert result == ""
         assert len(calls) == 10
@@ -779,25 +782,23 @@ class FakeAgentSchedulerForOrchestration:
         inject_files=None,
         continue_session=False,
         max_tokens=None,
+        skill_override=None,
     ):
         self.calls.append({
             "role": role,
             "inject_files": inject_files or {},
             "continue_session": continue_session,
             "max_tokens": max_tokens,
+            "skill_override": skill_override,
         })
         ws = self.workspace / slot_id
         ws.mkdir(parents=True, exist_ok=True)
 
         outputs = {
             "outline": ("outline.md", "## status\nready\n\n## 考点\nCache\n\n## 难度目标\nK1=2"),
-            "question_sc": (
+            "design": (
                 "question.md",
-                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 选项\n- A: 1\n- B: 2\n- C: 3\n- D: 4\n\n## 设计说明\n覆盖 Cache",
-            ),
-            "question_comp": (
-                "question.md",
-                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 子问题\n### (1) (3分)\n求命中率\n\n## 设计说明\n覆盖 Cache",
+                "## status\ndraft\n\n## 题干\n给定缓存系统。\n\n## 选项\n- A: 1\n- B: 2\n- C: 3\n- D: 4\n\n## 设计说明\n覆盖 Cache（§19 design）",
             ),
             "review": ("review.md", "## status\npass\n\n## summary\nOK\n\n## corrections\n无\n\n## detailed_feedback\n通过"),
             "solve": ("solution.md", "## status\nsolved\n\n## 求解过程\n推导过程\n\n## 最终答案\n42"),
@@ -825,7 +826,7 @@ class TestDocPipelineOrchestrator:
         assert [c["role"] for c in scheduler.calls] == [
             "outline",
             "question_design",
-            "question_sc",
+            "design",
             "review",
             "solve",
             "final_review",
@@ -1400,12 +1401,12 @@ class TestAgentLoader:
     def test_loads_online_runtime_agents(self):
         specs = load_agents()
         expected = {
-            "outline", "question_design", "question_sc", "question_comp",
+            "outline", "question_design",
             "review", "solve", "final_review",
-            "creator", "reviewer", "paper_outline",
+            "paper_outline",
             "interact", "human_intake",
-            # §17 split-focused design agents
-            "exam_form", "skeleton_design", "distractor_assembly",
+            # §19 split-focused design agents
+            "design", "exam_form",
         }
         assert set(specs.keys()) == expected
 
@@ -1423,26 +1424,23 @@ class TestAgentLoader:
 
     def test_multi_turn_agents(self):
         _, _, multi_turn, _, _, _ = get_agent_dicts()
-        assert multi_turn == {
-            "question_sc", "question_comp", "creator", "reviewer",
-            "skeleton_design",  # §17 split-design skeleton (multi-turn: form_gate/code_error loops)
-        }
+        # §19: design is multi-turn (P1 feedback rounds across form_gate retries).
+        assert multi_turn == {"design"}
 
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
-        assert thinking["question_sc"] == 12000
-        assert thinking["question_comp"] == 8000
+        assert thinking["design"] == 12000
 
     def test_compat_dicts_match_legacy(self):
-        """AgentMD runtime roles match the current 5-layer + 2-agent pipeline."""
+        """AgentMD runtime roles match the §19 design-unified pipeline."""
         prompts, output_files, multi_turn, _, _, _ = get_agent_dicts()
         expected_roles = {
-            "outline", "question_design", "question_sc", "question_comp",
+            "outline", "question_design",
             "review", "solve", "final_review",
-            "creator", "reviewer", "paper_outline",
+            "paper_outline",
             "interact", "human_intake",
-            # §17 split-focused design agents
-            "exam_form", "skeleton_design", "distractor_assembly",
+            # §19 split-focused design agents
+            "design", "exam_form",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles
@@ -1501,7 +1499,7 @@ class _GraphTestScheduler:
         self.conceptual = conceptual
 
     async def run_agent(self, role, task, *, slot_id, inject_files=None,
-                        continue_session=False, max_tokens=None):
+                        continue_session=False, max_tokens=None, skill_override=None):
         self.calls.append({"role": role})
         ws = self.workspace / slot_id
         ws.mkdir(parents=True, exist_ok=True)
@@ -1516,9 +1514,9 @@ class _GraphTestScheduler:
             (ws / "design_card.md").write_text(
                 "## status\nready\n\n## blueprint_contract\nCache", encoding="utf-8",
             )
-        elif role in ("question_sc", "question_comp"):
+        elif role == "design":
             (ws / "question.md").write_text(
-                "## status\ndraft\n\n## 题干\n计算题。\n\n## 设计说明\ncode-as-truth",
+                "## status\ndraft\n\n## 题干\n计算题。\n\n## 设计说明\n§19 design",
                 encoding="utf-8",
             )
         elif role == "review":
@@ -1560,9 +1558,9 @@ class TestPipelineGraphRouting:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # outline → design_card → question → form_gate → solve → final
+        # §19: outline → design_card → design → form_gate → solve → final
         assert roles == [
-            "outline", "question_design", "question_sc", "review", "solve", "final_review",
+            "outline", "question_design", "design", "review", "solve", "final_review",
         ]
         # code-as-truth: orchestrator exec'd solver's solve.py → solve_output.txt
         assert (tmp_path / "G1" / "solve_output.txt").exists()
@@ -1579,59 +1577,46 @@ class TestPipelineGraphRouting:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # conceptual lightweight path: outline → design_card → question → done.
-        # No form_gate/solve/final review (graph routes question → done for conceptual).
-        assert roles == ["outline", "question_design", "question_sc"]
+        # §19 conceptual: outline → design_card → design → done.
+        # No form_gate/solve/final review (graph routes design → done for conceptual).
+        assert roles == ["outline", "question_design", "design"]
         assert "review" not in roles
         assert "solve" not in roles
         assert "final_review" not in roles
 
-    def test_code_error_exec_failure_routes_back_to_question(self, tmp_path):
-        # solve.py that exits non-zero → exec fails → code_error → back to question
+    def test_solve_failure_is_terminal_no_back_route(self, tmp_path):
+        # §19.5: exec failure = code bug, solver self-retries internally
+        # (context-clear + rerun, cap=1), then escalates to a hard failure.
+        # solve emits ``failed`` (terminal) — never routes back to design.
         bad_solve = "raise RuntimeError('boom')\n"
         sched = _GraphTestScheduler(tmp_path, solve_py=bad_solve)
         orch = self._orch(sched, tmp_path)
 
         result = run_async(orch.run_pipeline("G3", {"slot_id": "G3"}))
 
-        # code_error routes solve → question. The fake solver keeps producing
-        # the same bad code, so exec keeps failing until the graph's
-        # MAX_NODE_VISITS safety net forces done. Either way the graph must
-        # not crash and must record a solve attempt that emitted code_error.
         state = json.loads((tmp_path / "G3" / "pipeline_state.json").read_text())
         solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
-        assert "code_error" in solve_signals
-        # and it bounced back to question at least once
-        assert state["visit_counts"].get("question", 0) >= 2
-        # B1: a slot that never solved must NOT be reported as a false success.
+        # §19: solve never emits code_error to the graph; on exhaustion it
+        # escalates to a failed result. No back-route to design.
+        assert "code_error" not in solve_signals
         assert result.ok is False
-        assert "never succeeded" in result.error
+        # design is NOT revisited because of solve failure (§19: no back-route).
+        assert state["visit_counts"].get("design", 0) <= 1
         # and no final.md should be assembled for a failed slot
         assert not (tmp_path / "G3" / "final.md").exists()
 
-    def test_code_error_missing_correct_routes_back_to_question(self, tmp_path):
-        # §17.5: solve only computes the CORRECT answer. A solve.py whose exec
-        # output lacks a labeled correct answer → code_error → back to question.
-        # (Distractor distinctness is NO LONGER a solve-stage concern — under
-        # §17.5 distractors are given by a separate light step, not computed.)
-        no_correct = (
-            "print('推理: 此处仅打印分析，无数值答案标签')\n"
-        )
-        sched = _GraphTestScheduler(tmp_path, solve_py=no_correct)
+    def test_solve_failure_on_missing_correct_is_terminal(self, tmp_path):
+        # §19.5: solve.py that raises at exec → solver self-retries, then
+        # escalates to failure. No code_error back-route to design.
+        bad_exec = "raise RuntimeError('no correct answer computed')\n"
+        sched = _GraphTestScheduler(tmp_path, solve_py=bad_exec)
         orch = self._orch(sched, tmp_path)
 
-        # solve.py here exits 0 with non-numeric prose output; under §17.5
-        # non-numeric output is treated as ok (analysis description). To exercise
-        # the real missing-correct path, use a solve.py that errors at exec time.
-        bad_exec = "raise RuntimeError('no correct answer computed')\n"
-        sched2 = _GraphTestScheduler(tmp_path, solve_py=bad_exec)
-        orch2 = self._orch(sched2, tmp_path)
-
-        result = run_async(orch2.run_pipeline("G4", {"slot_id": "G4"}))
+        result = run_async(orch.run_pipeline("G4", {"slot_id": "G4"}))
 
         state = json.loads((tmp_path / "G4" / "pipeline_state.json").read_text())
         solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
-        assert "code_error" in solve_signals
+        assert "code_error" not in solve_signals
         # B1: never solved → must report failure.
         assert result.ok is False
 
@@ -1697,10 +1682,10 @@ class TestEvidenceSolverCodeAsTruth:
 
 
 class _SplitTestScheduler:
-    """Scheduler for the §17 split-design graph. Handles the new roles:
-    exam_form, skeleton_design, distractor_assembly (+ outline/design_card/
-    review/solve/final_review). skeleton_design writes the symbolic question.md;
-    solve writes problem-solving code. distractor_assembly appends options.
+    """Scheduler for the §19 split-design graph. Handles roles:
+    exam_form, design (P1 draft / P2 finalize), (+ outline/design_card/
+    review/solve/final_review). design P1 writes question.md (stem + params);
+    solve writes problem-solving code; design P2 appends options / fills back.
     """
 
     def __init__(self, workspace, *, review_status="pass", final_status="pass",
@@ -1714,8 +1699,16 @@ class _SplitTestScheduler:
         self.question_type = question_type
 
     async def run_agent(self, role, task, *, slot_id, inject_files=None,
-                        continue_session=False, max_tokens=None):
-        self.calls.append({"role": role})
+                        continue_session=False, max_tokens=None, skill_override=None):
+        # §19: both design P1 and P2 arrive as role="design"; skill_override
+        # distinguishes draft (P1) from finalize (P2). Record a synthetic role
+        # tag so tests can assert the two-pass sequence.
+        tag = role
+        if role == "design" and skill_override == "design_finalize_skill":
+            tag = "design2"
+        elif role == "design":
+            tag = "design"
+        self.calls.append({"role": tag})
         ws = self.workspace / slot_id
         ws.mkdir(parents=True, exist_ok=True)
 
@@ -1732,10 +1725,16 @@ class _SplitTestScheduler:
                 "## status\ndraft\n\n## examination_form\n多步串行推演\n\n## k_radar\nK3: 4",
                 encoding="utf-8",
             )
-        elif role == "skeleton_design":
-            # §18: skeleton_design writes question.md (stem + params).
+        elif role == "design" and skill_override == "design_finalize_skill":
+            # §19 design P2: choice → append options; comprehensive → fill back.
+            if self.question_type != "comprehensive":
+                q = ws / "question.md"
+                cur = q.read_text(encoding="utf-8") if q.exists() else ""
+                q.write_text(cur + "\n\n## 选项\nA. 10\nB. 11\nC. 12\nD. 13\n", encoding="utf-8")
+        elif role == "design":
+            # §19 design P1: writes question.md (stem + experience-value params).
             (ws / "question.md").write_text(
-                "## status\ndraft\n\n## 题干\n题干 + 初步参数。\n\n## 设计说明\n骨架复用，大胆不验证",
+                "## status\ndraft\n\n## 题干\n题干 + 经验值参数。\n\n## 设计说明\n骨架复用，大胆不验证",
                 encoding="utf-8",
             )
         elif role == "review":
@@ -1744,17 +1743,12 @@ class _SplitTestScheduler:
                 encoding="utf-8",
             )
         elif role == "solve":
-            # §18: the solver writes solve.py (problem-solving code) + solution.md.
+            # §18/§19: the solver writes solve.py (problem-solving code) + solution.md.
             if not self.conceptual:
                 (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
             (ws / "solution.md").write_text(
                 "## status\nsolved\n\n## 求解过程\n基于 exec\n\n## 最终答案\n10", encoding="utf-8",
             )
-        elif role == "distractor_assembly":
-            # append options to question.md (choice questions only)
-            q = ws / "question.md"
-            cur = q.read_text(encoding="utf-8") if q.exists() else ""
-            q.write_text(cur + "\n\n## 选项\nA. 10\nB. 11\nC. 12\nD. 13\n", encoding="utf-8")
         elif role == "final_review":
             (ws / "final_review.md").write_text(
                 f"## status\n{self.final_status}\n\n## summary\nOK\n\n## corrections\n无",
@@ -1778,13 +1772,13 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # outline → design_card → exam_form → skeleton_design → form_gate
-        #        → solve → distractor_assembly → final
+        # §19: outline → design_card → exam_form → design(P1) → form_gate
+        #        → solve → design(P2) → final
         assert roles == [
-            "outline", "question_design", "exam_form", "skeleton_design",
-            "review", "solve", "distractor_assembly", "final_review",
+            "outline", "question_design", "exam_form", "design",
+            "review", "solve", "design2", "final_review",
         ]
-        # distractor_assembly appended A/B/C/D options
+        # design P2 appended A/B/C/D options
         q = (tmp_path / "SP1" / "question.md").read_text(encoding="utf-8")
         assert "## 选项" in q
         # final.md assembled
@@ -1800,10 +1794,10 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # conceptual split: outline → design_card → exam_form → skeleton_design → done
-        assert roles == ["outline", "question_design", "exam_form", "skeleton_design"]
+        # §19 conceptual: outline → design_card → exam_form → design(P1) → done
+        assert roles == ["outline", "question_design", "exam_form", "design"]
         assert "solve" not in roles
-        assert "distractor_assembly" not in roles
+        assert "design2" not in roles
         assert "final_review" not in roles
 
     def test_split_comprehensive_skips_distractor_assembly(self, tmp_path):
@@ -1820,18 +1814,15 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # comprehensive split reaches final, but the distractor agent is never
-        # invoked (no options produced for comprehensive questions)
-        assert "distractor_assembly" not in roles
+        # §19: comprehensive reaches final via design2 (P2 fills back, no options)
+        assert "design2" in roles
         assert "final_review" in roles
         q = (tmp_path / "SP3" / "question.md").read_text(encoding="utf-8")
         assert "## 选项" not in q
 
-    def test_split_code_error_routes_back_to_skeleton(self, tmp_path):
-        # §18: solver writes solve.py; if exec fails repeatedly (params unsolvable)
-        # → code_error → back to skeleton_design (retune stem/params). The fake
-        # solver keeps writing the same bad solve.py, so it loops until
-        # MAX_NODE_VISITS → ok=False (B1 guard).
+    def test_split_solve_failure_is_terminal_no_back_route(self, tmp_path):
+        # §19.5: solve exec failure = code bug; solver self-retries then
+        # escalates to failure. No code_error back-route to design.
         bad_solve = "raise RuntimeError('boom')\n"
         sched = _SplitTestScheduler(tmp_path, solve_py=bad_solve)
         orch = self._orch(sched, tmp_path)
@@ -1840,15 +1831,15 @@ class TestSplitDesignGraph:
 
         state = json.loads((tmp_path / "SP4" / "pipeline_state.json").read_text())
         solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
-        assert "code_error" in solve_signals
-        # bounced back to skeleton_design (not question — split path)
-        assert state["visit_counts"].get("skeleton_design", 0) >= 2
+        assert "code_error" not in solve_signals
+        # design is NOT revisited because of solve failure (§19: no back-route).
+        assert state["visit_counts"].get("design", 0) <= 1
         # B1: never solved → failure
         assert result.ok is False
 
     def test_split_solver_writes_solve_py_after_design(self, tmp_path):
-        # §18: the solver writes solve.py (problem-solving code) after
-        # skeleton_design has produced the stem and initial params.
+        # §19: the solver writes solve.py (problem-solving code) after
+        # design P1 has produced the stem and experience-value params.
         sched = _SplitTestScheduler(tmp_path)
         orch = self._orch(sched, tmp_path)
 
@@ -1859,44 +1850,36 @@ class TestSplitDesignGraph:
         assert (tmp_path / "SP5" / "solve.py").exists()
         assert (tmp_path / "SP5" / "solve_output.txt").exists()
         roles = [c["role"] for c in sched.calls]
-        assert roles.index("skeleton_design") < roles.index("solve")
+        assert roles.index("design") < roles.index("solve")
 
 
 class TestSplitDesignAgents:
-    def test_exam_form_and_skeleton_agents_load(self):
-        # §17.3/§18 new agents exist and carry the split-design contract
-        for role in ("exam_form", "skeleton_design", "distractor_assembly"):
+    def test_design_and_exam_form_agents_load(self):
+        # §19: design (dual-pass) + exam_form carry the split-design contract.
+        for role in ("exam_form", "design"):
             assert role in AGENT_PROMPTS, f"{role} agent not loaded"
         ef = AGENT_PROMPTS["exam_form"]
         assert "考察形式" in ef and "判断任务" in ef
-        sk = AGENT_PROMPTS["skeleton_design"]
-        # §18 prompt style: skeleton_design focuses on design and does not discuss solve.py.
-        assert "solve.py" not in sk
-        assert "大胆" in sk  # discipline ①: bold design, no verify
+        d = AGENT_PROMPTS["design"]
+        # §19 design focuses on experience-value design (no solve.py ownership).
+        assert "经验值" in d
+        assert "大胆" in d  # discipline ①: bold design, no verify
 
-    def test_skeleton_skill_omits_solve_py_contract(self):
-        # skeleton only emits stem + questions + initial parameters (bold, no verify);
-        # the design skill should not spend tokens on solve.py file ownership.
-        sk = ROLE_SKILLS.get("skeleton_design", "")
-        assert "solve.py" not in sk
-        # §18.2 discipline ①: bold-give-no-verify (no brain-sim of structure validity)
-        assert "大胆" in sk
-        assert "不脑内验证" in sk or "不验证" in sk
-        # skeleton does NOT emit options (choice questions have no A/B/C/D here)
-        assert "不出 A/B/C/D" in sk or "不出答案/选项" in sk
+    def test_design_skills_carry_pass_contracts(self):
+        # §19: design runs two passes; each skill is loaded by name at runtime.
+        from core_new.doc_pipeline.scheduler import _load_skill_by_name
+        draft = _load_skill_by_name("design_draft_skill")
+        finalize = _load_skill_by_name("design_finalize_skill")
+        # P1 (draft): experience-value params, no solve.py, no options.
+        assert "经验值" in draft
+        assert "solve.py" not in draft
+        assert "§17.6" in draft and "条件融合" in draft  # fusion capability preserved
+        # P2 (finalize): option design / fill-back, no recompute.
+        assert "干扰" in finalize
+        assert "不重算" in finalize
 
-    def test_question_design_skills_omit_solve_py_construction(self):
-        # Legacy question agents share the same responsibility boundary:
-        # design the problem, leave problem solving to the solve stage.
-        for role in ("question_sc", "question_comp"):
-            prompt = AGENT_PROMPTS[role]
-            skill = ROLE_SKILLS.get(role, "")
-            assert "solve.py" not in prompt
-            assert "solve.py" not in skill
-            assert "求解阶段" in prompt or "求解阶段" in skill
-
-    def test_solve_agent_carries_18_disciplines(self):
-        # §18: solve = problem-solving code. The solver writes solve.py, execs,
+    def test_solve_agent_carries_19_disciplines(self):
+        # §18/§19: solve = problem-solving code. The solver writes solve.py, execs,
         # fixes the CODE (never the stem, discipline ②), brief-think-then-code.
         prompt = AGENT_PROMPTS["solve"]
         assert "brief" in prompt  # brief-think-then-code
@@ -1921,27 +1904,27 @@ class TestSplitDesignAgents:
         orch._split_design_enabled = True
         assert orch._should_use_split_design() is True
 
-    def test_skeleton_design_has_grep_search_tool(self):
-        # §17 fix: skeleton_design MUST have grep_search so it can retrieve
-        # same-type past papers (analysis, not invention). Without it the agent
-        # invents structure → 60k over-thinking (T3 root cause).
-        tools = ROLE_REQUIRED_TOOLS.get("skeleton_design", [])
+    def test_design_has_grep_search_tool(self):
+        # §19: design P1 uses grep_search as a coarse fallback (cache-first) to
+        # retrieve same-type past papers (analysis, not invention). Without it
+        # the agent invents structure → 60k over-thinking (T3 root cause).
+        tools = ROLE_REQUIRED_TOOLS.get("design", [])
         assert "grep_search" in tools, (
-            "skeleton_design must have grep_search to retrieve past papers "
+            "design must have grep_search to retrieve past papers "
             "(强制分析不发明); missing it causes invention→over-thinking"
         )
 
-    def test_skeleton_prompt_uses_upstream_cache_before_grep(self):
-        # The skeleton agent consumes the upstream retrieval/design cache.  It
-        # should only use grep as a coarse fallback when that cache is absent.
-        prompt = AGENT_PROMPTS["skeleton_design"]
-        skill = ROLE_SKILLS["skeleton_design"]
-        assert "缓存优先" in prompt and "缓存优先" in skill
-        assert "缓存存在则不 grep" in skill
-        assert "缓存存在时不 grep" in prompt
-        assert "不得再调用 `grep_search`" in prompt
-        assert "粗粒度 fallback" in prompt and "粗粒度 fallback" in skill
-        assert "question_type" in prompt and "question_type" in skill
+    def test_design_uses_upstream_cache_before_grep(self):
+        # §19: design P1 consumes the upstream retrieval/design cache; grep is
+        # only a coarse fallback when that cache is absent. The cache-first
+        # discipline lives in the draft skill (loaded at runtime).
+        from core_new.doc_pipeline.scheduler import _load_skill_by_name
+        prompt = AGENT_PROMPTS["design"]
+        draft = _load_skill_by_name("design_draft_skill")
+        assert "缓存优先" in draft
+        assert "缓存存在则不 grep" in draft
+        assert "粗粒度 fallback" in draft
+        assert "question_type" in draft
 
     def test_knowledge_index_filters_by_question_type(self, tmp_path):
         (tmp_path / "choice.md").write_text(

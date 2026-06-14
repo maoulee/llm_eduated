@@ -149,7 +149,12 @@ class AgentScheduler(Protocol):
         inject_files: dict[str, str] | None = None,
         continue_session: bool = False,
         max_tokens: int | None = None,
+        skill_override: str | None = None,
     ) -> str:
+        ...
+
+    def clear_session(self, slot_id: str, role: str) -> bool:
+        """§19.5 solver reset: drop a role's message history."""
         ...
 
 
@@ -366,31 +371,13 @@ class DocPipelineOrchestrator:
         assembled_experience_doc: str,
         feedback: str = "",
     ) -> PipelineResult | None:
-        """Single Question-agent run (graph's QuestionNode).
+        """Single design run (legacy graph's QuestionNode).
 
         Returns None on success, or a failed PipelineResult on error.
         """
-        question_path = ws / "question.md"
-        design_card_path = ws / "design_card.md"
-        q_role = _question_role(
-            slot_id, question_type=question_type, slot_data=slot_data,
-            assembled_doc=assembled_experience_doc,
+        return await self._run_design_pass1(
+            slot_id, slot_data, ws, ref_path, feedback=feedback,
         )
-        q_task = self._build_question_task(
-            slot_id, 0, complexity=slot_data.get("complexity", "standard")
-        )
-        if feedback:
-            q_task += f"\n\n## 审核反馈\n{feedback}"
-        q_inject = await self._resolve_inject(q_role, slot_id, 2, {"规划": str(ref_path)})
-        if design_card_path.exists() and "设计卡" not in q_inject:
-            q_inject["设计卡"] = str(design_card_path)
-        await self.scheduler.run_agent(
-            q_role, q_task, slot_id=slot_id, inject_files=q_inject,
-            continue_session=bool(feedback),
-        )
-        if not question_path.exists():
-            return self._fail_result(slot_id, "Question agent did not write question.md")
-        return None
 
     # ── §17 split-design stage helpers ──────────────────────────────
 
@@ -422,74 +409,86 @@ class DocPipelineOrchestrator:
         self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
         *, feedback: str = "",
     ) -> PipelineResult | None:
-        """§16.2/§18 skeleton_design: reuse cached skeleton → stem + questions + initial params.
+        """§19 design P1 (split graph). Reads upstream cache → reuses skeleton
+        → writes question.md (stem + questions + experience-value params).
 
-        Writes question.md (stem, questions, initial params, no options/answers).
+        Now backed by the unified ``design`` agent in P1 mode.
+        """
+        return await self._run_design_pass1(
+            slot_id, slot_data, ws, ref_path, feedback=feedback,
+        )
+
+    async def _run_design_pass1(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
+        *, feedback: str = "",
+    ) -> PipelineResult | None:
+        """§19 design P1: read upstream cache → reuse skeleton → stem + questions
+        + experience-value params. Bold-give-experience-values, no brain-sim
+        (discipline ①). Writes question.md.
         """
         question_path = ws / "question.md"
         design_card_path = ws / "design_card.md"
         exam_form_path = ws / "exam_form.md"
-        sk_inject = {"规划": str(ref_path)}
+        d_inject = {"规划": str(ref_path)}
         if design_card_path.exists():
-            sk_inject["设计卡"] = str(design_card_path)
+            d_inject["设计卡"] = str(design_card_path)
         if exam_form_path.exists():
-            sk_inject["考察形式"] = str(exam_form_path)
-        sk_inject = await self._resolve_inject("skeleton_design", slot_id, 2, sk_inject)
-        sk_task = (
-            "§16.2/§18 骨架复用出题：读取上游经验缓存→分析复用骨架→题干+设问+初步参数。"
+            d_inject["考察形式"] = str(exam_form_path)
+        d_inject = await self._resolve_inject("design", slot_id, 2, d_inject)
+        d_task = (
+            "§19 设计 P1（出题）：读取上游经验缓存→分析复用骨架→题干+设问+经验值参数。"
+            "给经验值参数（凭经验甩值，不脑内算/不推演/不脑内验证，纪律①）。"
             "若规划/设计材料已有往年真题经验、参考经验摘要或模式概览，不要重复检索；"
             "只有缓存缺失/完全无关时才做一次粗粒度 fallback 检索。"
-            "聚焦复杂题面设计和条件充分性，大胆给初步参数，不脑内验证。"
             "只出题干+设问+设计说明，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
         )
         if feedback:
-            sk_task += f"\n\n## 审核反馈\n{feedback}"
+            d_task += f"\n\n## 审核反馈\n{feedback}"
         await self.scheduler.run_agent(
-            "skeleton_design", sk_task, slot_id=slot_id, inject_files=sk_inject,
+            "design", d_task, slot_id=slot_id, inject_files=d_inject,
+            skill_override="design_draft_skill",
             continue_session=bool(feedback),
         )
         if not question_path.exists():
-            return self._fail_result(slot_id, "skeleton_design agent did not write question.md")
+            return self._fail_result(slot_id, "design P1 did not write question.md")
         return None
 
     async def _run_distractor_assembly(
         self, slot_id: str, slot_data: dict[str, Any], ws: Path,
     ) -> PipelineResult | None:
-        """§18.5 design-2nd pass (single-choice only): after solve computes the
-        correct answer, design the distractor options based on the answer +
-        solution (the design agent knows the question intent best). Give 3
-        plausible wrong values, verify 4 distinct, append A/B/C/D to question.md.
-
-        Comprehensive questions skip this (correct answers fill back the stem →
-        straight to final, no design-2nd, no back-routing).
+        """§19 design P2 (split graph). Delegates to _run_design_pass2 for
+        backward compatibility with existing node wiring.
         """
-        question_type = slot_data.get("question_type")
-        is_choice = _question_role(
-            slot_id, question_type=question_type, slot_data=slot_data,
-        ) == "question_sc"
-        if not is_choice:
-            # Comprehensive questions: solve's answers fill back into the stem;
-            # no design-2nd pass, no option assembly.
-            return None
+        return await self._run_design_pass2(slot_id, slot_data, ws)
 
+    async def _run_design_pass2(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path,
+    ) -> PipelineResult | None:
+        """§19 design P2: after solve computes the answer, the design agent
+        finalizes the question. Choice → design 3 distractors based on the
+        solution (only-set, never-compute); comprehensive → fill answers back
+        into the stem. Solution comes from solve; never recompute.
+        """
         question_path = ws / "question.md"
         output_path = ws / "solve_output.txt"
         solution_path = ws / "solution.md"
-        da_inject = {"题目": str(question_path)}
+        p2_inject = {"题目": str(question_path)}
         if output_path.exists():
-            da_inject["代码输出"] = str(output_path)
+            p2_inject["代码输出"] = str(output_path)
         if solution_path.exists():
-            da_inject["求解结果"] = str(solution_path)
-        da_task = (
-            "§18.5 第2遍选项设计（选择题）：solve 已算出正确答案（见 solve_output.txt / solution.md）。"
-            "基于 correct + 题目情境 + solution，设计 3 个干扰选项（合理错值：plausible 范围/风格，"
-            "或从 correct 派生 ±offset / off-by-one / 符号 / 单位）。非代码计算——干扰本就要求错。"
-            "verify 4 值（correct + 3 干扰）两两不同 + 干扰不撞正确值。"
-            "用 edit_file 把 A/B/C/D（correct + 3 干扰，随机化顺序）追加进 question.md 选项区，不碰题干。"
+            p2_inject["求解结果"] = str(solution_path)
+        p2_task = (
+            "§19 设计 P2（定稿）：solve 已算出正确答案（见 solve_output.txt / solution.md）。"
+            "基于解定稿题面——选择题：设计 3 个干扰选项（基于 correct 派生的合理错值："
+            "±offset / off-by-one / 符号 / 单位，非代码计算，verify 4 值两两不同），"
+            "用 edit_file 把 A/B/C/D 追加进 question.md 选项区；"
+            "主观题：把各子问答案填回 question.md 题干。"
+            "解来自 solve，不重算、不质疑；不碰 solve.py；不改题干逻辑（仅参数数值可改）。"
             "完成后直接传终审，不再循环。"
         )
         await self.scheduler.run_agent(
-            "distractor_assembly", da_task, slot_id=slot_id, inject_files=da_inject,
+            "design", p2_task, slot_id=slot_id, inject_files=p2_inject,
+            skill_override="design_finalize_skill",
         )
         return None
 
@@ -551,14 +550,10 @@ class DocPipelineOrchestrator:
         for iteration in range(max_iterations + 1):
             final_iteration = iteration + 1
 
-            q_role = _question_role(
-                slot_id,
-                question_type=question_type,
-                slot_data=slot_data,
-                assembled_doc=assembled_experience_doc,
-            )
+            # §19: the unified ``design`` agent (P1) replaces the per-type
+            # question_sc/question_comp roles.
             q_task = self._build_question_task(slot_id, iteration, complexity=slot_data.get("complexity", "standard"))
-            q_inject = await self._resolve_inject(q_role, slot_id, 2, {"规划": str(ref_path)})
+            q_inject = await self._resolve_inject("design", slot_id, 2, {"规划": str(ref_path)})
             # Fallback: inject design_card when registry is absent
             if design_card_path.exists() and "设计卡" not in q_inject:
                 q_inject["设计卡"] = str(design_card_path)
@@ -569,10 +564,11 @@ class DocPipelineOrchestrator:
                 q_task += f"\n\n## 审核反馈（第{iteration}轮）\n{feedback_body}"
 
             await self.scheduler.run_agent(
-                q_role,
+                "design",
                 q_task,
                 slot_id=slot_id,
                 inject_files=q_inject,
+                skill_override="design_draft_skill",
                 continue_session=iteration > 0,
             )
 
@@ -661,51 +657,64 @@ class DocPipelineOrchestrator:
             "题目": str(question_public_path),
         })
         s_task = (
-            "§18 求解即解题代码：读题干 → brief 想解法（不深推）→ write_file(solve.py) 写解题代码"
+            "§18/§19 求解即解题代码：读题干 → brief 想解法（不深推）→ write_file(solve.py) 写解题代码"
             "（能算出答案即可，非 DAG/参数搜索）→ exec_file 执行 → 出错只改 solve.py（绝不改题干，"
             "纪律②）→ 快速迭代直到算出答案 → 读 exec 输出 → write_file(solution.md) 写推理过程。"
             "exec 输出即真值，不重算、不质疑。只算正确答案，不算干扰值。"
-            "若反复修不好（参数无解），标记 code_error 回退，不改题面凑答案。"
-        )
-        await self.scheduler.run_agent(
-            "solve",
-            s_task,
-            slot_id=slot_id,
-            inject_files=s_inject,
-            max_tokens=self.max_tokens,
+            "exec 报错 = 代码 bug（与逻辑/参数无关），内部循环 fix 直到通过，不冒泡不回退。"
         )
 
-        if not solution_path.exists():
-            return (self._fail_result(slot_id, "Solve agent did not write solution.md"), exec_result)
+        # ── §19.5: solver self-retry on exec/code failure ──
+        # exec 报错或值校验失败 = solver 自己的事，内部消化：清空 solver 上下文
+        # 重跑同一道题（摆脱上下文污染），cap=1。仍失败 → 升级失败（不回退 design，
+        # 结构问题本应被 form_gate 拦截）。不向 graph 返回 code_error 信号。
+        _SOLVE_RESET_RETRY = 1
+        for _attempt in range(_SOLVE_RESET_RETRY + 1):
+            await self.scheduler.run_agent(
+                "solve",
+                s_task,
+                slot_id=slot_id,
+                inject_files=s_inject,
+                max_tokens=self.max_tokens,
+                continue_session=False,  # fresh each attempt
+            )
 
-        # ── exec the solver's solve.py once → solve_output.txt + validation ──
-        if solve_path.exists():
-            exec_result = await self.exec_python(solve_path, output_path)
-            if not exec_result["ok"]:
+            if not solution_path.exists():
+                logger.warning("[%s] solve did not write solution.md (attempt %d)", slot_id, _attempt + 1)
+            elif solve_path.exists():
+                exec_result = await self.exec_python(solve_path, output_path)
+                exec_ok = exec_result["ok"]
+                if exec_ok:
+                    validation = _validate_solve_output(output_path, question_type=question_type)
+                    exec_ok = validation["ok"]
+                    if not exec_ok:
+                        logger.warning(
+                            "[%s] solve_output value check failed: %s",
+                            slot_id, validation["reason"],
+                        )
+                if exec_ok:
+                    return (None, exec_result)
                 logger.warning(
-                    "[%s] solve.py exec failed (code_error): %s",
-                    slot_id, exec_result.get("stderr", "")[:200],
+                    "[%s] solve exec/validation failed: %s (attempt %d)",
+                    slot_id, exec_result.get("stderr", "")[:200], _attempt + 1,
                 )
+            else:
+                # No solve.py → conceptual question (solve agent reasoned directly).
+                logger.info("[%s] Layer 4: no solve.py — conceptual solve path", slot_id)
                 return (None, exec_result)
 
-            validation = _validate_solve_output(output_path, question_type=question_type)
-            if not validation["ok"]:
-                logger.warning(
-                    "[%s] solve_output value check failed (code_error): %s",
-                    slot_id, validation["reason"],
-                )
-                exec_result = {
-                    **exec_result,
-                    "ok": False,
-                    "code_error": True,
-                    "stderr": f"value validation failed: {validation['reason']}",
-                }
-                return (None, exec_result)
-        else:
-            # No solve.py → conceptual question (solve agent reasoned directly).
-            logger.info("[%s] Layer 4: no solve.py — conceptual solve path", slot_id)
+            # Failed this attempt: clear solver context and retry once more.
+            if hasattr(self.scheduler, "clear_session"):
+                self.scheduler.clear_session(slot_id, "solve")
+            # remove stale solve artifacts so the retry starts clean
+            for _stale in (solve_path, solution_path, output_path):
+                if _stale.exists():
+                    _stale.unlink()
 
-        return (None, exec_result)
+        # Exhausted retry → escalate to failure (no code_error back-route).
+        return (self._fail_result(
+            slot_id, "Solve agent failed after context reset retry (exec/validation)"
+        ), exec_result)
 
 
     # ── Layer 5: Final Review ─────────────────────────────────────
@@ -775,76 +784,34 @@ class DocPipelineOrchestrator:
             elif final_status == "expression_fix":
                 break
             elif final_status == "question_error" and final_iter < MAX_FINAL_RETRIES:
-                # Back to Question Agent
-                logger.info("[%s] Final Review: question_error -> re-running Question Agent", slot_id)
+                # §19: re-design (design P1) + re-solve, then finalize again.
+                logger.info("[%s] Final Review: question_error -> re-running design P1", slot_id)
                 feedback = parse_doc_section(str(final_review_path), "routing_feedback")
-                q_role = _question_role(
-                    slot_id,
-                    question_type=question_type,
-                    slot_data=slot_data,
-                    assembled_doc=assembled_experience_doc,
-                )
-                q_task = self._build_question_task(slot_id, final_iter + 1, complexity=slot_data.get("complexity", "standard"))
-                q_task += f"\n\n## 终审反馈（题目错误）\n{feedback}"
-                await self.scheduler.run_agent(
-                    q_role,
-                    q_task,
-                    slot_id=slot_id,
-                    inject_files=await self._resolve_inject(q_role, slot_id, 2, {"规划": str(ref_path)}),
-                    continue_session=True,
+                await self._run_design_pass1(
+                    slot_id, slot_data, ws, ref_path, feedback=f"## 终审反馈（题目错误）\n{feedback}",
                 )
                 if not question_path.exists():
-                    return (final_status, self._fail_result(slot_id, "Question agent (retry) did not write question.md"))
+                    return (final_status, self._fail_result(slot_id, "design P1 (retry) did not write question.md"))
 
-                # Re-solve (code-as-truth: exec first, then agent reads output)
-                logger.info("[%s] Re-solving after question fix", slot_id)
-                question_public_path = self._write_public_question_view(question_path)
-                if solve_path.exists():
-                    await self.exec_python(solve_path, output_path)
-                s_inject = await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)})
-                if output_path.exists() and "代码输出" not in s_inject:
-                    s_inject["代码输出"] = str(output_path)
-                if solve_path.exists() and "求解代码" not in s_inject:
-                    s_inject["求解代码"] = str(solve_path)
-                s_task = (
-                    "代码即真值：编排层已重新执行 solve.py 并刷新 solve_output.txt。"
-                    "请读取代码输出，据此重新组装选项追加进 question.md（不碰题干），并刷新 solution.md。"
+                # Re-solve after design fix
+                logger.info("[%s] Re-solving after design fix", slot_id)
+                fail, _ = await self._run_solve(
+                    slot_id, ws, start_layer=start_layer, question_type=question_type,
                 )
-                await self.scheduler.run_agent(
-                    "solve",
-                    s_task,
-                    slot_id=slot_id,
-                    inject_files=s_inject,
-                    max_tokens=self.max_tokens,
-                )
+                if fail is not None:
+                    return (final_status, fail)
                 if not solution_path.exists():
                     return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
 
             elif final_status == "solution_error" and final_iter < MAX_FINAL_RETRIES:
-                # Back to Solve Agent (code-as-truth: re-exec, then refresh)
-                logger.info("[%s] Final Review: solution_error -> re-running Solve Agent", slot_id)
-                feedback = parse_doc_section(str(final_review_path), "routing_feedback")
-                question_public_path = self._write_public_question_view(question_path)
-                if solve_path.exists():
-                    await self.exec_python(solve_path, output_path)
-                s_inject = await self._resolve_inject("solve", slot_id, 4, {"题目": str(question_public_path)})
-                if output_path.exists() and "代码输出" not in s_inject:
-                    s_inject["代码输出"] = str(output_path)
-                if solve_path.exists() and "求解代码" not in s_inject:
-                    s_inject["求解代码"] = str(solve_path)
-                s_task = (
-                    "代码即真值：编排层已重新执行 solve.py 并刷新 solve_output.txt。"
-                    "请读取代码输出，修正推理/选项组装（不碰题干、不改 solve.py 逻辑），刷新 solution.md。"
+                # §19: re-solve (own reset-retry) then re-finalize via design P2.
+                logger.info("[%s] Final Review: solution_error -> re-running Solve", slot_id)
+                fail, _ = await self._run_solve(
+                    slot_id, ws, start_layer=start_layer, question_type=question_type,
                 )
-                s_task += f"\n\n## 终审反馈（求解错误）\n{feedback}"
-                await self.scheduler.run_agent(
-                    "solve",
-                    s_task,
-                    slot_id=slot_id,
-                    inject_files=s_inject,
-                    max_tokens=self.max_tokens,
-                    continue_session=True,
-                )
+                if fail is not None:
+                    return (final_status, fail)
+                await self._run_design_pass2(slot_id, slot_data, ws)
                 if not solution_path.exists():
                     return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
             else:
@@ -947,8 +914,8 @@ class DocPipelineOrchestrator:
             logger.warning("[%s] Conceptual pipeline: question agent did not write solution.md", slot_id)
             return self._fail_result(
                 slot_id,
-                "Conceptual pipeline: question agent did not write solution.md. "
-                "The question_sc agent should produce solution.md when complexity=conceptual.",
+                "Conceptual pipeline: design agent did not write solution.md. "
+                "The design agent should produce solution.md when complexity=conceptual.",
             )
 
         # ── Format: Assemble final.md ─────────────────────────
@@ -1158,8 +1125,8 @@ class DocPipelineOrchestrator:
             final_status = history_signals["final"]
             if final_status in ("pass", "expression_fix"):
                 final_status = "pass"
-        elif use_split and "skeleton_design" in history_signals and state.complexity == "conceptual":
-            # Split conceptual: skeleton_design → done (no form_gate/final).
+        elif use_split and "design" in history_signals and state.complexity == "conceptual":
+            # §19 split conceptual: design → done (no form_gate/final).
             final_status = "pass"
         elif "form_gate" in history_signals and state.complexity == "conceptual":
             final_status = "pass"
@@ -1167,7 +1134,7 @@ class DocPipelineOrchestrator:
             final_status = solve_signal or "pass"
 
         question_visits = (
-            state.visit_counts.get("skeleton_design", 1)
+            state.visit_counts.get("design", 1)
             if use_split
             else state.visit_counts.get("question", 1)
         )

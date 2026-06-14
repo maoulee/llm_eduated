@@ -48,14 +48,12 @@ _BEHAVIOR_CORE = (
 
 _BEHAVIOR_VARIANTS = {
     "outline": "plan_design",
-    "question_sc": "question_create",
-    "question_comp": "question_create",
+    "design": "artifact_writer",
+    "exam_form": "artifact_writer",
+    "question_design": "artifact_writer",
     "review": "audit_judge",
     "solve": "solve_create",
     "final_review": "final_review",
-    # --- 2-agent pipeline ---
-    "creator": "creator_solve",
-    "reviewer": "checkpoint_review",
 }
 
 _BEHAVIOR_VARIANT_TEXT = {
@@ -66,22 +64,10 @@ _BEHAVIOR_VARIANT_TEXT = {
         "form_gate 阶段选择题 question.md 无 A/B/C/D 选项值是正常的（选项由 solve 阶段组装），不得因此打回。"
     ),
     "solve_create": (
-        "你的模式是「读题干→brief想解法→写解题代码→exec→fix代码→答案+solution」（§18 求解即解题代码）。\n"
+        "你的模式是「读题干→brief想解法→写解题代码→exec→fix代码→答案+solution」（§18/§19 求解即解题代码）。\n"
         "solve.py 是这道题的解题代码（非 DAG/参数搜索），你自己从题干写。exec 出错只改代码（绝不改题干，纪律②），快速迭代。\n"
-        "exec 输出即真值，不重算、不质疑。只算正确答案，不算干扰值（干扰项由第2遍设计给）。\n"
-        "反复修不好（参数无解）标记 code_error 回退，不改题面凑答案。"
-    ),
-    # --- 2-agent pipeline (DualAgentOrchestrator, still under test) ---
-    "creator_solve": (
-        "你负责：设计题干框架(占位符)→代码设计参数→独立求解→等待终审→组装交付，严格按序。\n"
-        "Step 1a 只写框架不写具体数值；Step 1b 用代码计算参数并替换占位符。\n"
-        "暂停点：写入 question.md 后停止；写入 solution.md 后停止。禁止评价自己的设计质量。"
-    ),
-    "checkpoint_review": (
-        "你负责双检查点审核。根据可用文件判定检查点：\n"
-        "检查点1（仅有题目）：审核设计质量，状态值 pass/needs_fix。\n"
-        "检查点2（有题目+求解）：审核交付一致性，状态值 pass/expression_fix/question_error/solution_error。\n"
-        "不写代码、不执行代码。"
+        "exec 输出即真值，不重算、不质疑。只算正确答案，不算干扰值（干扰项由 design P2 给）。\n"
+        "exec 报错 = 代码 bug（与逻辑/参数无关），内部循环 fix 直到通过，不冒泡不回退；反复修不好时编排层会清空你的上下文让你重跑。"
     ),
 }
 

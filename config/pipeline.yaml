@@ -19,14 +19,16 @@ pipeline:
     temperature: 0.2
     top_p: 0.9
 
+  # thinking_token_budget — vLLM/本地专属（仅 thinking_control_method ==
+  # chat_template_kwargs 或 provider_type==local 生效；远程 API 模型被
+  # LLMGateway._supports_thinking_budget 网关挡掉，拿不到此参数）。
+  # §19 后 design 一个 agent 承担 P1 出题 + P2 定稿，覆盖原 skeleton_design/
+  # distractor_assembly/question_sc/question_comp 的思考预算。
   thinking_budget:
     outline: 8000
     question_design: 2000
     exam_form: 2000          # §17.3 narrow judgment task (KP + K-radar → form)
-    skeleton_design: 8000    # §16.2 skeleton reuse + symbolic stem
-    distractor_assembly: 3000  # §17.5 distractor light-give (single-choice)
-    question_sc: 12000
-    question_comp: 8000
+    design: 12000            # §19 design P1 出题（骨架复用+经验值参数，大胆不验证）
     review: 4000
     solve: 10000
     final_review: 8000
@@ -42,17 +44,8 @@ pipeline:
     exam_form:
       multi_turn: false
       max_attempts: 1
-    skeleton_design:
-      multi_turn: true
-      max_attempts: 3
-    distractor_assembly:
-      multi_turn: false
-      max_attempts: 2
-    question_sc:
-      multi_turn: true
-      max_attempts: 3
-    question_comp:
-      multi_turn: true
+    design:
+      multi_turn: true       # §19 design P1 多轮（form_gate needs_fix 回退）
       max_attempts: 3
     review:
       multi_turn: false
@@ -63,12 +56,6 @@ pipeline:
     final_review:
       multi_turn: false
       max_attempts: 2
-    creator:
-      multi_turn: true
-      max_attempts: 6
-    reviewer:
-      multi_turn: true
-      max_attempts: 3
 
 # ── Routing profiles ─────────────────────────────────────────
 routing:
@@ -103,16 +90,14 @@ routing:
       doc_format: local
       review: local
       model_routing:
-        question_sc: "{fallback}"
-        question_comp: "{fallback}"
+        design: "{fallback}"
         solve: "{fallback}"
         review: "{local}"
 
     qwen_gpt_core:
       _default: local
       model_routing:
-        question_sc: webgpt
-        question_comp: webgpt
+        design: webgpt
         review: webgpt
         solve: webgpt
         final_review: webgpt
@@ -121,8 +106,7 @@ routing:
       _default: local
       model_routing:
         paper_composer: hybrid
-        question_sc: hybrid
-        question_comp: hybrid
+        design: hybrid
         solve: hybrid
         review: hybrid
         final_review: hybrid

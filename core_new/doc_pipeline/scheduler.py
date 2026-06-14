@@ -46,6 +46,20 @@ from .write_file_tool import WriteFileTool
 logger = logging.getLogger(__name__)
 
 _SKELETON_GREP_SEARCH_LIMIT = 2
+_SKILLS_DIR = Path(__file__).parent / "skills"
+
+
+def _load_skill_by_name(skill_name: str) -> str:
+    """Load a skill's SKILL.md by directory name (§19 design dual-mode).
+
+    Used by run_agent(skill_override=...) to switch the design agent between
+    its draft (P1) and finalize (P2) skills without changing the agent md.
+    """
+    path = _SKILLS_DIR / skill_name / "SKILL.md"
+    if not path.exists():
+        logger.warning("skill_override not found: %s (looked at %s)", skill_name, path)
+        return ""
+    return path.read_text(encoding="utf-8").strip()
 
 
 @dataclass
@@ -486,6 +500,7 @@ class DocScheduler:
         target_file: str | None = None,
         preserve_existing: bool = False,
         enable_thinking: bool | None = None,
+        skill_override: str | None = None,
     ) -> str:
         """Run an agent and return the final text content.
 
@@ -516,8 +531,13 @@ class DocScheduler:
         full_task = task
         injected_contents: list[str] = []
 
-        # Inject domain-specific skill content into user message
-        skill_content = ROLE_SKILLS.get(role, "")
+        # Inject domain-specific skill content into user message.
+        # §19: skill_override lets the design agent switch between its draft
+        # (P1) and finalize (P2) skills at runtime without a separate agent md.
+        if skill_override:
+            skill_content = _load_skill_by_name(skill_override)
+        else:
+            skill_content = ROLE_SKILLS.get(role, "")
         if skill_content:
             full_task += f"\n\n## 工作规范\n{skill_content}"
 
@@ -533,7 +553,7 @@ class DocScheduler:
                 full_task += f"\n\n## {label}\n{content}"
 
         skeleton_has_experience_cache = (
-            role == "skeleton_design"
+            skill_override == "design_draft_skill"
             and any(_has_upstream_experience_cache(content) for content in injected_contents)
         )
         skeleton_grep_limit = 0 if skeleton_has_experience_cache else _SKELETON_GREP_SEARCH_LIMIT
@@ -773,12 +793,12 @@ class DocScheduler:
                         fn_args = {}
 
                     if (
-                        role == "skeleton_design"
+                        skill_override == "design_draft_skill"
                         and fn_name == "grep_search"
                         and grep_search_count >= skeleton_grep_limit
                     ):
                         logger.info(
-                            "[%s] Skipping tool: %s(%s) — skeleton_design grep limit reached (%d)",
+                            "[%s] Skipping tool: %s(%s) — design draft grep limit reached (%d)",
                             slot_id, fn_name, str(fn_args)[:100], skeleton_grep_limit,
                         )
                         grep_limit_hit = True
@@ -786,7 +806,7 @@ class DocScheduler:
                             {
                                 "ok": False,
                                 "error": (
-                                    "grep_search limit reached for skeleton_design; "
+                                    "grep_search limit reached for design draft; "
                                     "use existing retrieved examples and write question.md"
                                 ),
                                 "limit": skeleton_grep_limit,
@@ -1106,6 +1126,20 @@ class DocScheduler:
             )
 
         return final_text
+
+    def clear_session(self, slot_id: str, role: str) -> bool:
+        """Drop a role's accumulated message history (§19.5 solver reset).
+
+        When the solver repeatedly fails to fix its code, the orchestrator
+        clears its context so the next run starts clean (escaping possible
+        context pollution). Returns True if a session was actually dropped.
+        """
+        key = f"{slot_id}:{role}"
+        if key in self._sessions:
+            del self._sessions[key]
+            logger.info("[%s] Cleared session for role '%s' (§19.5 reset)", slot_id, role)
+            return True
+        return False
 
     # ── Interact-mode conversation turn ────────────────────────────
 
@@ -1542,7 +1576,7 @@ class DocScheduler:
             "如果输出 Markdown，第一行必须是目标文件的第一个 `##` 章节标题；"
             "如果输出 Python，第一行必须是 Python 源码或注释。"
         )
-        if role in {"question_sc", "question_comp", "solve", "review", "final_review"}:
+        if role in {"design", "solve", "review", "final_review"}:
             suffix += "\n如需计算或校验，请在你自己的推理过程中完成，并把必要的校验证据写入目标内容。"
         return task + suffix
 
@@ -1562,7 +1596,7 @@ class DocScheduler:
                 "`## status` 的内容固定为 `ready`。规划只定义结构、约束和参数范围，"
                 "不要提前指定具体数值或完整题干。"
             )
-        if role in ("question_sc", "question_comp"):
+        if role == "design":
             return (
                 "## 目标文件协议：question.md\n"
                 "必须包含且按顺序输出章节：`## status`、`## 题干`、"
