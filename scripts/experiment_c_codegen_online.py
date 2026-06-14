@@ -26,49 +26,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-C_TASK = """你是融合出题智能体（C 实验，代码一次性产出全部）。设计卡已固定。
-
-## 核心思路
-代码（gen.py）一次性构造参数 + 算出答案 + 输出题干格式的描述。
-你只做：规划考察形式 → 写 gen.py 代码 → 基于 gen 的 exec 输出组装 question.md + solution.md。
-不写 solve.py（gen.py 本身就是求解，它构造参数时就算了答案）。
-
-## 流程（严格按序）
-
-### Step 1：读设计卡，规划（短，不推演）
-读 design_card.md（question_structure_plan + parameter_plan + design_rationale）。
-确定：构造什么数据（树/矩阵/图）+ 约束（触发条件）+ 设问指向哪个值。
-
-### Step 2：write gen.py（代码一次性产出全部）
-写一个脚本，**一次 print 出以下全部内容**（用清晰分隔符分段）：
-
-```
-===== 参数 =====
-[初始数据结构的具体值，如节点集合、插入序列、资源矩阵等]
-
-===== 题干描述 =====
-[人类可读的题干描述，直接可复制进 question.md。如 ASCII 树形图 + 插入序列 + 设问]
-
-===== 求解路径 =====
-[逐步推演过程，如每次插入后的平衡因子变化、旋转操作、中间树结构]
-
-===== 答案 =====
-[每个设问的最终答案值]
-```
-
-gen.py 内部用代码构造数据 + 推演 + 校验合法性。exec_file 执行。
-若输出不合法或不完整，edit gen.py 重跑。
-
-### Step 3：read exec 输出 → 组装 question.md + solution.md
-- write question.md：复制 gen 输出的「题干描述」段 + 设计说明。不含答案。
-- write solution.md：复制 gen 输出的「求解路径」+「答案」段。
-
-## 约束
-- 不脑内算。所有数值/推演由 gen.py 代码 exec 确定。
-- gen.py 必须 exec 通过且输出完整（4 段都有）。
-- question.md 不含答案。答案只在 solution.md。
-- 不写 solve.py（gen.py 就是求解）。
-"""
+C_TASK = """你是融合出题智能体（C 方案，代码一次性产出全部）。
+按工作规范（c_codegen skill）的三步流程执行：①规划 → ②写 gen.py + exec → ③组装 question.md + solution.md。
+gen.py 一次 print 4 段（参数/题干描述/求解路径/答案），exec 通过后复制输出组装题目。
+不写 solve.py（gen.py 即求解）。不脑内算（代码 exec 即真值）。"""
 
 
 async def run_c(provider, label, slot_id, assembled_path, out_root):
@@ -94,6 +55,7 @@ async def run_c(provider, label, slot_id, assembled_path, out_root):
         await sched.run_agent(
             "design", C_TASK, slot_id=slot_id,
             inject_files=inject, enable_thinking=True,
+            skill_override="c_codegen",
         )
     except Exception as e:
         import traceback; traceback.print_exc()

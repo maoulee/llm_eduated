@@ -168,7 +168,12 @@ class RemoteAPIProvider(BaseLLMProvider):
     def _extra_body_for_thinking(self, enable_thinking: bool) -> Dict[str, Any]:
         """Provider-specific thinking parameter support."""
         if self.thinking_control_method == "param":
-            return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
+            thinking_param = {"type": "enabled" if enable_thinking else "disabled"}
+            # §20 线上思考记忆：clear_thinking=False 让 API 保留 reasoning_content，
+            # 配合 scheduler 回传 reasoning_content 实现跨轮思考记忆。
+            if enable_thinking and self.preserve_thinking:
+                thinking_param["clear_thinking"] = False
+            return {"thinking": thinking_param}
         if self.thinking_control_method == "chat_template_kwargs":
             chat_template_kwargs = {"enable_thinking": bool(enable_thinking)}
             if enable_thinking and self.preserve_thinking:

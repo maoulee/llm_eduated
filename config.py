@@ -63,6 +63,12 @@ class ProviderSettings(BaseModel):
     # - param: send provider-specific thinking parameter.
     # - chat_template_kwargs: send vLLM chat_template_kwargs.enable_thinking.
     thinking_control_method: str = "prompt"
+
+    # §20 思考记忆：保留 reasoning_content 传回下一轮。
+    # 本地 vLLM 用 chat_template_kwargs.preserve_thinking；
+    # 线上 GLM 用 thinking.clear_thinking=False。
+    preserve_thinking: bool = False
+
     quantization: Optional[str] = None
     max_model_len: int = 10000
     serve_as_api: bool = False
@@ -94,6 +100,7 @@ class GlobalSettings(BaseSettings):
             batch_size=int(os.getenv("VLLM_BATCH_SIZE", "16")),
             prompt_template_style=os.getenv("VLLM_PROMPT_TEMPLATE_STYLE", "qwen"),
             thinking_control_method=os.getenv("VLLM_THINKING_CONTROL_METHOD", "chat_template_kwargs"),
+            preserve_thinking=os.getenv("VLLM_PRESERVE_THINKING", "true").lower() == "true",
             supports_response_format=os.getenv("VLLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             temperature=float(os.getenv("VLLM_TEMPERATURE", "1.0")),
             top_p=float(os.getenv("VLLM_TOP_P", "0.95")),
@@ -110,6 +117,7 @@ class GlobalSettings(BaseSettings):
             request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600")),
             max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
             thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "param"),
+            preserve_thinking=os.getenv("GLM_PRESERVE_THINKING", "true").lower() == "true",
             supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),
             temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
