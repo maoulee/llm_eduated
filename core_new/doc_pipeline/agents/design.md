@@ -7,6 +7,7 @@ required_tools:
   - write_file
   - edit_file
   - read_file
+  - exec_file
   - grep_search
 required_sections:
   - status

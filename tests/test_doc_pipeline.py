@@ -555,7 +555,8 @@ class TestDocSchedulerToolProtocol:
         tool_names = [t["function"]["name"] for t in second_call["tools"]]
         assert "write_file" in tool_names
         assert "read_file" in tool_names
-        assert "exec_file" not in tool_names
+        # §19/C: design now has exec_file (gen.py codegen flow requires it)
+        assert "exec_file" in tool_names
         # Normal history preserved — 1 system prompt
         assert len([m for m in second_call["messages"] if m["role"] == "system"]) == 1
 
