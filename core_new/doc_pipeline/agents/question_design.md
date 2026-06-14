@@ -10,6 +10,7 @@ required_sections:
   - blueprint_contract
   - route
   - core_knowledge_intent
+  - design_rationale
   - expected_reasoning_actions
   - question_structure_plan
   - parameter_plan
@@ -68,11 +69,12 @@ skills:
 2. ## blueprint_contract — 从蓝图原样摘取：slot_id, question_type, score, target_subject, target_family, primary_target_name, examination_mode, k_target, difficulty_level, should_be（每项一行）, should_not_be（每项一行）, hard_constraints
 3. ## route — question_form, question_type（conceptual/computational/mixed）, requires_parameter_verification, requires_solver, requires_code
 4. ## core_knowledge_intent — must_test（2-3项）, must_not_shift_to（1-2项）, coverage_success_criteria（1-2项）
-5. ## expected_reasoning_actions — 至少3个解题动作（如"由块大小推出块内偏移位数"），只写动作不写答案
-6. ## question_structure_plan — 选择题：stem_style, option_architecture（correct + 3 distractors）, asking_method；综合题：shared_context, sub_question_chain, dependency_pattern
-7. ## parameter_plan — parameter_slots（name/role/candidate_range/used_by）, validation_targets, adjustment_priority
-8. ## terminology_and_expression_constraints — required_terms, required_qualifiers, avoid_phrases, standard_rewrites（bad/good 对）
-9. ## audit_focus — final_review_must_check, solve_output_should_contain, fail_if_missing
+5. ## design_rationale — **设计理念交接（给下游 design 智能体）**：用一段话回答"**为什么这样考**"——本题的考察意图与设计逻辑（为什么选这个考点组合/这种设问/这个 K-雷达形状，它要区分什么样掌握程度的学生）。这是 spec 交接文档：下游 design 据此理解意图，**只实现不重推设计合理性**。不含具体数值/答案。
+6. ## expected_reasoning_actions — 至少3个解题动作（如"由块大小推出块内偏移位数"），只写动作不写答案
+7. ## question_structure_plan — 选择题：stem_style, option_architecture（correct + 3 distractors）, asking_method；综合题：shared_context, sub_question_chain, dependency_pattern
+8. ## parameter_plan — parameter_slots（name/role/candidate_range/used_by）, validation_targets, adjustment_priority
+9. ## terminology_and_expression_constraints — required_terms, required_qualifiers, avoid_phrases, standard_rewrites（bad/good 对）
+10. ## audit_focus — final_review_must_check, solve_output_should_contain, fail_if_missing
 
 详细字段说明参考 schema 文档：data/design_cards/examples/avl_rotation.md
 

@@ -5,12 +5,14 @@
 
 ## 出题流程
 
-### Step 1：读上游
+### Step 1：读上游（**先读设计理念交接，理解意图即定案**）
 
 读取：
 - exam_form.md（考察形式 + K-雷达形状）
-- design_card.md（blueprint_contract、core_knowledge_intent、question_structure_plan、parameter_plan、术语约束）
+- design_card.md（blueprint_contract、core_knowledge_intent、**design_rationale（设计理念交接）**、question_structure_plan、parameter_plan、术语约束）
 - assembled.md（经验卡 should_be/should_not_be、往年真题经验、参考经验摘要、模式概览）
+
+> **关键**：design_card 的 `## design_rationale` 是上游给你的 **spec 交接文档**——它写明了"为什么这样考"。**读完它，本题的考察意图与设计合理性即定案**：你不再需要自己重新推演"为什么这么考才对、难度合不合适、考点组合是否合理"。上游已经论证过了，你**只实现题面**。重新推演设计合理性 = 过度思考（纪律①）。
 
 ### Step 2：消费上游经验缓存 → 提炼骨架（§16.1 核心，缓存优先）
 

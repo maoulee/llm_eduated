@@ -3,16 +3,30 @@
 ## 目标
 生成符合 schema v1 的 design_card.md。
 
-## 必须包含 9 个 section
+## 必须包含 10 个 section
 1. status
 2. blueprint_contract
 3. route
 4. core_knowledge_intent
-5. expected_reasoning_actions
-6. question_structure_plan
-7. parameter_plan
-8. terminology_and_expression_constraints
-9. audit_focus
+5. design_rationale — **设计理念交接（给下游 design 智能体的 spec 交接文档）**
+6. expected_reasoning_actions
+7. question_structure_plan
+8. parameter_plan
+9. terminology_and_expression_constraints
+10. audit_focus
+
+## design_rationale（设计理念交接）
+
+回答一个问题：**"为什么这样考？"**
+
+用一段话写清楚：
+- 本题考察意图与设计逻辑：为什么选这个考点组合、这种设问方式、这个 K-雷达形状
+- 它要**区分什么样掌握程度的学生**（如"能完整走完旋转流程并回溯检查的学生 vs 只记得旋转名称的学生"）
+- 为什么这个难度/形式是合适的
+
+这是 spec 交接文档——下游 design 智能体读这段理解意图，**只实现题面、不重新推演设计合理性**。写清楚这段，design 就不必自己从头想"为什么这么考才合理"，从而降低 design 的思考强度。
+
+不含具体数值、答案、最终结构。
 
 ## route 字段枚举值（必须使用英文原值，不加中文注释）
 

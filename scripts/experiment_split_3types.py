@@ -1,14 +1,14 @@
-"""Formal experiment: §17 split architecture end-to-end, 3 types.
+"""Formal experiment: §19 split architecture end-to-end, 3 types.
 
-enable_split_design=true (split graph: exam_form→skeleton→form_gate→solve→distractor).
+enable_split_design=true (split graph: exam_form→design(P1)→form_gate→solve→design(P2)).
 Runs DocPipeline on 3 slots, measures time + output success + code-as-truth artifacts.
 
-Validates: split architecture succeeds on all 3 (esp. comprehensive, which the
-integrated one-agent failed at 25k reasoning).
+Validates: §19 design-unified architecture succeeds on all 3 (esp. comprehensive,
+which the integrated one-agent failed at 25k reasoning).
 
 Usage:
   set -a && source /zhaoshu/llm_eduated/.env && set +a && \
-  python3 scripts/experiment_split_3types.py [--provider glm5.1]
+  python3 scripts/experiment_split_3types.py [--provider api_vllm] [--out docs/test_output/baseline19]
 """
 import argparse
 import asyncio
@@ -20,7 +20,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 COMP_ASSEMBLED = "docs/compose/Q41_assembled.md"
-OUT = Path("docs/test_output/split_3types")
 
 SLOTS = [
     ("T1_简单选择", "TEST_SC", {"slot_id": "TEST_SC", "subject": "数据结构",
@@ -39,8 +38,8 @@ SLOTS = [
 ]
 
 
-async def run_one(dp_factory, label, slot_id, slot_data, qtype, assembled):
-    out = OUT / label
+async def run_one(dp_factory, label, slot_id, slot_data, qtype, assembled, out_root):
+    out = out_root / label
     out.mkdir(parents=True, exist_ok=True)
     dp = dp_factory(out)
     print(f"\n{'='*70}\n  [{label}] {qtype}\n{'='*70}")
@@ -69,14 +68,17 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--provider", default="glm5.1", choices=["glm5.1", "api_vllm"])
     ap.add_argument("--only", default=None, help="只跑某类型: T1/T2/T3")
+    ap.add_argument("--out", default="docs/test_output/split_3types",
+                    help="输出根目录（默认 split_3types）")
     args = ap.parse_args()
+    out_root = Path(args.out)
     if args.provider == "api_vllm":
         os.environ.setdefault("VLLM_MODEL", "/zhaoshu/llm/Qwen3.6-27B-FP8")
         os.environ.setdefault("VLLM_API_BASE", "http://127.0.0.1:8000/v1")
     from core_new.doc_pipeline import DocPipeline
     from core_new.llm_gateway import get_gateway
     gw = get_gateway(args.provider)
-    print(f"formal experiment: §17 split architecture | provider={args.provider} | enable_split_design=ON")
+    print(f"formal experiment: §19 design-unified architecture | provider={args.provider} | enable_split_design=ON | out={out_root}")
 
     results = []
     for label, sid, sd, qt, asm in SLOTS:
@@ -84,7 +86,7 @@ async def main():
             continue
         results.append(await run_one(lambda o: DocPipeline(gateway=gw, workspace=str(o),
             model_routing={"_default": args.provider}, enable_thinking=True),
-            label, sid, sd, qt, asm))
+            label, sid, sd, qt, asm, out_root))
 
     print(f"\n{'='*70}\n  正式实验结果（§17 split 架构，3 类型）\n{'='*70}")
     print(f"  {'类型':14s} {'time':>7s} {'ok':>5s} {'solve.py':>8s} {'exec':>8s} {'产出':>6s}")
