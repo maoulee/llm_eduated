@@ -1,0 +1,117 @@
+2026-06-14 18:23:04,560 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 18:23:04,574 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 18:23:04,594 - INFO - Loaded 10 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-14 18:23:04,614 - INFO - Initializing LLM provider type: api
+2026-06-14 18:23:04,638 - INFO - RemoteAPIProvider initialized: model=glm-5.2 base_url=https://open.bigmodel.cn/api/coding/paas/v4 protocol=openai_chat batch_size=4 thinking=param
+2026-06-14 18:23:04,638 - INFO - LLMGateway initialized: provider=glm5.1 model=glm-5.2 scope=remote max_attempts=10
+2026-06-14 18:23:09,662 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:23:10,556 - INFO - [stream_chat] streaming... chunks=50 reasoning=180 content=0 provider=glm5.1
+2026-06-14 18:23:11,695 - INFO - [stream_chat] streaming... chunks=100 reasoning=391 content=0 provider=glm5.1
+2026-06-14 18:23:12,890 - INFO - [stream_chat] streaming... chunks=150 reasoning=633 content=0 provider=glm5.1
+2026-06-14 18:23:13,828 - INFO - [stream_chat] streaming... chunks=200 reasoning=844 content=0 provider=glm5.1
+2026-06-14 18:23:14,341 - INFO - [stream_chat] streaming... chunks=250 reasoning=1086 content=0 provider=glm5.1
+2026-06-14 18:23:14,982 - INFO - [stream_chat] streaming... chunks=300 reasoning=1294 content=0 provider=glm5.1
+2026-06-14 18:23:15,941 - INFO - [stream_chat] streaming... chunks=350 reasoning=1491 content=0 provider=glm5.1
+2026-06-14 18:23:16,916 - INFO - [stream_chat] streaming... chunks=400 reasoning=1705 content=0 provider=glm5.1
+2026-06-14 18:23:18,519 - INFO - [stream_chat] streaming... chunks=450 reasoning=1832 content=0 provider=glm5.1
+2026-06-14 18:23:19,009 - INFO - [stream_chat] streaming... chunks=500 reasoning=1979 content=0 provider=glm5.1
+2026-06-14 18:23:20,117 - INFO - [stream_chat] streaming... chunks=550 reasoning=2159 content=0 provider=glm5.1
+2026-06-14 18:23:21,397 - INFO - [stream_chat] streaming... chunks=600 reasoning=2366 content=0 provider=glm5.1
+2026-06-14 18:23:22,511 - INFO - [stream_chat] streaming... chunks=650 reasoning=2607 content=0 provider=glm5.1
+2026-06-14 18:23:23,349 - INFO - [stream_chat] streaming... chunks=700 reasoning=2774 content=0 provider=glm5.1
+2026-06-14 18:23:24,457 - INFO - [stream_chat] streaming... chunks=750 reasoning=2980 content=0 provider=glm5.1
+2026-06-14 18:23:25,251 - INFO - [stream_chat] streaming... chunks=800 reasoning=3059 content=56 provider=glm5.1
+2026-06-14 18:23:26,191 - INFO - [stream_chat] streaming... chunks=850 reasoning=3059 content=140 provider=glm5.1
+2026-06-14 18:23:55,415 - INFO - [stream_chat] provider=glm5.1 content=157 reasoning=3059 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:23:55,424 - INFO - [TEST_C3] Executing tool: write_file({'path': 'gen.py', 'content': 'import sys\nfrom collections import deque\n\nclass AVLNode:\n    def )
+2026-06-14 18:23:55,439 - INFO - [TEST_C3] Agent 'design' attempt 1: tools executed, question.md not written (no_file=0, total=1, continuing)
+2026-06-14 18:23:59,668 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:23:59,673 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=32 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:23:59,679 - INFO - [TEST_C3] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-14 18:23:59,714 - INFO - [TEST_C3] Agent 'design' attempt 2: tools executed, question.md not written (no_file=1, total=2, continuing)
+2026-06-14 18:24:04,113 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:24:04,905 - INFO - [stream_chat] streaming... chunks=50 reasoning=228 content=0 provider=glm5.1
+2026-06-14 18:24:06,198 - INFO - [stream_chat] streaming... chunks=100 reasoning=486 content=0 provider=glm5.1
+2026-06-14 18:24:07,603 - INFO - [stream_chat] streaming... chunks=150 reasoning=711 content=0 provider=glm5.1
+2026-06-14 18:24:08,636 - INFO - [stream_chat] streaming... chunks=200 reasoning=869 content=0 provider=glm5.1
+2026-06-14 18:24:10,073 - INFO - [stream_chat] streaming... chunks=250 reasoning=1078 content=0 provider=glm5.1
+2026-06-14 18:24:11,075 - INFO - [stream_chat] streaming... chunks=300 reasoning=1228 content=0 provider=glm5.1
+2026-06-14 18:24:12,184 - INFO - [stream_chat] streaming... chunks=350 reasoning=1396 content=0 provider=glm5.1
+2026-06-14 18:24:13,221 - INFO - [stream_chat] streaming... chunks=400 reasoning=1529 content=0 provider=glm5.1
+2026-06-14 18:24:13,963 - INFO - [stream_chat] streaming... chunks=450 reasoning=1639 content=0 provider=glm5.1
+2026-06-14 18:24:14,816 - INFO - [stream_chat] streaming... chunks=500 reasoning=1744 content=0 provider=glm5.1
+2026-06-14 18:24:15,795 - INFO - [stream_chat] streaming... chunks=550 reasoning=1959 content=0 provider=glm5.1
+2026-06-14 18:24:16,509 - INFO - [stream_chat] streaming... chunks=600 reasoning=2021 content=65 provider=glm5.1
+2026-06-14 18:24:40,444 - INFO - [stream_chat] provider=glm5.1 content=81 reasoning=2021 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:24:40,450 - INFO - [TEST_C3] Executing tool: write_file({'content': 'import sys\nfrom collections import deque\nfrom itertools import combinations\n\nclass )
+2026-06-14 18:24:40,459 - INFO - [TEST_C3] Agent 'design' attempt 3: tools executed, question.md not written (no_file=0, total=3, continuing)
+2026-06-14 18:24:45,475 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:24:45,476 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=0 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:24:45,482 - INFO - [TEST_C3] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-14 18:24:45,532 - INFO - [TEST_C3] Agent 'design' attempt 4: tools executed, question.md not written (no_file=1, total=4, continuing)
+2026-06-14 18:24:49,867 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:24:50,638 - INFO - [stream_chat] streaming... chunks=50 reasoning=166 content=0 provider=glm5.1
+2026-06-14 18:24:51,315 - INFO - [stream_chat] streaming... chunks=100 reasoning=323 content=0 provider=glm5.1
+2026-06-14 18:24:53,081 - INFO - [stream_chat] streaming... chunks=150 reasoning=474 content=0 provider=glm5.1
+2026-06-14 18:24:53,326 - INFO - [stream_chat] streaming... chunks=200 reasoning=637 content=0 provider=glm5.1
+2026-06-14 18:24:54,840 - INFO - [stream_chat] streaming... chunks=250 reasoning=864 content=0 provider=glm5.1
+2026-06-14 18:24:55,633 - INFO - [stream_chat] streaming... chunks=300 reasoning=1012 content=0 provider=glm5.1
+2026-06-14 18:24:56,137 - INFO - [stream_chat] streaming... chunks=350 reasoning=1138 content=0 provider=glm5.1
+2026-06-14 18:24:56,913 - INFO - [stream_chat] streaming... chunks=400 reasoning=1261 content=0 provider=glm5.1
+2026-06-14 18:24:57,804 - INFO - [stream_chat] streaming... chunks=450 reasoning=1422 content=0 provider=glm5.1
+2026-06-14 18:24:58,472 - INFO - [stream_chat] streaming... chunks=500 reasoning=1562 content=0 provider=glm5.1
+2026-06-14 18:24:59,250 - INFO - [stream_chat] streaming... chunks=550 reasoning=1734 content=0 provider=glm5.1
+2026-06-14 18:24:59,939 - INFO - [stream_chat] streaming... chunks=600 reasoning=1921 content=0 provider=glm5.1
+2026-06-14 18:25:01,126 - INFO - [stream_chat] streaming... chunks=650 reasoning=2126 content=0 provider=glm5.1
+2026-06-14 18:25:01,973 - INFO - [stream_chat] streaming... chunks=700 reasoning=2338 content=0 provider=glm5.1
+2026-06-14 18:25:02,909 - INFO - [stream_chat] streaming... chunks=750 reasoning=2548 content=0 provider=glm5.1
+2026-06-14 18:25:03,962 - INFO - [stream_chat] streaming... chunks=800 reasoning=2764 content=0 provider=glm5.1
+2026-06-14 18:25:06,024 - INFO - [stream_chat] streaming... chunks=850 reasoning=2953 content=0 provider=glm5.1
+2026-06-14 18:25:06,124 - INFO - [stream_chat] streaming... chunks=900 reasoning=3097 content=21 provider=glm5.1
+2026-06-14 18:25:08,421 - INFO - [stream_chat] streaming... chunks=950 reasoning=3097 content=93 provider=glm5.1
+2026-06-14 18:25:08,422 - INFO - [stream_chat] provider=glm5.1 content=93 reasoning=3097 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:25:08,429 - INFO - [TEST_C3] Executing tool: edit_file({'path': 'gen.py', 'old_string': 'print("（2）插入第2个关键字后，以关键字10为根的左子树中，关键字"+str(insert_keys[1])+"的父节点是哪)
+2026-06-14 18:25:08,439 - INFO - [TEST_C3] Agent 'design' attempt 5: tools executed, question.md not written (no_file=0, total=5, continuing)
+2026-06-14 18:25:12,676 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:25:16,482 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=141 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:25:16,487 - INFO - [TEST_C3] Executing tool: edit_file({'new_string': '# (2) 插入15并调整后，15的父节点，19的左右孩子\nparent_key2 = tree3.find_parent(insert_keys[1])\n# 19)
+2026-06-14 18:25:16,499 - INFO - [TEST_C3] Agent 'design' attempt 6: tools executed, question.md not written (no_file=0, total=6, continuing)
+2026-06-14 18:25:22,714 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:25:22,716 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=0 tool_calls=1 finish_reason=tool_calls
+2026-06-14 18:25:22,721 - INFO - [TEST_C3] Executing tool: edit_file({'new_string': 'rc_20 = tree2.get_right_child(20)\nrc_20_str = str(rc_20) if rc_20 is not None else )
+2026-06-14 18:25:22,735 - INFO - [TEST_C3] Agent 'design' attempt 7: tools executed, question.md not written (no_file=0, total=7, continuing)
+2026-06-14 18:25:22,735 - INFO - [TEST_C3] design: Trimming context (non_target=7)
+2026-06-14 18:25:27,590 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:25:28,367 - INFO - [stream_chat] streaming... chunks=50 reasoning=248 content=0 provider=glm5.1
+2026-06-14 18:25:29,312 - INFO - [stream_chat] streaming... chunks=100 reasoning=421 content=0 provider=glm5.1
+2026-06-14 18:25:30,465 - INFO - [stream_chat] streaming... chunks=150 reasoning=665 content=0 provider=glm5.1
+2026-06-14 18:25:31,644 - INFO - [stream_chat] streaming... chunks=200 reasoning=883 content=0 provider=glm5.1
+2026-06-14 18:25:32,373 - INFO - [stream_chat] streaming... chunks=250 reasoning=1106 content=0 provider=glm5.1
+2026-06-14 18:25:32,970 - INFO - [stream_chat] streaming... chunks=300 reasoning=1233 content=0 provider=glm5.1
+2026-06-14 18:25:33,957 - INFO - [stream_chat] streaming... chunks=350 reasoning=1375 content=21 provider=glm5.1
+2026-06-14 18:25:34,281 - INFO - [stream_chat] provider=glm5.1 content=40 reasoning=1375 tool_calls=2 finish_reason=tool_calls
+2026-06-14 18:25:34,286 - INFO - [TEST_C3] Executing tool: read_file({'path': 'gen.py'})
+2026-06-14 18:25:34,290 - INFO - [TEST_C3] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-14 18:25:34,339 - INFO - [TEST_C3] Agent 'design' attempt 8: tools executed, question.md not written (no_file=1, total=8, continuing)
+2026-06-14 18:25:39,709 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 18:25:39,773 - INFO - [stream_chat] streaming... chunks=50 reasoning=204 content=0 provider=glm5.1
+2026-06-14 18:25:40,349 - INFO - [stream_chat] streaming... chunks=100 reasoning=312 content=0 provider=glm5.1
+2026-06-14 18:25:41,452 - INFO - [stream_chat] streaming... chunks=150 reasoning=496 content=0 provider=glm5.1
+2026-06-14 18:25:42,241 - INFO - [stream_chat] streaming... chunks=200 reasoning=648 content=11 provider=glm5.1
+2026-06-14 18:26:04,712 - INFO - [stream_chat] provider=glm5.1 content=78 reasoning=648 tool_calls=2 finish_reason=tool_calls
+2026-06-14 18:26:04,718 - INFO - [TEST_C3] Executing tool: write_file({'path': 'question.md', 'content': '# 第41题 平衡二叉树（AVL）的插入与旋转\n\n## 题目\n\n已知一棵平衡二叉树（AVL树）的初始状态由关键字序列 {)
+2026-06-14 18:26:04,734 - INFO - [TEST_C3] Executing tool: write_file({'path': 'solution.md', 'content': '# 第41题 解答\n\n## 初始状态\n\n初始AVL树由关键字序列 {30, 10, 50, 5, 20, 40, 60})
+
+======================================================================
+  [C 代码一次性] Q41_AVL | provider=glm5.1
+======================================================================
+  180.1s | gen=True question=True solution=True exec_ok=False 4段=False
+    ✓ gen.py
+    ✓ question.md
+    ✓ solution.md
+
+======================================================================
+  C 代码一次性 结果（provider=glm5.1）
+======================================================================
+  Q41_AVL           180.1s ok=True exec=False
+  → ✓ 全部成功
