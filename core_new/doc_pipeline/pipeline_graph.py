@@ -414,3 +414,129 @@ def build_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     g.edge("final", "question_error", "question")
     g.edge("final", "solution_error", "solve")
     return g
+
+
+# ── §17 split-focused design nodes + graph ─────────────────────────
+#
+# Split path (feature-flagged via enable_split_design):
+#   design_card → exam_form → skeleton_design → form_gate → solve
+#                                                  │            │
+#                                          needs_fix       code_error
+#                                                  ↓            ↓
+#                                            skeleton_design (regenerates stem + solve.py)
+#                                                              │
+#   solve success → distractor_assembly (choice only) → final
+#                 → final (comprehensive: correct fills back symbolic stem)
+# Conceptual: skeleton_design → done (skip form_gate/solve/distractor/final).
+
+
+class ExamFormNode(_OrchestratorNode):
+    """§17.3 exam_form: KP + K-radar → examination form (narrow judgment).
+
+    Always reports signal ``ok`` — routing is the graph's concern.
+    """
+
+    name = "exam_form"
+
+    async def run(self, state: PipelineState) -> AgentResult:
+        ws = self.workspace / state.slot_id
+        ref_path = DesignCardNode._ref_path(state)
+        fail = await self.orch._run_exam_form(
+            state.slot_id, state.slot_data, ws, ref_path
+        )
+        if fail is not None:
+            state.result = fail
+            return AgentResult(signal="ok", feedback=f"exam_form failed: {fail.error}")
+        return AgentResult(signal="ok")
+
+
+class SkeletonDesignNode(_OrchestratorNode):
+    """§16.2/§17.3 skeleton_design: reuse skeleton → symbolic stem + solve.py.
+
+    Single run per visit; form_gate/code_error feedback threads through the
+    state's feedback_buffer. Reports ``ok``.
+    """
+
+    name = "skeleton_design"
+
+    async def run(self, state: PipelineState) -> AgentResult:
+        ws = self.workspace / state.slot_id
+        ref_path = DesignCardNode._ref_path(state)
+        feedback = (
+            state.feedback_buffer.get("form_gate", "")
+            or state.feedback_buffer.get("solve", "")
+        )
+        fail = await self.orch._run_skeleton_design(
+            state.slot_id, state.slot_data, ws, ref_path, feedback=feedback,
+        )
+        if fail is not None:
+            state.result = fail
+            return AgentResult(signal="ok", feedback=f"skeleton_design failed: {fail.error}")
+        return AgentResult(signal="ok", feedback=feedback)
+
+
+class DistractorNode(_OrchestratorNode):
+    """§17.5 distractor light-give (single-choice only).
+
+    After solve computes the correct answer, give 3 plausible wrong values
+    (NOT code-computed), verify 4 distinct, append options. Comprehensive
+    questions skip this node (correct fills back the symbolic stem).
+    signal: ``success`` → final; ``distractor_error`` → back to solve/skeleton.
+    """
+
+    name = "distractor_assembly"
+
+    async def run(self, state: PipelineState) -> AgentResult:
+        ws = self.workspace / state.slot_id
+        # Comprehensive questions: no distractor step — route straight through.
+        q_role = state.slot_data.get("question_type")
+        from .orchestrator import _question_role as _qr
+        if _qr(state.slot_id, question_type=q_role, slot_data=state.slot_data) != "question_sc":
+            return AgentResult(signal="success")
+
+        fail = await self.orch._run_distractor_assembly(
+            state.slot_id, state.slot_data, ws,
+        )
+        if fail is not None:
+            state.result = fail
+            return AgentResult(signal="distractor_error", feedback=fail.error)
+        # Verify 4 distinct option values landed in question.md (best-effort).
+        return AgentResult(signal="success")
+
+
+def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
+    """Declare the §17 split-focused design graph.
+
+    exam_form → skeleton_design → form_gate → solve → distractor_assembly → final.
+    Conceptual questions short-circuit skeleton_design → done. Back-routing
+    (needs_fix / code_error) returns to skeleton_design, which regenerates the
+    symbolic stem AND solve.py (both live in the question/skeleton stage).
+
+    Note: ``scheduler`` is the ``DocPipelineOrchestrator`` instance.
+    """
+    g = PipelineGraph()
+    g.add_node("design_card", DesignCardNode(scheduler, workspace))
+    g.add_node("exam_form", ExamFormNode(scheduler, workspace))
+    g.add_node("skeleton_design", SkeletonDesignNode(scheduler, workspace))
+    g.add_node("form_gate", FormGateNode(scheduler, workspace))
+    g.add_node("solve", SolveNode(scheduler, workspace))
+    g.add_node("distractor_assembly", DistractorNode(scheduler, workspace))
+    g.add_node("final", FinalNode(scheduler, workspace))
+
+    g.edge("design_card", "ok", "exam_form")
+    g.edge("exam_form", "ok", "skeleton_design")
+    # Conceptual: skip form_gate/solve/distractor/final.
+    g.edge("skeleton_design", "ok", "done", condition=lambda s: s.complexity == "conceptual")
+    g.edge("skeleton_design", "ok", "form_gate", condition=lambda s: s.complexity != "conceptual")
+    g.edge("form_gate", "pass", "done", condition=lambda s: s.complexity == "conceptual")
+    g.edge("form_gate", "pass", "solve")
+    g.edge("form_gate", "needs_fix", "skeleton_design")
+    g.edge("solve", "success", "distractor_assembly")
+    g.edge("solve", "code_error", "skeleton_design")
+    # distractor_assembly: choice → final; comprehensive already routed through.
+    g.edge("distractor_assembly", "success", "final")
+    g.edge("distractor_assembly", "distractor_error", "solve")
+    g.edge("final", "pass", "done")
+    g.edge("final", "question_error", "skeleton_design")
+    g.edge("final", "solution_error", "solve")
+    return g

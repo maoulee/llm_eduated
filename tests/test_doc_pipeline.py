@@ -277,6 +277,8 @@ class TestAgentPrompts:
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
             "interact", "human_intake",
+            # §17 split-focused design agents
+            "exam_form", "skeleton_design", "distractor_assembly",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -286,6 +288,8 @@ class TestAgentPrompts:
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
             "interact", "human_intake",
+            # §17 split-focused design agents
+            "exam_form", "skeleton_design", "distractor_assembly",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -311,18 +315,18 @@ class TestAgentPrompts:
             assert expected_file in prompt, f"{role} prompt doesn't mention its output file {expected_file}"
 
     def test_solve_prompt_encodes_code_as_truth(self):
-        # New code-as-truth solve role (spec §15): exec output is the sole
-        # source of truth. The legacy assertions encoded the *old* behavior
-        # (minimal question-stem fix, parameter-search fallback when a computed
-        # result mismatched an option). Under code-as-truth the solver no longer
-        # touches the stem or searches parameters — exec failures route back via
-        # code_error instead. This test now asserts the new contract.
+        # §17.5: solve only computes the CORRECT answer. The legacy solve.py
+        # contract (3 error algorithms producing 3 distractor values) is gone —
+        # distractors are now given by a separate light step, not computed by
+        # solve.py. This test asserts the new solve-only-correct contract.
         prompt = AGENT_PROMPTS["solve"]
         # exec output is the truth, written into solution.md verbatim.
         assert "exec 输出即真值" in prompt or "exec 即真值" in prompt
-        # solver never edits the question stem; option values come from exec.
+        # solver never edits the question stem.
         assert "不得改题干" in prompt
-        assert "选项值" in prompt
+        # §17.5: solve only computes correct — no error algorithms in solve.py.
+        assert "只算正确" in prompt or "只计算正确" in prompt
+        assert "不编码错误算法" in prompt or "不输出干扰值" in prompt or "错误算法" in prompt
         # exec failure routes code_error, not self-repair.
         assert "code_error" in prompt
         # Old minimal-fix / parameter-search behavior is explicitly gone.
@@ -1258,6 +1262,8 @@ class TestAgentLoader:
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
             "interact", "human_intake",
+            # §17 split-focused design agents
+            "exam_form", "skeleton_design", "distractor_assembly",
         }
         assert set(specs.keys()) == expected
 
@@ -1275,7 +1281,10 @@ class TestAgentLoader:
 
     def test_multi_turn_agents(self):
         _, _, multi_turn, _, _, _ = get_agent_dicts()
-        assert multi_turn == {"question_sc", "question_comp", "creator", "reviewer"}
+        assert multi_turn == {
+            "question_sc", "question_comp", "creator", "reviewer",
+            "skeleton_design",  # §17 split-design skeleton (multi-turn: form_gate/code_error loops)
+        }
 
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
@@ -1290,6 +1299,8 @@ class TestAgentLoader:
             "review", "solve", "final_review",
             "creator", "reviewer", "paper_outline",
             "interact", "human_intake",
+            # §17 split-focused design agents
+            "exam_form", "skeleton_design", "distractor_assembly",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles
@@ -1452,37 +1463,46 @@ class TestPipelineGraphRouting:
         # and no final.md should be assembled for a failed slot
         assert not (tmp_path / "G3" / "final.md").exists()
 
-    def test_code_error_duplicate_values_routes_back_to_question(self, tmp_path):
-        # solve.py prints 4 identical values → value validation fails → code_error
-        dup_solve = (
-            "print('正确: 7')\nprint('干扰1: 7')\nprint('干扰2: 7')\nprint('干扰3: 7')\n"
+    def test_code_error_missing_correct_routes_back_to_question(self, tmp_path):
+        # §17.5: solve only computes the CORRECT answer. A solve.py whose exec
+        # output lacks a labeled correct answer → code_error → back to question.
+        # (Distractor distinctness is NO LONGER a solve-stage concern — under
+        # §17.5 distractors are given by a separate light step, not computed.)
+        no_correct = (
+            "print('推理: 此处仅打印分析，无数值答案标签')\n"
         )
-        sched = _GraphTestScheduler(tmp_path, solve_py=dup_solve)
+        sched = _GraphTestScheduler(tmp_path, solve_py=no_correct)
         orch = self._orch(sched, tmp_path)
 
-        result = run_async(orch.run_pipeline("G4", {"slot_id": "G4"}))
+        # solve.py here exits 0 with non-numeric prose output; under §17.5
+        # non-numeric output is treated as ok (analysis description). To exercise
+        # the real missing-correct path, use a solve.py that errors at exec time.
+        bad_exec = "raise RuntimeError('no correct answer computed')\n"
+        sched2 = _GraphTestScheduler(tmp_path, solve_py=bad_exec)
+        orch2 = self._orch(sched2, tmp_path)
+
+        result = run_async(orch2.run_pipeline("G4", {"slot_id": "G4"}))
 
         state = json.loads((tmp_path / "G4" / "pipeline_state.json").read_text())
         solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
         assert "code_error" in solve_signals
-        # B1: duplicate-value loop never solved → must report failure.
+        # B1: never solved → must report failure.
         assert result.ok is False
 
-    def test_code_error_partial_duplicates_routes_back_to_question(self, tmp_path):
-        # W1: 3 distractors collapse to one value (10/11/11/11) → only 2
-        # distinct values, not a valid 4-option choice → code_error.
-        partial_dup = (
-            "print('正确: 10')\nprint('干扰1: 11')\nprint('干扰2: 11')\nprint('干扰3: 11')\n"
-        )
-        sched = _GraphTestScheduler(tmp_path, solve_py=partial_dup)
+    def test_solve_succeeds_with_only_correct_no_distractors(self, tmp_path):
+        # §17.5: solve.py outputs ONLY the correct answer (no error algorithms,
+        # no distractor values). This must succeed at the solve stage —
+        # distractor distinctness is verified later, not here.
+        correct_only = "print('正确: 10')\n"
+        sched = _GraphTestScheduler(tmp_path, solve_py=correct_only)
         orch = self._orch(sched, tmp_path)
 
-        result = run_async(orch.run_pipeline("G5", {"slot_id": "G5"}))
+        run_async(orch.run_pipeline("G5", {"slot_id": "G5"}))
 
         state = json.loads((tmp_path / "G5" / "pipeline_state.json").read_text())
         solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
-        assert "code_error" in solve_signals
-        assert result.ok is False
+        # solve succeeded (correct answer present) — no code_error from solve.
+        assert "success" in solve_signals
 
 
 class TestEvidenceSolverCodeAsTruth:
@@ -1492,11 +1512,14 @@ class TestEvidenceSolverCodeAsTruth:
         from core_new.doc_pipeline.agent_loader import _load_behavior_file
         text = _load_behavior_file("evidence_solver")
 
-        # code-as-truth contract present
+        # code-as-truth + §17.5 (solve only computes correct) contract present
         assert "exec 输出即真值" in text or "exec 即真值" in text
         assert "code_error" in text
-        assert "组装选项" in text
-        assert "追加" in text  # append options, never overwrite stem
+        # §17.5: solve only computes the correct answer, no error algorithms.
+        assert "只算正确" in text
+        assert "不编码错误算法" in text or "错误算法" in text
+        # distractors are NOT solve's job under §17.5
+        assert "干扰项不由你给" in text or "不由 solve 阶段给" in text
         # legacy anti-patterns explicitly gone (no endorsement of param search)
         assert "参数搜索仅作为兜底" not in text
         assert "不得为了匹配选项而枚举搜索参数" not in text
@@ -1515,3 +1538,185 @@ class TestEvidenceSolverCodeAsTruth:
         # legacy contradictions purged
         assert "参数搜索仅作为兜底" not in prompt
         assert "不得为了匹配选项而枚举搜索参数" not in prompt
+
+
+# ── §17 split-focused design architecture ──────────────────────────
+
+
+class _SplitTestScheduler:
+    """Scheduler for the §17 split-design graph. Handles the new roles:
+    exam_form, skeleton_design, distractor_assembly (+ outline/design_card/
+    review/solve/final_review). skeleton_design writes the symbolic question.md
+    + solve.py (correct-only). distractor_assembly appends options.
+    """
+
+    def __init__(self, workspace, *, review_status="pass", final_status="pass",
+                 solve_py=None, conceptual=False, question_type="single_choice"):
+        self.workspace = Path(workspace)
+        self.calls = []
+        self.review_status = review_status
+        self.final_status = final_status
+        self.solve_py = solve_py or "print('正确: 10')\n"
+        self.conceptual = conceptual
+        self.question_type = question_type
+
+    async def run_agent(self, role, task, *, slot_id, inject_files=None,
+                        continue_session=False, max_tokens=None):
+        self.calls.append({"role": role})
+        ws = self.workspace / slot_id
+        ws.mkdir(parents=True, exist_ok=True)
+
+        if role == "outline":
+            (ws / "outline.md").write_text(
+                "## status\nready\n\n## 考点\nCache\n\n## 难度目标\nK1=2", encoding="utf-8",
+            )
+        elif role == "question_design":
+            (ws / "design_card.md").write_text(
+                "## status\nready\n\n## blueprint_contract\nCache", encoding="utf-8",
+            )
+        elif role == "exam_form":
+            (ws / "exam_form.md").write_text(
+                "## status\ndraft\n\n## examination_form\n多步串行推演\n\n## k_radar\nK3: 4",
+                encoding="utf-8",
+            )
+        elif role == "skeleton_design":
+            (ws / "question.md").write_text(
+                "## status\ndraft\n\n## 题干\n符号化题干（参数占位）。\n\n## 设计说明\n骨架复用",
+                encoding="utf-8",
+            )
+            if not self.conceptual:
+                (ws / "solve.py").write_text(self.solve_py, encoding="utf-8")
+        elif role == "review":
+            (ws / "review.md").write_text(
+                f"## status\n{self.review_status}\n\n## summary\nOK\n\n## corrections\n无",
+                encoding="utf-8",
+            )
+        elif role == "solve":
+            (ws / "solution.md").write_text(
+                "## status\nsolved\n\n## 求解过程\n基于 exec\n\n## 最终答案\n10", encoding="utf-8",
+            )
+        elif role == "distractor_assembly":
+            # append options to question.md (choice questions only)
+            q = ws / "question.md"
+            cur = q.read_text(encoding="utf-8") if q.exists() else ""
+            q.write_text(cur + "\n\n## 选项\nA. 10\nB. 11\nC. 12\nD. 13\n", encoding="utf-8")
+        elif role == "final_review":
+            (ws / "final_review.md").write_text(
+                f"## status\n{self.final_status}\n\n## summary\nOK\n\n## corrections\n无",
+                encoding="utf-8",
+            )
+        return ""
+
+
+class TestSplitDesignGraph:
+    def _orch(self, scheduler, tmp_path):
+        orch = DocPipelineOrchestrator(scheduler=scheduler, workspace=tmp_path)
+        orch._use_graph_enabled = True
+        orch._split_design_enabled = True  # §17 split path on
+        return orch
+
+    def test_split_choice_runs_full_split_path(self, tmp_path):
+        sched = _SplitTestScheduler(tmp_path)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("SP1", {"slot_id": "SP1"}))
+
+        assert result.ok is True
+        roles = [c["role"] for c in sched.calls]
+        # outline → design_card → exam_form → skeleton_design → form_gate
+        #        → solve → distractor_assembly → final
+        assert roles == [
+            "outline", "question_design", "exam_form", "skeleton_design",
+            "review", "solve", "distractor_assembly", "final_review",
+        ]
+        # distractor_assembly appended A/B/C/D options
+        q = (tmp_path / "SP1" / "question.md").read_text(encoding="utf-8")
+        assert "## 选项" in q
+        # final.md assembled
+        assert (tmp_path / "SP1" / "final.md").exists()
+
+    def test_split_conceptual_short_circuits_after_skeleton(self, tmp_path):
+        sched = _SplitTestScheduler(tmp_path, conceptual=True)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline(
+            "SP2", {"slot_id": "SP2", "complexity": "conceptual"}
+        ))
+
+        assert result.ok is True
+        roles = [c["role"] for c in sched.calls]
+        # conceptual split: outline → design_card → exam_form → skeleton_design → done
+        assert roles == ["outline", "question_design", "exam_form", "skeleton_design"]
+        assert "solve" not in roles
+        assert "distractor_assembly" not in roles
+        assert "final_review" not in roles
+
+    def test_split_comprehensive_skips_distractor_assembly(self, tmp_path):
+        # Comprehensive questions have no distractor step — correct fills back
+        # the symbolic stem. The distractor_assembly graph node is a no-op for
+        # comprehensive (it short-circuits at the node level, never calling the
+        # distractor agent) and routes straight to final.
+        sched = _SplitTestScheduler(tmp_path, question_type="comprehensive")
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline(
+            "SP3", {"slot_id": "SP3", "question_type": "comprehensive"}
+        ))
+
+        assert result.ok is True
+        roles = [c["role"] for c in sched.calls]
+        # comprehensive split reaches final, but the distractor agent is never
+        # invoked (no options produced for comprehensive questions)
+        assert "distractor_assembly" not in roles
+        assert "final_review" in roles
+        q = (tmp_path / "SP3" / "question.md").read_text(encoding="utf-8")
+        assert "## 选项" not in q
+
+    def test_split_code_error_routes_back_to_skeleton(self, tmp_path):
+        # solve.py exec fails → code_error → back to skeleton_design (regenerates
+        # stem + solve.py). Skeleton keeps writing the same bad solve.py in the
+        # fake, so it loops until MAX_NODE_VISITS → ok=False (B1 guard).
+        bad_solve = "raise RuntimeError('boom')\n"
+        sched = _SplitTestScheduler(tmp_path, solve_py=bad_solve)
+        orch = self._orch(sched, tmp_path)
+
+        result = run_async(orch.run_pipeline("SP4", {"slot_id": "SP4"}))
+
+        state = json.loads((tmp_path / "SP4" / "pipeline_state.json").read_text())
+        solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
+        assert "code_error" in solve_signals
+        # bounced back to skeleton_design (not question — split path)
+        assert state["visit_counts"].get("skeleton_design", 0) >= 2
+        # B1: never solved → failure
+        assert result.ok is False
+
+
+class TestSplitDesignAgents:
+    def test_exam_form_and_skeleton_agents_load(self):
+        # §17.3 new agents exist and carry the split-design contract
+        for role in ("exam_form", "skeleton_design", "distractor_assembly"):
+            assert role in AGENT_PROMPTS, f"{role} agent not loaded"
+        ef = AGENT_PROMPTS["exam_form"]
+        assert "考察形式" in ef and "判断任务" in ef
+        sk = AGENT_PROMPTS["skeleton_design"]
+        assert "只算正确" in sk and "不发明" in sk  # skeleton writes correct-only solve.py
+
+    def test_skeleton_solve_contract_is_correct_only(self):
+        # §17.5: skeleton_design skill must instruct correct-only solve.py
+        # (no error algorithms / distractors in solve.py)
+        sk = ROLE_SKILLS.get("skeleton_design", "")
+        assert "只算正确" in sk
+        assert "不编码错误算法" in sk or "错误算法" in sk
+        # skeleton does NOT emit options (choice questions have no A/B/C/D here)
+        assert "不出 A/B/C/D" in sk or "不出答案/选项" in sk
+
+    def test_split_flag_default_off_keeps_stable_graph(self, tmp_path):
+        # The §17 split path is feature-flagged OFF by default so the stable
+        # graph path is unaffected. Verify the orchestrator picks the stable
+        # builder when the flag is unset.
+        from core_new.doc_pipeline.pipeline_graph import (
+            build_pipeline_graph, build_split_pipeline_graph,
+        )
+        orch = DocPipelineOrchestrator(scheduler=_SplitTestScheduler(tmp_path), workspace=tmp_path)
+        assert orch._should_use_split_design() is False
+

@@ -66,8 +66,8 @@ _BEHAVIOR_VARIANT_TEXT = {
         "form_gate 阶段选择题 question.md 无 A/B/C/D 选项值是正常的（选项由 solve 阶段组装），不得因此打回。"
     ),
     "solve_create": (
-        "你的模式是「exec solve.py 得真值→读输出→组装选项→写推理过程→输出」。\n"
-        "exec 输出即真值：执行 solve.py 得到正确答案+干扰值，据此组装选项、写 solution.md 推理过程。\n"
+        "你的模式是「exec solve.py 得正确答案→读输出→写推理过程→输出」（§17.5：只算正确）。\n"
+        "exec 输出即真值：执行 solve.py 得到正确答案，据此写 solution.md 推理过程。solve.py 只算正确，不算干扰值——干扰项由后续轻步骤给。\n"
         "不质疑 exec、不重算、不改题干：exec 的输出就是唯一数值来源，发现不一致只回退标记 code_error，不自行修改。\n"
         "代码错误标记 code_error 回退，不自己修代码。"
     ),

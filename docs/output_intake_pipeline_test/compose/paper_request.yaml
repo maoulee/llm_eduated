@@ -1,0 +1,82 @@
+assessment:
+  duration_minutes: 180
+  subjects:
+  - 数据结构
+  - 计算机组成原理
+  - 操作系统
+  - 计算机网络
+  total_score: 150
+  type: kaoyan_408
+constraints:
+  allow_similar_to_past: false
+  min_knowledge_diversity: 4
+  subject_balance_notes: 各科分值参考408标准：数据结构~45分，组成原理~45分， 操作系统~35分，计算机网络~25分。综合题大题分数允许微调。
+difficulty:
+  anchor_source: kaoyan_408
+  distribution:
+    easy: 15
+    hard: 50
+    medium: 35
+  target: hard
+knowledge_scope:
+  coverage_strategy: exam_weighted
+  excluded_points:
+  - Cache
+  - 虚拟内存
+  focus_points: []
+  primary_chapters:
+  - 数据结构 > 全部章节
+  - 计算机组成原理 > 全部章节
+  - 操作系统 > 全部章节
+  - 计算机网络 > 全部章节
+  subject_difficulty_override:
+    操作系统:
+      cold_topics_required: true
+      notes: 需纳入冷门/低频考点，避免常见高频题
+    数据结构:
+      distribution:
+        easy: 40
+        hard: 10
+        medium: 50
+      target: easy_medium
+question_config:
+  types:
+  - count_range:
+    - 40
+    - 40
+    score_per: 2
+    subject_allocation:
+      操作系统: 11
+      数据结构: 10
+      计算机组成原理: 11
+      计算机网络: 8
+    type: single_choice
+  - count_range:
+    - 7
+    - 7
+    score_range:
+    - 70
+    - 70
+    subject_allocation:
+      操作系统: 2
+      数据结构: 2
+      计算机组成原理: 2
+      计算机网络: 1
+    type: comprehensive
+retrieval_policy:
+  generate_gap: true
+  max_scan: 2000
+  prefer_existing: true
+  top_k_per_slot: 3
+schema_version: paper_request_v1
+source:
+  intake_type: human_input
+  pre_extracted_data: null
+teacher_preferences:
+  avoid:
+  - Cache
+  - 虚拟内存
+  require:
+  - 操作系统冷门考点
+  style_notes: 整体难度偏难，接近考研真题上限。 数据结构部分降档为基础-中等难度，不出偏难怪题。 操作系统部分需要覆盖冷门考点，如：进程通信细节、磁盘调度高级算法、
+    文件系统实现细节等低频但大纲范围内知识点。 组成原理和计算机网络按正常偏难标准出题。

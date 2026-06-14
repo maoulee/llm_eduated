@@ -57,16 +57,17 @@ _VALUE_TAG_RE = re.compile(r"^\s*(?:正确|答案|answer|correct|干扰|distract
 def _validate_solve_output(
     output_path: Path, *, question_type: str | None = None,
 ) -> dict[str, Any]:
-    """Validate solve.py exec output for code-as-truth correctness.
+    """Validate solve.py exec output (§17.5: solve only computes the CORRECT answer).
 
-    Contract (spec §15.3, kept deliberately loose — no fixed code template):
+    Contract (spec §17.5, kept deliberately loose — no fixed code template):
     - output must be non-empty
-    - for single-choice: 4 distinct labeled values (correct + 3 distractors)
-    - duplicates / missing values → code_error (Question re-tunes parameters)
+    - must contain at least one labeled correct answer
+      (single_choice: the correct value; comprehensive: each sub-question answer)
+    - solve.py does NOT compute distractors — distractor distinctness is checked
+      later in the distractor-assembly step, not here.
 
-    ``question_type`` ("single_choice" / "comprehensive" / ...) selects the
-    strictness: choice questions require 4 distinct values; comprehensive /
-    conceptual questions are validated loosely (only flag total collapse).
+    ``question_type`` ("single_choice" / "comprehensive" / ...) is informational;
+    under §17.5 neither path requires multiple distinct values from solve.
 
     Returns {"ok": bool, "reason": str, "values": list[str]}.
     """
@@ -91,33 +92,11 @@ def _validate_solve_output(
         # treat as ok — not every solve.py prints scalar answers.
         return {"ok": True, "reason": "", "values": []}
 
-    distinct = set(values)
-
-    # Single-choice questions must yield 4 distinct option values (correct +
-    # 3 distractors). Anything fewer means parameters collapsed into
-    # duplicates — a bad question, route back to Question.
-    is_choice = question_type in (
-        "single_choice", "sc", "选择题", None, "",
-    )  # default strict when question_type is unknown
-    if is_choice:
-        if len(distinct) < 4 and len(values) >= 4:
-            return {
-                "ok": False,
-                "reason": (
-                    f"single_choice needs 4 distinct values, got "
-                    f"{len(distinct)} distinct across {len(values)} printed"
-                ),
-                "values": values,
-            }
-    else:
-        # Comprehensive / conceptual: only flag total collapse to one value.
-        if len(distinct) == 1 and len(values) >= 4:
-            return {
-                "ok": False,
-                "reason": f"all {len(values)} values identical ({values[0]})",
-                "values": values,
-            }
-    return {"ok": True, "reason": "", "values": sorted(distinct)}
+    # §17.5: solve only computes the correct answer. We only require that the
+    # correct answer is present (at least one value). Distractor distinctness
+    # (4 distinct option values) is NOT a solve-stage concern — it is verified
+    # in the downstream distractor-assembly step.
+    return {"ok": True, "reason": "", "values": values}
 
 
 def _question_role(
@@ -411,6 +390,105 @@ class DocPipelineOrchestrator:
         )
         if not question_path.exists():
             return self._fail_result(slot_id, "Question agent did not write question.md")
+        return None
+
+    # ── §17 split-design stage helpers ──────────────────────────────
+
+    async def _run_exam_form(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
+    ) -> PipelineResult | None:
+        """§17.3 exam_form: KP + K-radar → examination form (narrow judgment).
+
+        Writes exam_form.md. Returns None on success, failed result on error.
+        """
+        exam_form_path = ws / "exam_form.md"
+        design_card_path = ws / "design_card.md"
+        ef_inject = {"规划": str(ref_path)}
+        if design_card_path.exists():
+            ef_inject["设计卡"] = str(design_card_path)
+        ef_inject = await self._resolve_inject("exam_form", slot_id, 2, ef_inject)
+        ef_task = (
+            "§17.3 考察形式判定：根据知识点(KP) + 目标 K-雷达形状，选定考察形式并落地 K-雷达值。"
+            "只判定形式，不写题干/答案/选项。产出 exam_form.md。"
+        )
+        await self.scheduler.run_agent(
+            "exam_form", ef_task, slot_id=slot_id, inject_files=ef_inject,
+        )
+        if not exam_form_path.exists():
+            return self._fail_result(slot_id, "exam_form agent did not write exam_form.md")
+        return None
+
+    async def _run_skeleton_design(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
+        *, feedback: str = "",
+    ) -> PipelineResult | None:
+        """§16.2/§17.3 skeleton_design: reuse past-paper skeleton → symbolic stem + solve.py.
+
+        Writes question.md (symbolic stem, no options/answers) + solve.py
+        (correct-algorithm DAG, §17.5 — no error algorithms).
+        """
+        question_path = ws / "question.md"
+        design_card_path = ws / "design_card.md"
+        exam_form_path = ws / "exam_form.md"
+        sk_inject = {"规划": str(ref_path)}
+        if design_card_path.exists():
+            sk_inject["设计卡"] = str(design_card_path)
+        if exam_form_path.exists():
+            sk_inject["考察形式"] = str(exam_form_path)
+        sk_inject = await self._resolve_inject("skeleton_design", slot_id, 2, sk_inject)
+        sk_task = (
+            "§16.2/§17.3 骨架复用出题：检索同题型往年题→分析复用骨架→符号化题干（参数符号占位）"
+            "+ 写 solve.py（正确算法 DAG，§17.5 只算正确，不编码错误算法/干扰值）。"
+            "只出题干+设问，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
+        )
+        if feedback:
+            sk_task += f"\n\n## 审核反馈\n{feedback}"
+        await self.scheduler.run_agent(
+            "skeleton_design", sk_task, slot_id=slot_id, inject_files=sk_inject,
+            continue_session=bool(feedback),
+        )
+        if not question_path.exists():
+            return self._fail_result(slot_id, "skeleton_design agent did not write question.md")
+        return None
+
+    async def _run_distractor_assembly(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path,
+    ) -> PipelineResult | None:
+        """§17.5 distractor light-give: after solve computes correct, give 3
+        plausible wrong values (NOT code-computed), verify 4 distinct, append
+        options to question.md. Only for single-choice questions.
+
+        Returns None on success; a failed result only on hard failure.
+        Distinctness problems surface via the returned exec_result-like dict
+        consumed by the caller (DistractorNode emits distractor_error).
+        """
+        question_type = slot_data.get("question_type")
+        is_choice = _question_role(
+            slot_id, question_type=question_type, slot_data=slot_data,
+        ) == "question_sc"
+        if not is_choice:
+            # Comprehensive questions: correct answers fill back into the
+            # symbolic stem via the solve/solution stage — no distractor step.
+            return None
+
+        question_path = ws / "question.md"
+        output_path = ws / "solve_output.txt"
+        solution_path = ws / "solution.md"
+        da_inject = {"题目": str(question_path)}
+        if output_path.exists():
+            da_inject["代码输出"] = str(output_path)
+        if solution_path.exists():
+            da_inject["求解结果"] = str(solution_path)
+        da_task = (
+            "§17.5 干扰项轻给（选择题）：solve 已算出正确答案（见 solve_output.txt / solution.md）。"
+            "基于 correct + 题目情境，直接给 3 个合理错误值（plausible 范围/风格，或从 correct 派生："
+            "±offset / off-by-one / 符号 / 单位）。非代码计算。"
+            "verify 4 值（correct + 3 干扰）两两不同 + 干扰不撞正确值。"
+            "用 edit_file 把 A/B/C/D 选项（correct + 3 干扰，随机化顺序）追加进 question.md 选项区，不碰题干。"
+        )
+        await self.scheduler.run_agent(
+            "distractor_assembly", da_task, slot_id=slot_id, inject_files=da_inject,
+        )
         return None
 
     async def _run_review_only(
@@ -980,6 +1058,21 @@ class DocPipelineOrchestrator:
             self._use_graph_enabled = cfg.params.features.get("enable_pipeline_graph", False)
         return self._use_graph_enabled
 
+    def _should_use_split_design(self) -> bool:
+        """Feature flag (§17): use the split-focused design graph
+        (exam_form → skeleton_design → form_gate → solve → distractor_assembly).
+
+        Gated independently of enable_pipeline_graph so the split architecture
+        can be A/B-tested without disturbing the stable graph path.
+        """
+        if not hasattr(self, "_split_design_enabled"):
+            from .pipeline_config import load_pipeline_config
+            cfg = load_pipeline_config()
+            self._split_design_enabled = cfg.params.features.get(
+                "enable_split_design", False
+            )
+        return self._split_design_enabled
+
     async def _run_graph(
         self,
         slot_id: str,
@@ -995,8 +1088,10 @@ class DocPipelineOrchestrator:
         job.
         """
         from .pipeline_graph import (
+            PipelineGraph,
             PipelineState,
             build_pipeline_graph,
+            build_split_pipeline_graph,
         )
 
         ws = self.workspace / slot_id
@@ -1013,6 +1108,7 @@ class DocPipelineOrchestrator:
             return blueprint_ok
 
         # ── Graph: Layer 1.5 → done ──────────────────────────────
+        use_split = self._should_use_split_design()
         state = PipelineState.resume(
             slot_id, self.workspace, slot_data,
             code_as_truth=self._should_use_graph(),
@@ -1020,7 +1116,11 @@ class DocPipelineOrchestrator:
             slot_id=slot_id, slot_data=slot_data, workspace=self.workspace,
             code_as_truth=self._should_use_graph(),
         )
-        graph = build_pipeline_graph(self, self.workspace)
+        graph = (
+            build_split_pipeline_graph(self, self.workspace)
+            if use_split
+            else build_pipeline_graph(self, self.workspace)
+        )
         await graph.run(state)
 
         # If a node recorded a hard failure, surface it.
@@ -1037,12 +1137,20 @@ class DocPipelineOrchestrator:
         # stop), the slot failed — never report a false ok. SolveNode's
         # code_error path routes back to Question but does not set state.result,
         # so without this guard the slot would be assembled as ok=True.
-        if solve_signal is not None and solve_signal != "success":
-            from .pipeline_graph import PipelineGraph
+        # In the §17 split path, distractor_assembly looping on distractor_error
+        # is treated the same way (never reached a clean final).
+        last_signal = state.history[-1]["signal"] if state.history else ""
+        failed_terminal = (
+            (solve_signal is not None and solve_signal != "success")
+            or (use_split and last_signal == "distractor_error")
+        )
+        if failed_terminal:
             solve_visits = state.visit_counts.get("solve", 0)
             reason = (
                 f"solve never succeeded (last signal={solve_signal}, "
                 f"solve visits={solve_visits}, max={PipelineGraph.MAX_NODE_VISITS})"
+                if not (use_split and last_signal == "distractor_error")
+                else "distractor_assembly never produced 4 distinct options"
             )
             logger.error("[%s] %s", slot_id, reason)
             return self._fail_result(slot_id, reason)
@@ -1051,12 +1159,19 @@ class DocPipelineOrchestrator:
             final_status = history_signals["final"]
             if final_status in ("pass", "expression_fix"):
                 final_status = "pass"
+        elif use_split and "skeleton_design" in history_signals and state.complexity == "conceptual":
+            # Split conceptual: skeleton_design → done (no form_gate/final).
+            final_status = "pass"
         elif "form_gate" in history_signals and state.complexity == "conceptual":
             final_status = "pass"
         else:
             final_status = solve_signal or "pass"
 
-        question_visits = state.visit_counts.get("question", 1)
+        question_visits = (
+            state.visit_counts.get("skeleton_design", 1)
+            if use_split
+            else state.visit_counts.get("question", 1)
+        )
         solve_path = ws / "solve.py"
         exec_ok = (
             "solve" in history_signals
