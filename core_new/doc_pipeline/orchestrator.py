@@ -205,6 +205,13 @@ class DocPipelineOrchestrator:
                 "experience_doc": assembled_experience_doc,
                 "k_definitions": k_definitions,
             }
+            # §21 概念题独立分支：跳过 design_card/exam_form，直接 concept_creator → concept_review
+            if slot_data.get("complexity") == "conceptual":
+                return await self._run_concept_pipeline(
+                    slot_id, slot_data,
+                    assembled_experience_doc=assembled_experience_doc,
+                    k_definitions=k_definitions,
+                )
             return await self._run_graph(
                 slot_id, slot_data,
                 assembled_experience_doc=assembled_experience_doc,
@@ -1073,6 +1080,99 @@ class DocPipelineOrchestrator:
                 "enable_split_design", False
             )
         return self._split_design_enabled
+
+    async def _run_concept_pipeline(
+        self,
+        slot_id: str,
+        slot_data: dict[str, Any],
+        *,
+        assembled_experience_doc: str,
+        k_definitions: str,
+    ) -> PipelineResult:
+        """§21 概念题独立分支：concept_creator → concept_review → done。
+
+        跳过 design_card/exam_form（概念题不需要规划卡/K-雷达窄判断）。
+        两个轻量智能体直通：出题（基于考点+知识）→ 审核（格式/事实/题型期望）。
+        """
+        ws = self.workspace / slot_id
+        ws.mkdir(parents=True, exist_ok=True)
+        total_start = time.monotonic()
+
+        # Layer 1: Blueprint（出题契约，含考点列表）
+        blueprint_ok = await self._ensure_blueprint(
+            slot_id, slot_data, ws,
+            assembled_experience_doc=assembled_experience_doc,
+            k_definitions=k_definitions,
+            start_layer=1,
+        )
+        if blueprint_ok is not None:
+            return blueprint_ok
+
+        ref_path = ws / "assembled.md" if (ws / "assembled.md").exists() else (ws / "blueprint.md")
+
+        # ── 概念出题（design agent + conceptual_batch_skill）──────────
+        logger.info("[%s] §21 概念题分支：concept_creator", slot_id)
+        question_path = ws / "question.md"
+        c_inject = {"规划": str(ref_path)}
+        c_inject = await self._resolve_inject("design", slot_id, 2, c_inject)
+        c_task = (
+            "§21 概念题批量出题：基于蓝图的考点列表 + 你的知识，一次性出多道概念题。"
+            "每道直接写题干+选项（A/B/C/D）+答案+解析。概念题无计算，直接给答案。"
+            "同时写 question.md（所有题）+ solution.md（每题解析）。"
+        )
+        await self.scheduler.run_agent(
+            "design", c_task, slot_id=slot_id, inject_files=c_inject,
+            skill_override="conceptual_batch_skill",
+        )
+        if not question_path.exists():
+            return self._fail_result(slot_id, "concept creator did not write question.md")
+
+        # ── 概念审核（review agent + concept review 标准）──────────
+        logger.info("[%s] §21 概念题分支：concept_review", slot_id)
+        review_path = ws / "review.md"
+        r_inject = await self._resolve_inject("review", slot_id, 3, {
+            "规划": str(ref_path), "题目": str(question_path),
+        })
+        r_task = (
+            "§21 概念题审核：检查每道题的 (1)格式合规（题干+A/B/C/D+答案+解析，无代码无冗余）"
+            "(2)事实性正确（答案对不对，干扰项是否对应真实认知错误）"
+            "(3)题型期望对齐（每题考的是否是指定考点）。"
+            "不审 K-雷达/条件充分性/参数（概念题无计算）。全 pass→status=pass，有错→needs_fix。"
+        )
+        await self.scheduler.run_agent(
+            "review", r_task, slot_id=slot_id, inject_files=r_inject,
+        )
+        if not review_path.exists():
+            return self._fail_result(slot_id, "concept review did not write review.md")
+
+        review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
+        logger.info("[%s] §21 concept review: status=%s", slot_id, review_status)
+
+        # needs_fix: 回退重出题（最多 2 轮）
+        for retry in range(2):
+            if review_status != "needs_fix":
+                break
+            logger.info("[%s] §21 concept needs_fix → retry %d", slot_id, retry + 1)
+            feedback_body = parse_doc_section(str(review_path), "corrections")
+            if not feedback_body.strip() or feedback_body.strip() == "无":
+                feedback_body = parse_doc_section(str(review_path), "summary")
+            c_task_retry = c_task + f"\n\n## 审核反馈（第{retry+1}轮）\n{feedback_body}"
+            await self.scheduler.run_agent(
+                "design", c_task_retry, slot_id=slot_id, inject_files=c_inject,
+                skill_override="conceptual_batch_skill", continue_session=True,
+            )
+            await self.scheduler.run_agent(
+                "review", r_task, slot_id=slot_id, inject_files=r_inject, continue_session=True,
+            )
+            review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
+            logger.info("[%s] §21 concept review retry %d: status=%s", slot_id, retry+1, review_status)
+
+        # ── 组装 final.md ──────────────────────────────────────────
+        exec_result: dict[str, Any] = {"ok": True, "skipped": True}
+        return await self._assemble_result(
+            slot_id, ws, total_start=total_start,
+            final_iteration=1, final_status="pass", exec_result=exec_result,
+        )
 
     async def _run_graph(
         self,

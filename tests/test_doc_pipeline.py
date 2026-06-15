@@ -1568,7 +1568,7 @@ class TestPipelineGraphRouting:
         # final.md assembled
         assert (tmp_path / "G1" / "final.md").exists()
 
-    def test_conceptual_graph_skips_solve_and_final(self, tmp_path):
+    def test_conceptual_skips_solve_and_final(self, tmp_path):
         sched = _GraphTestScheduler(tmp_path, conceptual=True)
         orch = self._orch(sched, tmp_path)
 
@@ -1578,10 +1578,11 @@ class TestPipelineGraphRouting:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §19 conceptual: outline → design_card → design → done.
-        # No form_gate/solve/final review (graph routes design → done for conceptual).
-        assert roles == ["outline", "question_design", "design"]
-        assert "review" not in roles
+        # §21 conceptual: outline → design(concept batch) → review(concept审核) → done
+        # 独立分支（_run_concept_pipeline），不走 design_card/exam_form/solve/final
+        assert roles == ["outline", "design", "review"]
+        assert "question_design" not in roles  # 跳过 design_card
+        assert "exam_form" not in roles
         assert "solve" not in roles
         assert "final_review" not in roles
 
@@ -1785,7 +1786,7 @@ class TestSplitDesignGraph:
         # final.md assembled
         assert (tmp_path / "SP1" / "final.md").exists()
 
-    def test_split_conceptual_skips_exam_form(self, tmp_path):
+    def test_split_conceptual_independent_pipeline(self, tmp_path):
         sched = _SplitTestScheduler(tmp_path, conceptual=True)
         orch = self._orch(sched, tmp_path)
 
@@ -1795,10 +1796,11 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §21 conceptual: outline → design_card → design → form_gate → done
-        # 概念题跳过 exam_form（不需要 K-雷达窄判断），轻量 design_card 后直接批量出题
-        assert roles == ["outline", "question_design", "design", "review"]
-        assert "exam_form" not in roles  # §21: 跳过 exam_form
+        # §21 conceptual: outline → design(concept) → review(concept) → done
+        # 独立分支 _run_concept_pipeline，跳过 design_card/exam_form
+        assert roles == ["outline", "design", "review"]
+        assert "question_design" not in roles
+        assert "exam_form" not in roles
         assert "solve" not in roles
         assert "design2" not in roles
         assert "final_review" not in roles

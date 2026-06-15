@@ -511,17 +511,11 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
     g.add_node("design2", DesignFinalizeNode(scheduler, workspace))
     g.add_node("final", FinalNode(scheduler, workspace))
 
-    g.edge("design_card", "ok", "exam_form",
-           condition=lambda s: s.complexity != "conceptual")
-    # §21 conceptual: 跳过 exam_form（概念题不需要 K-雷达窄判断/考察形式推演），
-    # design_card 摘取知识点意图后直接进 design 批量出题。
-    g.edge("design_card", "ok", "design",
-           condition=lambda s: s.complexity == "conceptual")
+    g.edge("design_card", "ok", "exam_form")
     g.edge("exam_form", "ok", "design")
-    # §21 conceptual: design → form_gate (审核) → done. 概念题批量出题后走审核。
+    # §21: conceptual 不走此 graph（_run_concept_pipeline 独立处理）。
     g.edge("design", "ok", "form_gate")
-    g.edge("form_gate", "pass", "done", condition=lambda s: s.complexity == "conceptual")
-    g.edge("form_gate", "pass", "solve", condition=lambda s: s.complexity != "conceptual")
+    g.edge("form_gate", "pass", "solve")
     g.edge("form_gate", "needs_fix", "design")
     g.edge("solve", "success", "design2")
     # §19.5: solve never back-routes; failure is terminal.
