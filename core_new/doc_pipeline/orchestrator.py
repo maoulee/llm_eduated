@@ -324,11 +324,26 @@ class DocPipelineOrchestrator:
             return
 
         logger.info("[%s] Layer 1.5: Design Card", slot_id)
-        d_task = (
-            "请根据以下单题蓝图生成 design_card.md 设计卡。\n\n"
-            "严格按 design_card schema v1 格式输出，9 个 section 全部必填。\n"
-            "只生成设计卡，不写题目、不写答案、不写代码。"
-        )
+        is_conceptual = slot_data.get("complexity") == "conceptual"
+        if is_conceptual:
+            # §21 概念题轻量设计卡：只摘知识点意图 + 考察方向，不规划参数/求解动作
+            d_task = (
+                "请根据蓝图生成 design_card.md（概念题轻量版）。\n\n"
+                "概念题不需要参数规划/求解动作/计算逻辑。只需写：\n"
+                "1. blueprint_contract（知识点/难度/should_be/should_not_be）\n"
+                "2. core_knowledge_intent（must_test 概念辨析点）\n"
+                "3. design_rationale（为什么考这些概念点）\n"
+                "4. question_structure_plan（概念题形式：辨析/组合判断/机制理解）\n"
+                "5. audit_focus（审核重点：概念准确性/干扰有效性）\n"
+                "不写 parameter_plan / expected_reasoning_actions / route（概念题无计算）。\n"
+                "简洁产出，不过度规划。"
+            )
+        else:
+            d_task = (
+                "请根据以下单题蓝图生成 design_card.md 设计卡。\n\n"
+                "严格按 design_card schema v1 格式输出，9 个 section 全部必填。\n"
+                "只生成设计卡，不写题目、不写答案、不写代码。"
+            )
         teacher_ann = slot_data.get("teacher_annotation", "")
         if teacher_ann:
             d_task += (
