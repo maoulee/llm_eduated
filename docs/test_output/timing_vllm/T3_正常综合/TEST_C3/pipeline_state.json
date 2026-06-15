@@ -1,0 +1,50 @@
+{
+  "slot_id": "TEST_C3",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "solve": 1,
+    "design2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题目设计质量合格。初始AVL树结构合法（各节点BF均在[-1,1]范围内），插入关键字1的设定能触发左子树失衡及旋转操作，题干提问指向明确，条件充分无冗余，风格合规。选择题无选项值属form_gate阶段正常状态（由solve阶段组装），不构成缺陷。"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    },
+    {
+      "node": "design2",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}
