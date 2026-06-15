@@ -1,0 +1,75 @@
+2026-06-15 01:26:46,395 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 01:26:46,409 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 01:26:46,793 - INFO - Loaded 10 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-15 01:26:47,248 - INFO - Initializing LLM provider type: api
+2026-06-15 01:26:47,276 - INFO - RemoteAPIProvider initialized: model=glm-5.2 base_url=https://open.bigmodel.cn/api/coding/paas/v4 protocol=openai_chat batch_size=4 thinking=param
+2026-06-15 01:26:47,276 - INFO - LLMGateway initialized: provider=glm5.1 model=glm-5.2 scope=remote max_attempts=10
+2026-06-15 01:26:53,630 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:26:54,989 - INFO - [stream_chat] streaming... chunks=50 reasoning=212 content=0 provider=glm5.1
+2026-06-15 01:26:55,865 - INFO - [stream_chat] streaming... chunks=100 reasoning=388 content=0 provider=glm5.1
+2026-06-15 01:26:58,023 - INFO - [stream_chat] streaming... chunks=150 reasoning=650 content=0 provider=glm5.1
+2026-06-15 01:27:00,348 - INFO - [stream_chat] streaming... chunks=200 reasoning=926 content=0 provider=glm5.1
+2026-06-15 01:27:03,089 - INFO - [stream_chat] streaming... chunks=250 reasoning=1144 content=0 provider=glm5.1
+2026-06-15 01:27:05,379 - INFO - [stream_chat] streaming... chunks=300 reasoning=1380 content=0 provider=glm5.1
+2026-06-15 01:27:07,115 - INFO - [stream_chat] streaming... chunks=350 reasoning=1563 content=0 provider=glm5.1
+2026-06-15 01:27:09,186 - INFO - [stream_chat] streaming... chunks=400 reasoning=1782 content=0 provider=glm5.1
+2026-06-15 01:27:10,423 - INFO - [stream_chat] streaming... chunks=450 reasoning=2005 content=0 provider=glm5.1
+2026-06-15 01:27:11,999 - INFO - [stream_chat] streaming... chunks=500 reasoning=2245 content=0 provider=glm5.1
+2026-06-15 01:27:16,179 - INFO - [stream_chat] streaming... chunks=550 reasoning=2471 content=0 provider=glm5.1
+2026-06-15 01:27:17,109 - INFO - [stream_chat] streaming... chunks=600 reasoning=2638 content=0 provider=glm5.1
+2026-06-15 01:27:18,704 - INFO - [stream_chat] streaming... chunks=650 reasoning=2820 content=0 provider=glm5.1
+2026-06-15 01:27:20,922 - INFO - [stream_chat] streaming... chunks=700 reasoning=3032 content=0 provider=glm5.1
+2026-06-15 01:27:22,222 - INFO - [stream_chat] streaming... chunks=750 reasoning=3172 content=0 provider=glm5.1
+2026-06-15 01:27:26,633 - INFO - [stream_chat] streaming... chunks=800 reasoning=3403 content=0 provider=glm5.1
+2026-06-15 01:27:27,034 - INFO - [stream_chat] streaming... chunks=850 reasoning=3465 content=63 provider=glm5.1
+2026-06-15 01:27:28,177 - INFO - [stream_chat] streaming... chunks=900 reasoning=3465 content=157 provider=glm5.1
+2026-06-15 01:27:29,997 - INFO - [stream_chat] streaming... chunks=950 reasoning=3465 content=231 provider=glm5.1
+2026-06-15 01:29:06,307 - INFO - [stream_chat] provider=glm5.1 content=289 reasoning=3465 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:06,325 - INFO - [TEST_Q45] Executing tool: write_file({'path': 'gen.py', 'content': '# -*- coding: utf-8 -*-\n"""\n银行家算法综合题生成器\n- 5 进程, 3 资源\n- 设问1: P1 请求)
+2026-06-15 01:29:06,340 - INFO - [TEST_Q45] Agent 'design' attempt 1: tools executed, question.md not written (no_file=0, total=1, continuing)
+2026-06-15 01:29:09,871 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:10,271 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=41 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:10,277 - INFO - [TEST_Q45] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 01:29:10,314 - INFO - [TEST_Q45] Agent 'design' attempt 2: tools executed, question.md not written (no_file=1, total=2, continuing)
+2026-06-15 01:29:17,326 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:20,459 - INFO - [stream_chat] provider=glm5.1 content=10 reasoning=124 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:20,465 - INFO - [TEST_Q45] Executing tool: edit_file({'path': 'gen.py', 'old_string': 'print("（3）有人说"系统处于不安全状态就一定会发生死锁"，这种说法是否正确？请简述理由。")', 'new_string':)
+2026-06-15 01:29:20,476 - INFO - [TEST_Q45] Agent 'design' attempt 3: tools executed, question.md not written (no_file=0, total=3, continuing)
+2026-06-15 01:29:28,385 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:28,387 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=0 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:28,391 - INFO - [TEST_Q45] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 01:29:28,428 - INFO - [TEST_Q45] Agent 'design' attempt 4: tools executed, question.md not written (no_file=1, total=4, continuing)
+2026-06-15 01:29:34,121 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:35,877 - INFO - [stream_chat] provider=glm5.1 content=17 reasoning=75 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:35,886 - INFO - [TEST_Q45] Executing tool: edit_file({'old_string': 'print("    因为不安全状态只是说"无法保证所有进程都能完成"，")', 'new_string': 'print("    因为不安全状态只是说\\u201c)
+2026-06-15 01:29:35,896 - INFO - [TEST_Q45] Agent 'design' attempt 5: tools executed, question.md not written (no_file=0, total=5, continuing)
+2026-06-15 01:29:42,539 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:42,541 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=0 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:29:42,546 - INFO - [TEST_Q45] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 01:29:42,582 - INFO - [TEST_Q45] Agent 'design' attempt 6: tools executed, question.md not written (no_file=1, total=6, continuing)
+2026-06-15 01:29:50,049 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 01:29:51,420 - INFO - [stream_chat] streaming... chunks=50 reasoning=198 content=0 provider=glm5.1
+2026-06-15 01:29:52,917 - INFO - [stream_chat] streaming... chunks=100 reasoning=319 content=0 provider=glm5.1
+2026-06-15 01:29:53,907 - INFO - [stream_chat] streaming... chunks=150 reasoning=496 content=0 provider=glm5.1
+2026-06-15 01:29:55,833 - INFO - [stream_chat] streaming... chunks=200 reasoning=706 content=0 provider=glm5.1
+2026-06-15 01:29:57,970 - INFO - [stream_chat] streaming... chunks=250 reasoning=939 content=0 provider=glm5.1
+2026-06-15 01:29:59,413 - INFO - [stream_chat] streaming... chunks=300 reasoning=1068 content=0 provider=glm5.1
+2026-06-15 01:30:01,977 - INFO - [stream_chat] streaming... chunks=350 reasoning=1321 content=0 provider=glm5.1
+2026-06-15 01:30:03,864 - INFO - [stream_chat] streaming... chunks=400 reasoning=1519 content=0 provider=glm5.1
+2026-06-15 01:30:06,444 - INFO - [stream_chat] streaming... chunks=450 reasoning=1749 content=0 provider=glm5.1
+2026-06-15 01:30:18,983 - INFO - [stream_chat] provider=glm5.1 content=32 reasoning=1769 tool_calls=1 finish_reason=tool_calls
+2026-06-15 01:30:18,989 - INFO - [TEST_Q45] Executing tool: write_file({'content': '# Q45 银行家算法——资源分配与安全性推演\n\n## 题目\n\n某系统中有 5 个进程 P0~P4 和 3 类资源 A、B、C，系统采用银行家算法进行死锁避免。当前时)
+
+======================================================================
+  [C 代码一次性] Q45_银行家 | provider=glm5.1
+======================================================================
+  211.7s | gen=True question=True solution=False exec_ok=False 4段=False
+    ✓ gen.py
+    ✓ question.md
+    ✗ solution.md
+
+======================================================================
+  C 代码一次性 结果（provider=glm5.1）
+======================================================================
+  Q45_银行家           211.7s ok=False exec=False
+  → ✗ 有失败
