@@ -542,9 +542,14 @@ class FormGateNode2(_OrchestratorNode):
         feedback = ""
         if review_path.exists():
             status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+            # W4 fix: match FormGateNode's 4-level fallback for consistency
             feedback = parse_doc_section(str(review_path), "fix_instructions")
-            if not feedback.strip():
+            if not feedback.strip() or feedback.strip() == "无":
                 feedback = parse_doc_section(str(review_path), "feedback_for_agent")
+            if not feedback.strip() or feedback.strip() == "无":
+                feedback = parse_doc_section(str(review_path), "corrections")
+            if not feedback.strip() or feedback.strip() == "无":
+                feedback = parse_doc_section(str(review_path), "summary")
         return AgentResult(signal=status, feedback=feedback)
 
 

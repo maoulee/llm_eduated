@@ -491,6 +491,10 @@ class DocPipelineOrchestrator:
         )
         if not question_path.exists():
             return self._fail_result(slot_id, "design P1 did not write question.md")
+        # W1 fix: clear design session after each round to prevent context pollution
+        # on form_gate retry (ensure each form_gate回退 starts clean)
+        if hasattr(self.scheduler, "clear_session"):
+            self.scheduler.clear_session(slot_id, "design")
         return None
 
     async def _run_distractor_assembly(
@@ -874,36 +878,33 @@ class DocPipelineOrchestrator:
             elif final_status == "expression_fix":
                 break
             elif final_status == "question_error" and final_iter < MAX_FINAL_RETRIES:
-                # §19: re-design (design P1) + re-solve, then finalize again.
-                logger.info("[%s] Final Review: question_error -> re-running design P1", slot_id)
+                # §22 split graph: re-design (first round) + re-design_solve
+                logger.info("[%s] Final Review: question_error -> re-running design", slot_id)
                 feedback = parse_doc_section(str(final_review_path), "routing_feedback")
                 await self._run_design_pass1(
                     slot_id, slot_data, ws, ref_path, feedback=f"## 终审反馈（题目错误）\n{feedback}",
                 )
                 if not question_path.exists():
-                    return (final_status, self._fail_result(slot_id, "design P1 (retry) did not write question.md"))
-
-                # Re-solve after design fix
-                logger.info("[%s] Re-solving after design fix", slot_id)
-                fail, _ = await self._run_solve(
-                    slot_id, ws, start_layer=start_layer, question_type=question_type,
+                    return (final_status, self._fail_result(slot_id, "design (retry) did not write question.md"))
+                # §22: use design_solve instead of _run_solve (gen.py is the solver)
+                fail = await self._run_design_solve(
+                    slot_id, slot_data, ws, ref_path,
                 )
                 if fail is not None:
                     return (final_status, fail)
                 if not solution_path.exists():
-                    return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
+                    return (final_status, self._fail_result(slot_id, "design_solve (retry) did not write solution.md"))
 
             elif final_status == "solution_error" and final_iter < MAX_FINAL_RETRIES:
-                # §19: re-solve (own reset-retry) then re-finalize via design P2.
-                logger.info("[%s] Final Review: solution_error -> re-running Solve", slot_id)
-                fail, _ = await self._run_solve(
-                    slot_id, ws, start_layer=start_layer, question_type=question_type,
+                # §22 split graph: re-design_solve (gen.py exec + solution)
+                logger.info("[%s] Final Review: solution_error -> re-running design_solve", slot_id)
+                fail = await self._run_design_solve(
+                    slot_id, slot_data, ws, ref_path,
                 )
                 if fail is not None:
                     return (final_status, fail)
-                await self._run_design_pass2(slot_id, slot_data, ws)
                 if not solution_path.exists():
-                    return (final_status, self._fail_result(slot_id, "Solve agent (retry) did not write solution.md"))
+                    return (final_status, self._fail_result(slot_id, "design_solve (retry) did not write solution.md"))
             else:
                 return (final_status, self._fail_result(slot_id, f"Final Review unresolved status: {final_status}"))
 
