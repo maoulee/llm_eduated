@@ -1,0 +1,70 @@
+2026-06-15 02:55:17,638 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 02:55:17,653 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 02:55:17,676 - INFO - Loaded 11 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-15 02:55:17,698 - INFO - Initializing LLM provider type: api
+2026-06-15 02:55:17,722 - INFO - RemoteAPIProvider initialized: model=glm-5.2 base_url=https://open.bigmodel.cn/api/coding/paas/v4 protocol=openai_chat batch_size=4 thinking=param
+2026-06-15 02:55:17,722 - INFO - LLMGateway initialized: provider=glm5.1 model=glm-5.2 scope=remote max_attempts=10
+2026-06-15 02:55:17,742 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 02:55:17,746 - INFO - [TEST_CONCEPT] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-15 02:55:17,767 - INFO - [TEST_CONCEPT] §21 概念题分支：concept_creator（无思考）
+2026-06-15 02:55:18,403 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 429 Too Many Requests"
+2026-06-15 02:55:18,421 - INFO - Transport retry attempt 1, waiting 3.0s
+2026-06-15 02:56:24,012 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/coding/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 02:56:28,275 - INFO - [stream_chat] streaming... chunks=50 reasoning=227 content=0 provider=glm5.1
+2026-06-15 02:56:48,802 - INFO - [stream_chat] streaming... chunks=100 reasoning=442 content=0 provider=glm5.1
+2026-06-15 02:56:53,951 - INFO - [stream_chat] streaming... chunks=150 reasoning=702 content=0 provider=glm5.1
+2026-06-15 02:56:59,141 - INFO - [stream_chat] streaming... chunks=200 reasoning=889 content=0 provider=glm5.1
+2026-06-15 02:57:02,735 - INFO - [stream_chat] streaming... chunks=250 reasoning=1000 content=0 provider=glm5.1
+2026-06-15 02:57:05,204 - INFO - [stream_chat] streaming... chunks=300 reasoning=1255 content=0 provider=glm5.1
+2026-06-15 02:57:07,624 - INFO - [stream_chat] streaming... chunks=350 reasoning=1518 content=0 provider=glm5.1
+2026-06-15 02:57:09,507 - INFO - [stream_chat] streaming... chunks=400 reasoning=1621 content=0 provider=glm5.1
+2026-06-15 02:57:11,492 - INFO - [stream_chat] streaming... chunks=450 reasoning=1793 content=0 provider=glm5.1
+2026-06-15 02:57:13,106 - INFO - [stream_chat] streaming... chunks=500 reasoning=1936 content=0 provider=glm5.1
+2026-06-15 02:57:14,956 - INFO - [stream_chat] streaming... chunks=550 reasoning=2032 content=0 provider=glm5.1
+2026-06-15 02:57:16,774 - INFO - [stream_chat] streaming... chunks=600 reasoning=2152 content=0 provider=glm5.1
+2026-06-15 02:57:20,971 - INFO - [stream_chat] streaming... chunks=650 reasoning=2277 content=0 provider=glm5.1
+2026-06-15 02:57:44,698 - INFO - [stream_chat] streaming... chunks=700 reasoning=2418 content=0 provider=glm5.1
+2026-06-15 02:57:48,274 - INFO - [stream_chat] streaming... chunks=750 reasoning=2631 content=0 provider=glm5.1
+2026-06-15 02:57:51,920 - INFO - [stream_chat] streaming... chunks=800 reasoning=2727 content=0 provider=glm5.1
+2026-06-15 02:57:54,570 - INFO - [stream_chat] streaming... chunks=850 reasoning=2854 content=0 provider=glm5.1
+2026-06-15 02:57:56,980 - INFO - [stream_chat] streaming... chunks=900 reasoning=2930 content=0 provider=glm5.1
+2026-06-15 02:57:58,746 - INFO - [stream_chat] streaming... chunks=950 reasoning=3012 content=0 provider=glm5.1
+2026-06-15 02:58:00,466 - INFO - [stream_chat] streaming... chunks=1000 reasoning=3091 content=0 provider=glm5.1
+2026-06-15 02:58:02,432 - INFO - [stream_chat] streaming... chunks=1050 reasoning=3174 content=0 provider=glm5.1
+2026-06-15 02:58:05,066 - INFO - [stream_chat] streaming... chunks=1100 reasoning=3296 content=0 provider=glm5.1
+2026-06-15 02:58:06,959 - INFO - [stream_chat] streaming... chunks=1150 reasoning=3425 content=0 provider=glm5.1
+2026-06-15 02:58:14,542 - INFO - [stream_chat] streaming... chunks=1200 reasoning=3510 content=0 provider=glm5.1
+2026-06-15 02:58:32,494 - INFO - [stream_chat] streaming... chunks=1250 reasoning=3593 content=0 provider=glm5.1
+2026-06-15 02:58:35,363 - INFO - [stream_chat] streaming... chunks=1300 reasoning=3681 content=0 provider=glm5.1
+2026-06-15 02:58:38,465 - INFO - [stream_chat] streaming... chunks=1350 reasoning=3769 content=0 provider=glm5.1
+2026-06-15 02:58:48,308 - INFO - [stream_chat] streaming... chunks=1400 reasoning=3979 content=0 provider=glm5.1
+2026-06-15 02:58:51,504 - INFO - [stream_chat] streaming... chunks=1450 reasoning=4221 content=0 provider=glm5.1
+2026-06-15 02:58:56,576 - INFO - [stream_chat] streaming... chunks=1500 reasoning=4446 content=0 provider=glm5.1
+2026-06-15 02:59:31,624 - INFO - [stream_chat] streaming... chunks=1550 reasoning=4634 content=0 provider=glm5.1
+2026-06-15 02:59:35,384 - INFO - [stream_chat] streaming... chunks=1600 reasoning=4875 content=0 provider=glm5.1
+2026-06-15 02:59:38,082 - INFO - [stream_chat] streaming... chunks=1650 reasoning=5044 content=0 provider=glm5.1
+2026-06-15 02:59:42,098 - INFO - [stream_chat] streaming... chunks=1700 reasoning=5213 content=0 provider=glm5.1
+2026-06-15 02:59:43,702 - INFO - [stream_chat] streaming... chunks=1750 reasoning=5309 content=0 provider=glm5.1
+2026-06-15 02:59:44,849 - INFO - [stream_chat] streaming... chunks=1800 reasoning=5435 content=0 provider=glm5.1
+2026-06-15 02:59:46,214 - INFO - [stream_chat] streaming... chunks=1850 reasoning=5534 content=0 provider=glm5.1
+2026-06-15 02:59:47,674 - INFO - [stream_chat] streaming... chunks=1900 reasoning=5615 content=0 provider=glm5.1
+2026-06-15 02:59:49,376 - INFO - [stream_chat] streaming... chunks=1950 reasoning=5692 content=0 provider=glm5.1
+2026-06-15 02:59:50,234 - INFO - [stream_chat] streaming... chunks=2000 reasoning=5792 content=0 provider=glm5.1
+2026-06-15 02:59:51,805 - INFO - [stream_chat] streaming... chunks=2050 reasoning=6008 content=0 provider=glm5.1
+2026-06-15 02:59:53,411 - INFO - [stream_chat] streaming... chunks=2100 reasoning=6211 content=0 provider=glm5.1
+2026-06-15 02:59:54,664 - INFO - [stream_chat] streaming... chunks=2150 reasoning=6412 content=0 provider=glm5.1
+2026-06-15 02:59:55,773 - INFO - [stream_chat] streaming... chunks=2200 reasoning=6647 content=0 provider=glm5.1
+2026-06-15 02:59:57,043 - INFO - [stream_chat] streaming... chunks=2250 reasoning=6888 content=0 provider=glm5.1
+2026-06-15 02:59:58,024 - INFO - [stream_chat] streaming... chunks=2300 reasoning=7134 content=0 provider=glm5.1
+2026-06-15 02:59:59,479 - INFO - [stream_chat] streaming... chunks=2350 reasoning=7390 content=0 provider=glm5.1
+2026-06-15 03:00:00,425 - INFO - [stream_chat] streaming... chunks=2400 reasoning=7629 content=0 provider=glm5.1
+2026-06-15 03:00:01,710 - INFO - [stream_chat] streaming... chunks=2450 reasoning=7872 content=0 provider=glm5.1
+2026-06-15 03:00:02,904 - INFO - [stream_chat] streaming... chunks=2500 reasoning=8077 content=0 provider=glm5.1
+2026-06-15 03:00:06,156 - INFO - [stream_chat] streaming... chunks=2550 reasoning=8230 content=0 provider=glm5.1
+2026-06-15 03:00:37,208 - INFO - [stream_chat] streaming... chunks=2600 reasoning=8497 content=0 provider=glm5.1
+2026-06-15 03:00:54,232 - INFO - [stream_chat] streaming... chunks=2650 reasoning=8705 content=0 provider=glm5.1
+2026-06-15 03:01:17,521 - INFO - [stream_chat] streaming... chunks=2700 reasoning=8919 content=0 provider=glm5.1
+2026-06-15 03:03:36,659 - INFO - [stream_chat] provider=glm5.1 content=0 reasoning=8919 tool_calls=2 finish_reason=tool_calls
+2026-06-15 03:03:36,675 - INFO - [TEST_CONCEPT] Executing tool: write_file({'path': 'question.md', 'content': '# 银行家算法 — 概念选择题\n\n> 知识域：操作系统 > 进程与线程 > 死锁 > 死锁避免\n> 考点：银行家算法\n>)
+2026-06-15 03:03:36,687 - INFO - [TEST_CONCEPT] Executing tool: write_file({'path': 'solution.md', 'content': '# 银行家算法 — 概念选择题解析\n\n---\n\n## 第 1 题解析\n\n**答案：C**\n\n**正确项分析：**)
+2026-06-15 03:03:36,700 - INFO - [TEST_CONCEPT] §21 概念题分支：concept_review
