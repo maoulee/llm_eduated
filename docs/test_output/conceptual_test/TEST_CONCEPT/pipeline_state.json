@@ -1,10 +1,10 @@
 {
   "slot_id": "TEST_CONCEPT",
-  "current_node": "design",
+  "current_node": "form_gate",
   "visit_counts": {
     "design_card": 1,
-    "exam_form": 1,
-    "design": 1
+    "design": 1,
+    "form_gate": 1
   },
   "history": [
     {
@@ -13,13 +13,13 @@
       "feedback": ""
     },
     {
-      "node": "exam_form",
+      "node": "design",
       "signal": "ok",
       "feedback": ""
     },
     {
-      "node": "design",
-      "signal": "ok",
+      "node": "form_gate",
+      "signal": "needs_fix",
       "feedback": ""
     }
   ]
