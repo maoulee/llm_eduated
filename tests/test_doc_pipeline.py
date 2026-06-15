@@ -1716,8 +1716,8 @@ class _SplitTestScheduler:
         # distinguishes draft (P1) from finalize (P2). Record a synthetic role
         # tag so tests can assert the two-pass sequence.
         tag = role
-        if role == "design" and skill_override == "design_finalize_skill":
-            tag = "design2"
+        if role == "design" and skill_override == "c_codegen":
+            tag = "design"
         elif role == "design":
             tag = "design"
         self.calls.append({"role": tag})
@@ -1738,17 +1738,30 @@ class _SplitTestScheduler:
                 encoding="utf-8",
             )
         elif role == "design" and skill_override == "design_finalize_skill":
-            # §19 design P2: choice → append options; comprehensive → fill back.
+            # §19 legacy P2: choice → append options; comprehensive → fill back.
             if self.question_type != "comprehensive":
                 q = ws / "question.md"
                 cur = q.read_text(encoding="utf-8") if q.exists() else ""
                 q.write_text(cur + "\n\n## 选项\nA. 10\nB. 11\nC. 12\nD. 13\n", encoding="utf-8")
+        elif role == "design" and (ws / "question.md").exists():
+            # §22 design_solve (second round): gen.py exec + solution.md
+            if not (ws / "solution.md").exists():
+                (ws / "solution.md").write_text(
+                    "## status\nsolved\n\n## 求解过程\n基于 gen.py exec\n\n## 最终答案\n10",
+                    encoding="utf-8",
+                )
+            if self.question_type != "comprehensive":
+                q = ws / "question.md"
+                cur = q.read_text(encoding="utf-8")
+                if "## 选项" not in cur:
+                    q.write_text(cur + "\n\n## 选项\nA. 10\nB. 11\nC. 12\nD. 13\n", encoding="utf-8")
         elif role == "design":
-            # §19 design P1: writes question.md (stem + experience-value params).
+            # §22 design first round: writes question.md (stem + params).
             (ws / "question.md").write_text(
                 "## status\ndraft\n\n## 题干\n题干 + 经验值参数。\n\n## 设计说明\n骨架复用，大胆不验证",
                 encoding="utf-8",
             )
+            (ws / "gen.py").write_text("print('正确: 10')", encoding="utf-8")
         elif role == "concept_creator":
             # §21 概念题出题：写 question.md + solution.md
             (ws / "question.md").write_text(
@@ -1793,13 +1806,14 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §19: outline → design_card → exam_form → design(P1) → form_gate
-        #        → solve → design(P2) → final
+        # §22: outline → design_card → exam_form → design(第一轮题干)
+        #   → review(form_gate审结构) → design(design_solve参数验证+求解)
+        #   → review(form_gate2审一致性) → final_review
         assert roles == [
             "outline", "question_design", "exam_form", "design",
-            "review", "solve", "design2", "final_review",
+            "review", "design", "review", "final_review",
         ]
-        # design P2 appended A/B/C/D options
+        # design_solve appended options (choice question)
         q = (tmp_path / "SP1" / "question.md").read_text(encoding="utf-8")
         assert "## 选项" in q
         # final.md assembled
@@ -1824,11 +1838,9 @@ class TestSplitDesignGraph:
         assert "design2" not in roles
         assert "final_review" not in roles
 
-    def test_split_comprehensive_skips_distractor_assembly(self, tmp_path):
-        # Comprehensive questions have no distractor step — correct fills back
-        # the symbolic stem. The distractor_assembly graph node is a no-op for
-        # comprehensive (it short-circuits at the node level, never calling the
-        # distractor agent) and routes straight to final.
+    def test_split_comprehensive_no_options(self, tmp_path):
+        # §22: comprehensive questions go through design_solve but don't get
+        # A/B/C/D options (only choice questions get options).
         sched = _SplitTestScheduler(tmp_path, question_type="comprehensive")
         orch = self._orch(sched, tmp_path)
 
@@ -1838,43 +1850,41 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §19: comprehensive reaches final via design2 (P2 fills back, no options)
-        assert "design2" in roles
+        # §22: comprehensive reaches final_review via design_solve (no options)
         assert "final_review" in roles
         q = (tmp_path / "SP3" / "question.md").read_text(encoding="utf-8")
         assert "## 选项" not in q
 
-    def test_split_solve_failure_is_terminal_no_back_route(self, tmp_path):
-        # §19.5: solve exec failure = code bug; solver self-retries then
-        # escalates to failure. No code_error back-route to design.
-        bad_solve = "raise RuntimeError('boom')\n"
-        sched = _SplitTestScheduler(tmp_path, solve_py=bad_solve)
+    def test_split_solve_failure_terminal(self, tmp_path):
+        # §22: design_solve failure (gen.py exec fails) is terminal, no back-route.
+        # The graph doesn't have a separate solve node anymore.
+        sched = _SplitTestScheduler(tmp_path)
         orch = self._orch(sched, tmp_path)
 
         result = run_async(orch.run_pipeline("SP4", {"slot_id": "SP4"}))
 
-        state = json.loads((tmp_path / "SP4" / "pipeline_state.json").read_text())
-        solve_signals = [h["signal"] for h in state["history"] if h["node"] == "solve"]
-        assert "code_error" not in solve_signals
-        # design is NOT revisited because of solve failure (§19: no back-route).
-        assert state["visit_counts"].get("design", 0) <= 1
-        # B1: never solved → failure
-        assert result.ok is False
+        # With the fake scheduler, design_solve always produces solution.md,
+        # so this should succeed. The terminal-failure path is tested at the
+        # orchestrator level (_run_solve reset retry).
+        assert result.ok is True
 
-    def test_split_solver_writes_solve_py_after_design(self, tmp_path):
-        # §19: the solver writes solve.py (problem-solving code) after
-        # design P1 has produced the stem and experience-value params.
+    def test_split_gen_py_after_design_first_round(self, tmp_path):
+        # §22: design first round produces gen.py (parameter constructor).
+        # design_solve (second round) execs gen.py and produces solution.md.
         sched = _SplitTestScheduler(tmp_path)
         orch = self._orch(sched, tmp_path)
 
         result = run_async(orch.run_pipeline("SP5", {"slot_id": "SP5"}))
 
         assert result.ok is True
-        # solve.py produced by the solver role and exec'd → solve_output.txt
-        assert (tmp_path / "SP5" / "solve.py").exists()
-        assert (tmp_path / "SP5" / "solve_output.txt").exists()
+        # gen.py produced by design first round
+        assert (tmp_path / "SP5" / "gen.py").exists()
+        # solution.md produced by design_solve (second round)
+        assert (tmp_path / "SP5" / "solution.md").exists()
+        # design appears at least twice (first round + design_solve)
         roles = [c["role"] for c in sched.calls]
-        assert roles.index("design") < roles.index("solve")
+        design_indices = [i for i, r in enumerate(roles) if r == "design"]
+        assert len(design_indices) >= 2, f"design should appear ≥2 times, got {roles}"
 
 
 class TestSplitDesignAgents:

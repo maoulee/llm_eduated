@@ -472,11 +472,11 @@ class DocPipelineOrchestrator:
             skill = "conceptual_batch_skill"
         else:
             d_task = (
-                "§19 设计 P1（出题）：读取上游定案→直接套骨架写题干+设问+经验值参数。"
-                "给经验值参数（凭经验甩值，不脑内算/不推演/不脑内验证，纪律①）。"
-                "只出题干+设问+设计说明，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
+                "§22 设计第一轮（出题干）：读上游定案→写 gen.py 构造参数→write question.md（题干+设问）。"
+                "后面有审核者会给建议，先基于经验给出合理的，不用一次到位。"
+                "只出题干+设问+设计说明，不出答案/选项。写完 gen.py 后 exec 一下看参数是否合理。"
             )
-            skill = "design_draft_skill"
+            skill = "c_codegen"
 
         if feedback:
             d_task += (
@@ -500,6 +500,50 @@ class DocPipelineOrchestrator:
         backward compatibility with existing node wiring.
         """
         return await self._run_design_pass2(slot_id, slot_data, ws)
+
+    async def _run_design_solve(
+        self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
+        *, feedback: str = "",
+    ) -> PipelineResult | None:
+        """§22 design second round: gen.py exec validates constraints + computes
+        answer + writes solution.md. gen.py IS the solver (no separate solve step).
+
+        Reads the gen.py produced in round 1, execs it, reads the output (4 sections:
+        params/stem/solution-path/answer), then assembles solution.md.
+        """
+        question_path = ws / "question.md"
+        solution_path = ws / "solution.md"
+        gen_path = ws / "gen.py"
+        output_path = ws / "solve_output.txt"
+
+        d_inject = {"规划": str(ref_path), "题目": str(question_path)}
+        if gen_path.exists():
+            d_inject["参数生成代码"] = str(gen_path)
+        if output_path.exists():
+            d_inject["代码输出"] = str(output_path)
+        d_inject = await self._resolve_inject("design", slot_id, 2, d_inject)
+
+        ds_task = (
+            "§22 参数验证+求解：你的 gen.py 已在第一轮构造了参数和题干。现在：\n"
+            "1. exec gen.py 验证参数满足 hard_constraints（如触发≥2种旋转）\n"
+            "2. 读 exec 输出的「求解路径」和「答案」段\n"
+            "3. write solution.md（求解过程+最终答案）\n"
+            "4. 如需要，更新 question.md 的设问使其与求解对齐\n"
+            "gen.py 就是求解代码，不需要写 solve.py。exec 输出即真值。"
+        )
+        if feedback:
+            ds_task += f"\n\n## 审核修改清单（逐条执行）\n{feedback}"
+        await self.scheduler.run_agent(
+            "design", ds_task, slot_id=slot_id, inject_files=d_inject,
+            skill_override="c_codegen",
+            continue_session=bool(feedback),
+        )
+        if not solution_path.exists():
+            return self._fail_result(slot_id, "design_solve did not write solution.md")
+        # Clear design session after solve round (§20 isolation)
+        if hasattr(self.scheduler, "clear_session"):
+            self.scheduler.clear_session(slot_id, "design")
+        return None
 
     async def _run_design_pass2(
         self, slot_id: str, slot_data: dict[str, Any], ws: Path,

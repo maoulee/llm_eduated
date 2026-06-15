@@ -477,11 +477,7 @@ class DesignNode(_OrchestratorNode):
 
 
 class DesignFinalizeNode(_OrchestratorNode):
-    """§19 design Pass 2: after solve computes the answer, finalize the
-    question. Choice → design 3 distractors based on the solution (only-set,
-    never-compute, verify distinct); comprehensive → fill answers back into the
-    stem. Solution comes from solve; never recompute. Reports ``ok``.
-    """
+    """§19 design Pass 2 (legacy, kept for backward compat)."""
 
     name = "design2"
 
@@ -496,15 +492,76 @@ class DesignFinalizeNode(_OrchestratorNode):
         return AgentResult(signal="ok")
 
 
-def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
-    """Declare the §19 split-focused design graph.
+class DesignSolveNode(_OrchestratorNode):
+    """§22 design second round: gen.py exec validates constraints + computes
+    answer + writes solution.md. gen.py IS the solver (no separate solve step).
+    form_gate2 feedback threads through feedback_buffer. Reports ``ok``.
+    """
 
-    design_card → exam_form → design(P1: 题干+设问+经验值参数, 大胆不验证)
-        → form_gate → solve(解题代码, solver writes solve.py; 自重试不回退).
-    Branch after solve (§19):
-      solve success → design2(P2: 基于解设选项/答案填回) → final
-      solve failed → terminal (no back-route; structural issues are form_gate's job).
-    Conceptual: design → done (skip form_gate/solve/design2/final).
+    name = "design_solve"
+
+    async def run(self, state: PipelineState) -> AgentResult:
+        ws = self.workspace / state.slot_id
+        ref_path = DesignCardNode._ref_path(state)
+        feedback = state.feedback_buffer.get("form_gate2", "")
+        fail = await self.orch._run_design_solve(
+            state.slot_id, state.slot_data, ws, ref_path, feedback=feedback,
+        )
+        if fail is not None:
+            state.result = fail
+            return AgentResult(signal="ok", feedback=f"design_solve failed: {fail.error}")
+        return AgentResult(signal="ok", feedback=feedback)
+
+
+class FormGateNode2(_OrchestratorNode):
+    """§22 consistency review: question + solution aligned? Same review agent
+    as form_gate but with different input (sees solution). Gives suggestions.
+    """
+
+    name = "form_gate2"
+
+    async def run(self, state: PipelineState) -> AgentResult:
+        ws = self.workspace / state.slot_id
+        ref_path = DesignCardNode._ref_path(state)
+        question_path = ws / "question.md"
+        solution_path = ws / "solution.md"
+        r_inject = {"规划": str(ref_path), "题目": str(question_path)}
+        if solution_path.exists():
+            r_inject["求解结果"] = str(solution_path)
+        r_inject = await self.orch._resolve_inject("review", state.slot_id, 3, r_inject)
+        r_task = (
+            "§22 一致性审核：题干设问与求解结果是否对齐。"
+            "审：题干问的量和 solution 算的量是否一致、求解过程是否完整、答案是否直接回应设问。"
+            "给建议（差距+建议），差距小→pass，差距大→needs_fix。"
+        )
+        await self.orch.scheduler.run_agent(
+            "review", r_task, slot_id=state.slot_id, inject_files=r_inject,
+        )
+        review_path = ws / "review.md"
+        status = "pass"
+        feedback = ""
+        if review_path.exists():
+            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+            feedback = parse_doc_section(str(review_path), "fix_instructions")
+            if not feedback.strip():
+                feedback = parse_doc_section(str(review_path), "feedback_for_agent")
+        return AgentResult(signal=status, feedback=feedback)
+
+
+def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
+    """Declare the §22 suggestion-driven iteration graph.
+
+    §22 flow (suggestion-driven, code-first for computational questions):
+      design_card → exam_form
+        → design（第一轮：gen.py 构造参数 + write question.md 题干，停止）
+        → form_gate（审题干结构：考察形式/考点对齐，给建议）
+           needs_fix → design（带建议优化）
+        → design_solve（第二轮：gen.py exec 验证约束 + 算答案 + write solution.md）
+        → form_gate2（审一致性：题干设问与求解对齐，给建议）
+           needs_fix → design_solve（带建议优化）
+        → final（产出最终文档）
+
+    Conceptual: _run_concept_pipeline 独立处理，不走此 graph。
 
     Note: ``scheduler`` is the ``DocPipelineOrchestrator`` instance.
     """
@@ -513,22 +570,23 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
     g.add_node("exam_form", ExamFormNode(scheduler, workspace))
     g.add_node("design", DesignNode(scheduler, workspace))
     g.add_node("form_gate", FormGateNode(scheduler, workspace))
-    g.add_node("solve", SolveNode(scheduler, workspace))
-    g.add_node("design2", DesignFinalizeNode(scheduler, workspace))
+    g.add_node("design_solve", DesignSolveNode(scheduler, workspace))
+    g.add_node("form_gate2", FormGateNode2(scheduler, workspace))
     g.add_node("final", FinalNode(scheduler, workspace))
 
     g.edge("design_card", "ok", "exam_form")
     g.edge("exam_form", "ok", "design")
-    # §21: conceptual 不走此 graph（_run_concept_pipeline 独立处理）。
+    # §22: design 第一轮出题干 → form_gate 审结构
     g.edge("design", "ok", "form_gate")
-    g.edge("form_gate", "pass", "solve")
     g.edge("form_gate", "needs_fix", "design")
-    g.edge("solve", "success", "design2")
-    # §19.5: solve never back-routes; failure is terminal.
-    g.edge("solve", "failed", "done")
-    # design2 always → final (both choice and comprehensive finalize here).
-    g.edge("design2", "ok", "final")
+    # form_gate 通过 → design_solve 第二轮（参数验证+求解）
+    g.edge("form_gate", "pass", "design_solve")
+    # design_solve → form_gate2 审一致性
+    g.edge("design_solve", "ok", "form_gate2")
+    g.edge("form_gate2", "needs_fix", "design_solve")
+    # form_gate2 通过 → final
+    g.edge("form_gate2", "pass", "final")
     g.edge("final", "pass", "done")
-    g.edge("final", "question_error", "design")
-    g.edge("final", "solution_error", "solve")
+    # final 打回（表述类问题，只调一次）
+    g.edge("final", "needs_fix", "design_solve")
     return g
