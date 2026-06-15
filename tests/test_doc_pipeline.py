@@ -1904,10 +1904,12 @@ class TestSplitDesignAgents:
         from core_new.doc_pipeline.scheduler import _load_skill_by_name
         draft = _load_skill_by_name("design_draft_skill")
         finalize = _load_skill_by_name("design_finalize_skill")
+        dc = _load_skill_by_name("design_card_v1")
         # P1 (draft): experience-value params, no solve.py, no options.
         assert "经验值" in draft
         assert "solve.py" not in draft
-        assert "§17.6" in draft and "条件融合" in draft  # fusion capability preserved
+        # §22: 考点融合移到骨架层（design_card_v1），不在 draft skill
+        assert "考点融合" in dc  # fusion capability in skeleton layer now
         # P2 (finalize): option design / fill-back, no recompute.
         assert "干扰" in finalize
         assert "不重算" in finalize
