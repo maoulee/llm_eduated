@@ -54,11 +54,15 @@ behavior: audit_gate
 
 ## 5. 输出
 
-当 needs_fix 时：
+当 needs_fix 时，每条 fix_instructions 必须标注**修改类型**，让 design 知道怎么改：
+
+- **修改类型**：`改题干`（改设问/表述/结构就能解决）或 `改参数`（参数本身必须满足硬性约束）
+  - 标注为 `改题干`：review 认为通过调整设问方式或题干结构就能解决（如改问"发生了哪些旋转"而非"根节点BF"）
+  - 标注为 `改参数`：hard_constraint 硬性要求参数本身满足（如"至少2种旋转"必须参数真的触发2种）
 - issue_type：问题归类（constraint_violation / coverage_gap / difficulty_mismatch / structure_error / style_violation）
-- fix_instructions：具体可执行修改指令——**指出哪条约束没满足、题目当前怎么设定的、应该怎么改才能满足**。只描述结构与意图，不写答案数值。
+- fix_instructions：具体可执行修改指令——指出哪条约束没满足、题目当前怎么设定的、应该怎么改。**优先建议改题干（轻量），参数约束才建议改参数**。只描述结构与意图，不写答案数值。
 - keep_unchanged：不得修改的部分
-- feedback_for_agent：简短反馈，可直接作为出题智能体下一轮输入
+- feedback_for_agent：简短反馈
 
 当 pass 时：issue_type 写 none，fix_instructions 和 keep_unchanged 省略。
 
