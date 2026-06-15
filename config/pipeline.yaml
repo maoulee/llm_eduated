@@ -47,6 +47,9 @@ pipeline:
     design:
       multi_turn: true       # §19 design P1 多轮（form_gate needs_fix 回退）
       max_attempts: 8        # C 方案代码先行流程需多轮（write gen.py→exec→edit→组装）
+    concept_creator:
+      multi_turn: true       # §21 概念题出题（审核回退需多轮）
+      max_attempts: 3
     review:
       multi_turn: false
       max_attempts: 2

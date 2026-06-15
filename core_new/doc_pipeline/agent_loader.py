@@ -51,6 +51,7 @@ _BEHAVIOR_VARIANTS = {
     "design": "artifact_writer",
     "exam_form": "artifact_writer",
     "question_design": "artifact_writer",
+    "concept_creator": "artifact_writer",
     "review": "audit_judge",
     "solve": "solve_create",
     "final_review": "final_review",

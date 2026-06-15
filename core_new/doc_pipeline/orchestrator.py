@@ -1110,19 +1110,18 @@ class DocPipelineOrchestrator:
 
         ref_path = ws / "assembled.md" if (ws / "assembled.md").exists() else (ws / "blueprint.md")
 
-        # ── 概念出题（design agent + conceptual_batch_skill）──────────
-        logger.info("[%s] §21 概念题分支：concept_creator", slot_id)
+        # ── 概念出题（concept_creator agent，关思考，只读写工具）──────
+        logger.info("[%s] §21 概念题分支：concept_creator（无思考）", slot_id)
         question_path = ws / "question.md"
         c_inject = {"规划": str(ref_path)}
-        c_inject = await self._resolve_inject("design", slot_id, 2, c_inject)
+        c_inject = await self._resolve_inject("concept_creator", slot_id, 2, c_inject)
         c_task = (
-            "§21 概念题批量出题：基于蓝图的考点列表 + 你的知识，一次性出多道概念题。"
-            "每道直接写题干+选项（A/B/C/D）+答案+解析。概念题无计算，直接给答案。"
-            "同时写 question.md（所有题）+ solution.md（每题解析）。"
+            "基于蓝图的考点列表，直接出概念选择题。每题题干+A/B/C/D+答案+解析。"
+            "write question.md（所有题）+ solution.md（每题解析）。"
         )
         await self.scheduler.run_agent(
-            "design", c_task, slot_id=slot_id, inject_files=c_inject,
-            skill_override="conceptual_batch_skill",
+            "concept_creator", c_task, slot_id=slot_id, inject_files=c_inject,
+            enable_thinking=False,  # 概念题不需要思考，直接出
         )
         if not question_path.exists():
             return self._fail_result(slot_id, "concept creator did not write question.md")
@@ -1158,8 +1157,8 @@ class DocPipelineOrchestrator:
                 feedback_body = parse_doc_section(str(review_path), "summary")
             c_task_retry = c_task + f"\n\n## 审核反馈（第{retry+1}轮）\n{feedback_body}"
             await self.scheduler.run_agent(
-                "design", c_task_retry, slot_id=slot_id, inject_files=c_inject,
-                skill_override="conceptual_batch_skill", continue_session=True,
+                "concept_creator", c_task_retry, slot_id=slot_id, inject_files=c_inject,
+                enable_thinking=False, continue_session=True,
             )
             await self.scheduler.run_agent(
                 "review", r_task, slot_id=slot_id, inject_files=r_inject, continue_session=True,

@@ -501,6 +501,7 @@ class DocScheduler:
         preserve_existing: bool = False,
         enable_thinking: bool | None = None,
         skill_override: str | None = None,
+        tools_override: list[str] | None = None,
     ) -> str:
         """Run an agent and return the final text content.
 
@@ -626,7 +627,7 @@ class DocScheduler:
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
 
-        required_tools = ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
+        required_tools = tools_override or ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_file" in required_tools:
             registry.register(ExecFileTool(workspace=ws, timeout=PYTHON_EXEC_TIMEOUT))
         if "exec_python" in required_tools:

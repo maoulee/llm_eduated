@@ -280,8 +280,8 @@ class TestAgentPrompts:
             "review", "solve", "final_review",
             "paper_outline",
             "interact", "human_intake",
-            # §19 split-focused design agents
-            "design", "exam_form",
+            # §19/§21 design agents
+            "design", "exam_form", "concept_creator",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -291,8 +291,8 @@ class TestAgentPrompts:
             "review", "solve", "final_review",
             "paper_outline",
             "interact", "human_intake",
-            # §19 split-focused design agents
-            "design", "exam_form",
+            # §19/§21 design agents
+            "design", "exam_form", "concept_creator",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -1406,8 +1406,8 @@ class TestAgentLoader:
             "review", "solve", "final_review",
             "paper_outline",
             "interact", "human_intake",
-            # §19 split-focused design agents
-            "design", "exam_form",
+            # §19/§21 design agents
+            "design", "exam_form", "concept_creator",
         }
         assert set(specs.keys()) == expected
 
@@ -1425,8 +1425,8 @@ class TestAgentLoader:
 
     def test_multi_turn_agents(self):
         _, _, multi_turn, _, _, _ = get_agent_dicts()
-        # §19: design is multi-turn (P1 feedback rounds across form_gate retries).
-        assert multi_turn == {"design"}
+        # §19/§21: design + concept_creator are multi-turn.
+        assert multi_turn == {"design", "concept_creator"}
 
     def test_thinking_budget_loaded(self):
         _, _, _, thinking, _, _ = get_agent_dicts()
@@ -1440,8 +1440,8 @@ class TestAgentLoader:
             "review", "solve", "final_review",
             "paper_outline",
             "interact", "human_intake",
-            # §19 split-focused design agents
-            "design", "exam_form",
+            # §19/§21 design agents
+            "design", "exam_form", "concept_creator",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles
@@ -1500,7 +1500,8 @@ class _GraphTestScheduler:
         self.conceptual = conceptual
 
     async def run_agent(self, role, task, *, slot_id, inject_files=None,
-                        continue_session=False, max_tokens=None, skill_override=None):
+                        continue_session=False, max_tokens=None, skill_override=None,
+                        enable_thinking=None, tools_override=None):
         self.calls.append({"role": role})
         ws = self.workspace / slot_id
         ws.mkdir(parents=True, exist_ok=True)
@@ -1519,6 +1520,14 @@ class _GraphTestScheduler:
             (ws / "question.md").write_text(
                 "## status\ndraft\n\n## 题干\n计算题。\n\n## 设计说明\n§19 design",
                 encoding="utf-8",
+            )
+        elif role == "concept_creator":
+            (ws / "question.md").write_text(
+                "## status\ndraft\n\n## 题目\n第1题 概念题\nA. x\nB. y\nC. z\nD. w",
+                encoding="utf-8",
+            )
+            (ws / "solution.md").write_text(
+                "## status\nsolved\n\n## 解析\n第1题 答案A", encoding="utf-8",
             )
         elif role == "review":
             (ws / "review.md").write_text(
@@ -1578,9 +1587,9 @@ class TestPipelineGraphRouting:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §21 conceptual: outline → design(concept batch) → review(concept审核) → done
+        # §21 conceptual: outline → concept_creator → review → done
         # 独立分支（_run_concept_pipeline），不走 design_card/exam_form/solve/final
-        assert roles == ["outline", "design", "review"]
+        assert roles == ["outline", "concept_creator", "review"]
         assert "question_design" not in roles  # 跳过 design_card
         assert "exam_form" not in roles
         assert "solve" not in roles
@@ -1701,7 +1710,8 @@ class _SplitTestScheduler:
         self.question_type = question_type
 
     async def run_agent(self, role, task, *, slot_id, inject_files=None,
-                        continue_session=False, max_tokens=None, skill_override=None):
+                        continue_session=False, max_tokens=None, skill_override=None,
+                        enable_thinking=None, tools_override=None):
         # §19: both design P1 and P2 arrive as role="design"; skill_override
         # distinguishes draft (P1) from finalize (P2). Record a synthetic role
         # tag so tests can assert the two-pass sequence.
@@ -1738,6 +1748,15 @@ class _SplitTestScheduler:
             (ws / "question.md").write_text(
                 "## status\ndraft\n\n## 题干\n题干 + 经验值参数。\n\n## 设计说明\n骨架复用，大胆不验证",
                 encoding="utf-8",
+            )
+        elif role == "concept_creator":
+            # §21 概念题出题：写 question.md + solution.md
+            (ws / "question.md").write_text(
+                "## status\ndraft\n\n## 题目\n第1题 概念题\nA. x\nB. y\nC. z\nD. w",
+                encoding="utf-8",
+            )
+            (ws / "solution.md").write_text(
+                "## status\nsolved\n\n## 解析\n第1题 答案A", encoding="utf-8",
             )
         elif role == "review":
             (ws / "review.md").write_text(
@@ -1796,9 +1815,9 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §21 conceptual: outline → design(concept) → review(concept) → done
+        # §21 conceptual: outline → concept_creator → review → done
         # 独立分支 _run_concept_pipeline，跳过 design_card/exam_form
-        assert roles == ["outline", "design", "review"]
+        assert roles == ["outline", "concept_creator", "review"]
         assert "question_design" not in roles
         assert "exam_form" not in roles
         assert "solve" not in roles
