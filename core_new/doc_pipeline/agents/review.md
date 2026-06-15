@@ -44,7 +44,8 @@ behavior: audit_gate
 4. **解题意图/结构是否与设计卡一致**（见 §4 详解）
 5. 风格是否合规（无代码、无背景故事、题干简洁）
 6. 考察形式是否与蓝图一致
-7. 经验卡 should_not_be 是否未触犯
+7. **设计卡 hard_constraints 逐条验证**：设计卡的 hard_constraints（如"至少2种旋转""至少3个子问"）必须在题干中实际满足。不是检查"有没有提到"，而是检查"题目结构是否真的做到了"。例如 hard_constraint 写"至少2种旋转"，则题干必须包含触发≥2种不同旋转的设定——只插入1个节点触发1种旋转 = fail。
+8. 经验卡 should_not_be 是否未触犯
 
 **全部 pass → status=pass。任一 fail → status=needs_fix。**
 

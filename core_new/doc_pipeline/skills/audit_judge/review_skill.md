@@ -48,10 +48,11 @@
 - 题目考察形式是否与蓝图规划一致
 - 不一致 → fail
 
-### 7. 经验卡对齐
-- should_be 逐项核对
+### 7. hard_constraints + 经验卡对齐
+- **hard_constraints 逐条验证**（最重要）：设计卡的 hard_constraints 是题目必须满足的结构约束（如"至少2种旋转""至少3个子问""必须涉及插入操作"）。不是检查"题干有没有提到这个约束"，而是**检查题目结构是否真的做到了**。例如 hard_constraint 写"至少2种旋转类型"，题干只插入1个节点触发1种旋转 = **fail**（结构不满足约束）。
+- should_be 逐项核对（题目是否覆盖了应考的方向）
 - should_not_be 逐项排查
-- 触犯 should_not_be → fail
+- 触犯 should_not_be 或 hard_constraints 不满足 → fail
 
 ---
 
