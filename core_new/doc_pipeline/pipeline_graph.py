@@ -311,7 +311,13 @@ class FormGateNode(_OrchestratorNode):
         review_path = ws / "review.md"
         feedback = ""
         if review_path.exists():
-            feedback = parse_doc_section(str(review_path), "corrections")
+            # §22: review 重写后用 fix_instructions + feedback_for_agent 段
+            # （旧版用 corrections + summary）。按优先级抽取。
+            feedback = parse_doc_section(str(review_path), "fix_instructions")
+            if not feedback.strip() or feedback.strip() == "无":
+                feedback = parse_doc_section(str(review_path), "feedback_for_agent")
+            if not feedback.strip() or feedback.strip() == "无":
+                feedback = parse_doc_section(str(review_path), "corrections")
             if not feedback.strip() or feedback.strip() == "无":
                 feedback = parse_doc_section(str(review_path), "summary")
         return AgentResult(signal=status, feedback=feedback)

@@ -479,7 +479,11 @@ class DocPipelineOrchestrator:
             skill = "design_draft_skill"
 
         if feedback:
-            d_task += f"\n\n## 审核反馈\n{feedback}"
+            d_task += (
+                f"\n\n## 审核修改清单（逐条执行）\n"
+                f"以下是 form_gate 审核发现的修改意见。请逐条对照修改 question.md，"
+                f"不要遗漏任何一条。注意 keep_unchanged 标注的部分不得修改。\n\n{feedback}"
+            )
         await self.scheduler.run_agent(
             "design", d_task, slot_id=slot_id, inject_files=d_inject,
             skill_override=skill,
