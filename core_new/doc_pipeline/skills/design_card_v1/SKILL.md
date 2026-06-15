@@ -1,108 +1,77 @@
-# design_card_v1 技能
+# 骨架设计技能
 
 ## 目标
-生成符合 schema v1 的 design_card.md。
+设计题目骨架：考什么、怎么分问、每问考察什么。不设计具体参数/数值。
 
-## 必须包含 10 个 section
+## 必须包含 7 个 section
 1. status
 2. blueprint_contract
-3. route
-4. core_knowledge_intent
-5. design_rationale — **设计理念交接（给下游 design 智能体的 spec 交接文档）**
-6. expected_reasoning_actions
-7. question_structure_plan
-8. parameter_plan
-9. terminology_and_expression_constraints
-10. audit_focus
+3. core_knowledge_intent
+4. design_rationale（含考点融合意图，如有）
+5. question_structure_plan（经验驱动的子问链）
+6. terminology_and_expression_constraints
+7. audit_focus
 
-## design_rationale（设计理念交接）
+## 已移除的 section（不再需要）
+- ~~route~~：系统根据 complexity 判断，不是骨架的事
+- ~~expected_reasoning_actions~~：解题步骤是下游 solve 的事
+- ~~parameter_plan~~：具体参数是下游 gen.py 的事
 
-回答一个问题：**"为什么这样考？"**
+## blueprint_contract
+从蓝图原样摘取。不得修改 should_be / should_not_be / K目标 / 难度。
 
-用一段话写清楚：
-- 本题考察意图与设计逻辑：为什么选这个考点组合、这种设问方式、这个 K-雷达形状
-- 它要**区分什么样掌握程度的学生**（如"能完整走完旋转流程并回溯检查的学生 vs 只记得旋转名称的学生"）
-- 为什么这个难度/形式是合适的
+## core_knowledge_intent
+- must_test：本题必须考什么（2-3项）
+- must_not_shift_to：不允许偏移到什么
+- coverage_success_criteria：覆盖成功的标准
 
-这是 spec 交接文档——下游 design 智能体读这段理解意图，**只实现题面、不重新推演设计合理性**。写清楚这段，design 就不必自己从头想"为什么这么考才合理"，从而降低 design 的思考强度。
+## design_rationale（设计理念 + 考点融合）
 
-不含具体数值、答案、最终结构。
+回答：**"为什么这样考？"**
 
-## 考点融合（仅 K3-K4 高难度，骨架层决定）
+写清楚：
+- 本题考察意图：为什么选这个考点组合、这种设问方式
+- 区分什么样掌握程度的学生
+- 为什么这个难度合适
 
-考点融合 = **同一知识点的不同考察项融合**（如 AVL 既考旋转类型辨析又考平衡因子计算），提高考察深度。**不是跨考点融合。**
+**考点融合**（仅 K3-K4 高难度，可选）：
+- 同一知识点的不同考察项融合（如 AVL 既考旋转辨析又考平衡因子计算）
+- 不是跨考点融合，不是强行要求
+- 在这里决定，写入此段。下游看到多个考察项直接实现
 
-- 仅 K3-K4 高难度题可选启用（简单题不需要）
-- 不是强行要求，而是高难度时可选的能力
-- **在这里决定**（骨架层），写入 design_rationale 或 question_structure_plan
-- 下游 design 看到多个考察项就直接实现，不需要自己判断"要不要融合"
+## question_structure_plan（经验驱动的子问链）
 
-如果启用，在 design_rationale 或 question_structure_plan 里明确写出：
-- 融合了哪些考察项（如"旋转类型辨析 + 平衡因子计算"）
-- 为什么融合能提高考察深度
+**子问数量和每问考什么 = 经验驱动**：
+- 如果 assembled.md 有往年真题经验/模式概览 → 从中提取子问模式
+- 如果没有经验 → 基于考察形式给合理默认（综合题 2-3 问，串行依赖）
 
-## route 字段枚举值（必须使用英文原值，不加中文注释）
+格式：
+```
+- 子问1：考[考察点]（基础层，如"插入后的旋转类型判断"）
+- 子问2：基于子问1的结果，考[考察点]（进阶层，如"第二次插入的不同类型旋转"）
+- 子问3（可选）：汇总/分析（区分度层）
+- dependency_pattern：串行依赖
+```
 
-- question_form: 只能写 `single_choice` 或 `comprehensive`
-- question_type: 只能写 `conceptual`、`computational` 或 `mixed`
+**只写"考什么"，不写"怎么算"。不写具体数值/节点/参数。**
 
-错误示例：`选择题`、`综合应用题（共享题干）`、`mixed（概念+计算）`
-正确示例：`single_choice`、`comprehensive`、`mixed`
+## 通用干扰模式库（供 audit_focus 参考）
 
-## expected_reasoning_actions
-- 只写解题动作。
-- 不写具体数值答案。
-- 不写正确选项。
-- 不写最终树结构、最终地址字段数值等结果。
-- 格式：每行以 `- ` 开头，或使用编号列表。
+### 计算型干扰
+- 单位换算陷阱、符号错误、偏移错误(off-by-one)、中间值、倒置
 
-## parameter_plan
-- 只写参数槽位、候选范围、验证目标。
-- 不写 Python 代码。
-- 不写 assert 模板。
-- 不证明参数自洽。
-
-## terminology_and_expression_constraints
-- 写必须使用的标准术语。
-- 写必须补充的限定条件。
-- 写容易误导的表达及标准改写。
-
-## 教师说明与排除项
-
-- 若输入包含 teacher_annotation，必须在 blueprint_contract 或 audit_focus 中体现其约束
-- excluded.modes / excluded.knowledge 不得进入 must_test、expected_reasoning_actions、parameter_plan
-- candidate_pool_visible 只表示教师可见候选池，不表示本题需要覆盖
-- active_selection 才是本题实际采用的模式和知识点
-
-## 通用干扰模式库（跨题型通用认知错误）
-
-设计卡在规划阶段**选定本题用哪些干扰策略**（写入 question_structure_plan 或 audit_focus），
-下游设计智能体只保留这些干扰意图，不自己另选。这些模式跨题型通用，不是选择题专属。
-
-### 计算型干扰（数值题）
-
-- **单位换算陷阱**：正确值的不同单位表示（如 bit/byte、ms/μs、KB/MB 混淆）
-- **符号错误**：正确值的相反数、补码、反码
-- **偏移错误**：正确值 ±1，或偏离某个固定量（off-by-one）
-- **中间值**：计算过程中的某个中间结果当作最终答案
-- **倒置**：速度/时间的倒数、比率的分子分母互换
-- **非叶节点纳入**：树/图的遍历计数把根或非叶节点算错
-
-### 概念型干扰（概念辨析题）
-
-- **概念混淆**：相似但不同的概念替换（如同步/异步、进程/线程）
-- **过度推断**：从正确前提出错误推论
-- **条件遗漏**：忽略某个约束后的错误结论
-- **张冠李戴**：将 A 概念的特征安在 B 概念上
+### 概念型干扰
+- 概念混淆、过度推断、条件遗漏、张冠李戴
 
 ### 组合判断型干扰
+- I/II/III 各代表独立命题，干扰项是"真+假"混合组合
 
-- I/II/III 各代表一个独立命题
-- 干扰项是"真命题 + 假命题"的混合组合
+## 教师说明与排除项
+- teacher_annotation 必须在 blueprint_contract 或 audit_focus 中体现
+- excluded.modes / excluded.knowledge 不得进入 must_test
 
-## 干扰策略选定规则
-
-- 设计卡选定 3 种干扰类型，对应 3 个干扰选项
-- 每种干扰类型对应一个**错误认知路径**（不是随机常量）
-- 干扰类型记录在 question_structure_plan，供后续选项组装基于正确答案生成干扰项
-- 不预设干扰的**具体数值**
+## 关键约束
+- 不得出现具体数值/答案/最终计算结果
+- question_structure_plan 只写考察方向，不写解题步骤
+- 不设计具体参数（节点值/插入序列/资源矩阵）
+- 当往年经验与本次要求冲突时，以本次出题要求为最高优先级
