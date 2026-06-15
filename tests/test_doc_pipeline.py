@@ -1795,8 +1795,9 @@ class TestSplitDesignGraph:
 
         assert result.ok is True
         roles = [c["role"] for c in sched.calls]
-        # §19 conceptual: outline → design_card → exam_form → design(P1) → done
-        assert roles == ["outline", "question_design", "exam_form", "design"]
+        # §21 conceptual: outline → design_card → exam_form → design → form_gate → done
+        # 概念题批量出题后走 form_gate 审核（不再跳过审核直接 done）
+        assert roles == ["outline", "question_design", "exam_form", "design", "review"]
         assert "solve" not in roles
         assert "design2" not in roles
         assert "final_review" not in roles

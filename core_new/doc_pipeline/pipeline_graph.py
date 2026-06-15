@@ -513,11 +513,11 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
 
     g.edge("design_card", "ok", "exam_form")
     g.edge("exam_form", "ok", "design")
-    # Conceptual: skip form_gate/solve/design2/final.
-    g.edge("design", "ok", "done", condition=lambda s: s.complexity == "conceptual")
-    g.edge("design", "ok", "form_gate", condition=lambda s: s.complexity != "conceptual")
+    # §21 conceptual: design → form_gate (审核) → done. 概念题批量出题后走审核。
+    # 不再跳过 form_gate（原 design→done 无审核太粗糙）。
+    g.edge("design", "ok", "form_gate")
     g.edge("form_gate", "pass", "done", condition=lambda s: s.complexity == "conceptual")
-    g.edge("form_gate", "pass", "solve")
+    g.edge("form_gate", "pass", "solve", condition=lambda s: s.complexity != "conceptual")
     g.edge("form_gate", "needs_fix", "design")
     g.edge("solve", "success", "design2")
     # §19.5: solve never back-routes; failure is terminal.

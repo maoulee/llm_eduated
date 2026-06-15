@@ -422,11 +422,14 @@ class DocPipelineOrchestrator:
         self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
         *, feedback: str = "",
     ) -> PipelineResult | None:
-        """§19 design P1: read upstream cache → reuse skeleton → stem + questions
-        + experience-value params. Bold-give-experience-values, no brain-sim
-        (discipline ①). Writes question.md.
+        """§19/§21 design P1: read upstream → write question.md (+ solution.md for conceptual).
+
+        Standard/C (computational): design_draft_skill or c_codegen — stem + params,
+        answers by solve. Conceptual (§21): conceptual_batch_skill — batch direct
+        questions + answers + solution, no gen.py/solve needed.
         """
         question_path = ws / "question.md"
+        solution_path = ws / "solution.md"
         design_card_path = ws / "design_card.md"
         exam_form_path = ws / "exam_form.md"
         d_inject = {"规划": str(ref_path)}
@@ -435,18 +438,29 @@ class DocPipelineOrchestrator:
         if exam_form_path.exists():
             d_inject["考察形式"] = str(exam_form_path)
         d_inject = await self._resolve_inject("design", slot_id, 2, d_inject)
-        d_task = (
-            "§19 设计 P1（出题）：读取上游经验缓存→分析复用骨架→题干+设问+经验值参数。"
-            "给经验值参数（凭经验甩值，不脑内算/不推演/不脑内验证，纪律①）。"
-            "若规划/设计材料已有往年真题经验、参考经验摘要或模式概览，不要重复检索；"
-            "只有缓存缺失/完全无关时才做一次粗粒度 fallback 检索。"
-            "只出题干+设问+设计说明，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
-        )
+
+        is_conceptual = slot_data.get("complexity") == "conceptual"
+        if is_conceptual:
+            # §21 概念题分支：批量出题（题干+选项+答案+解析），不走 gen.py/solve
+            d_task = (
+                "§21 概念题批量出题：基于设计卡的知识点意图 + 经验卡，一次性出多道概念题。"
+                "每道直接写题干+选项（A/B/C/D）+答案+解析。概念题无计算，直接给答案。"
+                "同时写 question.md（所有题）+ solution.md（每题解析）。"
+            )
+            skill = "conceptual_batch_skill"
+        else:
+            d_task = (
+                "§19 设计 P1（出题）：读取上游定案→直接套骨架写题干+设问+经验值参数。"
+                "给经验值参数（凭经验甩值，不脑内算/不推演/不脑内验证，纪律①）。"
+                "只出题干+设问+设计说明，不出答案/选项。选择题题干无 A/B/C/D 是正常的。"
+            )
+            skill = "design_draft_skill"
+
         if feedback:
             d_task += f"\n\n## 审核反馈\n{feedback}"
         await self.scheduler.run_agent(
             "design", d_task, slot_id=slot_id, inject_files=d_inject,
-            skill_override="design_draft_skill",
+            skill_override=skill,
             continue_session=bool(feedback),
         )
         if not question_path.exists():
