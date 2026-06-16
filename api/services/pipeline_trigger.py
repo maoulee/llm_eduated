@@ -228,8 +228,12 @@ async def trigger_generation(
         except ImportError:
             K_RADAR_DEFINITIONS = ""
 
-        slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", "2"))
+        # 本地模型（api_vllm/vllm）支持并发，线上模型（glm5.1 等）线性出题
+        is_local = provider in ("api_vllm", "vllm")
+        slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", "2")) if is_local else 1
         semaphore = asyncio.Semaphore(max(1, slot_concurrency))
+        logger.info("[%s] 出题并发: %d (provider=%s, local=%s)",
+                    session_id, slot_concurrency, provider, is_local)
 
         # 分离概念题和计算题：概念题合并批量出，计算题独立出
         concept_slots = []
@@ -284,6 +288,11 @@ async def trigger_generation(
                         (q_dir / "final.md").write_text(
                             result.final_content, encoding="utf-8"
                         )
+
+                        # 概念题批量出题：拆分多道题到各 slot 目录
+                        if sb.get("complexity") == "conceptual" and len(concept_slots) > 1:
+                            _split_concept_questions(q_dir, concept_slots, output_dir)
+
                         progress.slot_status[sid] = {
                             "status": "completed",
                             "stage": "已完成",
@@ -354,6 +363,58 @@ async def trigger_generation(
         logger.exception("[%s] Pipeline generation setup failed", session_id)
         progress.mark_failed(str(e))
         raise
+
+
+def _split_concept_questions(
+    source_dir: Path,
+    concept_slots: list[dict],
+    output_dir: Path,
+) -> None:
+    """Split batch-generated concept questions into per-slot directories.
+
+    The first concept slot's question.md contains N questions separated by
+    '## 第 N 题' or '## 题目 N' headers. Split each into its own slot dir.
+    """
+    import re as _re
+
+    q_path = source_dir / "question.md"
+    s_path = source_dir / "solution.md"
+    if not q_path.exists():
+        return
+
+    q_text = q_path.read_text(encoding="utf-8")
+    s_text = s_path.read_text(encoding="utf-8") if s_path.exists() else ""
+
+    # 按 ## 第 N 题 / ## 题目 N 拆分
+    q_sections = _re.split(r"(?=^##\s+(?:第\s*)?\d+\s*题|^##\s+题目\s*\d+)", q_text, flags=_re.MULTILINE)
+    s_sections = _re.split(r"(?=^##\s+(?:第\s*)?\d+\s*题|^##\s+题目\s*\d+|^##\s+第\s*\d+\s*题\s*解析)", s_text, flags=_re.MULTILINE) if s_text else []
+
+    # 过滤空段
+    q_sections = [s.strip() for s in q_sections if s.strip() and not s.strip().startswith("# ") and "##" in s]
+    s_sections = [s.strip() for s in s_sections if s.strip() and not s.strip().startswith("# ") and "##" in s]
+
+    # 按顺序映射到 concept_slots（跳过第一个，它已经有完整内容）
+    for i, sb in enumerate(concept_slots[1:], start=1):  # 从第二个开始
+        if i >= len(q_sections):
+            break
+        sid = str(sb.get("slot_id", f"Q{i+1}"))
+        slot_dir = output_dir / sid
+        slot_dir.mkdir(parents=True, exist_ok=True)
+
+        # 写该题的 question.md
+        (slot_dir / "question.md").write_text(q_sections[i], encoding="utf-8")
+
+        # 写对应的 solution（如果有）
+        if i < len(s_sections):
+            (slot_dir / "solution.md").write_text(s_sections[i], encoding="utf-8")
+
+        # 写 final.md（question + solution 组合）
+        final_content = q_sections[i]
+        if i < len(s_sections):
+            final_content += "\n\n---\n\n" + s_sections[i]
+        (slot_dir / "final.md").write_text(final_content, encoding="utf-8")
+
+    logger.info("概念题拆分完成：%d 道题拆分到各 slot 目录", len(concept_slots) - 1)
 
 
 def _num_from_slot(slot_id: str) -> str:
