@@ -995,3 +995,131 @@ design 收到建议后：
 2. **拆审核**（结构审核 + 一致性审核分开）
 3. **加参数验证步**（gen.py 代码验证，替代脑内推演）
 4. **修改策略落地**（design 收到建议后先改题干后改参数）
+
+## 23. 三分支定型 + 信息流打通 + 前端连接（实施完成）
+
+> 日期: 2026-06-16 | 状态: 已实施，已验证
+
+### 23.1 三分支架构（全部定型 + 验证）
+
+后端三个分支，由 slot 的 `complexity` + `question_type` 决定路由：
+
+| complexity | question_type | 分支 | 流程 |
+|-----------|--------------|------|------|
+| conceptual | 任意 | 概念题 | concept_creator 批量出题 → concept_review → final |
+| standard | single_choice | 选择题 | design(占位符题干) → form_gate → design_solve(gen.py参数+选项) → form_gate2 → final |
+| standard | comprehensive | 综合题 | 同选择题流程，design_solve 不做选项构造 |
+
+**关键设计决策**：
+- 概念题：多个 conceptual slot 合并批量出题（一次 LLM 调用出 N 道题）
+- 计算题：交错设计——design 先出占位符题干（$T$, $S$ 等变量），form_gate 审骨架（不审参数），design_solve 填参数+求解
+- 选择题选项：骨架层（design_card）锚定 option_plan（选项考什么参数+干扰模式），design_solve 的 gen.py 打印选项正确值 → LLM 改错为干扰项
+
+### 23.2 信息流打通（往年题参考 → design_card 锚定）
+
+```
+compose 前段 grep 检索往年题 → reference_questions 写入 CONTRACT yaml
+→ SlotBlueprint 加 reference_questions 字段
+→ assemble 读 reference_questions 自动拉取完整题干拼入 assembled.md
+→ design_card 读往年真题参考锚定设问结构（不发明结构）
+```
+
+### 23.3 审核层优化
+
+| 审核环节 | 定位 | 审什么 | 不审什么 |
+|---------|------|--------|---------|
+| **form_gate**（review agent） | 审题干骨架 | 设问形式/考察覆盖度/设计一致性/条件充分性 | 不推演数值、不审参数约束 |
+| **form_gate2**（review2 agent） | 审解题一致性 | 解题流程方法/设问-答案对应 | 不推演数值 |
+| **final**（整合交付） | 整合交付 | 组装 question+solution + 检查表述修改落实 | 不重新审核数值/结构/一致性 |
+
+**suggestion 档位**：表述小问题 → suggestion（不回退），结构偏离 → needs_fix（回退）
+**review2 独立**：form_gate2 用 review2 agent + review2.md（不覆盖 form_gate 的 review.md）
+
+### 23.4 gen.py 架构（交错设计两轮）
+
+```
+design 第一轮：占位符题干（$T$, $S=[x_i]$）+ 设计说明（参数约束）
+  ↓ form_gate 审骨架
+design_solve 第二轮：
+  建模约束 + 给初始值 → gen.py 模拟机制 → exec 验证
+  → 替换占位符为实际参数值 → write solution.md（Markdown文档，非代码）
+  → 选择题额外：gen.py 打印选项正确值 → LLM 改错为干扰项
+```
+
+**核心原则**：初始值大胆给（经验值），后续参数由 gen.py 约束建模派生。gen.py 是约束建模（不是完整求解器），solve.py 是独立求解代码。
+
+### 23.5 complexity 路由打通
+
+```
+前端 interact agent → 交接 YAML（每个 slot 含 complexity）
+→ pipeline_trigger 读 YAML → 分离概念题/计算题
+  → 概念题：合并批量出 + 拆分到各 slot 目录
+  → 计算题：独立出（本地 2 并发 / 线上线性）
+→ DocPipeline 三分支路由
+```
+
+**complexity 判断规则**：
+- 往年试卷模式（Entry D）：沿用往年卷标记
+- 考研模拟（Entry A）：默认全部 standard
+- 自由出题（Entry C）：低难度概念辨析 → 询问教师 → conceptual
+- 知识点出题（Entry B）：教师说"概念题"/"辨析" → conceptual
+
+### 23.6 前端交互（plan 模式 + 方案卡片）
+
+**interact agent = 出题的 plan 模式协调者**：
+- 固定流程：范围收敛 → 知识点排布（多方案）→ 考察形式 → 确认 → 交接
+- 自由空间：追问什么/怎么呈现/推荐什么 → 模型自主判断
+
+**Entry D 方案卡片交互**：
+- 右侧边栏：方案概览卡片（方案A/B/C + 设计理念 + 题数）
+- 点击卡片 → 浮动面板替换聊天区（渲染完整方案 MD，含细粒度考点 `[ ]` + 返回按钮）
+- 下拉选择方案 → 确认 → 进入出题
+
+**方案格式**：
+```
+## 方案A — 侧重线性表与树
+
+**第1题（选择题·2分·难度：简单）**：链表操作时间复杂度
+- [ ] 删除操作的时间复杂度分析
+- [ ] 插入操作的时间复杂度分析
+...
+```
+
+### 23.7 后端↔前端连接链路
+
+```
+教师输入 → POST /api/v2/interact/sessions/{id}/turn
+→ scheduler.run_conversation_turn(role="interact")
+  → 加载 interact agent md + interact_core skill
+  → agent 写 compose/interact_draft.md（草案）
+→ draft_parser 解析为 DraftData（方案卡片 → scheme_md）
+→ 前端渲染方案卡片
+→ 教师选定 → agent 写交接 YAML（paper_request.yaml）
+→ pipeline_trigger 读 YAML → 三分支路由 → DocPipeline 出题
+→ display_result 展示结果
+→ 教师可单题重生成（regenerate_question）
+```
+
+### 23.8 关键文件清单
+
+| 文件 | 改动 |
+|------|------|
+| contracts.py | SlotBlueprint 加 complexity + reference_questions |
+| pipeline_graph.py | split graph 边定义（suggestion/formal final） |
+| orchestrator.py | 三分支路由 + 交错设计 task + concept_pipeline |
+| scheduler.py | write_file auto-path + intermediate_text 限制 + interact max_tokens |
+| doc_parser.py | REVIEW_STATUSES + FINAL_REVIEW_STATUSES + status 解析 |
+| pipeline.yaml | thinking_budget + role_bindings + context_providers |
+| compose/free_compose.py | 多套知识点排布方案 + complexity |
+| compose/artifact_store.py | reference_questions 拉取往年题 |
+| compose/pipeline_trigger.py | 概念题合并 + 本地并发/线上线性 + 结果拆分 |
+| interact_core/SKILL.md | plan 模式 + 方案卡片格式 + complexity 规则 |
+| interact.md | plan 模式定位 |
+| c_codegen/SKILL.md | 两轮交错设计 + gen.py 约束建模 |
+| design_card_v1/SKILL.md | 往年题锚定 + option_plan |
+| review.md / review2.md | 三项定性审核 + 独立 review2 agent |
+| final_review.md / SKILL | 整合交付（不重新审核） |
+| conceptual_batch_skill/SKILL.md | 批量出题 + 分题格式契约 |
+| draft_parser.py | 方案卡片解析 + complexity 标题清理 |
+| schemas_interact_v2.py | DraftSlot scheme_md/scheme_label + scenario D |
+| teacher-interact-lite-v7.html | 方案卡片渲染 + 浮动面板 + 选定方案 |
