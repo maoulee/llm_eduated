@@ -67,7 +67,7 @@ class DisplayResultService:
             paper_markdown="",
         )
 
-    def save_question_annotation(
+    async def save_question_annotation(
         self,
         session_id: str,
         slot_id: str,
@@ -80,12 +80,91 @@ class DisplayResultService:
 
         self._question_annotations.setdefault(session_id, {})[slot_id] = request.annotation
         if request.action == "regenerate_question":
-            return QuestionAnnotationResponse(
-                ok=True,
-                status="recorded",
-                message="批注已保存；单题重生成流程尚未接入，当前仅记录批注。",
-            )
+            # 触发单题重新生成（带教师批注）
+            try:
+                await self._regenerate_single_question(session_id, slot_id, request.annotation)
+                return QuestionAnnotationResponse(
+                    ok=True,
+                    status="regenerating",
+                    message=f"题目 {slot_id} 正在重新生成（批注：{request.annotation[:50]}）",
+                )
+            except Exception as e:
+                logger.exception("Failed to regenerate question %s", slot_id)
+                return QuestionAnnotationResponse(
+                    ok=False,
+                    status="error",
+                    message=f"重新生成失败：{e}",
+                )
         return QuestionAnnotationResponse(ok=True, status="recorded", message="批注已保存。")
+
+    async def _regenerate_single_question(
+        self, session_id: str, slot_id: str, annotation: str
+    ) -> None:
+        """Re-run pipeline for a single slot with teacher annotation."""
+        import asyncio
+        import yaml
+        from core_new.doc_pipeline import DocPipeline
+        from core_new.llm_gateway import get_gateway
+
+        workspace = self._interact_service.get_session_workspace(session_id)
+        # 找交接 YAML
+        handoff_path = None
+        for name in ("paper_request.yaml", "slot_blueprint.yaml"):
+            p = workspace / name
+            if p.exists():
+                handoff_path = p
+                break
+        if not handoff_path:
+            # 也可能在 compose/ 下
+            for name in ("paper_request.yaml", "slot_blueprint.yaml"):
+                p = workspace / "compose" / name
+                if p.exists():
+                    handoff_path = p
+                    break
+        if not handoff_path:
+            raise ValueError("找不到交接 YAML，无法重生成")
+
+        with open(handoff_path, encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        slots_data = data.get("slots", [data]) if isinstance(data, dict) else []
+
+        # 找到目标 slot
+        target_sb = None
+        for sb in slots_data:
+            if str(sb.get("slot_id", "")) == slot_id:
+                target_sb = sb
+                break
+        if not target_sb:
+            raise ValueError(f"交接 YAML 中找不到 slot {slot_id}")
+
+        # 加教师批注
+        target_sb = dict(target_sb)
+        target_sb["teacher_annotation"] = annotation
+
+        # 获取 provider
+        session = self._interact_service.get_session_info(session_id)
+        provider = getattr(session, "provider", "api_vllm") if session else "api_vllm"
+
+        # 重新出题
+        gateway = get_gateway(provider)
+        output_dir = workspace / "questions"
+        doc_workspace = str(output_dir / slot_id)
+
+        dp = DocPipeline(
+            gateway=gateway,
+            workspace=doc_workspace,
+            model_routing={"_default": provider},
+            enable_thinking=(provider in ("api_vllm", "vllm")),
+        )
+        result = await dp.run(
+            slot_id=slot_id,
+            slot_data=target_sb,
+            experience_card="",
+        )
+        if result.ok and result.final_content:
+            q_dir = output_dir / slot_id
+            q_dir.mkdir(parents=True, exist_ok=True)
+            (q_dir / "final.md").write_text(result.final_content, encoding="utf-8")
 
     def get_paper_markdown(self, session_id: str) -> str:
         """Return the latest paper markdown."""

@@ -86,7 +86,7 @@ def parse_draft_md(md_text: str, draft_id: str = "") -> DraftData:
     scenario = "A"
     current_round = 1
     global_phase: str | None = None
-    _sc_match = re.search(r"\[SCENARIO:\s*([ABC])\]", md_text[:500])
+    _sc_match = re.search(r"\[SCENARIO:\s*([ABCD])\]", md_text[:500])
     if _sc_match:
         scenario = _sc_match.group(1)
     else:
@@ -103,7 +103,7 @@ def parse_draft_md(md_text: str, draft_id: str = "") -> DraftData:
         global_phase = _phase_match.group(1).lower()
 
     # Strip metadata lines so they don't pollute options
-    md_text = re.sub(r"\[SCENARIO:\s*[ABC]\]\s*", "", md_text)
+    md_text = re.sub(r"\[SCENARIO:\s*[ABCD]\]\s*", "", md_text)
     md_text = re.sub(r"\[ROUND:\s*\d+\]\s*", "", md_text)
     md_text = re.sub(
         r"\[PHASE:\s*(?:knowledge|examination|combined|question_type)\]\s*",

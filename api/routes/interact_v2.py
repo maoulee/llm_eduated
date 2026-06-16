@@ -140,7 +140,7 @@ async def submit_question_annotation(
 ):
     """Save a teacher annotation for one generated question."""
     try:
-        return _display_service.save_question_annotation(session_id, slot_id, body)
+        return await _display_service.save_question_annotation(session_id, slot_id, body)
     except ValueError as e:
         raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
 
