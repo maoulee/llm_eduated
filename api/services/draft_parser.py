@@ -204,11 +204,14 @@ def parse_draft_md(md_text: str, draft_id: str = "") -> DraftData:
             global_phase=global_phase,
         )
 
+        # 清理标题中的 complexity 标记（不在前端展示）
+        clean_title = re.sub(r"\s*\[complexity:\s*\w+\]", "", header_text).strip()
+
         sections.append(
             DraftSlot(
                 slot_id=slot_id,
                 display_id=display_id,
-                title=header_text,
+                title=clean_title,
                 phase=phase,
                 options=options,
                 annotation=annotation,
