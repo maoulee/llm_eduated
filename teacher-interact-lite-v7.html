@@ -1438,6 +1438,12 @@
       const input = document.getElementById("teacherInput");
       const message = input.value.trim();
       if (!message) return;
+      input.value = "";
+      await sendMessageText(message);
+    }
+
+    async function sendMessageText(message) {
+      if (!message) return;
 
       document.getElementById("taskTitle").textContent = message.length > 24 ? message.slice(0, 24) + "..." : message;
       document.getElementById("currentSessionDesc").textContent = message.length > 30 ? message.slice(0, 30) + "..." : message;
@@ -1445,7 +1451,6 @@
       setStage("collecting");
 
       addMessage("teacher", message);
-      input.value = "";
 
       renderGeneratingDraft();
       setSending(true);
@@ -1562,6 +1567,15 @@
       document.getElementById("workspaceCaption").textContent = getDraftHint(draft);
 
       const body = document.getElementById("workspaceBody");
+
+      // 检测是否有方案卡片（Entry D）
+      const schemeSections = (draft.sections || []).filter(s => s.scheme_md);
+      if (schemeSections.length > 0) {
+        renderPlanCards(draft, schemeSections);
+        return;
+      }
+
+      // 旧格式：选项卡片（Entry A/B/C）
       body.innerHTML = `
         <div class="intent-bar">
           <span>系统识别意图：<strong>${escapeHtml(intentLabel || intentFromDraft(draft))}</strong></span>
@@ -1573,6 +1587,92 @@
 
       renderDraftFooter();
       updateDraftProgress();
+    }
+
+    // ── 方案卡片渲染（Entry D）──
+    function renderPlanCards(draft, schemeSections) {
+      const body = document.getElementById("workspaceBody");
+      const footer = document.getElementById("workspaceFooter");
+
+      body.innerHTML = `
+        <div class="draft-info">点击方案卡片查看详情，选定后进入下一步。</div>
+        ${schemeSections.map((s, i) => `
+          <div class="plan-card" data-scheme-idx="${i}" onclick="viewScheme(${i})" style="
+            padding:14px; margin-bottom:10px; border:1px solid var(--border);
+            border-radius:var(--radius); background:var(--surface); cursor:pointer;
+            transition: border-color 120ms ease, background 120ms ease;
+          " onmouseover="this.style.borderColor='#c7d2fe';this.style.background='var(--primary-soft)'"
+            onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
+            <strong style="font-size:14px; display:block; margin-bottom:6px;">${escapeHtml(s.scheme_label || s.title)}</strong>
+            <span style="color:var(--muted); font-size:13px;">
+              ${escapeHtml((s.scheme_md || '').split('\\n').filter(l => l.includes('第') && l.includes('题')).slice(0,3).map(l => l.trim()).join('；') || '点击查看详情')}
+            </span>
+          </div>
+        `).join("")}
+      `;
+
+      // 底部：选定方案按钮
+      footer.style.display = "block";
+      footer.innerHTML = `
+        <div style="margin-bottom:10px; color:var(--muted); font-size:13px;">
+          点击上方卡片查看方案详情，在聊天区查看完整内容。
+        </div>
+        <select id="schemeSelect" style="
+          width:100%; padding:10px; border:1px solid var(--border);
+          border-radius:8px; font-size:14px; margin-bottom:10px;
+        ">
+          <option value="">— 选择一套方案 —</option>
+          ${schemeSections.map((s, i) => `<option value="${i}">${escapeHtml(s.scheme_label || s.title)}</option>`).join("")}
+        </select>
+        <button class="primary-btn" id="confirmSchemeBtn" style="width:100%" disabled
+          onclick="confirmScheme()">
+          确认选定方案
+        </button>
+      `;
+
+      // 启用确认按钮
+      const sel = document.getElementById("schemeSelect");
+      const btn = document.getElementById("confirmSchemeBtn");
+      sel.addEventListener("change", () => { btn.disabled = !sel.value; });
+
+      // 存储方案数据供 viewScheme/confirmScheme 使用
+      state.schemeSections = schemeSections;
+    }
+
+    function viewScheme(idx) {
+      const scheme = state.schemeSections[idx];
+      if (!scheme || !scheme.scheme_md) return;
+
+      // 在聊天区渲染该方案的完整 MD
+      const stream = document.getElementById("messageStream");
+      const empty = document.getElementById("emptyGuide");
+      if (empty) empty.remove();
+
+      const html = marked.parse(scheme.scheme_md);
+      const article = document.createElement("article");
+      article.className = "message agent";
+      article.innerHTML = `
+        <div class="message-label">方案详情</div>
+        <div class="markdown-preview" style="max-width:760px;">${html}</div>
+      `;
+      stream.appendChild(article);
+      stream.scrollTop = stream.scrollHeight;
+
+      // 同步选中下拉框
+      const sel = document.getElementById("schemeSelect");
+      if (sel) { sel.value = String(idx); const btn = document.getElementById("confirmSchemeBtn"); if (btn) btn.disabled = false; }
+    }
+
+    async function confirmScheme() {
+      const sel = document.getElementById("schemeSelect");
+      if (!sel || !sel.value) return;
+
+      const idx = parseInt(sel.value);
+      const scheme = state.schemeSections[idx];
+
+      // 发送确认消息给后端
+      const confirmMsg = `我选择${scheme.scheme_label || scheme.title}。请基于这套方案的知识点排布，生成交接文档进入出题。`;
+      await sendMessageText(confirmMsg);
     }
 
     function intentFromDraft(draft) {
