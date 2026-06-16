@@ -1152,8 +1152,9 @@ class DocPipelineOrchestrator:
         c_inject = {"规划": str(ref_path)}
         c_inject = await self._resolve_inject("concept_creator", slot_id, 2, c_inject)
         c_task = (
-            "基于蓝图的考点列表，直接出概念题。根据题型要求生成选择题/填空题/判断题/简答题等。"
-            "每题题干+选项/空格/答案+解析。write question.md（所有题）+ solution.md（每题解析）。"
+            "基于蓝图的考点列表，**批量**出概念题。对每个考点出一道（选择/填空/判断/简答），"
+            "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
+            "write question.md（所有题）+ solution.md（每题解析）。"
         )
         await self.scheduler.run_agent(
             "concept_creator", c_task, slot_id=slot_id, inject_files=c_inject,
