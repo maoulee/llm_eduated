@@ -1,0 +1,160 @@
+2026-06-14 15:34:27,608 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 15:34:27,622 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 15:34:27,641 - INFO - Loaded 10 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-14 15:34:27,661 - INFO - Initializing LLM provider type: api
+2026-06-14 15:34:27,685 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=4 thinking=chat_template_kwargs
+2026-06-14 15:34:27,685 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-14 15:34:27,902 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 15:34:27,908 - INFO - [TEST_SC] Layer 1: Outline
+2026-06-14 15:34:28,098 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:34:30,208 - INFO - [stream_chat] streaming... chunks=50 reasoning=315 content=0 provider=api_vllm
+2026-06-14 15:34:31,787 - INFO - [stream_chat] streaming... chunks=100 reasoning=524 content=0 provider=api_vllm
+2026-06-14 15:34:33,374 - INFO - [stream_chat] streaming... chunks=150 reasoning=711 content=0 provider=api_vllm
+2026-06-14 15:34:34,958 - INFO - [stream_chat] streaming... chunks=200 reasoning=917 content=0 provider=api_vllm
+2026-06-14 15:34:36,732 - INFO - [stream_chat] streaming... chunks=250 reasoning=1089 content=0 provider=api_vllm
+2026-06-14 15:34:56,626 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=1107 tool_calls=2 finish_reason=tool_calls
+2026-06-14 15:34:56,640 - INFO - [TEST_SC] Executing tool: write_file({'content': '## status\nready\n\n## 考点\n- **二叉树带权路径长度(WPL)**：核心考点，考察WPL的定义与计算方法\n  - 考察侧重点：路径长度的定义（根)
+2026-06-14 15:34:56,654 - INFO - [TEST_SC] Executing tool: write_file({'content': '## 出题契约\n\n### 基本信息\n- target_subject: 数据结构\n- target_family: DS-5 > 树与二叉树\n- primary_t)
+2026-06-14 15:34:56,759 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 15:34:56,761 - INFO - [TEST_SC] graph node=design_card visit=1
+2026-06-14 15:34:56,774 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-14 15:34:56,775 - INFO - [TEST_SC] Layer 1.5: Design Card
+2026-06-14 15:34:56,803 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:34:59,032 - INFO - [stream_chat] streaming... chunks=50 reasoning=388 content=0 provider=api_vllm
+2026-06-14 15:35:00,603 - INFO - [stream_chat] streaming... chunks=100 reasoning=635 content=0 provider=api_vllm
+2026-06-14 15:35:02,177 - INFO - [stream_chat] streaming... chunks=150 reasoning=669 content=312 provider=api_vllm
+2026-06-14 15:35:03,755 - INFO - [stream_chat] streaming... chunks=200 reasoning=669 content=564 provider=api_vllm
+2026-06-14 15:35:05,331 - INFO - [stream_chat] streaming... chunks=250 reasoning=669 content=905 provider=api_vllm
+2026-06-14 15:35:06,909 - INFO - [stream_chat] streaming... chunks=300 reasoning=669 content=1161 provider=api_vllm
+2026-06-14 15:35:08,578 - INFO - [stream_chat] streaming... chunks=350 reasoning=669 content=1321 provider=api_vllm
+2026-06-14 15:35:10,166 - INFO - [stream_chat] streaming... chunks=400 reasoning=669 content=1517 provider=api_vllm
+2026-06-14 15:35:11,747 - INFO - [stream_chat] streaming... chunks=450 reasoning=669 content=1740 provider=api_vllm
+2026-06-14 15:35:13,329 - INFO - [stream_chat] streaming... chunks=500 reasoning=669 content=1958 provider=api_vllm
+2026-06-14 15:35:14,906 - INFO - [stream_chat] streaming... chunks=550 reasoning=669 content=2256 provider=api_vllm
+2026-06-14 15:35:16,486 - INFO - [stream_chat] streaming... chunks=600 reasoning=669 content=2476 provider=api_vllm
+2026-06-14 15:35:18,120 - INFO - [stream_chat] streaming... chunks=650 reasoning=669 content=2749 provider=api_vllm
+2026-06-14 15:35:19,712 - INFO - [stream_chat] streaming... chunks=700 reasoning=669 content=3016 provider=api_vllm
+2026-06-14 15:35:21,300 - INFO - [stream_chat] streaming... chunks=750 reasoning=669 content=3301 provider=api_vllm
+2026-06-14 15:35:21,874 - INFO - [stream_chat] provider=api_vllm content=3396 reasoning=669 tool_calls=0 finish_reason=stop
+2026-06-14 15:35:21,892 - INFO - [TEST_SC] Agent 'question_design' attempt 1: direct_write design_card.md (3394 chars)
+2026-06-14 15:35:21,915 - INFO - [TEST_SC] graph node=exam_form visit=1
+2026-06-14 15:35:21,953 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:35:24,367 - INFO - [stream_chat] streaming... chunks=50 reasoning=323 content=0 provider=api_vllm
+2026-06-14 15:35:25,931 - INFO - [stream_chat] streaming... chunks=100 reasoning=575 content=0 provider=api_vllm
+2026-06-14 15:35:27,517 - INFO - [stream_chat] streaming... chunks=150 reasoning=919 content=0 provider=api_vllm
+2026-06-14 15:35:32,351 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=1163 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:35:32,357 - INFO - [TEST_SC] Executing tool: write_file({'content': '## status\ndraft\n\n## examination_form\n- 考察形式：多步串行推演 + 单点计算（K3+K2 混合主导）\n- 设问方向：给定权值集)
+2026-06-14 15:35:32,379 - INFO - [TEST_SC] graph node=design visit=1
+2026-06-14 15:35:32,430 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:35:35,318 - INFO - [stream_chat] streaming... chunks=50 reasoning=296 content=0 provider=api_vllm
+2026-06-14 15:35:36,896 - INFO - [stream_chat] streaming... chunks=100 reasoning=479 content=0 provider=api_vllm
+2026-06-14 15:35:38,549 - INFO - [stream_chat] streaming... chunks=150 reasoning=679 content=0 provider=api_vllm
+2026-06-14 15:35:46,021 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=769 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:35:46,026 - INFO - [TEST_SC] Executing tool: write_file({'content': '## 题目\n\n设某数据集中各字符出现的频率（权值）集合为 {5, 10, 15, 20, 30}，以该集合构造哈夫曼树，则该哈夫曼树的带权路径长度 WPL 为（ ）。\n)
+2026-06-14 15:35:46,055 - INFO - [TEST_SC] graph node=form_gate visit=1
+2026-06-14 15:35:46,055 - INFO - [TEST_SC] Layer 3: Review
+2026-06-14 15:35:46,091 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:35:48,537 - INFO - [stream_chat] streaming... chunks=50 reasoning=223 content=0 provider=api_vllm
+2026-06-14 15:35:50,116 - INFO - [stream_chat] streaming... chunks=100 reasoning=410 content=0 provider=api_vllm
+2026-06-14 15:35:51,696 - INFO - [stream_chat] streaming... chunks=150 reasoning=632 content=0 provider=api_vllm
+2026-06-14 15:35:53,275 - INFO - [stream_chat] streaming... chunks=200 reasoning=875 content=0 provider=api_vllm
+2026-06-14 15:35:54,850 - INFO - [stream_chat] streaming... chunks=250 reasoning=1083 content=0 provider=api_vllm
+2026-06-14 15:35:56,456 - INFO - [stream_chat] streaming... chunks=300 reasoning=1270 content=0 provider=api_vllm
+2026-06-14 15:35:58,036 - INFO - [stream_chat] streaming... chunks=350 reasoning=1270 content=242 provider=api_vllm
+2026-06-14 15:35:59,662 - INFO - [stream_chat] streaming... chunks=400 reasoning=1270 content=467 provider=api_vllm
+2026-06-14 15:36:01,246 - INFO - [stream_chat] streaming... chunks=450 reasoning=1270 content=736 provider=api_vllm
+2026-06-14 15:36:02,832 - INFO - [stream_chat] streaming... chunks=500 reasoning=1270 content=964 provider=api_vllm
+2026-06-14 15:36:03,054 - INFO - [stream_chat] provider=api_vllm content=1005 reasoning=1270 tool_calls=0 finish_reason=stop
+2026-06-14 15:36:03,060 - INFO - [TEST_SC] Agent 'review' attempt 1: intermediate_text (1003 chars, 1/2)
+2026-06-14 15:36:03,094 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:10,822 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=110 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:36:10,828 - INFO - [TEST_SC] Executing tool: write_file({'path': 'review.md', 'content': '## 审核结论\n\n### Checklist 逐项判定\n\n| # | 维度 | 判定 | 说明 |\n|---|------)
+2026-06-14 15:36:10,858 - INFO - [TEST_SC] graph node=solve visit=1
+2026-06-14 15:36:10,858 - INFO - [TEST_SC] Layer 4: Solve
+2026-06-14 15:36:10,905 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:15,719 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=364 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:36:15,724 - INFO - [TEST_SC] Executing tool: write_file({'path': 'solve.py', 'content': 'import heapq\n\n# 哈夫曼树构造 + WPL计算\nweights = [5, 10, 15, 20, 30]\nhe)
+2026-06-14 15:36:15,738 - INFO - [TEST_SC] Agent 'solve' attempt 1: tools executed, solution.md not written (no_file=0, total=1, continuing)
+2026-06-14 15:36:15,773 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:17,111 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=12 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:36:17,116 - INFO - [TEST_SC] Executing tool: exec_file({'path': 'solve.py'})
+2026-06-14 15:36:17,149 - INFO - [TEST_SC] Agent 'solve' attempt 2: tools executed, solution.md not written (no_file=1, total=2, continuing)
+2026-06-14 15:36:17,177 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:19,845 - INFO - [stream_chat] streaming... chunks=50 reasoning=154 content=0 provider=api_vllm
+2026-06-14 15:36:21,419 - INFO - [stream_chat] streaming... chunks=100 reasoning=332 content=0 provider=api_vllm
+2026-06-14 15:36:23,001 - INFO - [stream_chat] streaming... chunks=150 reasoning=503 content=0 provider=api_vllm
+2026-06-14 15:36:24,587 - INFO - [stream_chat] streaming... chunks=200 reasoning=745 content=0 provider=api_vllm
+2026-06-14 15:36:26,166 - INFO - [stream_chat] streaming... chunks=250 reasoning=1000 content=0 provider=api_vllm
+2026-06-14 15:36:27,742 - INFO - [stream_chat] streaming... chunks=300 reasoning=1174 content=6 provider=api_vllm
+2026-06-14 15:36:34,392 - INFO - [stream_chat] provider=api_vllm content=42 reasoning=1174 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:36:34,397 - INFO - [TEST_SC] Executing tool: write_file({'content': '## status\nsolved\n\n## 求解过程\n\n### 哈夫曼树构造与 WPL 计算\n\n给定权值集合 {5, 10, 15, 20, 30}，按哈夫曼算法)
+2026-06-14 15:36:34,467 - INFO - [TEST_SC] graph node=design2 visit=1
+2026-06-14 15:36:34,510 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:36,934 - INFO - [stream_chat] streaming... chunks=50 reasoning=437 content=0 provider=api_vllm
+2026-06-14 15:36:38,589 - INFO - [stream_chat] streaming... chunks=100 reasoning=772 content=0 provider=api_vllm
+2026-06-14 15:36:40,291 - INFO - [stream_chat] streaming... chunks=150 reasoning=1040 content=0 provider=api_vllm
+2026-06-14 15:36:41,866 - INFO - [stream_chat] streaming... chunks=200 reasoning=1345 content=0 provider=api_vllm
+2026-06-14 15:36:43,446 - INFO - [stream_chat] streaming... chunks=250 reasoning=1767 content=0 provider=api_vllm
+2026-06-14 15:36:45,022 - INFO - [stream_chat] streaming... chunks=300 reasoning=2220 content=0 provider=api_vllm
+2026-06-14 15:36:46,596 - INFO - [stream_chat] streaming... chunks=350 reasoning=2640 content=0 provider=api_vllm
+2026-06-14 15:36:47,575 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=2858 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:36:47,581 - INFO - [TEST_SC] Executing tool: read_file({'path': 'question.md'})
+2026-06-14 15:36:47,582 - INFO - [TEST_SC] Agent 'design' attempt 1: tools executed, question.md not written (no_file=1, total=1, continuing)
+2026-06-14 15:36:47,616 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:36:50,063 - INFO - [stream_chat] streaming... chunks=50 reasoning=184 content=0 provider=api_vllm
+2026-06-14 15:36:51,643 - INFO - [stream_chat] streaming... chunks=100 reasoning=359 content=0 provider=api_vllm
+2026-06-14 15:36:53,220 - INFO - [stream_chat] streaming... chunks=150 reasoning=537 content=0 provider=api_vllm
+2026-06-14 15:36:54,793 - INFO - [stream_chat] streaming... chunks=200 reasoning=692 content=0 provider=api_vllm
+2026-06-14 15:36:56,365 - INFO - [stream_chat] streaming... chunks=250 reasoning=859 content=0 provider=api_vllm
+2026-06-14 15:36:57,943 - INFO - [stream_chat] streaming... chunks=300 reasoning=1039 content=0 provider=api_vllm
+2026-06-14 15:36:59,720 - INFO - [stream_chat] streaming... chunks=350 reasoning=1207 content=0 provider=api_vllm
+2026-06-14 15:37:01,297 - INFO - [stream_chat] streaming... chunks=400 reasoning=1375 content=0 provider=api_vllm
+2026-06-14 15:37:02,877 - INFO - [stream_chat] streaming... chunks=450 reasoning=1545 content=0 provider=api_vllm
+2026-06-14 15:37:04,457 - INFO - [stream_chat] streaming... chunks=500 reasoning=1696 content=0 provider=api_vllm
+2026-06-14 15:37:14,014 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=1857 tool_calls=1 finish_reason=tool_calls
+2026-06-14 15:37:14,023 - INFO - [TEST_SC] Executing tool: write_file({'path': 'question.md', 'content': '## 题目\n\n设某数据集中各字符出现的频率（权值）集合为 {5, 10, 15, 20, 30}，以该集合构造哈夫曼树，则该)
+2026-06-14 15:37:14,042 - INFO - [TEST_SC] Cleared session for role 'design' (§19.5 reset)
+2026-06-14 15:37:14,053 - INFO - [TEST_SC] graph node=final visit=1
+2026-06-14 15:37:14,053 - INFO - [TEST_SC] Layer 5: Final Review
+2026-06-14 15:37:14,102 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:37:17,536 - INFO - [stream_chat] streaming... chunks=50 reasoning=186 content=2 provider=api_vllm
+2026-06-14 15:37:17,729 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=186 tool_calls=4 finish_reason=tool_calls
+2026-06-14 15:37:17,735 - INFO - [TEST_SC] Executing tool: read_file({'path': 'question.md'})
+2026-06-14 15:37:17,736 - INFO - [TEST_SC] Executing tool: read_file({'path': 'solution.md'})
+2026-06-14 15:37:17,737 - INFO - [TEST_SC] Executing tool: read_file({'path': 'solve_output.txt'})
+2026-06-14 15:37:17,738 - INFO - [TEST_SC] Executing tool: read_file({'path': 'solve.py'})
+2026-06-14 15:37:17,739 - INFO - [TEST_SC] Agent 'final_review' attempt 1: tools executed, final_review.md not written (no_file=1, total=1, continuing)
+2026-06-14 15:37:17,793 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-14 15:37:21,191 - INFO - [stream_chat] streaming... chunks=50 reasoning=319 content=0 provider=api_vllm
+2026-06-14 15:37:22,765 - INFO - [stream_chat] streaming... chunks=100 reasoning=594 content=0 provider=api_vllm
+2026-06-14 15:37:24,342 - INFO - [stream_chat] streaming... chunks=150 reasoning=955 content=0 provider=api_vllm
+2026-06-14 15:37:25,915 - INFO - [stream_chat] streaming... chunks=200 reasoning=1275 content=0 provider=api_vllm
+2026-06-14 15:37:27,492 - INFO - [stream_chat] streaming... chunks=250 reasoning=1712 content=0 provider=api_vllm
+2026-06-14 15:37:29,085 - INFO - [stream_chat] streaming... chunks=300 reasoning=2315 content=0 provider=api_vllm
+2026-06-14 15:37:30,837 - INFO - [stream_chat] streaming... chunks=350 reasoning=2834 content=0 provider=api_vllm
+2026-06-14 15:37:43,840 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=3208 tool_calls=2 finish_reason=tool_calls
+2026-06-14 15:37:43,846 - INFO - [TEST_SC] Executing tool: write_file({'path': 'final_review.md', 'content': '## status\npass\n\n## summary\n终审通过。solution 答案 175 与 solve_)
+2026-06-14 15:37:43,862 - INFO - [TEST_SC] Executing tool: write_file({'path': 'final.md', 'content': '## 题目\n\n设某数据集中各字符出现的频率（权值）集合为 {5, 10, 15, 20, 30}，以该集合构造哈夫曼树，则该哈夫曼)
+2026-06-14 15:37:43,876 - INFO - [TEST_SC] Final Review: status=pass (iter 0)
+2026-06-14 15:37:43,887 - INFO - [TEST_SC] Format (agent-produced final.md, 849 chars)
+2026-06-14 15:37:43,888 - INFO - [TEST_SC] Pipeline done: 167.1s, final_review=pass, iters=1
+formal experiment: §19 design-unified architecture | provider=api_vllm | enable_split_design=ON | out=docs/test_output/c1_isolated_t1
+
+======================================================================
+  [T1_简单选择] single_choice
+======================================================================
+  196.0s | ok=True | review=pass
+    ✓ question.md
+    ✓ solve.py
+    ✓ solve_output.txt
+    ✓ solution.md
+    ✓ final.md
+    solve_output=9B | options_in_q=True
+
+======================================================================
+  正式实验结果（§17 split 架构，3 类型）
+======================================================================
+  类型                time    ok solve.py     exec     产出
+  T1_简单选择         196.0s  True     True       9B      ✓
+
+  → ✓ 3 类型全部成功（split 架构端到端通过）

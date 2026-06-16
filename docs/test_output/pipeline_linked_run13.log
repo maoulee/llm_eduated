@@ -1,0 +1,15 @@
+2026-06-15 17:33:31,547 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 17:33:31,561 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 17:33:31,581 - INFO - Loaded 11 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-15 17:33:31,614 - INFO - Initializing LLM provider type: api
+2026-06-15 17:33:31,637 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=16 thinking=chat_template_kwargs
+2026-06-15 17:33:31,637 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-15 17:33:31,652 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 17:33:31,658 - INFO - [TEST_AVL] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-15 17:33:31,691 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 17:33:31,692 - INFO - [TEST_AVL] graph node=design_card visit=1
+2026-06-15 17:33:31,706 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 17:33:31,706 - INFO - [TEST_AVL] Layer 1.5: Design Card
+2026-06-15 17:33:31,949 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 17:33:34,161 - INFO - [stream_chat] streaming... chunks=50 reasoning=253 content=0 provider=api_vllm
+2026-06-15 17:33:35,796 - INFO - [stream_chat] streaming... chunks=100 reasoning=459 content=0 provider=api_vllm

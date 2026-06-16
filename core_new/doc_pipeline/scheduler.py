@@ -690,8 +690,8 @@ class DocScheduler:
             with open(_trace_path, "a", encoding="utf-8") as _tf:
                 _tf.write(_json.dumps(event, ensure_ascii=False) + "\n")
 
-        _MAX_INTERMEDIATE_TEXT = 2  # max intermediate reasoning rounds before intervention
-        _MAX_INTERMEDIATE_TEXT_HARD = 10  # hard stop before exhausting all attempts
+        _MAX_INTERMEDIATE_TEXT = 1  # max intermediate reasoning rounds before forced write
+        _MAX_INTERMEDIATE_TEXT_HARD = 4  # hard stop before exhausting all attempts
 
         for attempt in range(MAX_AGENT_ATTEMPTS):
             try:
@@ -831,6 +831,10 @@ class DocScheduler:
                             "requested_args": fn_args,
                         })
                     elif fn_name in available_names:
+                        # write_file 无 path 时，自动用 expected_fn 作为 path
+                        if fn_name == "write_file" and fn_args.get("content") and not fn_args.get("path"):
+                            fn_args["path"] = expected_fn
+                            logger.info("[%s] write_file auto-path: %s", slot_id, expected_fn)
                         logger.info("[%s] Executing tool: %s(%s)", slot_id, fn_name, str(fn_args)[:100])
                         if fn_name == "grep_search":
                             grep_search_count += 1

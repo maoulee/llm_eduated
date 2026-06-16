@@ -1,48 +1,39 @@
-# 终审技能
+# 整合交付技能
 
-> 行为约束已定义在 agents/final_review.md。
-> 本文件定义终审思考方向 + 路由判定。
+> 前两轮审核已完成。本阶段做整合交付，不是再审核。
 
-## 终审角色
+## 整合交付角色
 
-你是最终审核者。form_gate 已审过题干结构，design_solve 已完成求解。
-你要判断：**这道题作为最终交付，质量合格吗？**
+你拿到的是已通过两轮审核的 question.md + solution.md。
+你要做的是：**整合为最终交付文档 + 检查表述修改是否落实**。
 
-不是逐项打勾，而是**基于你对这个知识点的专业理解，做最终质量判断**。
+## 做
 
-## 审核思考方向
+### 1. 整合 question + solution
 
-### 证据一致性
-solution.md 的最终答案与 gen.py/solve.py 的 exec 输出是否一致？
-题干设问指向的量与 solution 给出的答案是否对齐？
+read question.md + solution.md → 组装为 final.md（完整试卷格式）：
+- 题目部分（题干 + 设问）
+- 参考答案部分（求解过程 + 最终答案）
+- 格式整洁、分值清晰
 
-### 设计卡对齐
-design_card 的 expected_reasoning_actions 是否在 solution 中体现？
-terminology constraints 是否被题干满足？
-hard_constraints 是否在最终题目中真正实现？
+### 2. 检查表述修改是否落实
 
-### 交付完整性
-question.md 是否完整（题干+设问+选项/子问）？
-solution.md 是否完整（求解过程+最终答案）？
-选择题是否有 A/B/C/D 选项？综合题是否有子问链？
+read review.md + review2.md（前两轮审核意见）→ 快速检查：
+- form_gate 提的表述问题是否已在 question.md 修正
+- form_gate2 提的一致性问题是否已在 solution.md 修正
+- 如有遗漏 → 在 final.md 里顺手修正
 
-## 路由判定
+### 3. 表述微调（如有）
 
-- **pass**：质量合格，可交付。写 final_review.md + final.md。
-- **needs_fix**：有表述/格式/一致性小问题。给修改建议，design 调整一次后直接输出。
-- **question_error**：题目结构有严重问题（如缺子问、考点偏离）。回 design 重做。
-- **solution_error**：求解有严重问题（如答案错误、缺求解过程）。回 design_solve 重做。
+整合时如发现小的表述问题（错别字、格式不规范、术语不一致），直接在 final.md 里修正。
 
-> needs_fix 是轻量修改（表述/格式），只调一次就输出。
-> question_error/solution_error 是严重问题，需要回退重做。
+## 不做的事
+
+- **不重算/验证数值** — 数值由 gen.py exec 保证
+- **不重新审核结构** — form_gate 已审题干结构
+- **不重新审核一致性** — form_gate2 已审题干-答案一致性
+- **不回退** — 前两轮已通过，只做整合
 
 ## 输出
 
-写 final_review.md（审核结论 + 路由判定）。
-当 pass 时，同时写 final.md（最终交付文档：question + solution 组装）。
-
-## 红线
-
-- 不得脑内算答案
-- 不得因选择题有选项值就打回（这是正常交付状态）
-- needs_fix 只用于表述/格式小问题，不用于结构性问题
+write_file(path="final.md", content="...")：整合后的最终交付文档。

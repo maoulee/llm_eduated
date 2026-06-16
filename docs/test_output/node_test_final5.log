@@ -1,0 +1,66 @@
+2026-06-16 06:03:22,702 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:03:22,717 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:03:22,739 - INFO - Loaded 12 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-16 06:03:22,759 - INFO - Initializing LLM provider type: api
+2026-06-16 06:03:22,783 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=16 thinking=chat_template_kwargs
+2026-06-16 06:03:22,784 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-16 06:03:22,801 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:03:22,804 - INFO - [TEST_AVL] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-16 06:03:22,835 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:03:22,836 - INFO - [TEST_AVL] graph node=final visit=1
+2026-06-16 06:03:22,836 - INFO - [TEST_AVL] Layer 5: Final (整合交付)
+2026-06-16 06:03:23,075 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 06:03:24,493 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=129 tool_calls=2 finish_reason=tool_calls
+2026-06-16 06:03:24,499 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-16 06:03:24,500 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solution.md'})
+2026-06-16 06:03:24,502 - INFO - [TEST_AVL] Agent 'final_review' attempt 1: tools executed, final.md not written (no_file=1, total=1, continuing)
+2026-06-16 06:03:24,547 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 06:03:25,703 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=103 tool_calls=2 finish_reason=tool_calls
+2026-06-16 06:03:25,709 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'review.md'})
+2026-06-16 06:03:25,715 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'review2.md'})
+2026-06-16 06:03:25,716 - INFO - [TEST_AVL] Agent 'final_review' attempt 2: tools executed, final.md not written (no_file=2, total=2, continuing)
+2026-06-16 06:03:25,767 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 06:03:27,738 - INFO - [stream_chat] streaming... chunks=50 reasoning=310 content=0 provider=api_vllm
+2026-06-16 06:03:29,398 - INFO - [stream_chat] streaming... chunks=100 reasoning=560 content=0 provider=api_vllm
+2026-06-16 06:03:31,061 - INFO - [stream_chat] streaming... chunks=150 reasoning=773 content=0 provider=api_vllm
+2026-06-16 06:03:32,723 - INFO - [stream_chat] streaming... chunks=200 reasoning=995 content=0 provider=api_vllm
+2026-06-16 06:03:34,380 - INFO - [stream_chat] streaming... chunks=250 reasoning=1210 content=0 provider=api_vllm
+2026-06-16 06:03:36,036 - INFO - [stream_chat] streaming... chunks=300 reasoning=1409 content=0 provider=api_vllm
+2026-06-16 06:03:37,704 - INFO - [stream_chat] streaming... chunks=350 reasoning=1582 content=0 provider=api_vllm
+2026-06-16 06:03:39,375 - INFO - [stream_chat] streaming... chunks=400 reasoning=1754 content=0 provider=api_vllm
+2026-06-16 06:03:41,043 - INFO - [stream_chat] streaming... chunks=450 reasoning=1975 content=0 provider=api_vllm
+2026-06-16 06:03:42,713 - INFO - [stream_chat] streaming... chunks=500 reasoning=2166 content=0 provider=api_vllm
+2026-06-16 06:03:44,383 - INFO - [stream_chat] streaming... chunks=550 reasoning=2338 content=0 provider=api_vllm
+2026-06-16 06:03:46,065 - INFO - [stream_chat] streaming... chunks=600 reasoning=2525 content=0 provider=api_vllm
+2026-06-16 06:03:47,741 - INFO - [stream_chat] streaming... chunks=650 reasoning=2750 content=0 provider=api_vllm
+2026-06-16 06:03:49,432 - INFO - [stream_chat] streaming... chunks=700 reasoning=2966 content=0 provider=api_vllm
+2026-06-16 06:03:51,117 - INFO - [stream_chat] streaming... chunks=750 reasoning=3161 content=0 provider=api_vllm
+2026-06-16 06:03:52,796 - INFO - [stream_chat] streaming... chunks=800 reasoning=3343 content=0 provider=api_vllm
+2026-06-16 06:03:54,477 - INFO - [stream_chat] streaming... chunks=850 reasoning=3509 content=0 provider=api_vllm
+2026-06-16 06:03:56,162 - INFO - [stream_chat] streaming... chunks=900 reasoning=3706 content=0 provider=api_vllm
+2026-06-16 06:03:57,849 - INFO - [stream_chat] streaming... chunks=950 reasoning=3884 content=0 provider=api_vllm
+2026-06-16 06:03:59,519 - INFO - [stream_chat] streaming... chunks=1000 reasoning=4116 content=0 provider=api_vllm
+2026-06-16 06:04:01,194 - INFO - [stream_chat] streaming... chunks=1050 reasoning=4331 content=0 provider=api_vllm
+2026-06-16 06:04:02,869 - INFO - [stream_chat] streaming... chunks=1100 reasoning=4570 content=0 provider=api_vllm
+2026-06-16 06:04:04,583 - INFO - [stream_chat] streaming... chunks=1150 reasoning=4777 content=14 provider=api_vllm
+2026-06-16 06:04:31,941 - INFO - [stream_chat] provider=api_vllm content=195 reasoning=4777 tool_calls=1 finish_reason=tool_calls
+2026-06-16 06:04:31,948 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# 平衡二叉树（AVL树）插入与旋转\n\n## 题目（共13分）\n\n设有一棵初始为空的平衡二叉树（AVL树），现按以下顺序依次插入关键字：\n\n    30, 20,)
+2026-06-16 06:04:31,966 - INFO - [TEST_AVL] Final: final.md written (1602 chars, iter 0)
+2026-06-16 06:04:32,364 - INFO - [TEST_AVL] Format (agent-produced final.md, 1602 chars)
+2026-06-16 06:04:32,366 - INFO - [TEST_AVL] Pipeline done: 69.5s, final_review=pass, iters=1
+============================================================
+  分段测试: 从 final 开始
+============================================================
+  已复制上游产物: docs/test_output/pipeline_linked_test/TEST_AVL → docs/test_output/node_test/TEST_AVL
+  pipeline_state: current_node=form_gate2, history=6 nodes completed → will resume at final
+  pipeline_state: current_node=final, history=6 nodes completed
+
+[Step 2] 启动 pipeline（从 final resume）...
+
+============================================================
+  [结果] elapsed=69.6s  result.ok=True
+  review_status=pass
+============================================================
+  - review.md — 上游残留（未更新）
+  - solution.md — 上游残留（未更新）
+  - final.md — 上游残留（未更新）

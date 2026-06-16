@@ -18,6 +18,10 @@ from core_new.doc_pipeline.contracts import SlotBlueprint
 
 from . import artifact_store
 
+# 题位经验卡目录：支持环境变量覆盖（全量数据可能在项目外路径）。
+# 默认项目内 data/slot_experiences/；环境 SLOT_EXPERIENCES_DIR 覆盖。
+DEFAULT_EXP_DIR = os.environ.get("SLOT_EXPERIENCES_DIR", "data/slot_experiences")
+
 _OUTLINE_SYSTEM_PROMPT = (
     "# 408考研组卷专家\n\n"
     "你是408考研组卷专家，以教师的视角规划试卷大纲。大纲同时面向教师阅读和下游出题智能体。\n\n"
@@ -126,7 +130,7 @@ def load_kg_for_subjects(subjects: list[str]) -> str:
     return "\n".join(parts)
 
 
-def load_experience_for_slots(slot_ids: list[str], exp_dir: str = "data/slot_experiences") -> dict[str, str]:
+def load_experience_for_slots(slot_ids: list[str], exp_dir: str = DEFAULT_EXP_DIR) -> dict[str, str]:
     """Load experience cards for specified slot IDs only.
 
     Args:
@@ -158,7 +162,7 @@ def _build_shared_header() -> str:
     return load_kg_for_subjects(all_subjects)
 
 
-def _build_slot_contracts_md(templates: dict, exp_dir: str = "data/slot_experiences") -> str:
+def _build_slot_contracts_md(templates: dict, exp_dir: str = DEFAULT_EXP_DIR) -> str:
     """Build shared header + concatenated slot contracts for compose prompts.
 
     Compatibility wrapper that uses the new on-demand loading functions internally.
@@ -362,7 +366,7 @@ def _generate_recommendation_reason(slot_id: str, mode: str, frequency: str, gat
         return f"该模式在{slot_id}题位出现频率最高({frequency})"
 
 
-async def render_all_slot_cards(slot_ids: list[str], templates: dict, exp_dir: str = "data/slot_experiences", gateway=None) -> list[dict]:
+async def render_all_slot_cards(slot_ids: list[str], templates: dict, exp_dir: str = DEFAULT_EXP_DIR, gateway=None) -> list[dict]:
     """Render slot cards for multiple slots.
 
     Args:
@@ -388,7 +392,7 @@ async def render_all_slot_cards(slot_ids: list[str], templates: dict, exp_dir: s
     return cards
 
 
-async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_experiences") -> tuple[str, dict]:
+async def _compose_hybrid(templates, user_requirements, exp_dir=DEFAULT_EXP_DIR) -> tuple[str, dict]:
     """Hybrid composition: GPT generates outline via WebGPT.
 
     Returns (outline_md, blueprint_dict).
@@ -436,7 +440,7 @@ async def _compose_hybrid(templates, user_requirements, exp_dir="data/slot_exper
     return raw, blueprint
 
 
-async def _compose_local(gateway, templates, user_requirements, exp_dir="data/slot_experiences") -> tuple[str, dict]:
+async def _compose_local(gateway, templates, user_requirements, exp_dir=DEFAULT_EXP_DIR) -> tuple[str, dict]:
     """Local composition: Qwen generates outline via gateway.
 
     Returns (outline_md, blueprint_dict).
@@ -575,6 +579,11 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
             excluded_modes=contract.excluded_modes,
             excluded_knowledge=contract.excluded_knowledge,
             teacher_annotation=contract.teacher_annotation,
+            reference_questions=(
+                yaml_data.get("reference_questions")
+                if yaml_data and isinstance(yaml_data.get("reference_questions"), list)
+                else []
+            ),
         ))
 
     return {
@@ -589,7 +598,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
 def determine_route(
     compose_dir: str,
     slot_templates: dict,
-    exp_dir: str = "data/slot_experiences",
+    exp_dir: str = DEFAULT_EXP_DIR,
 ) -> tuple[int, str]:
     """Determine which compose route to use based on intake output.
 
@@ -798,7 +807,7 @@ def _infer_subjects(requirements: str) -> list[str]:
     return found if found else ["计算机组成原理"]
 
 
-async def compose_paper(gateway, templates, user_requirements, model_routing=None, exp_dir="data/slot_experiences") -> tuple[str, dict]:
+async def compose_paper(gateway, templates, user_requirements, model_routing=None, exp_dir=DEFAULT_EXP_DIR) -> tuple[str, dict]:
     """Step 1: Generate paper outline/blueprint.
 
     Routes to hybrid (GPT via WebGPT) or local (Qwen via gateway).
@@ -896,7 +905,7 @@ async def run_compose(
     slot_ids: list | None = None,
     output_dir: str = "docs",
     model_routing: dict[str, str] | None = None,
-    exp_dir: str = "data/slot_experiences",
+    exp_dir: str = DEFAULT_EXP_DIR,
 ) -> dict:
     """Phase A: Compose outline + assemble experience docs → save to compose/.
 
@@ -1082,7 +1091,7 @@ async def revise_outline(
     annotated_outline_path: str | None = None,
     output_dir: str = "docs",
     model_routing: dict[str, str] | None = None,
-    exp_dir: str = "data/slot_experiences",
+    exp_dir: str = DEFAULT_EXP_DIR,
 ) -> dict:
     """Revise outline based on teacher annotations and/or field changes.
 

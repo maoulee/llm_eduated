@@ -1,14 +1,10 @@
 {
   "slot_id": "TEST_C2",
-  "current_node": "final",
+  "current_node": "skeleton_design",
   "visit_counts": {
     "design_card": 1,
     "exam_form": 1,
-    "skeleton_design": 1,
-    "form_gate": 1,
-    "solve": 1,
-    "distractor_assembly": 1,
-    "final": 1
+    "skeleton_design": 1
   },
   "history": [
     {
@@ -24,26 +20,6 @@
     {
       "node": "skeleton_design",
       "signal": "ok",
-      "feedback": ""
-    },
-    {
-      "node": "form_gate",
-      "signal": "pass",
-      "feedback": ""
-    },
-    {
-      "node": "solve",
-      "signal": "success",
-      "feedback": ""
-    },
-    {
-      "node": "distractor_assembly",
-      "signal": "success",
-      "feedback": ""
-    },
-    {
-      "node": "final",
-      "signal": "pass",
       "feedback": ""
     }
   ]

@@ -1,0 +1,9 @@
+=== Tree structure ===
+val=5, depth=0, w*d=0
+  val=3, depth=1, w*d=3
+    val=2, depth=2, w*d=4
+    val=4, depth=2, w*d=8
+      val=7, depth=3, w*d=21
+  val=6, depth=1, w*d=6
+
+正确: 42

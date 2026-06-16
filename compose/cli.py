@@ -128,7 +128,8 @@ async def main():
         templates = tpl_data.get("templates", {})
 
         exp_cards = {}
-        exp_dir = "data/slot_experiences"
+        from compose.compose_runner import DEFAULT_EXP_DIR
+        exp_dir = DEFAULT_EXP_DIR
         if os.path.isdir(exp_dir):
             for fname in os.listdir(exp_dir):
                 if fname.endswith("_experience.md"):
@@ -195,7 +196,8 @@ async def main():
     templates = tpl_data.get("templates", {})
 
     exp_cards = {}
-    exp_dir = "data/slot_experiences"
+    from compose.compose_runner import DEFAULT_EXP_DIR
+    exp_dir = DEFAULT_EXP_DIR
     if os.path.isdir(exp_dir):
         for fname in os.listdir(exp_dir):
             if fname.endswith("_experience.md"):

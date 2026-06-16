@@ -514,30 +514,31 @@ class DesignSolveNode(_OrchestratorNode):
 
 
 class FormGateNode2(_OrchestratorNode):
-    """§22 consistency review: question + solution aligned? Same review agent
-    as form_gate but with different input (sees solution). Gives suggestions.
+    """§22 consistency review: question + solution aligned? Uses review2 agent
+    (separate from form_gate's review agent) to avoid review.md overwrite.
     """
 
     name = "form_gate2"
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
-        ref_path = DesignCardNode._ref_path(state)
         question_path = ws / "question.md"
         solution_path = ws / "solution.md"
-        r_inject = {"规划": str(ref_path), "题目": str(question_path)}
+        r_inject = {"题目": str(question_path)}
         if solution_path.exists():
             r_inject["求解结果"] = str(solution_path)
-        r_inject = await self.orch._resolve_inject("review", state.slot_id, 3, r_inject)
         r_task = (
-            "§22 一致性审核：题干设问与求解结果是否对齐。"
-            "审：题干问的量和 solution 算的量是否一致、求解过程是否完整、答案是否直接回应设问。"
-            "给建议（差距+建议），差距小→pass，差距大→needs_fix。"
+            "§22 一致性审核：解题流程是否正确。\n"
+            "**数值默认正确**（由 gen.py exec 保证），你不审数值对不对，不推演数值。\n"
+            "你只做定性审核：\n"
+            "① 解题流程：solution 的求解步骤方法对不对、逻辑链通不通\n"
+            "② 设问-答案对应：题干每个问 solution 都回答了吗\n"
+            "差距小→pass，差距大→needs_fix。"
         )
         await self.orch.scheduler.run_agent(
-            "review", r_task, slot_id=state.slot_id, inject_files=r_inject,
+            "review2", r_task, slot_id=state.slot_id, inject_files=r_inject,
         )
-        review_path = ws / "review.md"
+        review_path = ws / "review2.md"
         status = "pass"
         feedback = ""
         if review_path.exists():
@@ -581,17 +582,20 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
 
     g.edge("design_card", "ok", "exam_form")
     g.edge("exam_form", "ok", "design")
-    # §22: design 第一轮出题干 → form_gate 审结构
+    # design 写 gen.py（约束建模）+ question.md → form_gate 审题干
     g.edge("design", "ok", "form_gate")
     g.edge("form_gate", "needs_fix", "design")
-    # form_gate 通过 → design_solve 第二轮（参数验证+求解）
+    # form_gate suggestion → 直接前进到 design_solve（表述小问题不回退）
+    g.edge("form_gate", "suggestion", "design_solve")
+    # form_gate 通过 → design_solve（exec gen.py 求解 + write solution.md）
     g.edge("form_gate", "pass", "design_solve")
     # design_solve → form_gate2 审一致性
     g.edge("design_solve", "ok", "form_gate2")
     g.edge("form_gate2", "needs_fix", "design_solve")
-    # form_gate2 通过 → final
+    g.edge("form_gate2", "suggestion", "final")
+    # form_gate2 通过 → final（整合交付）
     g.edge("form_gate2", "pass", "final")
+    # final 是整合交付，pass/expression_fix 都直接 done（不回退）
     g.edge("final", "pass", "done")
-    # final 打回（表述类问题，只调一次）
-    g.edge("final", "needs_fix", "design_solve")
+    g.edge("final", "expression_fix", "done")
     return g

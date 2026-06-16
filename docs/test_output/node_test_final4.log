@@ -1,0 +1,25 @@
+2026-06-16 06:02:43,581 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:02:43,595 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 06:02:43,617 - INFO - Loaded 12 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+============================================================
+  分段测试: 从 final 开始
+============================================================
+  已复制上游产物: docs/test_output/pipeline_linked_test/TEST_AVL → docs/test_output/node_test/TEST_AVL
+  pipeline_state: current_node=form_gate2, history=6 nodes completed → will resume at final
+  pipeline_state: current_node=final, history=6 nodes completed
+
+[Step 2] 启动 pipeline（从 final resume）...
+Traceback (most recent call last):
+  File "/zhaoshu/llm_eduated_code_as_truth/scripts/test_node.py", line 202, in <module>
+    asyncio.run(main())
+  File "/root/miniconda3/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/root/miniconda3/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/zhaoshu/llm_eduated_code_as_truth/scripts/test_node.py", line 145, in main
+    from core_new.doc_pipeline import DocPipeline
+  File "/zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/__init__.py", line 20, in <module>
+    from .orchestrator import DocPipelineOrchestrator
+  File "/zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/orchestrator.py", line 888
+    else:
+IndentationError: unexpected indent

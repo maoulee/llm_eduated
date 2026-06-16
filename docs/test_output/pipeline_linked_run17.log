@@ -1,0 +1,39 @@
+2026-06-15 18:18:28,360 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 18:18:28,374 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 18:18:28,394 - INFO - Loaded 11 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-15 18:18:28,418 - INFO - Initializing LLM provider type: api
+2026-06-15 18:18:28,441 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=16 thinking=chat_template_kwargs
+2026-06-15 18:18:28,441 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-15 18:18:28,455 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 18:18:28,462 - INFO - [TEST_AVL] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-15 18:18:28,499 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 18:18:28,501 - INFO - [TEST_AVL] graph node=design_card visit=1
+2026-06-15 18:18:28,514 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 18:18:28,514 - INFO - [TEST_AVL] Layer 1.5: Design Card
+2026-06-15 18:18:28,740 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 18:18:30,987 - INFO - [stream_chat] streaming... chunks=50 reasoning=255 content=0 provider=api_vllm
+2026-06-15 18:18:32,637 - INFO - [stream_chat] streaming... chunks=100 reasoning=595 content=0 provider=api_vllm
+2026-06-15 18:18:34,277 - INFO - [stream_chat] streaming... chunks=150 reasoning=953 content=0 provider=api_vllm
+2026-06-15 18:18:35,916 - INFO - [stream_chat] streaming... chunks=200 reasoning=1204 content=0 provider=api_vllm
+2026-06-15 18:18:37,563 - INFO - [stream_chat] streaming... chunks=250 reasoning=1412 content=0 provider=api_vllm
+2026-06-15 18:18:39,242 - INFO - [stream_chat] streaming... chunks=300 reasoning=1623 content=0 provider=api_vllm
+2026-06-15 18:19:07,432 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=1715 tool_calls=1 finish_reason=tool_calls
+2026-06-15 18:19:07,446 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# TEST_AVL 设计卡\n\n## status\n\ndraft\n\n## blueprint_contract\n\n```yaml\nslot_id: TEST)
+2026-06-15 18:19:07,467 - WARNING - [TEST_AVL] Design card validation failed: ['Missing required section: ## route', 'Missing required section: ## expected_reasoning_actions', 'Missing required section: ## parameter_plan']
+2026-06-15 18:19:07,476 - INFO - [TEST_AVL] graph node=exam_form visit=1
+2026-06-15 18:19:07,545 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 18:19:09,592 - INFO - [stream_chat] streaming... chunks=50 reasoning=234 content=0 provider=api_vllm
+2026-06-15 18:19:11,189 - INFO - [stream_chat] streaming... chunks=100 reasoning=462 content=0 provider=api_vllm
+2026-06-15 18:19:12,789 - INFO - [stream_chat] streaming... chunks=150 reasoning=664 content=0 provider=api_vllm
+2026-06-15 18:19:14,369 - INFO - [stream_chat] streaming... chunks=200 reasoning=795 content=67 provider=api_vllm
+2026-06-15 18:19:15,962 - INFO - [stream_chat] streaming... chunks=250 reasoning=795 content=257 provider=api_vllm
+2026-06-15 18:19:17,676 - INFO - [stream_chat] streaming... chunks=300 reasoning=795 content=448 provider=api_vllm
+2026-06-15 18:19:18,955 - INFO - [stream_chat] provider=api_vllm content=597 reasoning=795 tool_calls=0 finish_reason=stop
+2026-06-15 18:19:18,974 - INFO - [TEST_AVL] Agent 'exam_form' attempt 1: direct_write exam_form.md (595 chars)
+2026-06-15 18:19:18,986 - INFO - [TEST_AVL] graph node=design visit=1
+2026-06-15 18:19:19,058 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 18:19:21,133 - INFO - [stream_chat] streaming... chunks=50 reasoning=227 content=0 provider=api_vllm
+2026-06-15 18:19:22,726 - INFO - [stream_chat] streaming... chunks=100 reasoning=429 content=0 provider=api_vllm
+2026-06-15 18:19:24,312 - INFO - [stream_chat] streaming... chunks=150 reasoning=629 content=0 provider=api_vllm
+2026-06-15 18:19:25,894 - INFO - [stream_chat] streaming... chunks=200 reasoning=794 content=0 provider=api_vllm
+2026-06-15 18:19:27,481 - INFO - [stream_chat] streaming... chunks=250 reasoning=1001 content=0 provider=api_vllm

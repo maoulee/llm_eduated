@@ -30,6 +30,9 @@ class SlotBlueprint:
     excluded_modes: list[str] = field(default_factory=list)
     excluded_knowledge: list[str] = field(default_factory=list)
     teacher_annotation: str = ""
+    # 往年题参考文件名（来自前段 grep 检索，写入 CONTRACT yaml）。
+    # assemble 阶段据此自动拉取完整题干拼入 assembled.md。
+    reference_questions: list[str] = field(default_factory=list)
 
 
 @dataclass

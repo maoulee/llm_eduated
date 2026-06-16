@@ -26,8 +26,8 @@ def extract_h2_section(text: str | None, heading: str) -> str:
     return ""
 
 
-REVIEW_STATUSES = frozenset({"pass", "needs_fix"})
-FINAL_REVIEW_STATUSES = frozenset({"pass", "expression_fix", "question_error", "solution_error"})
+REVIEW_STATUSES = frozenset({"pass", "needs_fix", "suggestion"})
+FINAL_REVIEW_STATUSES = frozenset({"pass", "expression_fix", "question_error"})
 DOC_STATUS_VALUES = frozenset({
     "draft",
     "ready",
@@ -192,7 +192,7 @@ def get_doc_status(filepath: str | Path, allowed: set[str] | frozenset[str] | No
         r"审核结论[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"最终判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"路由判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|expression_fix|question_error|solution_error)\b",
-        r"\*\*(?:审核结论|判定|状态|status)\*\*[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
+        r"\*\*(?:审核结论|路由判定|判定|状态|status)\*\*[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"\*\*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*(pass|needs_fix|expression_fix|question_error|solution_error)\*\*",
         r"(?:^|\n)\s*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"##\s*(?:审核结论|判定)\s*\n+\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",

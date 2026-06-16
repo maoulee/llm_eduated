@@ -1,0 +1,26 @@
+After inserting 38: root=38
+└── 38(BF=0)
+
+After inserting 35: root=38
+└── 38(BF=1)
+    └── 35(BF=0)
+
+After inserting 30: root=35
+│   ┌── 38(BF=0)
+└── 35(BF=0)
+    └── 30(BF=0)
+
+After inserting 45: root=35
+│       ┌── 45(BF=0)
+│   ┌── 38(BF=-1)
+└── 35(BF=-1)
+    └── 30(BF=0)
+
+After inserting 42: root=35
+│       ┌── 45(BF=0)
+│   ┌── 42(BF=0)
+│   │   └── 38(BF=0)
+└── 35(BF=-1)
+    └── 30(BF=0)
+
+最终根结点关键字: 35

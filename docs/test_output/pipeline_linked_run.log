@@ -1,0 +1,372 @@
+2026-06-15 13:28:46,223 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 13:28:46,237 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 13:28:46,267 - INFO - Loaded 11 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-15 13:28:46,300 - INFO - Initializing LLM provider type: api
+2026-06-15 13:28:46,323 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=16 thinking=chat_template_kwargs
+2026-06-15 13:28:46,323 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-15 13:28:46,338 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 13:28:46,344 - INFO - [TEST_AVL] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-15 13:28:46,378 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 13:28:46,380 - INFO - [TEST_AVL] graph node=design_card visit=1
+2026-06-15 13:28:46,393 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-15 13:28:46,394 - INFO - [TEST_AVL] Layer 1.5: Design Card
+2026-06-15 13:28:46,643 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:28:49,730 - INFO - [stream_chat] streaming... chunks=50 reasoning=250 content=0 provider=api_vllm
+2026-06-15 13:28:51,344 - INFO - [stream_chat] streaming... chunks=100 reasoning=452 content=0 provider=api_vllm
+2026-06-15 13:28:52,417 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=500 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:28:52,429 - INFO - [TEST_AVL] Executing tool: grep_search({'query': 'AVL 插入 旋转 平衡因子', 'subject': '数据结构', 'max_results': 10})
+2026-06-15 13:28:53,259 - INFO - [TEST_AVL] Agent 'question_design' attempt 1: tools executed, design_card.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:28:53,316 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:28:56,396 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=80 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:28:56,401 - INFO - [TEST_AVL] Executing tool: grep_search({'max_results': 10, 'query': 'AVL LL RR LR RL 旋转', 'subject': '数据结构'})
+2026-06-15 13:28:56,405 - INFO - [TEST_AVL] Agent 'question_design' attempt 2: tools executed, design_card.md not written (no_file=2, total=2, continuing)
+2026-06-15 13:28:56,455 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:28:59,499 - INFO - [stream_chat] streaming... chunks=50 reasoning=482 content=0 provider=api_vllm
+2026-06-15 13:29:01,111 - INFO - [stream_chat] streaming... chunks=100 reasoning=1032 content=0 provider=api_vllm
+2026-06-15 13:29:02,725 - INFO - [stream_chat] streaming... chunks=150 reasoning=1534 content=0 provider=api_vllm
+2026-06-15 13:29:04,341 - INFO - [stream_chat] streaming... chunks=200 reasoning=2087 content=0 provider=api_vllm
+2026-06-15 13:29:05,946 - INFO - [stream_chat] streaming... chunks=250 reasoning=2452 content=0 provider=api_vllm
+2026-06-15 13:29:07,555 - INFO - [stream_chat] streaming... chunks=300 reasoning=2915 content=0 provider=api_vllm
+2026-06-15 13:29:40,967 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=3125 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:29:40,973 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'design_card.md', 'content': '## status\ndraft\n\n## blueprint_contract\n- **slot_id**: TES)
+2026-06-15 13:29:40,993 - WARNING - [TEST_AVL] Design card validation failed: ['Missing required section: ## route', 'Missing required section: ## expected_reasoning_actions', 'Missing required section: ## parameter_plan']
+2026-06-15 13:29:41,005 - INFO - [TEST_AVL] graph node=exam_form visit=1
+2026-06-15 13:29:41,066 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:29:44,371 - INFO - [stream_chat] streaming... chunks=50 reasoning=239 content=0 provider=api_vllm
+2026-06-15 13:29:45,926 - INFO - [stream_chat] streaming... chunks=100 reasoning=439 content=0 provider=api_vllm
+2026-06-15 13:29:47,477 - INFO - [stream_chat] streaming... chunks=150 reasoning=646 content=0 provider=api_vllm
+2026-06-15 13:29:49,035 - INFO - [stream_chat] streaming... chunks=200 reasoning=820 content=0 provider=api_vllm
+2026-06-15 13:29:53,849 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=828 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:29:53,854 - INFO - [TEST_AVL] Executing tool: write_file({'content': '## status\ndraft\n\n## examination_form\n- 考察形式：多步串行推演（主） + 陷阱辨析（辅）\n- 设问方向：给定插入序列，要求考生)
+2026-06-15 13:29:53,876 - INFO - [TEST_AVL] graph node=design visit=1
+2026-06-15 13:29:53,947 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:29:57,593 - INFO - [stream_chat] streaming... chunks=50 reasoning=211 content=0 provider=api_vllm
+2026-06-15 13:29:59,147 - INFO - [stream_chat] streaming... chunks=100 reasoning=408 content=0 provider=api_vllm
+2026-06-15 13:30:17,090 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=485 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:30:17,096 - INFO - [TEST_AVL] Executing tool: write_file({'content': '"""\nAVL 树插入序列生成与验证\n构造一个能触发多种旋转（含至少一次复合旋转 LR/RL）的插入序列\n"""\n\nclass AVLNode:\n    def )
+2026-06-15 13:30:17,110 - INFO - [TEST_AVL] Agent 'design' attempt 1: tools executed, question.md not written (no_file=0, total=1, continuing)
+2026-06-15 13:30:17,181 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:30:20,221 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=27 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:30:20,228 - INFO - [TEST_AVL] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 13:30:20,262 - INFO - [TEST_AVL] Agent 'design' attempt 2: tools executed, question.md not written (no_file=1, total=2, continuing)
+2026-06-15 13:30:20,336 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:30:24,502 - INFO - [stream_chat] streaming... chunks=50 reasoning=171 content=0 provider=api_vllm
+2026-06-15 13:30:26,067 - INFO - [stream_chat] streaming... chunks=100 reasoning=348 content=0 provider=api_vllm
+2026-06-15 13:30:27,636 - INFO - [stream_chat] streaming... chunks=150 reasoning=502 content=0 provider=api_vllm
+2026-06-15 13:30:29,240 - INFO - [stream_chat] streaming... chunks=200 reasoning=638 content=65 provider=api_vllm
+2026-06-15 13:30:30,810 - INFO - [stream_chat] streaming... chunks=250 reasoning=638 content=292 provider=api_vllm
+2026-06-15 13:30:32,390 - INFO - [stream_chat] streaming... chunks=300 reasoning=638 content=482 provider=api_vllm
+2026-06-15 13:30:33,836 - INFO - [stream_chat] provider=api_vllm content=660 reasoning=638 tool_calls=0 finish_reason=stop
+2026-06-15 13:30:33,842 - INFO - [TEST_AVL] Agent 'design' attempt 3: intermediate_text (658 chars, 1/2)
+2026-06-15 13:30:33,921 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:30:38,256 - INFO - [stream_chat] streaming... chunks=50 reasoning=224 content=0 provider=api_vllm
+2026-06-15 13:30:42,748 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=243 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:30:42,753 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# question.md\n\n## 题干\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入初始为空的 AVL 树中。\n\n平衡因子定义)
+2026-06-15 13:30:42,764 - INFO - [TEST_AVL] Cleared session for role 'design' (§19.5 reset)
+2026-06-15 13:30:42,772 - INFO - [TEST_AVL] graph node=form_gate visit=1
+2026-06-15 13:30:42,772 - INFO - [TEST_AVL] Layer 3: Review
+2026-06-15 13:30:42,824 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:30:45,855 - INFO - [stream_chat] streaming... chunks=50 reasoning=202 content=0 provider=api_vllm
+2026-06-15 13:30:47,446 - INFO - [stream_chat] streaming... chunks=100 reasoning=418 content=0 provider=api_vllm
+2026-06-15 13:30:49,048 - INFO - [stream_chat] streaming... chunks=150 reasoning=640 content=0 provider=api_vllm
+2026-06-15 13:30:50,659 - INFO - [stream_chat] streaming... chunks=200 reasoning=846 content=0 provider=api_vllm
+2026-06-15 13:30:52,260 - INFO - [stream_chat] streaming... chunks=250 reasoning=1095 content=0 provider=api_vllm
+2026-06-15 13:30:53,843 - INFO - [stream_chat] streaming... chunks=300 reasoning=1317 content=0 provider=api_vllm
+2026-06-15 13:30:55,408 - INFO - [stream_chat] streaming... chunks=350 reasoning=1531 content=0 provider=api_vllm
+2026-06-15 13:30:57,005 - INFO - [stream_chat] streaming... chunks=400 reasoning=1736 content=0 provider=api_vllm
+2026-06-15 13:30:58,620 - INFO - [stream_chat] streaming... chunks=450 reasoning=1908 content=0 provider=api_vllm
+2026-06-15 13:31:00,234 - INFO - [stream_chat] streaming... chunks=500 reasoning=2048 content=0 provider=api_vllm
+2026-06-15 13:31:01,847 - INFO - [stream_chat] streaming... chunks=550 reasoning=2256 content=0 provider=api_vllm
+2026-06-15 13:31:03,458 - INFO - [stream_chat] streaming... chunks=600 reasoning=2543 content=0 provider=api_vllm
+2026-06-15 13:31:05,067 - INFO - [stream_chat] streaming... chunks=650 reasoning=2753 content=0 provider=api_vllm
+2026-06-15 13:31:06,676 - INFO - [stream_chat] streaming... chunks=700 reasoning=2921 content=0 provider=api_vllm
+2026-06-15 13:31:08,293 - INFO - [stream_chat] streaming... chunks=750 reasoning=3106 content=0 provider=api_vllm
+2026-06-15 13:31:09,918 - INFO - [stream_chat] streaming... chunks=800 reasoning=3303 content=0 provider=api_vllm
+2026-06-15 13:31:11,542 - INFO - [stream_chat] streaming... chunks=850 reasoning=3511 content=0 provider=api_vllm
+2026-06-15 13:31:13,170 - INFO - [stream_chat] streaming... chunks=900 reasoning=3720 content=0 provider=api_vllm
+2026-06-15 13:31:14,786 - INFO - [stream_chat] streaming... chunks=950 reasoning=3942 content=0 provider=api_vllm
+2026-06-15 13:31:16,404 - INFO - [stream_chat] streaming... chunks=1000 reasoning=4137 content=0 provider=api_vllm
+2026-06-15 13:31:18,027 - INFO - [stream_chat] streaming... chunks=1050 reasoning=4336 content=0 provider=api_vllm
+2026-06-15 13:31:19,652 - INFO - [stream_chat] streaming... chunks=1100 reasoning=4551 content=0 provider=api_vllm
+2026-06-15 13:31:21,281 - INFO - [stream_chat] streaming... chunks=1150 reasoning=4739 content=0 provider=api_vllm
+2026-06-15 13:31:22,912 - INFO - [stream_chat] streaming... chunks=1200 reasoning=4951 content=0 provider=api_vllm
+2026-06-15 13:31:24,538 - INFO - [stream_chat] streaming... chunks=1250 reasoning=5168 content=0 provider=api_vllm
+2026-06-15 13:31:26,168 - INFO - [stream_chat] streaming... chunks=1300 reasoning=5400 content=0 provider=api_vllm
+2026-06-15 13:31:27,800 - INFO - [stream_chat] streaming... chunks=1350 reasoning=5590 content=0 provider=api_vllm
+2026-06-15 13:31:29,432 - INFO - [stream_chat] streaming... chunks=1400 reasoning=5780 content=0 provider=api_vllm
+2026-06-15 13:31:31,066 - INFO - [stream_chat] streaming... chunks=1450 reasoning=5953 content=0 provider=api_vllm
+2026-06-15 13:31:40,558 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=6061 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:31:40,565 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'review.md', 'content': '# 审核结论：pass\n\n## 审核概要\n\n本题设计质量良好，插入序列 `[10, 20, 30, 40, 50, 25]`)
+2026-06-15 13:31:40,591 - INFO - [TEST_AVL] graph node=design_solve visit=1
+2026-06-15 13:31:40,659 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:31:44,270 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=192 tool_calls=2 finish_reason=tool_calls
+2026-06-15 13:31:44,281 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'gen.py'})
+2026-06-15 13:31:44,283 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-15 13:31:44,283 - INFO - [TEST_AVL] Agent 'design' attempt 1: tools executed, question.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:31:44,348 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:31:48,357 - INFO - [stream_chat] streaming... chunks=50 reasoning=536 content=0 provider=api_vllm
+2026-06-15 13:32:13,002 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=855 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:32:13,010 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'gen.py', 'content': '"""\nAVL 树插入序列生成、验证与求解\n构造一个能触发多种旋转（含至少一次复合旋转 LR/RL）的插入序列\n输出：参数验证 + )
+2026-06-15 13:32:13,020 - INFO - [TEST_AVL] Agent 'design' attempt 2: tools executed, question.md not written (no_file=0, total=2, continuing)
+2026-06-15 13:32:13,095 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:32:17,201 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=225 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:32:17,207 - INFO - [TEST_AVL] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 13:32:17,229 - INFO - [TEST_AVL] Agent 'design' attempt 3: tools executed, question.md not written (no_file=1, total=3, continuing)
+2026-06-15 13:32:17,306 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:32:22,145 - INFO - [stream_chat] streaming... chunks=50 reasoning=222 content=0 provider=api_vllm
+2026-06-15 13:32:23,748 - INFO - [stream_chat] streaming... chunks=100 reasoning=439 content=0 provider=api_vllm
+2026-06-15 13:32:25,355 - INFO - [stream_chat] streaming... chunks=150 reasoning=637 content=0 provider=api_vllm
+2026-06-15 13:32:26,962 - INFO - [stream_chat] streaming... chunks=200 reasoning=802 content=0 provider=api_vllm
+2026-06-15 13:32:46,371 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=850 tool_calls=2 finish_reason=tool_calls
+2026-06-15 13:32:46,377 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'solution.md', 'content': '# solution.md\n\n## 求解过程\n\n### 逐步插入推演\n\n**第 1 步：插入 10**\n- 树为空)
+2026-06-15 13:32:46,399 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'question.md', 'content': '# question.md\n\n## 题干\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入)
+2026-06-15 13:32:46,409 - INFO - [TEST_AVL] Cleared session for role 'design' (§19.5 reset)
+2026-06-15 13:32:46,417 - INFO - [TEST_AVL] graph node=form_gate2 visit=1
+2026-06-15 13:32:46,472 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:32:49,330 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=268 tool_calls=2 finish_reason=tool_calls
+2026-06-15 13:32:49,337 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'design_card.md'})
+2026-06-15 13:32:49,339 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-15 13:32:49,340 - INFO - [TEST_AVL] Agent 'review' attempt 1: tools executed, review.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:32:49,402 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:32:53,329 - INFO - [stream_chat] streaming... chunks=50 reasoning=452 content=0 provider=api_vllm
+2026-06-15 13:32:54,928 - INFO - [stream_chat] streaming... chunks=100 reasoning=773 content=0 provider=api_vllm
+2026-06-15 13:32:56,529 - INFO - [stream_chat] streaming... chunks=150 reasoning=1176 content=0 provider=api_vllm
+2026-06-15 13:32:58,130 - INFO - [stream_chat] streaming... chunks=200 reasoning=1565 content=0 provider=api_vllm
+2026-06-15 13:32:59,736 - INFO - [stream_chat] streaming... chunks=250 reasoning=2065 content=0 provider=api_vllm
+2026-06-15 13:33:01,347 - INFO - [stream_chat] streaming... chunks=300 reasoning=2499 content=0 provider=api_vllm
+2026-06-15 13:33:02,956 - INFO - [stream_chat] streaming... chunks=350 reasoning=2899 content=0 provider=api_vllm
+2026-06-15 13:33:04,564 - INFO - [stream_chat] streaming... chunks=400 reasoning=3276 content=0 provider=api_vllm
+2026-06-15 13:33:06,175 - INFO - [stream_chat] streaming... chunks=450 reasoning=3723 content=0 provider=api_vllm
+2026-06-15 13:33:07,791 - INFO - [stream_chat] streaming... chunks=500 reasoning=4374 content=0 provider=api_vllm
+2026-06-15 13:33:09,417 - INFO - [stream_chat] streaming... chunks=550 reasoning=4987 content=0 provider=api_vllm
+2026-06-15 13:33:11,043 - INFO - [stream_chat] streaming... chunks=600 reasoning=5577 content=0 provider=api_vllm
+2026-06-15 13:33:12,665 - INFO - [stream_chat] streaming... chunks=650 reasoning=6196 content=0 provider=api_vllm
+2026-06-15 13:33:14,283 - INFO - [stream_chat] streaming... chunks=700 reasoning=6785 content=0 provider=api_vllm
+2026-06-15 13:33:15,900 - INFO - [stream_chat] streaming... chunks=750 reasoning=7390 content=0 provider=api_vllm
+2026-06-15 13:33:17,521 - INFO - [stream_chat] streaming... chunks=800 reasoning=7951 content=0 provider=api_vllm
+2026-06-15 13:33:19,160 - INFO - [stream_chat] streaming... chunks=850 reasoning=8551 content=0 provider=api_vllm
+2026-06-15 13:33:20,795 - INFO - [stream_chat] streaming... chunks=900 reasoning=9181 content=0 provider=api_vllm
+2026-06-15 13:33:33,932 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=9213 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:33:33,938 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'review.md', 'content': '# 审核结论：pass\n\n## 审核概要\n\n本题为 AVL 树插入与旋转的综合题，采用"给定插入序列 → 画出最终树 → 分)
+2026-06-15 13:33:33,963 - INFO - [TEST_AVL] graph node=final visit=1
+2026-06-15 13:33:33,963 - INFO - [TEST_AVL] Layer 5: Final Review
+2026-06-15 13:33:34,034 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:33:38,327 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=123 tool_calls=4 finish_reason=tool_calls
+2026-06-15 13:33:38,333 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-15 13:33:38,334 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solution.md'})
+2026-06-15 13:33:38,335 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solve_output.txt'})
+2026-06-15 13:33:38,335 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solve.py'})
+2026-06-15 13:33:38,336 - INFO - [TEST_AVL] Agent 'final_review' attempt 1: tools executed, final_review.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:33:38,399 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:33:42,806 - INFO - [stream_chat] streaming... chunks=50 reasoning=442 content=0 provider=api_vllm
+2026-06-15 13:33:44,404 - INFO - [stream_chat] streaming... chunks=100 reasoning=993 content=0 provider=api_vllm
+2026-06-15 13:33:45,999 - INFO - [stream_chat] streaming... chunks=150 reasoning=1561 content=0 provider=api_vllm
+2026-06-15 13:33:47,601 - INFO - [stream_chat] streaming... chunks=200 reasoning=2199 content=0 provider=api_vllm
+2026-06-15 13:33:49,215 - INFO - [stream_chat] streaming... chunks=250 reasoning=2680 content=0 provider=api_vllm
+2026-06-15 13:33:50,826 - INFO - [stream_chat] streaming... chunks=300 reasoning=3053 content=0 provider=api_vllm
+2026-06-15 13:33:52,432 - INFO - [stream_chat] streaming... chunks=350 reasoning=3351 content=0 provider=api_vllm
+2026-06-15 13:33:54,089 - INFO - [stream_chat] streaming... chunks=400 reasoning=3602 content=0 provider=api_vllm
+2026-06-15 13:33:55,729 - INFO - [stream_chat] streaming... chunks=450 reasoning=3919 content=0 provider=api_vllm
+2026-06-15 13:33:57,324 - INFO - [stream_chat] streaming... chunks=500 reasoning=4176 content=0 provider=api_vllm
+2026-06-15 13:33:58,940 - INFO - [stream_chat] streaming... chunks=550 reasoning=4457 content=0 provider=api_vllm
+2026-06-15 13:34:00,561 - INFO - [stream_chat] streaming... chunks=600 reasoning=4760 content=0 provider=api_vllm
+2026-06-15 13:34:02,172 - INFO - [stream_chat] streaming... chunks=650 reasoning=5101 content=0 provider=api_vllm
+2026-06-15 13:34:03,788 - INFO - [stream_chat] streaming... chunks=700 reasoning=5388 content=0 provider=api_vllm
+2026-06-15 13:34:05,411 - INFO - [stream_chat] streaming... chunks=750 reasoning=5740 content=0 provider=api_vllm
+2026-06-15 13:34:07,031 - INFO - [stream_chat] streaming... chunks=800 reasoning=6048 content=0 provider=api_vllm
+2026-06-15 13:34:08,662 - INFO - [stream_chat] streaming... chunks=850 reasoning=6342 content=0 provider=api_vllm
+2026-06-15 13:34:10,296 - INFO - [stream_chat] streaming... chunks=900 reasoning=6728 content=0 provider=api_vllm
+2026-06-15 13:34:11,931 - INFO - [stream_chat] streaming... chunks=950 reasoning=7257 content=0 provider=api_vllm
+2026-06-15 13:34:13,565 - INFO - [stream_chat] streaming... chunks=1000 reasoning=7784 content=0 provider=api_vllm
+2026-06-15 13:34:15,192 - INFO - [stream_chat] streaming... chunks=1050 reasoning=8361 content=0 provider=api_vllm
+2026-06-15 13:34:16,823 - INFO - [stream_chat] streaming... chunks=1100 reasoning=8933 content=0 provider=api_vllm
+2026-06-15 13:34:18,458 - INFO - [stream_chat] streaming... chunks=1150 reasoning=9556 content=0 provider=api_vllm
+2026-06-15 13:34:20,090 - INFO - [stream_chat] streaming... chunks=1200 reasoning=9955 content=0 provider=api_vllm
+2026-06-15 13:34:21,720 - INFO - [stream_chat] streaming... chunks=1250 reasoning=10565 content=0 provider=api_vllm
+2026-06-15 13:34:23,355 - INFO - [stream_chat] streaming... chunks=1300 reasoning=11037 content=0 provider=api_vllm
+2026-06-15 13:34:24,984 - INFO - [stream_chat] streaming... chunks=1350 reasoning=11604 content=0 provider=api_vllm
+2026-06-15 13:34:26,614 - INFO - [stream_chat] streaming... chunks=1400 reasoning=12135 content=0 provider=api_vllm
+2026-06-15 13:34:28,247 - INFO - [stream_chat] streaming... chunks=1450 reasoning=12628 content=0 provider=api_vllm
+2026-06-15 13:34:29,885 - INFO - [stream_chat] streaming... chunks=1500 reasoning=13175 content=0 provider=api_vllm
+2026-06-15 13:34:31,526 - INFO - [stream_chat] streaming... chunks=1550 reasoning=13780 content=0 provider=api_vllm
+2026-06-15 13:34:33,165 - INFO - [stream_chat] streaming... chunks=1600 reasoning=14274 content=0 provider=api_vllm
+2026-06-15 13:34:34,804 - INFO - [stream_chat] streaming... chunks=1650 reasoning=14801 content=0 provider=api_vllm
+2026-06-15 13:34:36,442 - INFO - [stream_chat] streaming... chunks=1700 reasoning=15331 content=0 provider=api_vllm
+2026-06-15 13:34:38,085 - INFO - [stream_chat] streaming... chunks=1750 reasoning=15605 content=0 provider=api_vllm
+2026-06-15 13:34:39,731 - INFO - [stream_chat] streaming... chunks=1800 reasoning=16014 content=0 provider=api_vllm
+2026-06-15 13:34:41,378 - INFO - [stream_chat] streaming... chunks=1850 reasoning=16625 content=0 provider=api_vllm
+2026-06-15 13:34:43,031 - INFO - [stream_chat] streaming... chunks=1900 reasoning=17134 content=0 provider=api_vllm
+2026-06-15 13:34:44,682 - INFO - [stream_chat] streaming... chunks=1950 reasoning=17622 content=0 provider=api_vllm
+2026-06-15 13:34:46,330 - INFO - [stream_chat] streaming... chunks=2000 reasoning=18186 content=0 provider=api_vllm
+2026-06-15 13:34:47,980 - INFO - [stream_chat] streaming... chunks=2050 reasoning=18806 content=0 provider=api_vllm
+2026-06-15 13:34:49,636 - INFO - [stream_chat] streaming... chunks=2100 reasoning=19291 content=0 provider=api_vllm
+2026-06-15 13:34:51,293 - INFO - [stream_chat] streaming... chunks=2150 reasoning=19789 content=0 provider=api_vllm
+2026-06-15 13:34:52,946 - INFO - [stream_chat] streaming... chunks=2200 reasoning=20274 content=0 provider=api_vllm
+2026-06-15 13:34:54,595 - INFO - [stream_chat] streaming... chunks=2250 reasoning=20902 content=0 provider=api_vllm
+2026-06-15 13:34:56,246 - INFO - [stream_chat] streaming... chunks=2300 reasoning=21579 content=0 provider=api_vllm
+2026-06-15 13:34:57,910 - INFO - [stream_chat] streaming... chunks=2350 reasoning=22143 content=0 provider=api_vllm
+2026-06-15 13:34:59,570 - INFO - [stream_chat] streaming... chunks=2400 reasoning=22656 content=0 provider=api_vllm
+2026-06-15 13:35:01,233 - INFO - [stream_chat] streaming... chunks=2450 reasoning=23092 content=0 provider=api_vllm
+2026-06-15 13:35:02,904 - INFO - [stream_chat] streaming... chunks=2500 reasoning=23613 content=0 provider=api_vllm
+2026-06-15 13:35:12,924 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=24092 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:35:12,932 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# final_review.md\n\n## 审核结论\n\n**路由判定：solution_error**\n\n## 审核摘要\n\n### 题目质量（question)
+2026-06-15 13:35:12,946 - INFO - [TEST_AVL] Agent wrote final_review.md but not secondary final.md — sending follow-up
+2026-06-15 13:35:13,033 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:35:17,663 - INFO - [stream_chat] streaming... chunks=50 reasoning=288 content=0 provider=api_vllm
+2026-06-15 13:35:19,301 - INFO - [stream_chat] streaming... chunks=100 reasoning=552 content=0 provider=api_vllm
+2026-06-15 13:35:34,897 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=560 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:35:34,898 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# final.md\n\n## 题目\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入初始为空的 AVL 树中。\n\n平衡因子定义为：*)
+2026-06-15 13:35:34,910 - INFO - [TEST_AVL] Secondary file final.md written (attempt 1)
+2026-06-15 13:35:34,913 - INFO - [TEST_AVL] Final Review: status=solution_error (iter 0)
+2026-06-15 13:35:34,913 - INFO - [TEST_AVL] Final Review: solution_error -> re-running design_solve
+2026-06-15 13:35:34,982 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:35:38,636 - INFO - [stream_chat] streaming... chunks=50 reasoning=294 content=0 provider=api_vllm
+2026-06-15 13:35:38,991 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=299 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:35:38,997 - INFO - [TEST_AVL] Executing tool: exec_file({'path': 'gen.py'})
+2026-06-15 13:35:39,034 - INFO - [TEST_AVL] Agent 'design' attempt 1: tools executed, question.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:35:39,100 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:35:42,997 - INFO - [stream_chat] streaming... chunks=50 reasoning=250 content=0 provider=api_vllm
+2026-06-15 13:36:02,639 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=337 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:36:02,645 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# solution.md\n\n## 求解过程\n\n### 逐步插入推演\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入初始为空的 A)
+2026-06-15 13:36:02,654 - INFO - [TEST_AVL] Agent 'design' attempt 2: tools executed, question.md not written (no_file=0, total=2, continuing)
+2026-06-15 13:36:02,723 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:06,951 - INFO - [stream_chat] streaming... chunks=50 reasoning=231 content=0 provider=api_vllm
+2026-06-15 13:36:08,544 - INFO - [stream_chat] streaming... chunks=100 reasoning=331 content=125 provider=api_vllm
+2026-06-15 13:36:09,389 - INFO - [stream_chat] provider=api_vllm content=244 reasoning=331 tool_calls=0 finish_reason=stop
+2026-06-15 13:36:09,394 - INFO - [TEST_AVL] Agent 'design' attempt 3: intermediate_text (242 chars, 1/2)
+2026-06-15 13:36:09,464 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:13,737 - INFO - [stream_chat] streaming... chunks=50 reasoning=223 content=39 provider=api_vllm
+2026-06-15 13:36:15,070 - INFO - [stream_chat] provider=api_vllm content=257 reasoning=223 tool_calls=0 finish_reason=stop
+2026-06-15 13:36:15,075 - INFO - [TEST_AVL] Agent 'design' attempt 4: intermediate_text (255 chars, 2/2)
+2026-06-15 13:36:15,147 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:18,678 - INFO - [stream_chat] provider=api_vllm content=8 reasoning=104 tool_calls=0 finish_reason=stop
+2026-06-15 13:36:18,684 - WARNING - [TEST_AVL] Agent 'design' attempt 5: no_output (content=8 chars, reasoning=104 chars, finish=stop); retrying
+2026-06-15 13:36:18,684 - INFO - [TEST_AVL] Agent 'design' attempt 5 reasoning (first 2000 chars): 用户没有提出新的要求或反馈。第二轮工作已经完成：
+1. exec gen.py 验证通过
+2. solution.md 已写入
+3. question.md 无需修改
+
+这是一个完成状态，不需要进一步操作。
+
+2026-06-15 13:36:18,684 - INFO - [TEST_AVL] Agent 'design' attempt 5 content (first 500 chars): 
+
+任务已完成。
+2026-06-15 13:36:18,684 - INFO - [TEST_AVL] design: Trimming context (no_output=1)
+2026-06-15 13:36:18,743 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:22,397 - INFO - [stream_chat] streaming... chunks=50 reasoning=337 content=0 provider=api_vllm
+2026-06-15 13:36:23,950 - INFO - [stream_chat] streaming... chunks=100 reasoning=569 content=0 provider=api_vllm
+2026-06-15 13:36:25,498 - INFO - [stream_chat] streaming... chunks=150 reasoning=1070 content=0 provider=api_vllm
+2026-06-15 13:36:27,044 - INFO - [stream_chat] streaming... chunks=200 reasoning=1479 content=0 provider=api_vllm
+2026-06-15 13:36:28,605 - INFO - [stream_chat] streaming... chunks=250 reasoning=2012 content=0 provider=api_vllm
+2026-06-15 13:36:30,166 - INFO - [stream_chat] streaming... chunks=300 reasoning=2527 content=0 provider=api_vllm
+2026-06-15 13:36:31,724 - INFO - [stream_chat] streaming... chunks=350 reasoning=3075 content=0 provider=api_vllm
+2026-06-15 13:36:47,075 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=3205 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:36:47,081 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# solution.md\n\n## 求解过程\n\n### 逐步插入推演\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入初始为空的 A)
+2026-06-15 13:36:47,090 - INFO - [TEST_AVL] Agent 'design' attempt 6: tools executed, question.md not written (no_file=0, total=5, continuing)
+2026-06-15 13:36:47,162 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:51,138 - INFO - [stream_chat] streaming... chunks=50 reasoning=268 content=0 provider=api_vllm
+2026-06-15 13:36:52,672 - INFO - [stream_chat] provider=api_vllm content=133 reasoning=406 tool_calls=0 finish_reason=stop
+2026-06-15 13:36:52,678 - INFO - [TEST_AVL] Agent 'design' attempt 7: intermediate_text (131 chars, 3/2)
+2026-06-15 13:36:52,747 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:36:56,835 - INFO - [stream_chat] streaming... chunks=50 reasoning=246 content=0 provider=api_vllm
+2026-06-15 13:36:57,443 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=319 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:36:57,449 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-15 13:36:57,450 - INFO - [TEST_AVL] Agent 'design' attempt 8: tools executed, question.md not written (no_file=1, total=6, continuing)
+2026-06-15 13:36:57,518 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:37:01,646 - INFO - [stream_chat] streaming... chunks=50 reasoning=263 content=0 provider=api_vllm
+2026-06-15 13:37:03,242 - INFO - [stream_chat] streaming... chunks=100 reasoning=486 content=0 provider=api_vllm
+2026-06-15 13:37:09,000 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=677 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:37:09,006 - INFO - [TEST_AVL] Executing tool: write_file({'content': '# question.md\n\n## 题干\n\n依次将关键字序列 `[10, 20, 30, 40, 50, 25]` 插入初始为空的 AVL 树中。\n\n平衡因子定义)
+2026-06-15 13:37:09,017 - INFO - [TEST_AVL] Cleared session for role 'design' (§19.5 reset)
+2026-06-15 13:37:09,091 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:37:13,255 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=355 tool_calls=3 finish_reason=tool_calls
+2026-06-15 13:37:13,261 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-15 13:37:13,262 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solution.md'})
+2026-06-15 13:37:13,263 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solve_output.txt'})
+2026-06-15 13:37:13,265 - INFO - [TEST_AVL] Agent 'final_review' attempt 1: tools executed, final_review.md not written (no_file=1, total=1, continuing)
+2026-06-15 13:37:13,337 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:37:16,772 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=94 tool_calls=1 finish_reason=tool_calls
+2026-06-15 13:37:16,778 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solve.py'})
+2026-06-15 13:37:16,780 - INFO - [TEST_AVL] Agent 'final_review' attempt 2: tools executed, final_review.md not written (no_file=2, total=2, continuing)
+2026-06-15 13:37:16,852 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-15 13:37:21,275 - INFO - [stream_chat] streaming... chunks=50 reasoning=516 content=0 provider=api_vllm
+2026-06-15 13:37:22,832 - INFO - [stream_chat] streaming... chunks=100 reasoning=1005 content=0 provider=api_vllm
+2026-06-15 13:37:24,384 - INFO - [stream_chat] streaming... chunks=150 reasoning=1526 content=0 provider=api_vllm
+2026-06-15 13:37:25,936 - INFO - [stream_chat] streaming... chunks=200 reasoning=1985 content=0 provider=api_vllm
+2026-06-15 13:37:27,486 - INFO - [stream_chat] streaming... chunks=250 reasoning=2414 content=0 provider=api_vllm
+2026-06-15 13:37:29,044 - INFO - [stream_chat] streaming... chunks=300 reasoning=2761 content=0 provider=api_vllm
+2026-06-15 13:37:30,604 - INFO - [stream_chat] streaming... chunks=350 reasoning=3388 content=0 provider=api_vllm
+2026-06-15 13:37:32,162 - INFO - [stream_chat] streaming... chunks=400 reasoning=4094 content=0 provider=api_vllm
+2026-06-15 13:37:33,720 - INFO - [stream_chat] streaming... chunks=450 reasoning=4722 content=0 provider=api_vllm
+2026-06-15 13:37:35,279 - INFO - [stream_chat] streaming... chunks=500 reasoning=5297 content=0 provider=api_vllm
+2026-06-15 13:37:36,841 - INFO - [stream_chat] streaming... chunks=550 reasoning=5979 content=0 provider=api_vllm
+2026-06-15 13:37:38,408 - INFO - [stream_chat] streaming... chunks=600 reasoning=6607 content=0 provider=api_vllm
+2026-06-15 13:37:39,976 - INFO - [stream_chat] streaming... chunks=650 reasoning=7228 content=0 provider=api_vllm
+2026-06-15 13:37:41,545 - INFO - [stream_chat] streaming... chunks=700 reasoning=7748 content=0 provider=api_vllm
+2026-06-15 13:37:43,113 - INFO - [stream_chat] streaming... chunks=750 reasoning=8315 content=0 provider=api_vllm
+2026-06-15 13:37:44,686 - INFO - [stream_chat] streaming... chunks=800 reasoning=8953 content=0 provider=api_vllm
+2026-06-15 13:37:46,251 - INFO - [stream_chat] streaming... chunks=850 reasoning=9790 content=0 provider=api_vllm
+2026-06-15 13:37:47,836 - INFO - [stream_chat] streaming... chunks=900 reasoning=10496 content=0 provider=api_vllm
+2026-06-15 13:37:49,428 - INFO - [stream_chat] streaming... chunks=950 reasoning=10759 content=0 provider=api_vllm
+2026-06-15 13:37:51,004 - INFO - [stream_chat] streaming... chunks=1000 reasoning=10924 content=0 provider=api_vllm
+2026-06-15 13:37:52,584 - INFO - [stream_chat] streaming... chunks=1050 reasoning=11104 content=0 provider=api_vllm
+2026-06-15 13:37:54,152 - INFO - [stream_chat] streaming... chunks=1100 reasoning=11280 content=0 provider=api_vllm
+2026-06-15 13:37:55,726 - INFO - [stream_chat] streaming... chunks=1150 reasoning=11507 content=0 provider=api_vllm
+2026-06-15 13:37:57,294 - INFO - [stream_chat] streaming... chunks=1200 reasoning=11750 content=0 provider=api_vllm
+2026-06-15 13:37:58,878 - INFO - [stream_chat] streaming... chunks=1250 reasoning=11941 content=0 provider=api_vllm
+2026-06-15 13:38:00,500 - INFO - [stream_chat] streaming... chunks=1300 reasoning=11972 content=210 provider=api_vllm
+2026-06-15 13:38:02,079 - INFO - [stream_chat] streaming... chunks=1350 reasoning=11972 content=474 provider=api_vllm
+2026-06-15 13:38:03,735 - INFO - [stream_chat] streaming... chunks=1400 reasoning=11972 content=706 provider=api_vllm
+2026-06-15 13:38:22,625 - INFO - [stream_chat] provider=api_vllm content=706 reasoning=11972 tool_calls=2 finish_reason=tool_calls
+2026-06-15 13:38:22,633 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'final_review.md', 'content': '# final_review.md\n\n## 终审结论\n\n**路由判定：pass**\n\n## 审核摘要\n\n)
+2026-06-15 13:38:22,644 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'final.md', 'content': '# TEST_AVL — 平衡二叉树 AVL 的插入与旋转\n\n## 题干\n\n依次将关键字序列 `[10, 20, 30, 40)
+2026-06-15 13:38:22,656 - INFO - [TEST_AVL] Final Review: status=pass (iter 1)
+2026-06-15 13:38:22,667 - INFO - [TEST_AVL] Format (agent-produced final.md, 1350 chars)
+2026-06-15 13:38:22,667 - INFO - [TEST_AVL] Pipeline done: 576.3s, final_review=pass, iters=1
+======================================================================
+  打通后端到端测试：往年题参考 → design_card → 全流程
+======================================================================
+
+[Step 1] 生成含往年题参考的 assembled.md...
+  assembled.md 长度: 6270 chars
+  含往年真题参考段: ✓
+  段落结构:
+    ## final_machine_contract
+    # TEST_AVL 出题参考文档（考察模式：结构操作与状态维护模拟）
+    ## 本次出题要求（来自组卷大纲）
+    ## 相关知识点细纲
+    ## 5. 树与二叉树
+    ## 往年真题参考（前段检索，共3题）
+    ## K1-K5 认知雷达评分标准
+
+[Step 2] 启动 pipeline（本地 vLLM）...
+
+======================================================================
+  [结果] elapsed=576.3s
+======================================================================
+  result.ok: True
+  review_status: pass
+  final_content: 1350 chars
+
+  产出文件:
+    ✓ design_card.md
+    ✓ exam_form.md
+    ✓ question.md
+    ✓ gen.py
+    ✗ solve.py
+    ✗ solve_output.txt
+    ✓ solution.md
+    ✓ review.md
+    ✓ final.md
+
+  ── design_card.md question_structure_plan 段 ──
+    - **复用骨架来源**：经验缓存中无直接 AVL 插入旋转的往年综合题。基于 408 数据结构 AVL 考点的常规出题模式提炼：往年 AVL 综合题通常采用"给定插入序列 → 画出最终 AVL 树 → 说明旋转过程"的两问结构，或"逐步插入 → 每步标注平衡因子 → 指出旋转类型"的多问结构。
+    - **子问1**：考 AVL 树插入过程的形态推演与平衡因子标注（基础层）—— 给定一个初始空 AVL 树和一组插入序列，要求画出插入全部元素后的 AVL 树形态，并标注每个节点的平衡因子。参考常规问法："依次将关键字序列 [···] 插入初始为空的 AVL 树中，画出最终的 AVL 树，并标注各结点的平衡因子。"
+    - **子问2**：考旋转触发条件辨析与旋转类型判定（进阶层/区分度层）—— 基于子问1的插入过程，要求指出在插入过程中发生了哪些旋转（或某次特定插入触发了什么旋转），说明旋转类型（LL/RR/LR/RL）及判断依据。参考常规问法："在插入过程中，哪些插入操作触发了旋转？分别属于哪种旋转类型？说明理由。"
+    - **dependency_pattern**：串行依赖。子问1的树形态推演是子问2旋转分析的基础，子问2需基于子问1的中间过程作答。
+
+    design_card 引用往年题: ✓
+
+======================================================================
+  测试完成 — 总耗时 576.3s
+======================================================================

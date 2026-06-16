@@ -1,0 +1,32 @@
+{
+  "slot_id": "TEST_C3",
+  "current_node": "form_gate",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "needs_fix",
+      "feedback": "```\n- 修改对象：难度说明中的 should_be 表述\n- 修改位置：规划文档\"难度说明\"行\n- 当前问题：难度说明写\"需精准辨析四种旋转类型的触发条件\"，但题目只涉及 RR 和 LR 两种旋转，LL 和 RL 未出现；设计说明也明确写\"共2种旋转类型\"\n- 修改目标：将\"四种旋转类型\"改为与题目实际考察范围一致的表述\n- 最小修改指令：将难度说明中的\"需精准辨析四种旋转类型的触发条件\"改为"
+    }
+  ]
+}

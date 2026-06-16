@@ -454,12 +454,12 @@ class DocPipelineOrchestrator:
         solution_path = ws / "solution.md"
         design_card_path = ws / "design_card.md"
         exam_form_path = ws / "exam_form.md"
-        d_inject = {"规划": str(ref_path)}
-        if design_card_path.exists():
-            d_inject["设计卡"] = str(design_card_path)
+        d_inject = await self._resolve_inject("design", slot_id, 2, {
+            "规划": str(ref_path),
+        })
+        # exam_form 不在 registry 里，显式追加（resolve_inject 后才追加，避免被覆盖）
         if exam_form_path.exists():
             d_inject["考察形式"] = str(exam_form_path)
-        d_inject = await self._resolve_inject("design", slot_id, 2, d_inject)
 
         is_conceptual = slot_data.get("complexity") == "conceptual"
         if is_conceptual:
@@ -472,9 +472,10 @@ class DocPipelineOrchestrator:
             skill = "conceptual_batch_skill"
         else:
             d_task = (
-                "§22 设计第一轮（出题干）：读上游定案→写 gen.py 构造参数→write question.md（题干+设问）。"
-                "后面有审核者会给建议，先基于经验给出合理的，不用一次到位。"
-                "只出题干+设问+设计说明，不出答案/选项。写完 gen.py 后 exec 一下看参数是否合理。"
+                "§22 设计（带占位符的题干）：基于经验和上游定案，写题干骨架+子问题。\n"
+                "**参数用变量占位**（如 x, y, 序列S），不填具体值。审核只审题干结构/表述/设问，不审参数。\n"
+                "**只做一件事**：write question.md（题干+子问题+设计说明，参数用占位符）。\n"
+                "设计说明写清参数约束要求（如'序列需触发≥2种旋转'），供 design_solve 搜索参数用。"
             )
             skill = "c_codegen"
 
@@ -484,10 +485,16 @@ class DocPipelineOrchestrator:
                 f"以下是 form_gate 审核发现的修改意见。请逐条对照修改 question.md，"
                 f"不要遗漏任何一条。注意 keep_unchanged 标注的部分不得修改。\n\n{feedback}"
             )
+        # 第一轮（非回退时）：允许 exec 确认代码能跑，但不试参数。
+        if skill == "c_codegen" and not feedback:
+            pass1_tools = None  # 用完整工具集，靠 task 约束不循环
+        else:
+            pass1_tools = None
         await self.scheduler.run_agent(
             "design", d_task, slot_id=slot_id, inject_files=d_inject,
             skill_override=skill,
             continue_session=bool(feedback),
+            tools_override=pass1_tools,
         )
         if not question_path.exists():
             return self._fail_result(slot_id, "design P1 did not write question.md")
@@ -509,38 +516,46 @@ class DocPipelineOrchestrator:
         self, slot_id: str, slot_data: dict[str, Any], ws: Path, ref_path: Path,
         *, feedback: str = "",
     ) -> PipelineResult | None:
-        """§22 design second round: gen.py exec validates constraints + computes
-        answer + writes solution.md. gen.py IS the solver (no separate solve step).
-
-        Reads the gen.py produced in round 1, execs it, reads the output (4 sections:
-        params/stem/solution-path/answer), then assembles solution.md.
+        """§22 solve round: gen.py already produced solve data flow in round 1.
+        Just exec/read output → write solution.md. No separate solve.py.
         """
         question_path = ws / "question.md"
         solution_path = ws / "solution.md"
         gen_path = ws / "gen.py"
-        output_path = ws / "solve_output.txt"
 
-        d_inject = {"规划": str(ref_path), "题目": str(question_path)}
+        d_inject = {"题目": str(question_path)}
+        design_card_path = ws / "design_card.md"
+        if design_card_path.exists():
+            d_inject["设计卡"] = str(design_card_path)  # 选择题读 option_plan
         if gen_path.exists():
             d_inject["参数生成代码"] = str(gen_path)
-        if output_path.exists():
-            d_inject["代码输出"] = str(output_path)
-        d_inject = await self._resolve_inject("design", slot_id, 2, d_inject)
 
+        is_choice = slot_data.get("question_type") == "single_choice"
         ds_task = (
-            "§22 参数验证+求解：你的 gen.py 已在第一轮构造了参数和题干。现在：\n"
-            "1. exec gen.py 验证参数满足 hard_constraints（如触发≥2种旋转）\n"
-            "2. 读 exec 输出的「求解路径」和「答案」段\n"
-            "3. write solution.md（求解过程+最终答案）\n"
-            "4. 如需要，更新 question.md 的设问使其与求解对齐\n"
-            "gen.py 就是求解代码，不需要写 solve.py。exec 输出即真值。"
+            "§22 参数搜索+求解：题干审核已通过。\n"
+            "1. 读 review.md（审核反馈）→ 判断题干表述是否需要微调\n"
+            "2. write gen.py：建模约束 + 给初始值 + 模拟机制，搜索满足约束的参数\n"
+            "3. exec gen.py：验证参数 + 得到求解数据流\n"
+            "4. **edit question.md**：把占位符替换为 gen.py 搜索出的实际参数值\n"
         )
+        if is_choice:
+            ds_task += (
+                "5. **选项构造**：gen.py 顺手打印 option_plan 锚定的参数正确值 → LLM 对正确值做变换得到错误选项\n"
+                "   正确值由 gen.py 产出，错误值是对正确值的简单变换（改某些位/取反/换值）。把 A/B/C/D 填入 question.md。\n"
+                "6. **write solution.md**：求解过程 + 正确选项 + 每个干扰项的错误原因\n"
+            )
+        else:
+            ds_task += (
+                "5. **write solution.md**：从 gen.py 的 exec 输出整理为**求解文档**（逐步求解过程 + 答案），不是代码\n"
+            )
+        ds_task += "**solution.md 是 Markdown 文档，不是 Python 代码。**"
         if feedback:
             ds_task += f"\n\n## 审核修改清单（逐条执行）\n{feedback}"
         await self.scheduler.run_agent(
             "design", ds_task, slot_id=slot_id, inject_files=d_inject,
             skill_override="c_codegen",
             continue_session=bool(feedback),
+            target_file="solution.md",  # design_solve 产出 solution.md（非 design 默认的 question.md）
         )
         if not solution_path.exists():
             return self._fail_result(slot_id, "design_solve did not write solution.md")
@@ -601,10 +616,13 @@ class DocPipelineOrchestrator:
         review_path = ws / "review.md"
         logger.info("[%s] Layer 3: Review", slot_id)
         r_task = "请审核以下题目的设计质量（此阶段无答案，不评估答案正确性）。"
+        # 审核只需设计卡（锚点）+ 题目（被审对象），不需要规划/assembled
         r_inject = await self._resolve_inject("review", slot_id, 3, {
-            "规划": str(ref_path),
             "题目": str(question_path),
         })
+        design_card_path = ws / "design_card.md"
+        if design_card_path.exists() and "设计卡" not in r_inject:
+            r_inject["设计卡"] = str(design_card_path)
         await self.scheduler.run_agent("review", r_task, slot_id=slot_id, inject_files=r_inject)
         if not review_path.exists():
             return ("", self._fail_result(slot_id, "Review agent did not write review.md"))
@@ -829,32 +847,35 @@ class DocPipelineOrchestrator:
         Returns (final_status, None) on success,
         or (status, failed_result) on error.
         """
-        final_review_path = ws / "final_review.md"
+        final_path = ws / "final.md"
         question_path = ws / "question.md"
         solution_path = ws / "solution.md"
-        solve_path = ws / "solve.py"
-        output_path = ws / "solve_output.txt"
-        design_card_path = ws / "design_card.md"
 
         if start_layer > 5:
-            logger.info("[%s] Layer 5: Final Review SKIPPED (resume)", slot_id)
+            logger.info("[%s] Layer 5: Final SKIPPED (resume)", slot_id)
             return ("pass", None)
 
-        logger.info("[%s] Layer 5: Final Review", slot_id)
+        logger.info("[%s] Layer 5: Final (整合交付)", slot_id)
 
         for final_iter in range(MAX_FINAL_RETRIES + 1):
-            fr_task = "请终审题目和求解结果的整体质量，判定 pass/expression_fix/question_error/solution_error。通过时需写入 final_review.md 和 final.md（最终交付文档）两个文件。"
+            fr_task = (
+                "整合交付：把 question.md + solution.md 组装为 final.md。\n"
+                "1. read question.md + solution.md → 组装为完整试卷文档\n"
+                "2. read review.md + review2.md → 检查前两轮的表述修改意见是否已落实\n"
+                "3. 如有遗漏的表述问题，在 final.md 里顺手修正\n"
+                "4. write_file(path=\"final.md\", content=\"...\") 写入整合后的最终文档\n"
+                "不是再审核——数值和结构前两轮已保证。只做整合+表述检查。"
+            )
             fr_inject_files = {
-                "规划": str(ref_path),
                 "题目": str(question_path),
                 "求解结果": str(solution_path),
             }
-            if design_card_path.exists() and "设计卡" not in fr_inject_files:
-                fr_inject_files["设计卡"] = str(design_card_path)
-            if output_path.exists():
-                fr_inject_files["代码输出"] = str(output_path)
-            if solve_path.exists():
-                fr_inject_files["求解代码"] = str(solve_path)
+            review_path = ws / "review.md"
+            review2_path = ws / "review2.md"
+            if review_path.exists():
+                fr_inject_files["题干审核意见"] = str(review_path)
+            if review2_path.exists():
+                fr_inject_files["一致性审核意见"] = str(review2_path)
 
             fr_inject = await self._resolve_inject("final_review", slot_id, 5, fr_inject_files)
             await self.scheduler.run_agent(
@@ -865,50 +886,16 @@ class DocPipelineOrchestrator:
                 continue_session=final_iter > 0,
             )
 
-            if not final_review_path.exists():
-                return ("?", self._fail_result(slot_id, "Final Review agent did not write final_review.md"))
+            # final 是整合交付——检查 final.md 是否生成
+            if not final_path.exists():
+                return ("?", self._fail_result(slot_id, "Final agent did not write final.md"))
 
-            final_status = get_doc_status(str(final_review_path), allowed=FINAL_REVIEW_STATUSES)
-            logger.info("[%s] Final Review: status=%s (iter %d)", slot_id, final_status, final_iter)
-            if not final_status:
-                return ("?", self._fail_result(slot_id, "Final Review agent returned invalid or missing status"))
+            # 整合交付只 pass（不回退）
+            logger.info("[%s] Final: final.md written (%d chars, iter %d)",
+                        slot_id, len(final_path.read_text(encoding="utf-8")), final_iter)
+            break
 
-            if final_status == "pass":
-                break
-            elif final_status == "expression_fix":
-                break
-            elif final_status == "question_error" and final_iter < MAX_FINAL_RETRIES:
-                # §22 split graph: re-design (first round) + re-design_solve
-                logger.info("[%s] Final Review: question_error -> re-running design", slot_id)
-                feedback = parse_doc_section(str(final_review_path), "routing_feedback")
-                await self._run_design_pass1(
-                    slot_id, slot_data, ws, ref_path, feedback=f"## 终审反馈（题目错误）\n{feedback}",
-                )
-                if not question_path.exists():
-                    return (final_status, self._fail_result(slot_id, "design (retry) did not write question.md"))
-                # §22: use design_solve instead of _run_solve (gen.py is the solver)
-                fail = await self._run_design_solve(
-                    slot_id, slot_data, ws, ref_path,
-                )
-                if fail is not None:
-                    return (final_status, fail)
-                if not solution_path.exists():
-                    return (final_status, self._fail_result(slot_id, "design_solve (retry) did not write solution.md"))
-
-            elif final_status == "solution_error" and final_iter < MAX_FINAL_RETRIES:
-                # §22 split graph: re-design_solve (gen.py exec + solution)
-                logger.info("[%s] Final Review: solution_error -> re-running design_solve", slot_id)
-                fail = await self._run_design_solve(
-                    slot_id, slot_data, ws, ref_path,
-                )
-                if fail is not None:
-                    return (final_status, fail)
-                if not solution_path.exists():
-                    return (final_status, self._fail_result(slot_id, "design_solve (retry) did not write solution.md"))
-            else:
-                return (final_status, self._fail_result(slot_id, f"Final Review unresolved status: {final_status}"))
-
-        return (final_status, None)
+        return ("pass", None)
 
     # ── Standard pipeline (all 5 layers) ──────────────────────────
 
@@ -1159,18 +1146,17 @@ class DocPipelineOrchestrator:
 
         ref_path = ws / "assembled.md" if (ws / "assembled.md").exists() else (ws / "blueprint.md")
 
-        # ── 概念出题（concept_creator agent，关思考，只读写工具）──────
-        logger.info("[%s] §21 概念题分支：concept_creator（无思考）", slot_id)
+        # ── 概念出题（concept_creator agent）──────
+        logger.info("[%s] §21 概念题分支：concept_creator", slot_id)
         question_path = ws / "question.md"
         c_inject = {"规划": str(ref_path)}
         c_inject = await self._resolve_inject("concept_creator", slot_id, 2, c_inject)
         c_task = (
-            "基于蓝图的考点列表，直接出概念选择题。每题题干+A/B/C/D+答案+解析。"
-            "write question.md（所有题）+ solution.md（每题解析）。"
+            "基于蓝图的考点列表，直接出概念题。根据题型要求生成选择题/填空题/判断题/简答题等。"
+            "每题题干+选项/空格/答案+解析。write question.md（所有题）+ solution.md（每题解析）。"
         )
         await self.scheduler.run_agent(
             "concept_creator", c_task, slot_id=slot_id, inject_files=c_inject,
-            enable_thinking=False,  # 概念题不需要思考，直接出
         )
         if not question_path.exists():
             return self._fail_result(slot_id, "concept creator did not write question.md")
@@ -1207,7 +1193,7 @@ class DocPipelineOrchestrator:
             c_task_retry = c_task + f"\n\n## 审核反馈（第{retry+1}轮）\n{feedback_body}"
             await self.scheduler.run_agent(
                 "concept_creator", c_task_retry, slot_id=slot_id, inject_files=c_inject,
-                enable_thinking=False, continue_session=True,
+                continue_session=True,
             )
             await self.scheduler.run_agent(
                 "review", r_task, slot_id=slot_id, inject_files=r_inject, continue_session=True,
@@ -1215,7 +1201,14 @@ class DocPipelineOrchestrator:
             review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
             logger.info("[%s] §21 concept review retry %d: status=%s", slot_id, retry+1, review_status)
 
-        # ── 组装 final.md ──────────────────────────────────────────
+        # ── 整合 final.md（格式统一）────────────────────────────────
+        final_path = ws / "final.md"
+        if not final_path.exists() and question_path.exists():
+            q_text = question_path.read_text(encoding="utf-8")
+            s_text = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
+            final_path.write_text(f"{q_text}\n\n---\n\n{s_text}", encoding="utf-8")
+            logger.info("[%s] §21 concept: final.md assembled (%d chars)", slot_id, len(final_path.read_text()))
+
         exec_result: dict[str, Any] = {"ok": True, "skipped": True}
         return await self._assemble_result(
             slot_id, ws, total_start=total_start,
@@ -1313,12 +1306,22 @@ class DocPipelineOrchestrator:
             if use_split
             else state.visit_counts.get("question", 1)
         )
-        solve_path = ws / "solve.py"
-        exec_ok = (
-            "solve" in history_signals
-            and history_signals["solve"] == "success"
-            and solve_path.exists()
-        )
+        # split graph: gen.py 一体化（design 写 gen.py，design_solve 整理输出）
+        if use_split:
+            gen_path = ws / "gen.py"
+            solution_path_check = ws / "solution.md"
+            exec_ok = (
+                "design_solve" in history_signals
+                and solution_path_check.exists()
+            )
+            solve_path = gen_path  # gen.py 就是求解代码
+        else:
+            solve_path = ws / "solve.py"
+            exec_ok = (
+                "solve" in history_signals
+                and history_signals["solve"] == "success"
+                and solve_path.exists()
+            )
         return await self._assemble_result(
             slot_id, ws,
             total_start=state.started_at,

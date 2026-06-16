@@ -1,0 +1,53 @@
+2026-06-16 05:59:10,694 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 05:59:10,708 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 05:59:10,731 - INFO - Loaded 12 AgentMD specs from /zhaoshu/llm_eduated_code_as_truth/core_new/doc_pipeline/agents
+2026-06-16 05:59:10,750 - INFO - Initializing LLM provider type: api
+2026-06-16 05:59:10,774 - INFO - RemoteAPIProvider initialized: model=/zhaoshu/llm/Qwen3.6-27B-FP8 base_url=http://127.0.0.1:8000/v1 protocol=vllm_chat_batch batch_size=16 thinking=chat_template_kwargs
+2026-06-16 05:59:10,774 - INFO - LLMGateway initialized: provider=api_vllm model=/zhaoshu/llm/Qwen3.6-27B-FP8 scope=local max_attempts=10
+2026-06-16 05:59:10,792 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 05:59:10,795 - INFO - [TEST_AVL] Layer 1: Outline SKIPPED (using assembled experience doc)
+2026-06-16 05:59:10,826 - INFO - Loaded pipeline config from /zhaoshu/llm_eduated_code_as_truth/config/pipeline.yaml
+2026-06-16 05:59:10,827 - INFO - [TEST_AVL] graph node=final visit=1
+2026-06-16 05:59:10,827 - INFO - [TEST_AVL] Layer 5: Final Review
+2026-06-16 05:59:11,071 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 05:59:12,447 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=129 tool_calls=2 finish_reason=tool_calls
+2026-06-16 05:59:12,453 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'question.md'})
+2026-06-16 05:59:12,454 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'solution.md'})
+2026-06-16 05:59:12,455 - INFO - [TEST_AVL] Agent 'final_review' attempt 1: tools executed, final.md not written (no_file=1, total=1, continuing)
+2026-06-16 05:59:12,501 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 05:59:14,652 - INFO - [stream_chat] streaming... chunks=50 reasoning=221 content=0 provider=api_vllm
+2026-06-16 05:59:16,267 - INFO - [stream_chat] streaming... chunks=100 reasoning=462 content=0 provider=api_vllm
+2026-06-16 05:59:17,924 - INFO - [stream_chat] provider=api_vllm content=2 reasoning=630 tool_calls=2 finish_reason=tool_calls
+2026-06-16 05:59:17,931 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'review.md'})
+2026-06-16 05:59:17,936 - INFO - [TEST_AVL] Executing tool: read_file({'path': 'review2.md'})
+2026-06-16 05:59:17,937 - INFO - [TEST_AVL] Agent 'final_review' attempt 2: tools executed, final.md not written (no_file=2, total=2, continuing)
+2026-06-16 05:59:17,991 - INFO - HTTP Request: POST http://127.0.0.1:8000/v1/chat/completions "HTTP/1.1 200 OK"
+2026-06-16 05:59:20,563 - INFO - [stream_chat] streaming... chunks=50 reasoning=226 content=0 provider=api_vllm
+2026-06-16 05:59:22,175 - INFO - [stream_chat] streaming... chunks=100 reasoning=510 content=0 provider=api_vllm
+2026-06-16 05:59:23,799 - INFO - [stream_chat] streaming... chunks=150 reasoning=742 content=0 provider=api_vllm
+2026-06-16 05:59:25,414 - INFO - [stream_chat] streaming... chunks=200 reasoning=963 content=0 provider=api_vllm
+2026-06-16 05:59:27,027 - INFO - [stream_chat] streaming... chunks=250 reasoning=1175 content=0 provider=api_vllm
+2026-06-16 05:59:28,651 - INFO - [stream_chat] streaming... chunks=300 reasoning=1354 content=0 provider=api_vllm
+2026-06-16 05:59:30,271 - INFO - [stream_chat] streaming... chunks=350 reasoning=1527 content=0 provider=api_vllm
+2026-06-16 05:59:31,891 - INFO - [stream_chat] streaming... chunks=400 reasoning=1728 content=0 provider=api_vllm
+2026-06-16 05:59:33,511 - INFO - [stream_chat] streaming... chunks=450 reasoning=1978 content=0 provider=api_vllm
+2026-06-16 05:59:35,129 - INFO - [stream_chat] streaming... chunks=500 reasoning=2263 content=0 provider=api_vllm
+2026-06-16 05:59:36,744 - INFO - [stream_chat] streaming... chunks=550 reasoning=2379 content=152 provider=api_vllm
+2026-06-16 05:59:49,301 - INFO - [stream_chat] provider=api_vllm content=238 reasoning=2379 tool_calls=1 finish_reason=tool_calls
+2026-06-16 05:59:49,309 - INFO - [TEST_AVL] Executing tool: write_file({'path': 'final.md', 'content': '# 平衡二叉树（AVL树）插入与旋转\n\n**总分：13分**\n\n---\n\n## 题目\n\n设有一棵初始为空的平衡二叉树（)
+============================================================
+  分段测试: 从 final 开始
+============================================================
+  已复制上游产物: docs/test_output/pipeline_linked_test/TEST_AVL → docs/test_output/node_test/TEST_AVL
+  pipeline_state: current_node=form_gate2, history=6 nodes completed → will resume at final
+  pipeline_state: current_node=final, history=6 nodes completed
+
+[Step 2] 启动 pipeline（从 final resume）...
+
+============================================================
+  [结果] elapsed=38.6s  result.ok=False
+  review_status=?
+============================================================
+  - review.md — 上游残留（未更新）
+  - solution.md — 上游残留（未更新）
+  - final.md — 上游残留（未更新）

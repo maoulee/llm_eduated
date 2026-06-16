@@ -132,6 +132,21 @@ def assemble_slot_experience_doc(
         if question_entries:
             parts.append(f"## 往年真题经验（{examination_mode}，共{len(question_entries)}题）\n\n" + "\n\n---\n\n".join(question_entries))
 
+    # ── 5b. 往年真题参考（来自前段 grep 检索的 reference_questions）──
+    # 当题位经验卡缺失（mode_years 为空）或知识点不匹配题位历史时，
+    # 直接从 question_experiences 目录读取前段检索到的同知识点往年题，
+    # 提取题干+知识点+K值+陷阱，供下游 design_card 锚定设问结构。
+    ref_questions = (outline_entry or {}).get("reference_questions", [])
+    if isinstance(ref_questions, str):
+        ref_questions = [ref_questions]
+    if ref_questions:
+        ref_entries = _build_reference_question_entries(ref_questions)
+        if ref_entries:
+            parts.append(
+                f"## 往年真题参考（前段检索，共{len(ref_entries)}题）\n\n"
+                + "\n\n---\n\n".join(ref_entries)
+            )
+
     # ── 6. K值锚点 ──
     k_anchors = _extract_k_anchors(exp_card)
     if k_anchors:
@@ -443,6 +458,78 @@ def _build_question_entries(slot_id: str, years: list) -> list:
         if entry:
             entries.append(entry)
     return entries
+
+
+def _build_reference_question_entries(ref_filenames: list[str]) -> list[str]:
+    """Build reference question entries from grep-检索到的文件名列表。
+
+    直接从 data/question_experiences/ 读取每个文件，提取：
+    题干原文 + 知识点 + K值雷达 + 核心陷阱 + 考察模式。
+    供下游 design_card 锚定设问结构（人类专家"看往年怎么出的"）。
+    """
+    entries = []
+    for fname in ref_filenames:
+        fname = str(fname).strip()
+        if not fname:
+            continue
+        # 兼容带/不带路径的文件名
+        if os.path.isabs(fname) or "/" in fname:
+            path = fname
+        else:
+            path = os.path.join("data", "question_experiences", fname)
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as f:
+            text = f.read()
+        entry = _format_reference_entry(fname, text)
+        if entry:
+            entries.append(entry)
+    return entries
+
+
+def _format_reference_entry(fname: str, text: str) -> str:
+    """Format a single reference question entry from question_experiences file."""
+    parts = []
+
+    # Title — use file's H1, fallback to filename
+    title_match = re.match(r"^# (.+)$", text, re.MULTILINE)
+    title = title_match.group(1).strip() if title_match else f"参考题（{fname}）"
+    parts.append(f"### {title}")
+
+    # 知识点 (from 基本信息)
+    basic = _extract_section(text, "基本信息")
+    kp = _extract_knowledge_points(basic)
+    if kp:
+        parts.append(f"**知识点**: {kp}")
+
+    # K值 + 雷达
+    k_values = _extract_k_values(text)
+    if k_values:
+        parts.append("**K值**:\n" + "\n".join(f"  - K{i+1}={v}" for i, v in enumerate(k_values)))
+    radar = _extract_radar_shape(text)
+    if radar and radar != "N/A":
+        parts.append(f"**雷达形状**: {radar}")
+
+    # 考察模式
+    mode = _extract_section(text, "考察模式")
+    if mode:
+        # 只取第一行，去掉 **模式**: 等前缀标记
+        mode_line = mode.split("\n")[0].strip()
+        mode_line = re.sub(r"^[*-]*\s*\*{0,2}模式\*{0,2}\s*[:：]\s*", "", mode_line)
+        if mode_line:
+            parts.append(f"**考察模式**: {mode_line}")
+
+    # 题干原文
+    stem = _extract_section(text, "题干原文")
+    if stem:
+        parts.append(f"**题干**:\n{stem}")
+
+    # 核心陷阱
+    trap = _extract_core_trap(text)
+    if trap:
+        parts.append(f"**核心陷阱**: {trap}")
+
+    return "\n\n".join(parts) if len(parts) > 1 else ""
 
 
 def _load_raw_questions() -> dict:

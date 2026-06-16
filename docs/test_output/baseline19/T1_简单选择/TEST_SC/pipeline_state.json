@@ -1,0 +1,50 @@
+{
+  "slot_id": "TEST_SC",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "solve": 1,
+    "design2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题目设计质量合格。树结构描述清晰完整，叶子权值表明确，WPL定义和路径长度定义准确，设问直接指向目标量。参数约束全部满足，K难度与目标完全对齐，干扰策略对应设计卡选定的认知错误路径。选择题无选项值属 form_gate 正常状态（code-as-truth），非缺陷。"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    },
+    {
+      "node": "design2",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

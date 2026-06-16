@@ -224,6 +224,27 @@ def _build_topic_yaml_lines(topic_card: dict, template: dict, slot_id: str) -> l
         for m in modes:
             lines.append(f"  - {m.get('name', '')}\n")
 
+    # Reference questions (file names from grep检索) — 后台 assemble 据此
+    # 自动拉取完整题干拼入 assembled.md，下游 design_card 直接读缓存锚定结构。
+    # 汇总所有 modes 的 examples，去重，最多 5 道（避免 yaml 过长）。
+    seen_refs: set[str] = set()
+    ref_questions: list[str] = []
+    for m in modes:
+        for ex in m.get("examples", []):
+            ex_str = str(ex).strip()
+            if ex_str and ex_str not in seen_refs:
+                seen_refs.add(ex_str)
+                ref_questions.append(ex_str)
+                if len(ref_questions) >= 5:
+                    break
+        if len(ref_questions) >= 5:
+            break
+
+    if ref_questions:
+        lines.append("reference_questions:\n")
+        for rq in ref_questions:
+            lines.append(f"  - {rq}\n")
+
     lines.append("excluded:\n")
     lines.append("  modes: []\n")
     lines.append("  knowledge: []\n")
