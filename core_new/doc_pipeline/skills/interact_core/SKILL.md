@@ -14,7 +14,7 @@
 
 - **grep_search**: 搜索题库（data/question_experiences/），返回相关题目经验。支持批量多关键词搜索：
   ```json
-  {"query": ["AVL", "旋转", "平衡"], "max_results": 20, "subject": "数据结构"}
+  {"query": ["知识点关键词1", "关键词2", "关键词3"], "max_results": 20, "subject": "数据结构"}
   ```
 
 - **read_file**: 读取系统数据 — 经验卡（data/slot_experiences/Q{N}_experience.md）、题目经验（data/question_experiences/{id}.md）、题位模板（data/config/slot_templates.json）、KG（data/kg/{subject}.md）
@@ -65,7 +65,7 @@
 | 任务类型 | 思考深度 | 示例 |
 |---------|---------|------|
 | 粗粒度追问 | 快速响应 | "重点考树、图还是排序？" |
-| 参数知识推荐 | 快速响应 | "AVL常见考法有4种..." |
+| 参数知识推荐 | 快速响应 | "这个知识点常见考法有4种..." |
 | grep 结果归纳 | 中等思考 | 从检索结果分类考察模式 |
 | KG 知识点对齐 | 中等思考 | 将用户说的"Cache"映射到KG节点 |
 | 草案生成 | 中等思考 | 组织多个题位的选项 |
@@ -85,10 +85,12 @@
 - **有没有知识点先验决定是否需要 knowledge phase**：
   - **有先验（可直接跳到 examination/combined）**：
     - 408 组卷：经验卡已预总结每个题位的考察模式 → 知识点由经验卡决定，不需要教师选 → `[PHASE: combined]`
-    - 教师指定知识点："考 AVL 树旋转" → 知识点已定 → 直接 grep 检索考法
+    - 教师指定知识点："考二叉树遍历" → 知识点已定 → 直接 grep 检索考法
     - **往年试卷参考（Entry D）**：往年卷提供了题型+考法+难度先验 → 知识点由往年卷结构锚定，需生成 2-3 套方案让教师选 → `[SCENARIO: D]` `[PHASE: knowledge]`
   - **无先验（必须先 knowledge 再 examination）**：
-    - 自由组卷/期末卷：没有经验卡，教师只说了科目和考试类型 → **必须先用 `[PHASE: knowledge]` 让教师逐题确认知识范围**，确保不同题位覆盖不同知识域，然后再 `[PHASE: examination]` 展开考法
+    - 自由组卷/期末卷：没有经验卡，教师只说了科目和考试类型 → **必须先用 `[PHASE: knowledge]` 给出多套知识点排布方案让教师选**
+    - **不是逐题追问**（"Q1考什么？Q2考什么？"），而是**一次给出 2-3 套完整的知识点排布方案**（每套覆盖所有题位，同题型内不重复），让教师选一套
+    - 选完后再 `[PHASE: examination]` 展开每题的考法
     - 这是两轮流程的核心原因：不是题量多，而是**缺少知识点先验**
   - 判断标准：你手里有没有"每道题考什么知识点"的答案？没有 → 先 knowledge
 - **信息充分 → 草案 → 批注 → 交接文档**：信息足够时才生成草案
@@ -102,6 +104,19 @@
   **教师有意见就在当前 round 停下迭代，不要急着推进到下一 round。** 只有教师明确满意（无批注、完成选择）才进入下一阶段。
 
 ## 输出格式
+
+### complexity 标记规则
+
+每个 slot 的交接 YAML 必须包含 `complexity` 字段。判断规则：
+
+| 场景 | 规则 |
+|------|------|
+| 往年试卷模式（Entry D） | 沿用往年卷：往年卷中是概念题的 → conceptual，计算题 → standard |
+| 考研模拟（Entry A） | 默认全部 standard（考研不标 conceptual） |
+| 自由出题（Entry C） | 低难度（1-2）且考察形式是概念辨析/定义记忆 → 询问教师是否考概念 → 是则 conceptual |
+| 知识点出题（Entry B） | 教师说了"概念题"/"辨析" → conceptual；否则 standard |
+
+**判断依据**：概念记忆/定义辨析/简单判断 → conceptual；需要计算/推演/模拟 → standard。
 
 ### paper_request.yaml
 
@@ -133,6 +148,7 @@ slots:
     k_dominant: "K2"
     k_source: "experience_card"
     difficulty_rationale: "从经验卡 K值锚点读取"
+    complexity: standard                                    # conceptual | standard
     teacher_annotation: ""
 ```
 
@@ -153,6 +169,7 @@ k_radar: {K1: 1, K2: 2, K3: 4, K4: 2, K5: 1}
 k_dominant: "K3"
 k_source: "question_aggregate"
 difficulty_rationale: "从检索题目聚合"
+complexity: standard                            # conceptual | standard
 teacher_annotation: ""
 ```
 
@@ -203,7 +220,7 @@ Level 3: 只有科目/考试类型 → collecting 状态，追问题量和题型
 ```
 [ ] 遍历序列还原 — 给出前序+中序，画出二叉树并写出后序序列（参考 2026_Q3）
 [ ] 哈夫曼编码 — 给定 6 个字符权值，构造哈夫曼树并写出各字符编码（参考 2021_Q5）
-[ ] AVL 插入旋转 — 给定插入序列，逐步画出每次插入后的树形并标注旋转类型（参考 simulation_00175）
+[ ] 树的遍历 — 给定前序+中序序列，还原二叉树并写出后序序列（参考 2026_Q3）
 ```
 
 **不好的示例**（信息太抽象，无法剪枝）：

@@ -584,6 +584,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
                 if yaml_data and isinstance(yaml_data.get("reference_questions"), list)
                 else []
             ),
+            complexity=_extract("complexity") or "standard",
         ))
 
     return {

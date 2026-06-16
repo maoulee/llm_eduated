@@ -1183,10 +1183,11 @@ class DocPipelineOrchestrator:
             "规划": str(ref_path), "题目": str(question_path),
         })
         r_task = (
-            "§21 概念题审核：检查每道题的 (1)格式合规（题干+A/B/C/D+答案+解析，无代码无冗余）"
-            "(2)事实性正确（答案对不对，干扰项是否对应真实认知错误）"
-            "(3)题型期望对齐（每题考的是否是指定考点）。"
-            "不审 K-雷达/条件充分性/参数（概念题无计算）。全 pass→status=pass，有错→needs_fix。"
+            "§21 概念题审核：只做事实性检查。\n"
+            "1. 答案是否正确（事实对不对）\n"
+            "2. 干扰项是否对应真实认知错误（不是随机错误值）\n"
+            "不审格式/难度/K-雷达/条件充分性（概念题不需要）。"
+            "全对→status=pass，有事实错误→needs_fix。"
         )
         await self.scheduler.run_agent(
             "review", r_task, slot_id=slot_id, inject_files=r_inject,

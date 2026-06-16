@@ -54,8 +54,7 @@ async def generate_knowledge_draft(
         slot_rows.append(f"| {sid} | {q_type} | {score}分 |")
     slot_table = "| 题号 | 题型 | 分值 |\n|------|------|------|\n" + "\n".join(slot_rows)
 
-    prompt = f"""基于以下知识点图谱，为一套考试规划每个题位的考点。
-只输出知识点和考察方向，不需要详细内容。
+    prompt = f"""基于以下知识点图谱，为一套考试生成 2-3 套不同的知识点排布方案。
 
 教师要求: {user_requirements}
 
@@ -65,13 +64,31 @@ async def generate_knowledge_draft(
 题位表:
 {slot_table}
 
-输出格式（markdown表格）:
-| 题号 | 题型 | 知识点 | 考察方向 | 难度(1-5) |
-
 要求:
+- 生成 2-3 套完整的知识点排布方案，每套覆盖所有题位
+- **同题型内知识点不重复**（选择题之间不能重复考同一知识点）
+- 跨题型允许重复（选择题考"树"+综合题考"树" 是合理的）
 - 知识点必须来自上面的知识点图谱
-- 确保知识点覆盖主要知识域，避免连续多题考同一知识点
-- 难度1-5，整体偏中等"""
+- 不同方案之间知识点分配要有差异（不要只换顺序）
+- 每套方案标注 complexity：概念记忆/定义辨析类标 conceptual，计算/推演类标 standard
+- 难度1-5，整体偏中等
+
+输出格式:
+
+## 方案A
+
+| 题号 | 题型 | 知识点 | 考察方向 | 难度 | complexity |
+|------|------|--------|---------|------|------------|
+
+## 方案B
+
+| 题号 | 题型 | 知识点 | 考察方向 | 难度 | complexity |
+|------|------|--------|---------|------|------------|
+
+## 方案C（可选）
+
+| 题号 | 题型 | 知识点 | 考察方向 | 难度 | complexity |
+|------|------|--------|---------|------|------------|"""
 
     messages = [{"role": "user", "content": prompt}]
 
@@ -95,24 +112,44 @@ async def generate_knowledge_draft(
 
 
 def _parse_knowledge_table(raw: str, slot_templates: dict) -> list[dict]:
-    """Parse GLM's markdown table output into structured assignments."""
+    """Parse GLM's multi-plan markdown output into structured assignments.
+
+    Supports 2-3 plans (## 方案A/B/C), each with a table.
+    Returns the first complete plan's assignments (teacher can switch plans later).
+    Each assignment includes complexity field if present.
+    """
     assignments = []
     seen_slots = set()
+    current_plan = None
+    first_plan_started = False
 
     for line in raw.split("\n"):
         line = line.strip()
+
+        # Detect plan headers
+        plan_match = re.match(r"^##\s*方案\s*([A-C])", line)
+        if plan_match:
+            current_plan = plan_match.group(1)
+            if current_plan == "A":
+                first_plan_started = True
+                assignments = []
+                seen_slots = set()
+            elif first_plan_started and assignments:
+                # First plan is complete, stop parsing (ignore B/C for now)
+                break
+            continue
+
+        # Only parse first plan (A) if multi-plan, or all if single plan
         if not line.startswith("|") or line.startswith("|--") or line.startswith("| 题号"):
             continue
 
         cells = [c.strip() for c in line.split("|")]
-        # Filter empty cells from leading/trailing |
         cells = [c for c in cells if c]
 
         if len(cells) < 4:
             continue
 
         slot_id = cells[0].strip()
-        # Clean slot_id: extract Q\d+ or TOPIC_\d+
         sid_match = re.match(r"(Q\d+|TOPIC_\d+)", slot_id)
         if not sid_match:
             continue
@@ -132,12 +169,20 @@ def _parse_knowledge_table(raw: str, slot_templates: dict) -> list[dict]:
         except (AttributeError, ValueError):
             difficulty = 3
 
+        # Parse complexity from 6th column if present
+        complexity = "standard"
+        if len(cells) > 5:
+            comp_str = cells[5].strip().lower()
+            if "conceptual" in comp_str or "概念" in comp_str:
+                complexity = "conceptual"
+
         assignments.append({
             "slot_id": slot_id,
             "question_type": q_type,
             "knowledge": knowledge,
             "direction": direction,
             "difficulty": min(max(difficulty, 1), 5),
+            "complexity": complexity,
         })
 
     return assignments
@@ -239,10 +284,11 @@ def format_draft_for_teacher(
 
     for a in assignments:
         kg_path = a.get("kg_path", a.get("knowledge", ""))
+        complexity = a.get("complexity", "standard")
         lines.append(
             f"| {a['slot_id']} | {a.get('question_type', '')} "
             f"| {a['knowledge']} | {a.get('direction', '')} "
-            f"| {a['difficulty']} | {kg_path[:30]} |\n"
+            f"| {a['difficulty']} | {complexity} | {kg_path[:30]} |\n"
         )
 
     lines.append("\n---\n\n")
@@ -253,6 +299,9 @@ def format_draft_for_teacher(
         lines.append(f"- **知识点**: {a['knowledge']}\n")
         lines.append(f"- **考察方向**: {a.get('direction', '')}\n")
         lines.append(f"- **难度**: {a['difficulty']}/5\n")
+        complexity = a.get("complexity", "standard")
+        if complexity == "conceptual":
+            lines.append(f"- **类型**: 概念题（不走计算流程）\n")
         if a.get("kg_path"):
             lines.append(f"- **KG路径**: {a['kg_path']}\n")
         if a.get("siblings"):
@@ -427,6 +476,8 @@ def _build_outline_from_assignments(
             lines.append("excluded:\n")
             lines.append("  modes: []\n")
             lines.append("  knowledge: []\n")
+            complexity = a.get("complexity", "standard")
+            lines.append(f"complexity: {complexity}\n")
             lines.append("```\n")
             lines.append(f"<!-- CONTRACT:END slot={sid} -->\n")
             lines.append("\n")

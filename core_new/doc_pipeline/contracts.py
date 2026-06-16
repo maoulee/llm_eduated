@@ -33,6 +33,8 @@ class SlotBlueprint:
     # 往年题参考文件名（来自前段 grep 检索，写入 CONTRACT yaml）。
     # assemble 阶段据此自动拉取完整题干拼入 assembled.md。
     reference_questions: list[str] = field(default_factory=list)
+    # 考察复杂度：conceptual（概念题，不走计算流程）| standard（计算题，默认）
+    complexity: str = "standard"
 
 
 @dataclass
