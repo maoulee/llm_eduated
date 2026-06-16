@@ -1245,10 +1245,10 @@ class DocScheduler:
                 re.search(r"(往年|试卷参考|past.?paper)", teacher_message, re.IGNORECASE)
             ) or session.scenario == "D"
             if _is_scenario_d:
-                effective_max_tokens = min(effective_max_tokens, 8192)
+                effective_max_tokens = min(effective_max_tokens, 16000)
                 session.scenario = "D"
             else:
-                effective_max_tokens = min(effective_max_tokens, 4096)
+                effective_max_tokens = min(effective_max_tokens, 8192)
         effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
 
         response_text = ""
