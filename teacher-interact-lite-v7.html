@@ -1667,15 +1667,16 @@
       state._currentSchemeIdx = idx;
 
       // 解析 scheme_md 为可交互的 HTML
+      // 支持两种题目标题格式：**第N题...** 和 ### 第N题...
       const lines = (scheme.scheme_md || '').split('\n');
       let htmlParts = [];
       let currentQuestion = null;
-      let annotationIdx = 0;
 
       for (const line of lines) {
         const trimmed = line.trim();
-        // 题目标题行：**第N题...**
-        const qMatch = trimmed.match(/^\*\*第(\d+)题[（(]([^）)]+)[）)]\*\*[：:]?\s*(.*)/);
+        // 题目标题行：**第N题（meta）**：知识点  或  ### 第N题（meta）：知识点
+        const qMatch = trimmed.match(/^\*?\*?第(\d+)题[（(]([^）)]+)[）)]\*?\*?[：:]?\s*(.*)/) 
+                    || trimmed.match(/^#+\s*第(\d+)题[（(]([^）)]+)[）)]\s*[：:]?\s*(.*)/);
         if (qMatch) {
           if (currentQuestion) htmlParts.push(renderQuestionBlock(currentQuestion));
           currentQuestion = {
@@ -1698,11 +1699,15 @@
           if (currentQuestion) { currentQuestion._hasAnnotation = true; }
           continue;
         }
-        // 空行或非题目内容，跳过
-        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('[')) continue;
-        // 其他文本行作为知识点补充
-        if (currentQuestion && !currentQuestion.options.length && !trimmed.startsWith('-')) {
-          if (currentQuestion.knowledge) currentQuestion.knowledge += ' ' + trimmed;
+        // 水平线/设计理念等非题目内容
+        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('[') || trimmed === '---' || trimmed.startsWith('**设计理念')) continue;
+        // 其他文本行：如果有当前题目且还没选项，作为知识点补充
+        if (currentQuestion && currentQuestion.options.length === 0 && !trimmed.startsWith('-')) {
+          if (currentQuestion.knowledge && trimmed.length > 3) {
+            currentQuestion.knowledge += ' ' + trimmed;
+          } else if (trimmed.length > 3) {
+            currentQuestion.knowledge = trimmed;
+          }
         }
       }
       if (currentQuestion) htmlParts.push(renderQuestionBlock(currentQuestion));
