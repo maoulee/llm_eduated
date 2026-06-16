@@ -1660,30 +1660,34 @@
         }
       });
 
-      // 在聊天区渲染该方案的完整 MD（带 markdown 渲染）
+      // 浮动面板模式：替换整个聊天区（和 renderQuestionDetail 一样的模式）
       const stream = document.getElementById("messageStream");
-      const empty = document.getElementById("emptyGuide");
-      if (empty) empty.remove();
-
-      // 移除之前的方案详情
-      const oldDetail = document.getElementById("schemeDetailMessage");
-      if (oldDetail) oldDetail.remove();
+      state._savedStreamHTML = stream.innerHTML; // 保存当前聊天内容，返回时恢复
 
       const html = marked.parse(scheme.scheme_md);
-      const article = document.createElement("article");
-      article.id = "schemeDetailMessage";
-      article.className = "message agent";
-      article.innerHTML = `
-        <div class="message-label">${escapeHtml(scheme.scheme_label || scheme.title || '方案详情')}</div>
-        <div class="markdown-preview">${html}</div>
-        <div class="hint-box">查看完毕后，在右侧下拉选择此方案并确认。</div>
+      stream.innerHTML = `
+        <div class="question-detail">
+          <div class="detail-actions">
+            <button class="secondary-btn" onclick="backToChatFromScheme()">← 返回对话</button>
+          </div>
+          <h3>${escapeHtml(scheme.scheme_label || scheme.title || '方案详情')}</h3>
+          <div class="md-body">${html}</div>
+          <div class="hint-box">勾选要考的细粒度考点，然后在右侧选择此方案并确认。</div>
+        </div>
       `;
-      stream.appendChild(article);
-      stream.scrollTop = stream.scrollHeight;
 
       // 同步选中下拉框
       const sel = document.getElementById("schemeSelect");
       if (sel) { sel.value = String(idx); const btn = document.getElementById("confirmSchemeBtn"); if (btn) btn.disabled = false; }
+    }
+
+    function backToChatFromScheme() {
+      const stream = document.getElementById("messageStream");
+      if (state._savedStreamHTML) {
+        stream.innerHTML = state._savedStreamHTML;
+        state._savedStreamHTML = null;
+      }
+      stream.scrollTop = stream.scrollHeight;
     }
 
     async function confirmScheme() {
