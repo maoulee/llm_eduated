@@ -1661,18 +1661,84 @@
       });
 
       // 浮动面板模式：替换整个聊天区（和 renderQuestionDetail 一样的模式）
+      // 不用 marked.parse——手动渲染保证 checkbox 可点击、批注可编辑
       const stream = document.getElementById("messageStream");
-      state._savedStreamHTML = stream.innerHTML; // 保存当前聊天内容，返回时恢复
+      state._savedStreamHTML = stream.innerHTML;
+      state._currentSchemeIdx = idx;
 
-      const html = marked.parse(scheme.scheme_md);
+      // 解析 scheme_md 为可交互的 HTML
+      const lines = (scheme.scheme_md || '').split('\n');
+      let htmlParts = [];
+      let currentQuestion = null;
+      let annotationIdx = 0;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        // 题目标题行：**第N题...**
+        const qMatch = trimmed.match(/^\*\*第(\d+)题[（(]([^）)]+)[）)]\*\*[：:]?\s*(.*)/);
+        if (qMatch) {
+          if (currentQuestion) htmlParts.push(renderQuestionBlock(currentQuestion));
+          currentQuestion = {
+            num: qMatch[1],
+            meta: qMatch[2],
+            knowledge: qMatch[3] || '',
+            options: [],
+            annotation: ''
+          };
+          continue;
+        }
+        // 细粒度考点选项：- [ ] xxx
+        const optMatch = trimmed.match(/^-\s*\[\s*\]\s*(.+)/);
+        if (optMatch && currentQuestion) {
+          currentQuestion.options.push(optMatch[1]);
+          continue;
+        }
+        // 批注区
+        if (trimmed.startsWith('> 教师批注') || trimmed.startsWith('>教师批注')) {
+          if (currentQuestion) { currentQuestion._hasAnnotation = true; }
+          continue;
+        }
+        // 空行或非题目内容，跳过
+        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('[')) continue;
+        // 其他文本行作为知识点补充
+        if (currentQuestion && !currentQuestion.options.length && !trimmed.startsWith('-')) {
+          if (currentQuestion.knowledge) currentQuestion.knowledge += ' ' + trimmed;
+        }
+      }
+      if (currentQuestion) htmlParts.push(renderQuestionBlock(currentQuestion));
+
+      function renderQuestionBlock(q) {
+        return `
+          <div class="slot-card" style="margin-bottom:14px;">
+            <div class="slot-head">
+              <strong>第${q.num}题（${q.meta}）</strong>
+            </div>
+            <div class="slot-body">
+              <p style="margin:0 0 8px;font-size:14px;">${escapeHtml(q.knowledge)}</p>
+              ${q.options.map((opt, i) => `
+                <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;cursor:pointer;">
+                  <input type="checkbox" data-q="${q.num}" data-opt="${i}" style="width:18px;height:18px;cursor:pointer;">
+                  <span>${escapeHtml(opt)}</span>
+                </label>
+              `).join('')}
+              <div style="margin-top:8px;">
+                <textarea placeholder="教师批注：对本题的修改意见..."
+                  data-q-annotation="${q.num}"
+                  style="width:100%;min-height:40px;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:6px;">${escapeHtml(q.annotation)}</textarea>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       stream.innerHTML = `
         <div class="question-detail">
           <div class="detail-actions">
             <button class="secondary-btn" onclick="backToChatFromScheme()">← 返回对话</button>
           </div>
           <h3>${escapeHtml(scheme.scheme_label || scheme.title || '方案详情')}</h3>
-          <div class="md-body">${html}</div>
-          <div class="hint-box">勾选要考的细粒度考点，然后在右侧选择此方案并确认。</div>
+          ${htmlParts.join('')}
+          <div class="hint-box">勾选要考的细粒度考点，填写批注后，在右侧选择此方案并确认。</div>
         </div>
       `;
 
