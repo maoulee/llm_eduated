@@ -231,6 +231,15 @@ async def trigger_generation(
         slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", "2"))
         semaphore = asyncio.Semaphore(max(1, slot_concurrency))
 
+        # 分离概念题和计算题：概念题合并批量出，计算题独立出
+        concept_slots = []
+        standard_slots = []
+        for sb in slots_data:
+            if sb.get("complexity") == "conceptual":
+                concept_slots.append(sb)
+            else:
+                standard_slots.append(sb)
+
         async def _generate_one(sb: dict) -> dict:
             sid = str(sb.get("slot_id", "Q1"))
             num = _num_from_slot(sid)
@@ -252,6 +261,13 @@ async def trigger_generation(
                         model_routing={"_default": provider},
                         enable_thinking=(provider in ("api_vllm", "vllm")),
                     )
+
+                    # 概念题：如果有多个概念题 slot，合并 concept_topics 批量出
+                    if sb.get("complexity") == "conceptual" and len(concept_slots) > 1:
+                        # 收集所有概念题的考点
+                        concept_topics = [s.get("primary_target_name", "") for s in concept_slots if s.get("primary_target_name")]
+                        sb = dict(sb)  # copy to avoid mutating original
+                        sb["concept_topics"] = concept_topics
 
                     # Run the actual pipeline
                     result = await dp.run(
@@ -302,8 +318,27 @@ async def trigger_generation(
                         on_slot_complete(sid, "failed")
                     return progress.slot_status[sid]
 
-        # Run all slots concurrently (bounded by semaphore)
-        tasks = [_generate_one(sb) for sb in slots_data]
+        # 概念题：只跑第一个 slot（它包含全部概念题考点），其他概念题标记完成
+        # 计算题：每个 slot 独立出题
+        tasks = []
+        concept_first = True
+        for sb in slots_data:
+            if sb.get("complexity") == "conceptual":
+                if concept_first:
+                    tasks.append(_generate_one(sb))
+                    concept_first = False
+                else:
+                    # 后续概念题 slot 由第一个 slot 批量产出，标记为 completed
+                    sid = str(sb.get("slot_id", "Q1"))
+                    num = _num_from_slot(sid)
+                    progress.slot_status[sid] = {
+                        "status": "completed",
+                        "stage": "已批量产出",
+                        "label": f"第{num}题",
+                    }
+            else:
+                tasks.append(_generate_one(sb))
+
         await asyncio.gather(*tasks)
 
         progress.finished_at = time.monotonic()

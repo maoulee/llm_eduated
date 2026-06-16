@@ -76,7 +76,7 @@ class DraftData(BaseModel):
 
     draft_id: str
     title: str  # "拓扑排序 — 考察模式草案"
-    scenario: Literal["A", "B", "C"] = "A"
+    scenario: Literal["A", "B", "C", "D"] = "A"
     current_round: int = 1  # Scenario C: 1 or 2
     sections: list[DraftSlot]
     raw_md: str = ""  # original markdown for fallback rendering
