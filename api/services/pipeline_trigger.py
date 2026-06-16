@@ -268,8 +268,8 @@ async def trigger_generation(
 
                     # 概念题：如果有多个概念题 slot，合并 concept_topics 批量出
                     if sb.get("complexity") == "conceptual" and len(concept_slots) > 1:
-                        # 收集所有概念题的考点
-                        concept_topics = [s.get("primary_target_name", "") for s in concept_slots if s.get("primary_target_name")]
+                        # 收集所有概念题的考点（保留空值占位，确保 index 对齐）
+                        concept_topics = [s.get("primary_target_name", "") for s in concept_slots]
                         sb = dict(sb)  # copy to avoid mutating original
                         sb["concept_topics"] = concept_topics
 
@@ -308,6 +308,15 @@ async def trigger_generation(
                             "stage": f"失败: {error_msg[:50]}",
                             "label": f"第{num}题",
                         }
+                        # 概念题失败传播：后续概念题 slot 标记 failed
+                        if sb.get("complexity") == "conceptual":
+                            for other_sb in concept_slots[1:]:
+                                other_sid = str(other_sb.get("slot_id", "Q1"))
+                                progress.slot_status[other_sid] = {
+                                    "status": "failed",
+                                    "stage": f"失败: 概念题批量出题失败",
+                                    "label": f"第{_num_from_slot(other_sid)}题",
+                                }
 
                     if on_slot_complete:
                         on_slot_complete(sid, progress.slot_status[sid]["status"])
@@ -393,8 +402,8 @@ def _split_concept_questions(
     q_sections = [s.strip() for s in q_sections if s.strip() and not s.strip().startswith("# ") and "##" in s]
     s_sections = [s.strip() for s in s_sections if s.strip() and not s.strip().startswith("# ") and "##" in s]
 
-    # 按顺序映射到 concept_slots（跳过第一个，它已经有完整内容）
-    for i, sb in enumerate(concept_slots[1:], start=1):  # 从第二个开始
+    # 按顺序映射到 concept_slots（含第一个，重写其 final.md 只保留第一题）
+    for i, sb in enumerate(concept_slots):
         if i >= len(q_sections):
             break
         sid = str(sb.get("slot_id", f"Q{i+1}"))
@@ -408,7 +417,7 @@ def _split_concept_questions(
         if i < len(s_sections):
             (slot_dir / "solution.md").write_text(s_sections[i], encoding="utf-8")
 
-        # 写 final.md（question + solution 组合）
+        # 写/重写 final.md（只含该题，不含全部）
         final_content = q_sections[i]
         if i < len(s_sections):
             final_content += "\n\n---\n\n" + s_sections[i]

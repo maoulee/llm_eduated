@@ -106,6 +106,11 @@ class DisplayResultService:
         from core_new.doc_pipeline import DocPipeline
         from core_new.llm_gateway import get_gateway
 
+        try:
+            from core_new.slot_prompts import K_RADAR_DEFINITIONS
+        except ImportError:
+            K_RADAR_DEFINITIONS = ""
+
         workspace = self._interact_service.get_session_workspace(session_id)
         # 找交接 YAML
         handoff_path = None
@@ -160,6 +165,7 @@ class DisplayResultService:
             slot_id=slot_id,
             slot_data=target_sb,
             experience_card="",
+            k_definitions=K_RADAR_DEFINITIONS if "K_RADAR_DEFINITIONS" in dir() else "",
         )
         if result.ok and result.final_content:
             q_dir = output_dir / slot_id
