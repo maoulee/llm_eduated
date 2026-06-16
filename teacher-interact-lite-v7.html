@@ -1596,19 +1596,23 @@
 
       body.innerHTML = `
         <div class="draft-info">点击方案卡片查看详情，选定后进入下一步。</div>
-        ${schemeSections.map((s, i) => `
+        ${schemeSections.map((s, i) => {
+          // 从 scheme_label 提取设计理念，从 scheme_md 统计题数
+          const label = s.scheme_label || s.title || '';
+          const topic = label.split('—').slice(1).join('—').trim() || '点击查看';
+          const qCount = (s.scheme_md || '').split('\n').filter(l => l.includes('第') && l.includes('题')).length;
+          return `
           <div class="plan-card" data-scheme-idx="${i}" onclick="viewScheme(${i})" style="
             padding:14px; margin-bottom:10px; border:1px solid var(--border);
             border-radius:var(--radius); background:var(--surface); cursor:pointer;
             transition: border-color 120ms ease, background 120ms ease;
           " onmouseover="this.style.borderColor='#c7d2fe';this.style.background='var(--primary-soft)'"
-            onmouseout="this.style.borderColor='var(--border)';this.style.background='var(--surface)'">
-            <strong style="font-size:14px; display:block; margin-bottom:6px;">${escapeHtml(s.scheme_label || s.title)}</strong>
-            <span style="color:var(--muted); font-size:13px;">
-              ${escapeHtml((s.scheme_md || '').split('\\n').filter(l => l.includes('第') && l.includes('题')).slice(0,3).map(l => l.trim()).join('；') || '点击查看详情')}
-            </span>
+            onmouseout="if(!this.classList.contains('selected-scheme')){this.style.borderColor='var(--border)';this.style.background='var(--surface)'}">
+            <strong style="font-size:14px; display:block; margin-bottom:4px;">${escapeHtml(label.split('—')[0].trim())}</strong>
+            <span style="color:var(--muted); font-size:13px;">${escapeHtml(topic)}${qCount ? ` · ${qCount}题` : ''}</span>
           </div>
-        `).join("")}
+          `;
+        }).join("")}
       `;
 
       // 底部：选定方案按钮
@@ -1643,17 +1647,36 @@
       const scheme = state.schemeSections[idx];
       if (!scheme || !scheme.scheme_md) return;
 
-      // 在聊天区渲染该方案的完整 MD
+      // 高亮选中的边栏卡片
+      document.querySelectorAll(".plan-card").forEach((el, i) => {
+        if (i === idx) {
+          el.style.borderColor = "#c7d2fe";
+          el.style.background = "var(--primary-soft)";
+          el.classList.add("selected-scheme");
+        } else {
+          el.style.borderColor = "var(--border)";
+          el.style.background = "var(--surface)";
+          el.classList.remove("selected-scheme");
+        }
+      });
+
+      // 在聊天区渲染该方案的完整 MD（带 markdown 渲染）
       const stream = document.getElementById("messageStream");
       const empty = document.getElementById("emptyGuide");
       if (empty) empty.remove();
 
+      // 移除之前的方案详情
+      const oldDetail = document.getElementById("schemeDetailMessage");
+      if (oldDetail) oldDetail.remove();
+
       const html = marked.parse(scheme.scheme_md);
       const article = document.createElement("article");
+      article.id = "schemeDetailMessage";
       article.className = "message agent";
       article.innerHTML = `
-        <div class="message-label">方案详情</div>
-        <div class="markdown-preview" style="max-width:760px;">${html}</div>
+        <div class="message-label">${escapeHtml(scheme.scheme_label || scheme.title || '方案详情')}</div>
+        <div class="markdown-preview">${html}</div>
+        <div class="hint-box">查看完毕后，在右侧下拉选择此方案并确认。</div>
       `;
       stream.appendChild(article);
       stream.scrollTop = stream.scrollHeight;
