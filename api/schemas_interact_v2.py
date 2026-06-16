@@ -37,12 +37,14 @@ class DraftOption(BaseModel):
 class DraftSlot(BaseModel):
     """A question slot within a draft."""
 
-    slot_id: str  # "Q1"
+    slot_id: str  # "Q1" or "方案A"
     display_id: str = ""  # teacher-facing display id, e.g. "1"
-    title: str  # "Q1（选择题·2分）— 拓扑排序"
+    title: str  # "Q1（选择题·2分）— 拓扑排序" or "方案A — 侧重线性表"
     phase: Literal["knowledge", "examination", "combined", "question_type"] = "combined"
-    options: list[DraftOption]
+    options: list[DraftOption] = Field(default_factory=list)  # optional: Entry A/B/C use options; Entry D uses scheme_md
     annotation: str = ""  # teacher annotation
+    scheme_md: str = ""  # Entry D: full markdown content of a scheme card (rendered in chat area on click)
+    scheme_label: str = ""  # Entry D: short label for the scheme card (e.g. "方案A — 侧重线性表")
 
     model_config = ConfigDict(
         json_schema_extra={

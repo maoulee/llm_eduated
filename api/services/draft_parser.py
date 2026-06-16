@@ -170,6 +170,22 @@ def parse_draft_md(md_text: str, draft_id: str = "") -> DraftData:
         if any(kw in header_text for kw in _skip_keywords):
             continue
 
+        # ── Entry D: 方案卡片 section ──
+        # 标题含"方案"→ 作为方案卡片，scheme_md = 该段完整 markdown
+        if "方案" in header_text:
+            scheme_label = re.sub(r"\s*\[complexity:\s*\w+\]", "", header_text).strip()
+            sections.append(DraftSlot(
+                slot_id=f"scheme_{idx}",
+                display_id="",
+                title=scheme_label,
+                phase=global_phase or "knowledge",
+                options=[],
+                annotation="",
+                scheme_md=body.strip(),
+                scheme_label=scheme_label,
+            ))
+            continue
+
         # Slot ID — handle "Q1 题型" sections by appending suffix
         slot_match = _RE_SLOT_ID.search(header_text)
         slot_id = slot_match.group(1).upper() if slot_match else f"Q{idx + 1}"
@@ -183,8 +199,8 @@ def parse_draft_md(md_text: str, draft_id: str = "") -> DraftData:
         # Parse options and annotation from body
         options, annotation = _parse_section_body(body, idx + 1)
 
-        # Skip sections with no options (empty headings)
-        if not options:
+        # Skip sections with no options AND no scheme_md (empty headings)
+        if not options and not body.strip():
             continue
 
         # Display ID for teacher-facing UI — plain numeric (1, 2, …)
@@ -288,13 +304,17 @@ def render_annotated_md(
 def detect_draft_in_response(response_text: str) -> bool:
     """Quick check if an agent response contains a parseable draft.
 
-    Looks for level-2 headers with Q-patterns and option markers.
+    Looks for level-2 headers with Q-patterns, scheme cards (方案), or option markers.
     """
     if not response_text:
         return False
 
-    # Level-2 header with Q pattern
+    # Level-2 header with Q pattern (Entry A/B/C)
     if re.search(r"^##\s+Q\d+", response_text, re.MULTILINE):
+        return True
+
+    # Level-2 header with 方案 (Entry D scheme cards)
+    if re.search(r"^##\s+方案", response_text, re.MULTILINE):
         return True
 
     # Level-2 header with checkbox option markers
