@@ -1147,15 +1147,29 @@ class DocPipelineOrchestrator:
         ref_path = ws / "assembled.md" if (ws / "assembled.md").exists() else (ws / "blueprint.md")
 
         # ── 概念出题（concept_creator agent）──────
-        logger.info("[%s] §21 概念题分支：concept_creator", slot_id)
+        logger.info("[%s] §21 概念题分支：concept_creator（批量）", slot_id)
         question_path = ws / "question.md"
         c_inject = {"规划": str(ref_path)}
         c_inject = await self._resolve_inject("concept_creator", slot_id, 2, c_inject)
-        c_task = (
-            "基于蓝图的考点列表，**批量**出概念题。对每个考点出一道（选择/填空/判断/简答），"
-            "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
-            "write question.md（所有题）+ solution.md（每题解析）。"
-        )
+
+        # 支持多考点批量：slot_data 的 concept_topics 列表或 primary_target_name
+        concept_topics = slot_data.get("concept_topics", [])
+        if not concept_topics and slot_data.get("primary_target_name"):
+            concept_topics = [slot_data["primary_target_name"]]
+
+        if len(concept_topics) > 1:
+            topics_str = "\n".join(f"  {i+1}. {t}" for i, t in enumerate(concept_topics))
+            c_task = (
+                f"基于以下考点列表，**批量**出概念题（共 {len(concept_topics)} 道，每考点一道）：\n{topics_str}\n\n"
+                "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
+                "write question.md（所有题）+ solution.md（每题解析）。"
+            )
+        else:
+            c_task = (
+                "基于蓝图的考点列表，**批量**出概念题。对每个考点出一道（选择/填空/判断/简答），"
+                "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
+                "write question.md（所有题）+ solution.md（每题解析）。"
+            )
         await self.scheduler.run_agent(
             "concept_creator", c_task, slot_id=slot_id, inject_files=c_inject,
         )
