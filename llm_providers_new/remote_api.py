@@ -127,6 +127,14 @@ class RemoteAPIProvider(BaseLLMProvider):
         # - chat_template_kwargs: send vLLM-style
         #   {"chat_template_kwargs": {"enable_thinking": bool}}.
         self.thinking_control_method = kwargs.get("thinking_control_method", "prompt")
+        # thinking_token_budget is a vLLM engine-level control (requires
+        # --reasoning-parser + --reasoning-config at serve time): the reasoning
+        # parser counts tokens and forces reasoning_end_str at the budget.
+        # Only chat_template_kwargs method routes through vLLM's reasoning
+        # pipeline; param/prompt/none hit other backends (GLM, ollama) that
+        # silently ignore thinking_token_budget. This single attribute is the
+        # authoritative gate (replaces the old base_url-string sniffing).
+        self.supports_thinking_budget = (self.thinking_control_method == "chat_template_kwargs")
         self.preserve_thinking = bool(
             kwargs.get("preserve_thinking", _env_bool("VLLM_PRESERVE_THINKING", False))
         )

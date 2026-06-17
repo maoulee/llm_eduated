@@ -638,15 +638,13 @@ class LLMGateway:
 
     @staticmethod
     def _supports_thinking_budget(provider) -> bool:
-        method = getattr(provider, "thinking_control_method", "")
-        base_url = str(getattr(provider, "api_base_url", "")).lower()
-        provider_type = getattr(provider, "provider_type", "")
-        return (
-            provider_type == "local"
-            or method == "chat_template_kwargs"
-            or "127.0.0.1" in base_url
-            or "localhost" in base_url
-        )
+        # Authoritative gate: the provider self-reports via
+        # supports_thinking_budget (set in its __init__ from
+        # thinking_control_method == "chat_template_kwargs"). Only vLLM's
+        # reasoning-parser backend honors thinking_token_budget; GLM/ollama
+        # backends silently ignore it, so we must never inject it there.
+        # LocalVLLMProvider lacks the attribute → False (conservative).
+        return bool(getattr(provider, "supports_thinking_budget", False))
 
     @staticmethod
     def _is_retryable_stream_error(exc: Exception) -> bool:

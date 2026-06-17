@@ -93,7 +93,6 @@ TASK = "请审核以下题目，检查参数一致性、条件利用率和难度
 async def run_analysis(prompt_variant: str, label: str, output_file: str) -> dict:
     """Run analysis agent with a given prompt, return result dict."""
     gateway = get_routed_gateway("doc_design")
-    provider = gateway._provider
 
     ws = Path("workspace") / "ab_test" / label
     ws.mkdir(parents=True, exist_ok=True)
@@ -119,8 +118,16 @@ async def run_analysis(prompt_variant: str, label: str, output_file: str) -> dic
 
     t0 = time.monotonic()
 
-    # Streaming call (same as scheduler)
-    raw = await _stream(provider, messages, tools=openai_tools)
+    # Streaming call via gateway (replaces hand-rolled _stream that bypassed
+    # the budget gate and hard-coded thinking_token_budget=10000).
+    raw = await gateway.stream_chat(
+        messages,
+        max_tokens=20000,
+        tools=openai_tools,
+        tool_choice="required",
+        thinking_budget=10000,
+        sampling_overrides={"temperature": 0.2, "top_p": 0.9},
+    )
     elapsed = time.monotonic() - t0
 
     content = raw.get("content", "")
@@ -151,66 +158,6 @@ async def run_analysis(prompt_variant: str, label: str, output_file: str) -> dic
         "reasoning_len": len(raw.get("reasoning_content", "")),
         "wrote_file": out_path.exists(),
         "final_text": final_text,
-    }
-
-
-async def _stream(provider, messages, tools):
-    """Streaming chat call."""
-    processed = provider._prepare_messages(messages, enable_thinking=None, json_mode=False)
-    sampling = {k: v for k, v in provider.sampling_params.items() if k != "top_k"}
-    sampling.update({"temperature": 0.2, "top_p": 0.9})
-
-    params = {
-        "model": provider.model_name,
-        "messages": processed,
-        "stream": True,
-        "max_tokens": 20000,
-        "tools": tools,
-        "tool_choice": "required",
-        **sampling,
-    }
-    params.setdefault("extra_body", {})
-    params["extra_body"]["thinking_token_budget"] = 10000
-
-    content_parts = []
-    reasoning_parts = []
-    tool_calls_accum = {}
-
-    stream = await provider.client.chat.completions.create(**params)
-    async for chunk in stream:
-        if not chunk.choices:
-            continue
-        choice = chunk.choices[0]
-        delta = choice.delta
-        if delta.content:
-            content_parts.append(delta.content)
-        rc = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None) or ""
-        if rc:
-            reasoning_parts.append(rc)
-        if delta.tool_calls:
-            for tc_delta in delta.tool_calls:
-                idx = tc_delta.index
-                if idx not in tool_calls_accum:
-                    tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
-                if tc_delta.id:
-                    tool_calls_accum[idx]["id"] = tc_delta.id
-                if tc_delta.function:
-                    if tc_delta.function.name:
-                        tool_calls_accum[idx]["name"] = tc_delta.function.name
-                    if tc_delta.function.arguments:
-                        tool_calls_accum[idx]["arguments"] += tc_delta.function.arguments
-
-    tool_calls = None
-    if tool_calls_accum:
-        tool_calls = []
-        for idx in sorted(tool_calls_accum):
-            tc = tool_calls_accum[idx]
-            tool_calls.append({"id": tc["id"], "type": "function", "function": {"name": tc["name"], "arguments": tc["arguments"]}})
-
-    return {
-        "content": "".join(content_parts),
-        "reasoning_content": "".join(reasoning_parts),
-        "tool_calls": tool_calls,
     }
 
 
