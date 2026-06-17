@@ -29,7 +29,6 @@ def assemble_slot_experience_doc(
       7. K-radar完整定义 (from slot_prompts)
     """
     import yaml
-    from core_new.slot_prompts import K_RADAR_DEFINITIONS
 
     parts = []
 
@@ -154,10 +153,9 @@ def assemble_slot_experience_doc(
     if k_anchors:
         parts.append(f"## K值锚点（{slot_id} 题位历史分布）\n\n{k_anchors}")
 
-    # ── 7. K-radar完整定义 ──
-    radar_text = K_RADAR_DEFINITIONS.strip()
-    radar_text = re.sub(r"^##\s+K1-K5.*?\n", "", radar_text)
-    parts.append(f"## K1-K5 认知雷达评分标准\n\n{radar_text.strip()}")
+    # 注：原第 7 段「K1-K5 评分标准 rubric」已移除——出题节点(design_card/exam_form/design)
+    # 用的是已打好的 K 值(见「本次出题要求」段)，不需要"怎么打分"的定义。
+    # rubric 仅供上游评 K 值(interact/cognitive_radar)。省 ~1.2KB/节点 × 3 出题节点。
 
     # Translate abbreviated codes (DS-1, CO-1 etc.) to full chapter names
     from core_new.subject_map import translate_code
