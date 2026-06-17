@@ -46,12 +46,29 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _resilient_transport() -> httpx.AsyncHTTPTransport:
+    """httpx transport：连接级重试 + TCP keepalive（对齐 Claude Code 的网络韧性）。
+
+    - retries=3：connect 失败/连接被 reset 时由 httpx 透明重试，不惊动上层。
+    - SO_KEEPALIVE(+保守 keepalive 间隔)：保活空闲连接、防 NAT/代理回收；
+      间隔保守，避免误杀可恢复的 stall（短断流仍由 TCP 重传默认扛过）。
+    配合长 read_timeout，瞬时网络波动被"等过去"（网回→流续→消息到），而非超时即重发。
+    """
+    import socket
+    sock_opts = [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+    for _opt, _val in (("TCP_KEEPIDLE", 60), ("TCP_KEEPINTVL", 30), ("TCP_KEEPCNT", 3)):
+        _flag = getattr(socket, _opt, None)
+        if _flag is not None:
+            sock_opts.append((socket.IPPROTO_TCP, _flag, _val))
+    return httpx.AsyncHTTPTransport(retries=3, socket_options=sock_opts)
+
+
 async def _get_shared_client(timeout: float = 300.0) -> httpx.AsyncClient:
     """Get or create the shared httpx.AsyncClient with connection pooling."""
     global _shared_client, _shared_client_timeout
     if _shared_client is None or _shared_client.is_closed:
         _shared_client_timeout = timeout
-        _shared_client = httpx.AsyncClient(timeout=timeout)
+        _shared_client = httpx.AsyncClient(transport=_resilient_transport(), timeout=timeout)
     return _shared_client
 
 
@@ -91,7 +108,7 @@ class RemoteAPIProvider(BaseLLMProvider):
             max_keepalive_connections=self.max_keepalive_connections,
             keepalive_expiry=self.keepalive_expiry,
         )
-        self.http_client = httpx.AsyncClient(timeout=timeout, limits=limits)
+        self.http_client = httpx.AsyncClient(transport=_resilient_transport(), timeout=timeout, limits=limits)
 
         self.client = AsyncOpenAI(
             api_key=self.api_key,
