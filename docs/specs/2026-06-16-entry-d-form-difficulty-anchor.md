@@ -1,62 +1,90 @@
-# Entry D 形式锚点（expected_form）+ 难度锚定（K 值检索）— 实施规格
+# Entry D 形式锚点(expected_form)+难度锚定(K值检索) — 实施规格 + 状态
 
-> 原 plan 文件 `/root/.claude/plans/ticklish-shimmying-owl.md` 被 worktree 守卫拦截（仓库外），改存工作树内 `docs/specs/`（项目 spec 惯例）。定稿日期 2026-06-16。
+> 本文件是 Entry D 改造的**单一信息源**，含：设计、实施状态、已知问题、根因分析、修复方向。
+> 供跨会话/跨工具(zcode 等)接手用。最近更新 2026-06-17。
 
 ## Context（为什么做）
 
-Entry D（往年期末卷参考）测试（会话 `1e1f7e78068a`，皖西学院数据结构期末 A 卷）暴露三个漂移：形式（算法分析"给代码分析"可能出成非代码题）、难度（期末卷换成考研级考点）、知识点（MST→关键路径、倒数第 k→判环、WPL→路径输出）。
+Entry D（往年期末卷参考）测试暴露三个漂移：形式（算法分析"给代码分析"可能出成非代码题）、难度（期末卷换成考研级考点）、知识点（被换成别的）。根因：前端用参数知识现编没真检索题库；检索工具不返 K 值无法按难度筛；题干设问形式无锚点。
 
-**根因（已取证确认）**：
-1. 前端 interact 用**参数知识现编**，没真检索 `question_experiences/`（2058 题，100% 含 K1-K5）；
-2. 检索工具 `grep_search` 返回**不含 K 值**（`grep_search_tool.py:121-133`），无法按难度筛；
-3. **题干设问形式无锚点**：SlotBlueprint 只有 `examination_mode`（认知模式），没有"题干设问形式"，下游 design 凭认知模式出题 → 难度对、形式错。
+## 设计决策（定稿）
 
-**两个关键发现（简化方案）**：
-- 下游 `artifact_store.py:135-148` 已把 `reference_questions` 里每道参考题的 K 值+考察模式+题干+陷阱自动装配进 assembled.md 喂 design_card。→ 前端把 K 值过滤后的题填进 `reference_questions`，下游自动拿到难度+形式，**无需新造下游通道**。
-- K 值解析正则可复用 `artifact_store._extract_k_values`（:614）。
+- **expected_form**：对标考研题位经验卡「考察方式」字段——1-3 句散文（题干给什么/要求什么/核心点）。**仅考察方式散文**。**D-only、nullable**；Entry A 用考研预抽取考察模式，Entry C 留空；下游非空才约束。
+- **难度锚定**：`retrieve_anchored_references` 按 K 值门 `D(c)≤D(t)+ε` + MAE 排序，从 question_experiences(2058 题) 检索参考题填 reference_questions（code-as-truth，来源无关）。
+- **范围**：Part A（expected_form 全链）+ Part B（K 值检索）。
 
-## 定稿决策
-- **expected_form**：对标 `Q13_experience.md` 模式 X 的「考察方式」字段——1-3 句散文（题干给什么/要求什么/核心点）。**仅考察方式散文**（不带陷阱/干扰/参数类型）。**D-only、nullable**；Entry A 用考研预抽取考察模式，Entry C 留空；下游非空才约束。
-- **范围**：Part A（expected_form 全链）+ Part B（K 值检索）一起做。
+## 实施状态（已完成并验证，5 个提交）
 
-## 三层改动
+| commit | 内容 | 验证 |
+|---|---|---|
+| `a06ceb9` | feat: expected_form 全链(SlotBlueprint/SlotContract 字段 + 通道) + K值检索(retrieve_anchored_references 门控+MAE) + review 审 expected_form + interact_core Entry D + scheduler trace | 单题 design 全链跑通，design_card 含 expected_form 并驱动骨架，review "expected_form 贴合度" pass |
+| `9c45ffe` | perf: 组装文档移除 K-radar 评分标准 rubric 段（出题节点用已打好 K 值，不需 rubric；省 1.2KB/节点×3） | compose 测试无回归 |
+| `986c28b` | perf: httpx 加传输重试(retries=3)+TCP keepalive，对齐 Claude Code 网络韧性（同网络 CC 不断、流水线易断的根因：默认 transport retries=0 无 keepalive） | provider 构造 OK |
+| `1df22e3` | feat: per-role 生成+思考配置（enable_thinking/max_tokens 每 role 独立，scheduler 动态取用）——Qwen3.6 上唯一有效的思考控制 | 单题 408s→200s（2× 提速），窄任务关思考 |
+| `df3746f` | fix: 修 `_gateway` typo（scheduler:713），传输错误处理不再崩（踩中"线上断线"场景） | test_node 全 pipeline 跑通不崩 |
 
-### ① Format 层（expected_form 字段通道，搭 examination_mode 既有车）
-- `core_new/doc_pipeline/contracts.py`：SlotBlueprint 加 `expected_form: str = ""`（:19 附近）
-- `compose/markdown_contract_parser.py:319`：解析支持 expected_form（可选，不入 _REQUIRED_FIELDS）；`compose/outline_contract_parser.py:20` 同步
-- `compose/compose_runner.py:572/714`：SlotBlueprint 构建映射 expected_form
-- `compose/artifact_store.py:73-97`：「本次出题要求」段加一行 expected_form（非空才写）
-- `interact_core/SKILL.md`：paper_request.yaml 模板加 expected_form 字段
+**关键事实**：`thinking_budget`（数值上限）对 Qwen3.6 **无效**（chat_template 无 thinking_budget 变量，只有 enable_thinking 开关）。原 thinking_budget 配置是 placebo。per-role `enable_thinking`（开/关）才是真控制。
 
-### ② Skill 层（前端产期望形式 + K 值检索）
-`interact_core/SKILL.md` Entry D 段（:265-408）：
-- Step 2 加：每题位提取「期望形式」（考察方式式）+ 轻量估 K 值（`slot_extractor.py` 的 `COGNITIVE_RADAR_SCALE` 原文嵌入提示）
-- Step 5/8 改：从参数现编 → 真检索（按科目 KG）→ K 值门 `D(c)≤D(t)+ε` 过滤 → MAE 排序 → 填 `reference_questions`；写 expected_form 进 handoff
-- Part B：`compose/knowledge_index.py` 的 `QuestionMeta`+`_parse_file`（:227）解析 K1-K5（复用 `_extract_k_values:614` 正则）；`SearchHit`+`search()`（:72）返 `k_radar`；`grep_search_tool.py:121-133` results 加 `k_radar`
+## 🔴 已知问题：Entry D 轮次循环 bug（系统层状态错误）
 
-### ③ Behavior 层（下游基于期望形式出题）
-- `question_design.md:59`：blueprint_contract 摘取加 expected_form；question_structure_plan 按期望形式组织子问链
-- `design.md`：P1 读 design_card 的 expected_form，非空时按它组织题干（硬约束）；加 P1 红线"遵守 expected_form"
-- `interact.md`：Entry D 职责加"产出期望形式"
+**现象**（前端实测，会话 `workspace/2a633e384b39`，计算机组成原理 A 卷）：
+```
+[0] teacher 上传卷
+[1] agent Round1(knowledge): 出3套方案
+[2] teacher: "选方案C，生成交接文档进入出题"
+[3] agent: 裁剪留C, 没handoff, "等待确认"  ← 进了 Round2
+[4] teacher 重复选方案C（被迫第2次）
+[5] agent: 自动[✓]全选, "等待系统允许生成交接"  ← 还没handoff
+draft头: [ROUND:2][PHASE:examination]，但内容仍是知识点级
+```
+agent 不读教师选择去推进 handoff，反而重新生成 + 自动 [✓]，循环卡死。教师被迫选 3 次。
 
-### 附：审计缺口
-- `scheduler.py:1163` `run_conversation_turn` 补写 trace.jsonl（复用 `run_agent:684` 的 `_write_trace`），让 interact 检索可审计
+### 系统层根因（两处冲突）
 
-## 复用点
-- K 值解析正则：`compose/artifact_store.py:_extract_k_values`（:614）
-- 参考题装配（已含 K 值+考察模式+题干）：`_build_reference_question_entries`（:463）/`_format_reference_entry`（:490）
-- K 值评分标准（轻量估）：`slot_extractor.py` 的 `COGNITIVE_RADAR_SCALE`
-- K 值聚合：`compose/k_radar_reader.py`
-- 字段通道：`examination_mode` 既有 handoff→parser→SlotBlueprint→assembled→design_card 链路
+**根因1 — Phase 分类冲突**（`interact_core/SKILL.md:89-94`）：
+- Entry D 被归入 `[PHASE: knowledge]`（:89），触发 :90-94 的 **"knowledge→examination 两轮"** 逻辑。
+- 但这套两轮是**为自由出题(C)/期末卷设计的**（:90-94"无先验→必须先 knowledge 再 examination"，原因是缺知识点先验）。
+- Entry D 的方案选项**已带考察方式粒度**（选项是"海明码校验位数计算/CRC检错分析"等具体考法，不是粗知识点）→ Round 2 examination **冗余** → agent 不知道 examination 该干啥 → 重新生成知识点 + 自动 [✓] → 循环。
+- 即：Entry D 的方案粒度（已到考法级）与 C 的两轮设计（knowledge 粗→examination 细）**不匹配**，硬套 C 的两轮就乱。
 
-## 验证（前端先行）
-1. **前端优先（interact 智能体单独验证）**：重跑 `1e1f7e78068a` 期末卷走 Entry D，检查：
-   - 每题位 `expected_form` 非空且形式对（算法分析=给代码、应用题=画图模拟、概念选择=留空）；
-   - 每题位 K 值已轻量估出；
-   - `reference_questions` 是 K 值过滤后的（考研难题 K-sum≥14 被门挡，合适考研简单/中档+练习+模拟入选）；
-   - `trace.jsonl` 有 grep_search 调用记录（前端真检索了，不是参数现编）。
-2. **下游验证**：推进一道算法分析题到 design，产出的题干**含代码、子问围绕代码**（expected_form 生效，形式不再漂移）。
+**根因2 — handoff 触发过严**（`interact.md:103`）：
+- 触发条件要"没意见了/就这样/确认开始出题"或"系统消息明确要求生成交接文档"。
+- 教师说"**生成交接文档进入出题**"没精确匹配上述短语、也不是"系统消息" → agent 判定未触发 → "等待系统允许" → 卡死。
 
-## 审核（superpowers 工作流，authoring/review 分离）
-- 实现完成后，用 `superpowers:requesting-code-review`（或 OMC code-reviewer agent）做**独立审核 pass**，不自审。
-- 重点核查：expected_form 通道端到端不丢字段；K 值检索门控逻辑正确（门+MAE）；interact_core 的 Entry D 改动不破坏 A/B/C；trace.jsonl 不影响既有 run_agent 行为。
+### 修复方向（待做，建议 zcode 接手）
+
+Entry D 不应套用 C 的两轮。两种修法（择一）：
+
+**方案①（推荐）：Entry D 改一轮 combined**
+- Entry D 方案选项已到考法级，一轮即可：出 3 套方案（知识点+考察方式+expected_form 都在选项）→ 教师选一套（可批注微调）→ 直接 handoff。
+- 改 `interact_core/SKILL.md` Entry D Step6 草案用 `[PHASE: combined]`（非 knowledge）；Step7 选方案 → 直接 Step8 handoff，禁止进 examination 轮。
+- 与 Entry A/B 的 combined 一致（它们因经验卡含考法也用 combined）。
+
+**方案②：保留两轮但 Round2 复用选择**
+- Round2(examination) **复用** Round1 教师选的方案（不重新生成），只在该方案上展开/确认每题考察方式，让教师二次提交。
+- 改 interact_core Entry D Step：明确 Round2 读 Round1 的残留选择、不重新出方案、不自动 [✓]。
+
+**通用修复（两方案都要）**：
+- `interact.md:103` handoff 触发条件放宽：教师消息含"生成交接/确认/进入出题"等意图即触发，不要求精确短语或"系统消息"。
+- 禁止 agent 自动 [✓] 全选（剥夺教师选择权）。
+
+## 关键文件触点（zcode 改动参考）
+
+- Entry D 流程：`core_new/doc_pipeline/skills/interact_core/SKILL.md`（Entry D 段 Step1-8 + 理念 :85-94 phase 分类）
+- handoff 触发：`core_new/doc_pipeline/agents/interact.md:103`（触发条件）
+- expected_form 通道：`contracts.py` SlotBlueprint + `compose/{markdown_contract_parser,outline_contract_parser,compose_runner,artifact_store}.py`
+- 下游消费：`agents/{question_design,design,review}.md`
+- K 值检索：`compose/knowledge_index.py`（retrieve_anchored_references + _extract_k_radar）+ `grep_search_tool.py`
+- per-role 配置：`config/pipeline.yaml` roles: + `config.py` ROLE_PARAMS + `scheduler.py` _streaming_chat_call
+- 网络韧性：`llm_providers_new/remote_api.py` _resilient_transport
+- 单题测试：`scripts/test_node.py`（注入 expected_form + force regen assembled）
+
+## 验证基线
+- 单 standard 题（算法设计/AVL）全 pipeline：`scripts/test_node.py --from design_card`，约 200s，result.ok=True，design_card 含 expected_form，review "expected_form 贴合度" pass。
+- 前端 Entry D e2e：`scripts/test_interact_cli.py api_vllm <session> --msg "..."`（注意 VLLM_MODEL 需设为 /zhaoshu/llm/Qwen3.6-27B-FP8；缺 socksio 时 pip install socksio）。
+
+## 附：本次会话发现的其他问题（低优先）
+- **算法设计题语言不一致**：expected_form 带"用C/C++"，但 design 不一定写进题干（时有时无）——expected_form 是软引导，design 无硬约束保证写语言。
+- **reasoning 泄漏**：输出偶尔混入 `I have to give the solution based on the reasoning directly now.</think>` 标记文本（vLLM reasoning parser 偶尔没剥干净）。
+- **assemble 多节点注入**：assembled.md 被 design_card/exam_form/design 各 re-prefill（既有设计，非本次引入），是独立优化空间。
+- **本地模型 decode ~30 tok/s**（长 thinking 序列下；MTP 已开但长序列降速）——thinking 无界是主因，per-role enable_thinking 已部分缓解。
