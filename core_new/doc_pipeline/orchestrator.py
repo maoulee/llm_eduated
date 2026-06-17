@@ -867,7 +867,12 @@ class DocPipelineOrchestrator:
                 "1. read question.md + solution.md → 组装为完整试卷文档\n"
                 "2. read review.md + review2.md → 检查前两轮的表述修改意见是否已落实\n"
                 "3. 如有遗漏的表述问题，在 final.md 里顺手修正\n"
-                "4. write_file(path=\"final.md\", content=\"...\") 写入整合后的最终文档\n"
+                "4. write_file(path=\"final.md\", content=\"...\") 写入整合后的最终文档\n\n"
+                "⚠️ **final.md 必须用三段式格式**（标题精确匹配）：\n"
+                "## 题目（题干+设问，不含答案）\n"
+                "## 参考答案（答案：选项字母/最终结果）\n"
+                "## 解析（推导过程/评分标准/干扰项分析）\n"
+                "三段缺一不可。题目段不得含答案。系统按这三个标题拆分试卷版和解析版。\n\n"
                 "不是再审核——数值和结构前两轮已保证。只做整合+表述检查。"
             )
             fr_inject_files = {
@@ -1458,34 +1463,35 @@ class DocPipelineOrchestrator:
     @staticmethod
     @staticmethod
     def _validate_final_structure(final_path: Path) -> list[str]:
-        """检查 final.md 必填段是否非空。返回缺陷列表（空=通过）。
+        """检查 final.md 三段式格式完整性。返回缺陷列表（空=通过）。
 
-        防止 final_review 拼装错位（如 ## 题目段空白、内容跑到 ## 求解里）。
-        必填段：题目（题干）、答案/解析。每段须有实质内容（>20 字）。
+        必须含三个精确标题段且非空：## 题目 / ## 参考答案 / ## 解析。
+        缺失或空段→缺陷，触发系统 _format_final 重拼。
         """
         if not final_path.exists():
             return ["final.md 不存在"]
         text = final_path.read_text(encoding="utf-8")
-        issues = []
-        # 按 ## 段拆分
         import re
+        # 按 ## 段拆分
         sections = {}
         for m in re.finditer(r"^##\s+(.+?)$", text, re.M):
             name = m.group(1).strip()
             start = m.end()
-            # 段内容到下一个 ## 或文末
             nxt = re.search(r"^##\s+", text[start:], re.M)
             body = text[start:start + nxt.start()] if nxt else text[start:]
             sections[name] = body.strip()
-        # 必填：题目段（含"题目"/"题干"）
-        title_body = next((v for k, v in sections.items() if "题目" in k or "题干" in k), "")
-        if len(title_body) < 20:
-            issues.append("## 题目 段缺失或空白")
-        # 必填：答案或解析段
-        answer_body = next((v for k, v in sections.items()
-                            if "答案" in k or "解析" in k or "参考" in k or "求解" in k), "")
-        if len(answer_body) < 20:
-            issues.append("## 答案/解析 段缺失或空白")
+        issues = []
+        # 三段式必填段（精确匹配标题）
+        required = {
+            "题目": ["题目"],
+            "参考答案": ["参考答案", "答案"],
+            "解析": ["解析"],
+        }
+        for label, keywords in required.items():
+            body = next((v for k, v in sections.items()
+                         if any(kw in k for kw in keywords)), "")
+            if len(body) < 20:
+                issues.append(f"## {label} 段缺失或空白")
         return issues
 
     def _format_final(
