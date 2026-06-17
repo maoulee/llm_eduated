@@ -1248,13 +1248,24 @@ class DocPipelineOrchestrator:
             review_status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES)
             logger.info("[%s] §21 concept review retry %d: status=%s", slot_id, retry+1, review_status)
 
-        # ── 整合 final.md（格式统一）────────────────────────────────
+        # ── 整合 final.md（三段式格式统一）──────────────────────────
         final_path = ws / "final.md"
         if not final_path.exists() and question_path.exists():
-            q_text = question_path.read_text(encoding="utf-8")
-            s_text = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
-            final_path.write_text(f"{q_text}\n\n---\n\n{s_text}", encoding="utf-8")
-            logger.info("[%s] §21 concept: final.md assembled (%d chars)", slot_id, len(final_path.read_text()))
+            q_text = question_path.read_text(encoding="utf-8").strip()
+            s_text = solution_path.read_text(encoding="utf-8").strip() if solution_path.exists() else ""
+            # 概念题 question.md 已含题干+选项+答案，solution.md 含解析。
+            # 拆成三段式：题目（题干+选项，去掉答案行）/ 参考答案 / 解析。
+            import re as _re
+            # 从 question 提取题干（去掉 **答案**：X 行）和答案
+            q_clean = _re.sub(r"^\s*\*\*答案\*\*[：:].*$", "", q_text, flags=_re.M).strip()
+            ans_match = _re.search(r"\*\*答案\*\*[：:]\s*(.+)", q_text)
+            answer_line = ans_match.group(1).strip() if ans_match else ""
+            final_path.write_text(
+                f"## 题目\n\n{q_clean}\n\n## 参考答案\n\n{answer_line}\n\n## 解析\n\n{s_text}",
+                encoding="utf-8",
+            )
+            logger.info("[%s] §21 concept: final.md assembled (三段式, %d chars)",
+                        slot_id, len(final_path.read_text(encoding="utf-8")))
 
         exec_result: dict[str, Any] = {"ok": True, "skipped": True}
         return await self._assemble_result(
