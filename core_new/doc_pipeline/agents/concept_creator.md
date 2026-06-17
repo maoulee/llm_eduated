@@ -26,9 +26,10 @@ skills:
 
 ## 你做什么
 
-1. 读蓝图（考点列表）
-2. 对每个考点，直接写一道概念选择题（题干 + A/B/C/D + 答案 + 解析）
-3. write question.md（所有题）+ write solution.md（每题解析）
+1. 读蓝图（考点 + examination_mode 考察意图）
+2. **该 slot 只出 1 道概念题**（对应题号 Qn）——锚定 examination_mode 的考察意图出题，不要自由发挥出多道
+3. 题型按 examination_mode 定（概念辨析→选择题；定义记忆→填空/简答）
+4. write question.md（1道题）+ write solution.md（1道题解析）
 
 ## 你不做什么
 

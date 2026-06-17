@@ -349,7 +349,11 @@ class DocPipelineOrchestrator:
             d_task = (
                 "请根据以下单题蓝图生成 design_card.md 设计卡。\n\n"
                 "严格按 design_card schema v1 格式输出，9 个 section 全部必填。\n"
-                "只生成设计卡，不写题目、不写答案、不写代码。"
+                "只生成设计卡，不写题目、不写答案、不写代码。\n\n"
+                "⚠️ **参考题优先**：规划文档里的「往年真题参考」段（如有）是 interact "
+                "检索到的同知识点参考题。**优先基于它锚定设问结构**，不要自己调 "
+                "grep_search 重新检索。参考题只用于锚定设问方向和难度，**不要照搬原题**"
+                "——必须按当前蓝图的 difficulty 和 examination_mode 重新设计骨架。"
             )
         teacher_ann = slot_data.get("teacher_annotation", "")
         if teacher_ann:
@@ -1040,7 +1044,21 @@ class DocPipelineOrchestrator:
                 output_path=output_path,
             )
         else:
-            logger.info("[%s] Format (agent-produced final.md, %d chars)", slot_id, len(final_path.read_text(encoding="utf-8")))
+            # 格式校验：agent 写了 final.md，但可能拼装错位（如 ## 题目段空白）。
+            # 检查必填段非空；缺失则用系统 hook _format_final 重拼（可靠兜底）。
+            fmt_issues = self._validate_final_structure(final_path)
+            if fmt_issues:
+                logger.warning("[%s] Format: agent final.md 结构缺陷 %s → 系统重拼",
+                               slot_id, fmt_issues)
+                self._format_final(
+                    ws,
+                    question_path=question_path,
+                    solution_path=solution_path,
+                    output_path=output_path,
+                )
+            else:
+                logger.info("[%s] Format (agent-produced final.md, %d chars)",
+                            slot_id, len(final_path.read_text(encoding="utf-8")))
 
         final_path = ws / "final.md"
         total_time = time.monotonic() - total_start
@@ -1161,15 +1179,17 @@ class DocPipelineOrchestrator:
         if len(concept_topics) > 1:
             topics_str = "\n".join(f"  {i+1}. {t}" for i, t in enumerate(concept_topics))
             c_task = (
-                f"基于以下考点列表，**批量**出概念题（共 {len(concept_topics)} 道，每考点一道）：\n{topics_str}\n\n"
-                "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
+                f"基于以下考点列表出概念题（共 {len(concept_topics)} 道，**每考点一道**）：\n{topics_str}\n\n"
+                f"该 slot 对应题号 {slot_id}，只出 {len(concept_topics)} 道题，不要多出。"
+                "每题题干+选项/空格/答案+解析，锚定 examination_mode 的考察意图。"
                 "write question.md（所有题）+ solution.md（每题解析）。"
             )
         else:
             c_task = (
-                "基于蓝图的考点列表，**批量**出概念题。对每个考点出一道（选择/填空/判断/简答），"
-                "一次 LLM 调用产出全部题目。每题题干+选项/空格/答案+解析。"
-                "write question.md（所有题）+ solution.md（每题解析）。"
+                f"基于蓝图的考点，出 **1 道** 概念题（该 slot 对应题号 {slot_id}，只出 1 道）。"
+                "题型按 examination_mode 定（选择/填空/判断/简答）。"
+                "题目必须锚定考察意图，不要多出。"
+                "write question.md（1道题）+ solution.md（解析）。"
             )
         await self.scheduler.run_agent(
             "concept_creator", c_task, slot_id=slot_id, inject_files=c_inject,
@@ -1184,13 +1204,15 @@ class DocPipelineOrchestrator:
             "规划": str(ref_path), "题目": str(question_path),
         })
         r_task = (
-            "§21 概念题审核：只做事实性检查。\n"
+            "§21 概念题审核：事实性检查 + 题目设计缺陷检查。\n"
             "1. 答案是否正确（事实对不对）\n"
             "2. 干扰项是否对应真实认知错误（不是随机错误值）\n"
+            "3. **题目设计是否成立**：是否存在多个选项都正确却被当单选题（如范围题两个选项并列最小）、"
+            "题干是否有歧义、解析是否自相矛盾。有设计缺陷→needs_fix。\n"
             "不审格式/难度/K-雷达/条件充分性（概念题不需要）。"
-            "全对→status=pass，有事实错误→needs_fix。"
+            "全对且无设计缺陷→status=pass，有事实错误或设计缺陷→needs_fix。"
             "\n\n"
-            "**用 write_file 写 review.md**（含 ## status + pass/needs_fix + 审核理由）。"
+            "**用 write_file 写 review.md**（含 ## status + pass/needs_fix + 逐题审核理由）。"
             "不要只在对话里说结论——必须落盘到 review.md，否则审核无效。"
         )
         await self.scheduler.run_agent(
@@ -1434,6 +1456,38 @@ class DocPipelineOrchestrator:
         return public_path
 
     @staticmethod
+    @staticmethod
+    def _validate_final_structure(final_path: Path) -> list[str]:
+        """检查 final.md 必填段是否非空。返回缺陷列表（空=通过）。
+
+        防止 final_review 拼装错位（如 ## 题目段空白、内容跑到 ## 求解里）。
+        必填段：题目（题干）、答案/解析。每段须有实质内容（>20 字）。
+        """
+        if not final_path.exists():
+            return ["final.md 不存在"]
+        text = final_path.read_text(encoding="utf-8")
+        issues = []
+        # 按 ## 段拆分
+        import re
+        sections = {}
+        for m in re.finditer(r"^##\s+(.+?)$", text, re.M):
+            name = m.group(1).strip()
+            start = m.end()
+            # 段内容到下一个 ## 或文末
+            nxt = re.search(r"^##\s+", text[start:], re.M)
+            body = text[start:start + nxt.start()] if nxt else text[start:]
+            sections[name] = body.strip()
+        # 必填：题目段（含"题目"/"题干"）
+        title_body = next((v for k, v in sections.items() if "题目" in k or "题干" in k), "")
+        if len(title_body) < 20:
+            issues.append("## 题目 段缺失或空白")
+        # 必填：答案或解析段
+        answer_body = next((v for k, v in sections.items()
+                            if "答案" in k or "解析" in k or "参考" in k or "求解" in k), "")
+        if len(answer_body) < 20:
+            issues.append("## 答案/解析 段缺失或空白")
+        return issues
+
     def _format_final(
         ws: Path,
         *,

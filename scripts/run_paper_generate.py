@@ -23,7 +23,11 @@ os.environ.setdefault("VLLM_API_BASE", "http://127.0.0.1:8000/v1")
 
 
 def _build_assembled_md(slot: dict) -> str:
-    """从 paper_request slot 构造 assembled doc（跳 outline，直进 blueprint）。"""
+    """从 paper_request slot 构造 assembled doc（跳 outline，直进 blueprint）。
+
+    包含 reference_questions 展开（复用 artifact_store 逻辑）——让 design_card
+    能拿到 interact 检索到的往年参考题，不自 grep。
+    """
     sid = slot.get("slot_id", "Q?")
     qt = slot.get("question_type", "subjective")
     mode = slot.get("examination_mode", "")
@@ -33,7 +37,8 @@ def _build_assembled_md(slot: dict) -> str:
     score = slot.get("score", 5)
     form = slot.get("expected_form", "")
     rationale = slot.get("difficulty_rationale", "")
-    return f"""## final_machine_contract
+    parts = [
+        f"""## final_machine_contract
 
 ```yaml
 slot_id: {sid}
@@ -53,8 +58,26 @@ complexity: {slot.get("complexity", "standard")}
 - **知识域**: {family}
 - **难度**: {diff}
 - **难度说明**: {rationale}
-- **考察模式**: {mode}
-"""
+- **考察模式**: {mode}"""
+    ]
+
+    # ── 往年真题参考（interact 检索的 reference_questions，展开进 assembled）──
+    # 复用 artifact_store._build_reference_question_entries，让 design_card
+    # 直接读参考题锚定设问，而非自己 grep 召回不匹配旧题。
+    ref_qs = slot.get("reference_questions", [])
+    if ref_qs:
+        try:
+            from compose.artifact_store import _build_reference_question_entries
+            ref_entries = _build_reference_question_entries(ref_qs)
+            if ref_entries:
+                parts.append(
+                    f"## 往年真题参考（前段检索，共{len(ref_entries)}题）\n\n"
+                    + "\n\n---\n\n".join(ref_entries)
+                )
+        except Exception:
+            pass  # 参考题展开失败不阻塞出题
+
+    return "\n\n".join(parts)
 
 
 def prepare_compose_dir(paper_request_path: str, compose_dir: str,
