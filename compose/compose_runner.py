@@ -572,6 +572,11 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
             examination_mode=contract.examination_mode,
             expected_form=contract.expected_form,
             k_target=_extract("k_target"),
+            k_radar=(
+                yaml_data.get("k_radar") if isinstance(yaml_data, dict)
+                and isinstance(yaml_data.get("k_radar"), dict) else {}
+            ),
+            k_dominant=_extract("k_dominant") or _extract("k_target") or "",
             difficulty_rationale=_extract("difficulty_rationale"),
             question_type=contract.question_type,
             score=contract.score,

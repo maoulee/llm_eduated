@@ -37,6 +37,10 @@ def _build_assembled_md(slot: dict) -> str:
     score = slot.get("score", 5)
     form = slot.get("expected_form", "")
     rationale = slot.get("difficulty_rationale", "")
+    k_radar = slot.get("k_radar", {})
+    k_dom = slot.get("k_dominant", "")
+    # k_radar 格式化为 yaml 内联（{K1: 2, K2: 2, ...}）
+    k_radar_str = ", ".join(f"{k}: {v}" for k, v in k_radar.items()) if k_radar else ""
     parts = [
         f"""## final_machine_contract
 
@@ -47,6 +51,8 @@ score: {score}
 examination_mode: {mode}
 expected_form: "{form}"
 complexity: {slot.get("complexity", "standard")}
+target_difficulty: {diff}
+k_dominant: {k_dom}
 ```
 
 ---
@@ -60,6 +66,13 @@ complexity: {slot.get("complexity", "standard")}
 - **难度说明**: {rationale}
 - **考察模式**: {mode}"""
     ]
+    # K 值雷达（难度锚定，design_card 依赖此定位认知负荷分布）
+    if k_radar_str:
+        parts.append(
+            f"## 认知雷达（K 值难度锚定）\n\n"
+            f"- **认知雷达**: {k_radar_str}\n"
+            f"- **主导维度**: {k_dom}"
+        )
 
     # ── 往年真题参考（interact 检索的 reference_questions，展开进 assembled）──
     # 复用 artifact_store._build_reference_question_entries，让 design_card
