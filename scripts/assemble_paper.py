@@ -24,15 +24,20 @@ TITLE_MARKERS = re.compile(r"^#{2,3}\s+(题目|题干|第\s*\d+\s*题)", re.M)
 
 
 def extract_question_only(text: str) -> str:
-    """只抽 ## 题目 段（三段式格式：## 题目 / ## 参考答案 / ## 解析）。"""
+    """只抽题干段（三段式 ## 题目 或旧格式 ## 题干，到答案段为止）。"""
     # 去掉 ## status 段（混进来的审核元数据）
     text = re.sub(r"^##\s*status\s*$.*?(?=^##\s)", "", text, flags=re.M | re.S)
-    # 找 ## 题目 段到 ## 参考答案 之间
+    # 三段式：## 题目 段到 ## 参考答案 之间
     m_q = re.search(r"^##\s*题目\s*$", text, re.M)
-    m_a = re.search(r"^##\s*(参考答案|答案)\s*$", text, re.M)
+    # 答案段标记（## 或 # 级别，兼容旧格式）
+    m_a = re.search(r"^#{1,2}\s*(参考答案|答案)\s*$", text, re.M)
     if m_q and m_a and m_q.start() < m_a.start():
         return text[m_q.end():m_a.start()].strip()
-    # 兜底：旧格式，用启发式拆
+    # 旧格式：## 题干 段到答案段
+    m_q2 = re.search(r"^##\s*(题干|题目)\s*$", text, re.M)
+    if m_q2 and m_a and m_q2.start() < m_a.start():
+        return text[m_q2.end():m_a.start()].strip()
+    # 兜底：启发式
     q, _ = _split_legacy(text)
     return q
 
