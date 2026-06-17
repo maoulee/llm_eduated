@@ -35,6 +35,7 @@ from .config import (
     ROLE_REQUIRED_TOOLS,
     ROLE_SKILLS,
     ROLE_THINKING_BUDGET,
+    ROLE_PARAMS,
 )
 from .edit_file_tool import EditFileTool
 from .exec_file_tool import ExecFileTool
@@ -652,8 +653,10 @@ class DocScheduler:
 
         # 5. Streaming tool-calling loop via shared gateway transport.
         gateway = self._get_gateway_for_role(role)
-        effective_max_tokens = max_tokens or self.max_tokens
+        _role_cfg = ROLE_PARAMS.get(role, {})
+        effective_max_tokens = max_tokens or _role_cfg.get("max_tokens") or self.max_tokens
         effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
+        effective_enable_thinking = _role_cfg.get("enable_thinking", self.enable_thinking)
         final_text = ""
 
         # Model decides when to call tools. Boundary detection (streak counters)
@@ -699,6 +702,7 @@ class DocScheduler:
                     gateway, messages,
                     max_tokens=effective_max_tokens,
                     thinking_budget=effective_thinking_budget,
+                    enable_thinking=effective_enable_thinking,
                     tools=openai_tools,
                     tool_choice=forced_tool_choice,
                 )
@@ -2167,6 +2171,7 @@ class DocScheduler:
         *,
         max_tokens: int,
         thinking_budget: int | None = None,
+        enable_thinking: bool | None = None,
         tools: list[dict[str, Any]],
         tool_choice: Any | None = None,
     ) -> dict[str, Any]:
@@ -2174,7 +2179,7 @@ class DocScheduler:
         return await gateway.stream_chat(
             messages,
             max_tokens=max_tokens,
-            enable_thinking=self.enable_thinking,
+            enable_thinking=self.enable_thinking if enable_thinking is None else enable_thinking,
             thinking_budget=thinking_budget,
             tools=tools,
             tool_choice=tool_choice,

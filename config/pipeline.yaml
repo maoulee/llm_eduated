@@ -34,31 +34,51 @@ pipeline:
     final_review: 4000       # 终审两项检查，不需要深推理
 
   # Per-role system parameters (moved from agent MD frontmatter)
+  # enable_thinking: per-role 思考开关（Qwen3.6 上唯一有效的思考强度控制）。
+  #   窄判断任务(question_design/exam_form/review/final_review/concept_creator)关→秒级；
+  #   复杂任务(design/solve/outline)开→保质量。
+  # max_tokens: per-role 生成上限。缺省=用 default_max_tokens。
   roles:
     outline:
       multi_turn: false
       max_attempts: 2
+      enable_thinking: true    # 组卷规划，需思考
+      max_tokens: 12000
     question_design:
       multi_turn: false
       max_attempts: 1
+      enable_thinking: false   # 骨架从经验复用，窄判断，关思考
+      max_tokens: 4000
     exam_form:
       multi_turn: false
       max_attempts: 1
+      enable_thinking: false   # KP+K-radar→形式，窄判断，关思考
+      max_tokens: 2000
     design:
       multi_turn: true       # §19 design P1 多轮（form_gate needs_fix 回退）
       max_attempts: 8        # C 方案代码先行流程需多轮（write gen.py→exec→edit→组装）
+      enable_thinking: true    # 出题是创造性任务，需思考
+      max_tokens: 16000
     concept_creator:
       multi_turn: true       # §21 概念题出题（审核回退需多轮）
       max_attempts: 3
+      enable_thinking: false   # 概念题基于知识回忆，关思考
+      max_tokens: 6000
     review:
       multi_turn: false
       max_attempts: 2
+      enable_thinking: false   # 结构审核/判断，关思考
+      max_tokens: 4000
     solve:
       multi_turn: false
       max_attempts: 2
+      enable_thinking: true    # 求解需推演算法，开思考
+      max_tokens: 20000
     final_review:
       multi_turn: false
       max_attempts: 2
+      enable_thinking: false   # 一致性检查，关思考
+      max_tokens: 6000
 
 # ── Routing profiles ─────────────────────────────────────────
 routing:
