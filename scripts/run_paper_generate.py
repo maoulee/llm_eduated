@@ -117,12 +117,31 @@ def prepare_compose_dir(paper_request_path: str, compose_dir: str,
 
 
 async def run(paper_request_path: str, output_dir: str,
-              slot_filter: list[str] | None, routing: str):
+              slot_filter: list[str] | None, routing: str, resume: bool):
     from compose import generate_runner
     from core_new.llm_gateway import get_gateway
 
     compose_dir = os.path.join(output_dir, "compose")
     written = prepare_compose_dir(paper_request_path, compose_dir, slot_filter)
+
+    # --resume: skip slots that already produced final.md (success marker).
+    # Only rerun failed/timeout slots. checkpoint-based resume (pipeline_state.json)
+    # still applies inside each rerun slot for standard questions.
+    workspace_dir = os.path.join(output_dir, "workspace")
+    if resume:
+        done, todo = [], []
+        for sid in written:
+            final_md = os.path.join(workspace_dir, sid, "final.md")
+            if os.path.exists(final_md):
+                done.append(sid)
+            else:
+                todo.append(sid)
+        print(f"  --resume: {len(done)} 已成功跳过 ({', '.join(done) or '无'})")
+        print(f"           {len(todo)} 待重跑 ({', '.join(todo) or '无'})")
+        written = todo
+        if not written:
+            print("  全部 slot 已成功，无需重跑。")
+            return {"status": "all_done", "questions": []}
 
     print("=" * 60)
     print(f"D 场景整卷出题: {len(written)} slots")
@@ -141,7 +160,7 @@ async def run(paper_request_path: str, output_dir: str,
         compose_dir=compose_dir,
         output_dir=output_dir,
         model_routing=model_routing,
-        slot_filter=slot_filter,
+        slot_filter=written or slot_filter,
     )
     print(f"\n结果: status={result.get('status')}")
     questions = result.get("questions", [])
@@ -162,10 +181,12 @@ def main():
     parser.add_argument("--output-dir", default="docs/test_output/paper_generate",
                         help="输出目录")
     parser.add_argument("--slots", nargs="+", help="只跑指定 slot（如 --slots Q1 Q5）")
+    parser.add_argument("--resume", action="store_true",
+                        help="跳过已成功（final.md 存在）的 slot，只重跑失败/超时")
     parser.add_argument("--routing", default="all_local", help="路由 profile")
     args = parser.parse_args()
 
-    asyncio.run(run(args.paper_request, args.output_dir, args.slots, args.routing))
+    asyncio.run(run(args.paper_request, args.output_dir, args.slots, args.routing, args.resume))
 
 
 if __name__ == "__main__":
