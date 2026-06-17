@@ -710,7 +710,7 @@ class DocScheduler:
                 exc_name = type(exc).__name__
                 # Transport-level failures (network, timeout) are NOT
                 # recoverable at the agent level — propagate to orchestrator.
-                if self._gateway._is_retryable_stream_error(exc):
+                if gateway._is_retryable_stream_error(exc):
                     logger.error(
                         "[%s] Agent '%s': transport failure (%s: %s), aborting slot",
                         slot_id, role, exc_name, str(exc)[:200],
