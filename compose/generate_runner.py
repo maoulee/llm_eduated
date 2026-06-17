@@ -180,12 +180,27 @@ async def _generate_slots(
             slot_id = sb.get("slot_id", "Q12")
             exp_card = experience_cards.get(slot_id, "")
             assembled_doc = assembled_docs.get(slot_id, "")
-            return await _generate_doc(
-                gateway, sb, slot_id, exp_card,
-                output_dir=output_dir, model_routing=model_routing,
-                assembled_experience_doc=assembled_doc,
-                resume_from=resume_from, run_id=run_id,
-            )
+            # Per-slot wall-clock timeout. A stuck slot (LLM retry loop,
+            # endless tool cycle) would otherwise hold the semaphore forever
+            # and block the whole paper. On timeout the slot is skipped with
+            # a timeout marker; other slots continue.
+            slot_timeout = int(os.getenv("SLOT_TIMEOUT_SECONDS", "900"))  # 15min
+            try:
+                return await asyncio.wait_for(
+                    _generate_doc(
+                        gateway, sb, slot_id, exp_card,
+                        output_dir=output_dir, model_routing=model_routing,
+                        assembled_experience_doc=assembled_doc,
+                        resume_from=resume_from, run_id=run_id,
+                    ),
+                    timeout=slot_timeout,
+                )
+            except asyncio.TimeoutError:
+                print(f"  [{slot_id}] ⏱ TIMEOUT after {slot_timeout}s, skipping slot")
+                return {
+                    "slot_id": slot_id, "status": "timeout", "ok": False,
+                    "pipeline_type": "doc_5layer", "timeout_s": slot_timeout,
+                }
 
     tasks = [_generate_one(sb) for sb in slot_blueprints]
     questions = await asyncio.gather(*tasks)

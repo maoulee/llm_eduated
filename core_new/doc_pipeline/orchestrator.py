@@ -1149,6 +1149,7 @@ class DocPipelineOrchestrator:
         # ── 概念出题（concept_creator agent）──────
         logger.info("[%s] §21 概念题分支：concept_creator（批量）", slot_id)
         question_path = ws / "question.md"
+        solution_path = ws / "solution.md"
         c_inject = {"规划": str(ref_path)}
         c_inject = await self._resolve_inject("concept_creator", slot_id, 2, c_inject)
 
