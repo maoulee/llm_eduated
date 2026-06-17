@@ -18,6 +18,7 @@ class SlotContract:
     question_type: str
     score: int
     examination_mode: str
+    expected_form: str = ""  # 题干设问形式锚点(考察方式式散文)，仅 Entry D 填
     active_selection: dict = field(default_factory=dict)
     candidate_pool_visible: list[str] = field(default_factory=list)
     excluded_modes: list[str] = field(default_factory=list)
@@ -46,6 +47,8 @@ def write_paper_selection(contracts: list[SlotContract], output_path: str) -> No
             "examination_mode": c.examination_mode,
             "active_selection": c.active_selection,
         }
+        if c.expected_form:
+            entry["expected_form"] = c.expected_form
         if c.candidate_pool_visible:
             entry["candidate_pool_visible"] = c.candidate_pool_visible
         if c.excluded_modes:

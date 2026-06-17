@@ -1221,6 +1221,16 @@ class DocScheduler:
         ws = self.workspace / session_id
         ws.mkdir(parents=True, exist_ok=True)
 
+        # Trace file for interact-tool auditing (mirrors run_agent's trace.jsonl)
+        _trace_path = ws / "trace.jsonl"
+
+        def _write_trace(event: dict) -> None:
+            import json as _json
+            event.setdefault("agent", role)
+            event.setdefault("session_id", session_id)
+            with open(_trace_path, "a", encoding="utf-8") as _tf:
+                _tf.write(_json.dumps(event, ensure_ascii=False) + "\n")
+
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
         registry.register(ReadFileTool(workspace=ws, read_roots=[Path.cwd() / "data"]))
@@ -1348,6 +1358,8 @@ class DocScheduler:
                     session_id, round_index, fn_name,
                     json.dumps(_monitor_args, ensure_ascii=False),
                 )
+                _write_trace({"event": "tool_call", "round": round_index,
+                              "tool": fn_name, "args": _monitor_args})
 
                 # Read dedup: skip re-reading unchanged files
                 if fn_name == "read_file":
@@ -1384,6 +1396,9 @@ class DocScheduler:
                     session_id, round_index, fn_name, len(result_str),
                     _result_preview.replace("\n", "\\n"),
                 )
+                _write_trace({"event": "tool_result", "round": round_index,
+                              "tool": fn_name, "result_len": len(result_str),
+                              "preview": _result_preview[:200]})
                 # Truncate large tool results to prevent context overflow
                 if len(result_str) > 4000:
                     result_str = result_str[:3800] + "\n... [truncated]"

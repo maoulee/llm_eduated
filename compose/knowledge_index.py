@@ -25,6 +25,7 @@ class QuestionMeta:
     year: int = 0
     slot_id: str = ""
     examination_mode: str = ""
+    k_radar: dict[str, int] = field(default_factory=dict)  # K1-K5 难度向量，供难度锚定检索
     snippet: str = ""
 
 
@@ -41,6 +42,7 @@ class SearchHit:
     question_type: str = ""
     year: int = 0
     slot_id: str = ""
+    k_radar: dict[str, int] = field(default_factory=dict)
 
 
 class KnowledgeIndex:
@@ -146,6 +148,7 @@ class KnowledgeIndex:
                 question_type=meta.question_type,
                 year=meta.year,
                 slot_id=meta.slot_id,
+                k_radar=meta.k_radar,
             ))
 
         return results
@@ -257,6 +260,9 @@ class KnowledgeIndex:
         mode_match = re.search(r"\*\*模式\*\*[：:]\s*(.+)", text)
         examination_mode = mode_match.group(1).strip() if mode_match else ""
 
+        # Extract K1-K5 radar (for difficulty-anchored retrieval)
+        k_radar = self._extract_k_radar(text)
+
         # Build snippet from 题干原文 section
         snippet = self._extract_snippet(text)
 
@@ -269,6 +275,7 @@ class KnowledgeIndex:
             year=year,
             slot_id=slot_id,
             examination_mode=examination_mode,
+            k_radar=k_radar,
             snippet=snippet,
         )
 
@@ -280,6 +287,22 @@ class KnowledgeIndex:
             body = snippet_match.group(1).strip()
             return body[:300]
         return ""
+
+    @staticmethod
+    def _extract_k_radar(text: str) -> dict[str, int]:
+        """Parse K1-K5 from the 'K1-K5 评分与解析' section (fallback: whole text).
+
+        Pattern reuses artifact_store._extract_k_values (K{i}\\s*=\\s*(\\d)).
+        Returns {} when no K-values are present.
+        """
+        section = re.search(r"##\s*K1[-\s]*K5\s*评分与解析\n(.*?)(?=\n##\s|\Z)", text, re.DOTALL)
+        body = section.group(1) if section else text
+        radar: dict[str, int] = {}
+        for i in range(1, 6):
+            m = re.search(rf"\*?\*?K{i}\s*=\s*(\d+)\*?\*?", body)
+            if m:
+                radar[f"K{i}"] = int(m.group(1))
+        return radar
 
 
 # ── Module-level singleton ──
@@ -314,6 +337,45 @@ def search_questions(
         subject=subject,
         question_type=question_type,
     )
+
+
+def retrieve_anchored_references(
+    target_k_radar: dict[str, int],
+    query: str | list[str],
+    subject: str | None = None,
+    question_type: str | None = None,
+    epsilon: int = 2,
+    max_results: int = 8,
+    data_dir: str = "data/question_experiences",
+) -> list[dict]:
+    """K值锚定检索（code-as-truth：难度门 + MAE 由代码算，不让 LLM 脑算）。
+
+    流程：知识关键词命中 → 难度门 D(c) ≤ D(t)+ε（候选不许比目标更难）
+          → MAE(c, t) 升序（难度档+认知形状最接近者排前）→ 截断 max_results。
+    target_k_radar 形如 {"K1":3,"K2":1,"K3":2,"K4":2,"K5":1}。
+    返回 [{"file","k_radar","d_sum","mae","score"}, ...]。
+    """
+    idx = get_index(data_dir)
+    hits = idx.search(
+        query, max_results=max(max_results * 5, 40),
+        subject=subject, question_type=question_type,
+    )
+    t = {f"K{i}": int(target_k_radar.get(f"K{i}", 0) or 0) for i in range(1, 6)}
+    t_sum = sum(t.values())
+    gated: list[dict] = []
+    for h in hits:
+        if not h.k_radar:
+            continue
+        c = {f"K{i}": int(h.k_radar.get(f"K{i}", 0) or 0) for i in range(1, 6)}
+        c_sum = sum(c.values())
+        if c_sum <= t_sum + epsilon:
+            mae = sum(abs(c[f"K{i}"] - t[f"K{i}"]) for i in range(1, 6)) / 5.0
+            gated.append({
+                "file": h.file_name, "k_radar": c,
+                "d_sum": c_sum, "mae": mae, "score": h.score,
+            })
+    gated.sort(key=lambda x: (x["mae"], -x["score"]))
+    return gated[:max_results]
 
 
 def _normalize_question_type(value: str | None) -> str:

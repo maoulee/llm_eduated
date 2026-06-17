@@ -56,7 +56,7 @@ skills:
 直接输出 Markdown。按以下章节顺序：
 
 1. ## status — draft
-2. ## blueprint_contract — 从蓝图原样摘取：slot_id, question_type, score, target_subject, primary_target_name, examination_mode, k_target, difficulty_level, should_be, should_not_be, hard_constraints
+2. ## blueprint_contract — 从蓝图原样摘取：slot_id, question_type, score, target_subject, primary_target_name, examination_mode, expected_form, k_target, difficulty_level, should_be, should_not_be, hard_constraints
 3. ## core_knowledge_intent — must_test（考什么）, must_not_shift_to（不偏到哪）, coverage_success_criteria
 4. ## design_rationale — 为什么这样考 + 考点融合意图（如有）
 5. ## question_structure_plan — 子问链（经验驱动）
@@ -84,7 +84,8 @@ skills:
 
 ## 关键约束
 
-- blueprint_contract 从蓝图原样摘取
+- blueprint_contract 从蓝图原样摘取（含 expected_form，若非空）
 - 设计卡中不得出现具体数值/答案/最终计算结果
 - question_structure_plan 只写考察方向，不写解题步骤
+- **expected_form 非空时**：子问链结构必须贴合期望形式（如"题干给代码、子问围绕代码展开"→ 子问设计围绕给定代码段）。形式锚点与知识点正交，约束的是设问形式，不是具体考点
 - 后面有审核者会给建议优化

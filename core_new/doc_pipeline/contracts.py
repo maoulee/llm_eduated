@@ -17,6 +17,7 @@ class SlotBlueprint:
     primary_target_name: str = ""
     target_difficulty: int = 3
     examination_mode: str = ""
+    expected_form: str = ""  # 题干设问形式锚点(考察方式式散文)；仅 Entry D 填，下游非空才约束
     k_target: str = ""  # Legacy alias for k_dominant — kept for backward compat
     k_radar: dict[str, int] = field(default_factory=dict)  # 5D cognitive radar {"K1":n, "K2":n, ...}
     k_dominant: str = ""  # Dominant K dimension (highest score)

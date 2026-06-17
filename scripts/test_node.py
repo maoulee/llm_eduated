@@ -96,7 +96,7 @@ def setup_from_node(target_node: str, slot_id: str = "TEST_AVL"):
     state_path = out_ws / "pipeline_state.json"
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
-    print(f"  pipeline_state: current_node={target_node}, history={len(history)} nodes completed")
+    print(f"  pipeline_state: current_node={target_node}, history={len(state['history'])} nodes completed")
 
     return out_ws
 
@@ -117,28 +117,30 @@ async def main():
     if out_ws is None:
         return
 
-    # Step 2: 生成 assembled.md（如果没有的话）
+    # Step 2: 强制重新生成 assembled.md（注入 expected_form），清 stale 下游产物强制重生成
     assembled_path = out_ws / "assembled.md"
-    if not assembled_path.exists():
-        from compose.artifact_store import assemble_slot_experience_doc
-        outline_entry = {
-            "slot_id": args.slot,
-            "question_type": "comprehensive",
-            "score": 13,
-            "primary_target_name": "平衡二叉树 AVL 的插入与旋转",
-            "target_family": "DS-5 > 树与二叉树",
-            "target_difficulty": 4,
-            "examination_mode": "结构操作与状态维护模拟",
-            "difficulty_rationale": "需多步串行推演树的形态变化",
-            "reference_questions": ["exercise_00272.md", "exercise_00261.md", "simulation_00030.md"],
-        }
-        doc = assemble_slot_experience_doc(
-            slot_id=args.slot, examination_mode="结构操作与状态维护模拟",
-            slot_md_path="", experience_card_path="", outline_entry=outline_entry,
-        )
-        assembled_path.write_text(doc, encoding="utf-8")
-        (out_ws / "blueprint.md").write_text(doc, encoding="utf-8")
-        print(f"  生成 assembled.md ({len(doc)} chars)")
+    for stale in ("design_card.md", "exam_form.md", "question.md", "review.md", "gen.py"):
+        (out_ws / stale).unlink(missing_ok=True)
+    from compose.artifact_store import assemble_slot_experience_doc
+    outline_entry = {
+        "slot_id": args.slot,
+        "question_type": "comprehensive",
+        "score": 13,
+        "primary_target_name": "平衡二叉树 AVL 的插入与旋转",
+        "target_family": "DS-5 > 树与二叉树",
+        "target_difficulty": 4,
+        "examination_mode": "结构操作与状态维护模拟",
+        "difficulty_rationale": "需多步串行推演树的形态变化",
+        "reference_questions": ["exercise_00272.md", "exercise_00261.md", "simulation_00030.md"],
+        "expected_form": "题干给一组插入/删除关键字序列，要求逐次画出 AVL 树形态变化并标注旋转类型",
+    }
+    doc = assemble_slot_experience_doc(
+        slot_id=args.slot, examination_mode="结构操作与状态维护模拟",
+        slot_md_path="", experience_card_path="", outline_entry=outline_entry,
+    )
+    assembled_path.write_text(doc, encoding="utf-8")
+    (out_ws / "blueprint.md").write_text(doc, encoding="utf-8")
+    print(f"  生成 assembled.md ({len(doc)} chars, 含 expected_form)")
 
     # Step 3: 跑 pipeline（从 target_node resume）
     print(f"\n[Step 2] 启动 pipeline（从 {args.from_node} resume）...")

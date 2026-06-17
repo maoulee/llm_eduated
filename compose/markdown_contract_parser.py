@@ -516,6 +516,7 @@ def parse_outline_to_selection(md: str) -> ParseResult:
             question_type=str(normalized.get("question_type", "single_choice")),
             score=int(normalized.get("score", 2)),
             examination_mode=normalized.get("examination_mode", ""),
+            expected_form=normalized.get("expected_form", ""),
             active_selection=normalized.get("active_selection", {}),
             candidate_pool_visible=normalized.get("candidate_pool_visible", []),
             excluded_modes=excluded_data.get("modes", []),

@@ -570,6 +570,7 @@ def _parse_outline_to_blueprint(outline_md: str, templates: dict) -> dict:
             primary_target_name=_extract("primary_target_name"),
             target_difficulty=difficulty,
             examination_mode=contract.examination_mode,
+            expected_form=contract.expected_form,
             k_target=_extract("k_target"),
             difficulty_rationale=_extract("difficulty_rationale"),
             question_type=contract.question_type,

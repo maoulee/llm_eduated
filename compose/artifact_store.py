@@ -43,7 +43,7 @@ def assemble_slot_experience_doc(
     # ── 0. final_machine_contract ──
     contract_fields = {}
     for key in ("slot_id", "question_type", "score", "examination_mode",
-                "active_selection", "candidate_pool_visible"):
+                "expected_form", "active_selection", "candidate_pool_visible"):
         val = (outline_entry or {}).get(key)
         if val:
             contract_fields[key] = val
@@ -94,6 +94,8 @@ def assemble_slot_experience_doc(
         if outline_entry.get("difficulty_rationale"):
             req_lines.append(f"- **难度说明**: {outline_entry['difficulty_rationale']}")
         req_lines.append(f"- **考察模式**: {examination_mode}")
+        if outline_entry.get("expected_form"):
+            req_lines.append(f"- **期望形式**: {outline_entry['expected_form']}")
         parts.append("\n".join(req_lines))
     else:
         parts.append(f"# {slot_id} 出题参考文档（考察模式：{examination_mode}）")

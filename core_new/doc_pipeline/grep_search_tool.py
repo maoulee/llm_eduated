@@ -128,6 +128,7 @@ class GrepSearchTool(Tool):
                 "question_type": h.question_type,
                 "snippet": h.snippet[:200] if h.snippet else "",
                 "matched_tags": h.matched_tags,
+                "k_radar": h.k_radar,
             }
             for h in hits
         ]
