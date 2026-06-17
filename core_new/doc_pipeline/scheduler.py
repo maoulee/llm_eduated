@@ -996,8 +996,9 @@ class DocScheduler:
                         "content": (
                             f"你已经连续输出 {intermediate_text_count} 轮中间分析，"
                             f"但还没有写入目标文件 `{expected_fn}`。\n"
-                            f"下一轮必须调用 write_file(path=\"{expected_fn}\", "
-                            f"content=\"完整Markdown内容\")，不要再输出分析正文。"
+                            f"下一轮必须直接输出 {expected_fn} 的完整内容（开头是 `## status`，"
+                            f"否则系统不会保存——没有 ## status 段的输出一律视为中间分析被丢弃）。"
+                            f"不要再输出分析正文，直接给出定稿。"
                         ),
                     })
                     continue

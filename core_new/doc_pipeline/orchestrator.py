@@ -1189,6 +1189,9 @@ class DocPipelineOrchestrator:
             "2. 干扰项是否对应真实认知错误（不是随机错误值）\n"
             "不审格式/难度/K-雷达/条件充分性（概念题不需要）。"
             "全对→status=pass，有事实错误→needs_fix。"
+            "\n\n"
+            "**用 write_file 写 review.md**（含 ## status + pass/needs_fix + 审核理由）。"
+            "不要只在对话里说结论——必须落盘到 review.md，否则审核无效。"
         )
         await self.scheduler.run_agent(
             "review", r_task, slot_id=slot_id, inject_files=r_inject,
