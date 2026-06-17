@@ -1253,6 +1253,10 @@ class DocScheduler:
 
         gateway = self._get_gateway_for_role(role)
         effective_max_tokens = max_tokens or self.max_tokens
+        # Interact role config from ROLE_PARAMS (pipeline.yaml roles). Fall back to
+        # the scenario-specific max_tokens logic when not set there.
+        _interact_role_cfg = ROLE_PARAMS.get("interact", {})
+        effective_enable_thinking = _interact_role_cfg.get("enable_thinking", True)
         if role == "interact" and not max_tokens:
             # Entry D (past paper reference) needs more tokens for multi-plan drafts
             _is_scenario_d = bool(
@@ -1263,7 +1267,15 @@ class DocScheduler:
                 session.scenario = "D"
             else:
                 effective_max_tokens = min(effective_max_tokens, 8192)
-        effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
+        # thinking_token_budget is a real vLLM engine control (requires
+        # --reasoning-parser at serve time): caps reasoning length, forcing
+        # reasoning_end_str at the budget. Only meaningful when thinking on.
+        # Budget caps reasoning, so max_tokens is NOT inflated (output gets
+        # the remainder) — the old inflation caused >80k overflows.
+        if effective_enable_thinking:
+            effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
+        else:
+            effective_thinking_budget = None
 
         response_text = ""
         files_written: list[str] = []
@@ -1291,6 +1303,7 @@ class DocScheduler:
                     gateway, session.messages,
                     max_tokens=effective_max_tokens,
                     thinking_budget=effective_thinking_budget,
+                    enable_thinking=effective_enable_thinking,
                     tools=openai_tools,
                     tool_choice="auto",
                 )

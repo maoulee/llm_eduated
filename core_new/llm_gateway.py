@@ -529,14 +529,17 @@ class LLMGateway:
         if tool_choice and tools:
             params["tool_choice"] = tool_choice
 
+        # thinking_token_budget: vLLM engine-level control (requires
+        # --reasoning-parser + --reasoning-config at serve time). The reasoning
+        # parser counts tokens and forces reasoning_end_str at the budget,
+        # truncating the thinking block. This is the REAL thinking-depth knob
+        # for Qwen3.6 (enable_thinking is just on/off).
+        # NOTE: do NOT inflate max_tokens here. Budget caps reasoning length,
+        # so the remaining max_tokens is entirely available for output — the
+        # old `max(current, budget+16000)` inflation caused >80k overflows.
         if thinking_budget and self._supports_thinking_budget(provider):
             params.setdefault("extra_body", {})
             params["extra_body"]["thinking_token_budget"] = thinking_budget
-            # Thinking models count reasoning tokens against max_tokens.
-            # Inflate output budget so reasoning doesn't consume it entirely.
-            current_max = params.get("max_tokens", 0)
-            if current_max and current_max > 0:
-                params["max_tokens"] = max(current_max, thinking_budget + 16000)
 
         if enable_thinking is not None and hasattr(provider, "_extra_body_for_thinking"):
             extra_body = provider._extra_body_for_thinking(enable_thinking)

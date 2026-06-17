@@ -19,24 +19,27 @@ pipeline:
     temperature: 0.2
     top_p: 0.9
 
-  # thinking_token_budget — vLLM/本地专属（仅 thinking_control_method ==
-  # chat_template_kwargs 或 provider_type==local 生效；远程 API 模型被
-  # LLMGateway._supports_thinking_budget 网关挡掉，拿不到此参数）。
-  # §19 后 design 一个 agent 承担 P1 出题 + P2 定稿，覆盖原 skeleton_design/
-  # distractor_assembly/question_sc/question_comp 的思考预算。
+  # thinking_token_budget — vLLM 引擎层思考预算（需 serve 时带 --reasoning-parser
+  # + --reasoning-config）。reasoning parser 数 token，到 budget 强制注入
+  # reasoning_end_str 截断思考块。这是 Qwen3.6 真正的思考深度旋钮（enable_thinking
+  # 只是开/关）。分档：简单任务~2000（浅思考辅助归纳+防无界循环），
+  # 出题设计 8000-12000（保推理质量）。
   thinking_budget:
-    outline: 8000
-    question_design: 1000
-    exam_form: 1000          # §17.3 narrow judgment task (KP + K-radar → form)
-    design: 4000             # §19 design P1 出题（骨架复用+经验值参数，大胆不验证）
-    review: 1000             # 审核是结构判断，不需要深推理
-    solve: 10000
-    final_review: 4000       # 终审两项检查，不需要深推理
+    interact: 2000           # 交互层：浅思考辅助读卷/检索归纳，低 budget 截断防循环
+    outline: 8000            # 组卷规划，需结构化推理
+    question_design: 2000    # 骨架从经验复用，窄判断
+    exam_form: 2000          # KP+K-radar→形式，窄判断
+    design: 10000            # 出题创造性任务，需深推理
+    concept_creator: 2000    # 概念题基于知识回忆
+    review: 2000             # 结构审核/判断
+    solve: 12000             # 求解需推演算法
+    final_review: 2000       # 终审一致性检查
 
   # Per-role system parameters (moved from agent MD frontmatter)
-  # enable_thinking: per-role 思考开关（Qwen3.6 上唯一有效的思考强度控制）。
-  #   窄判断任务(question_design/exam_form/review/final_review/concept_creator)关→秒级；
-  #   复杂任务(design/solve/outline)开→保质量。
+  # enable_thinking: 思考开关。配合 thinking_token_budget 控制：开思考 + 低 budget
+  #   （~2000）= 浅思考辅助归纳 + budget 截断防无界循环；高 budget（8000-12000）
+  #   = 保推理质量。Qwen3.6 的 thinking_token_budget 是 vLLM 引擎层有效控制
+  #   （reasoning parser 数 token 到 budget 强制截断）。
   # max_tokens: per-role 生成上限。缺省=用 default_max_tokens。
   roles:
     outline:
@@ -47,12 +50,12 @@ pipeline:
     question_design:
       multi_turn: false
       max_attempts: 1
-      enable_thinking: false   # 骨架从经验复用，窄判断，关思考
+      enable_thinking: true    # 开思考+低budget：骨架复用，浅思考辅助
       max_tokens: 4000
     exam_form:
       multi_turn: false
       max_attempts: 1
-      enable_thinking: false   # KP+K-radar→形式，窄判断，关思考
+      enable_thinking: true    # 开思考+低budget：KP+K-radar→形式，浅思考辅助
       max_tokens: 2000
     design:
       multi_turn: true       # §19 design P1 多轮（form_gate needs_fix 回退）
@@ -62,12 +65,12 @@ pipeline:
     concept_creator:
       multi_turn: true       # §21 概念题出题（审核回退需多轮）
       max_attempts: 3
-      enable_thinking: false   # 概念题基于知识回忆，关思考
+      enable_thinking: true    # 开思考+低budget：概念题基于知识回忆，浅思考辅助
       max_tokens: 6000
     review:
       multi_turn: false
       max_attempts: 2
-      enable_thinking: false   # 结构审核/判断，关思考
+      enable_thinking: true    # 开思考+低budget：结构审核/判断，浅思考辅助
       max_tokens: 4000
     solve:
       multi_turn: false
@@ -77,8 +80,11 @@ pipeline:
     final_review:
       multi_turn: false
       max_attempts: 2
-      enable_thinking: false   # 一致性检查，关思考
+      enable_thinking: true    # 开思考+低budget：一致性检查，浅思考辅助
       max_tokens: 6000
+    interact:                  # 交互层：读卷/检索/呈现/组yaml，窄判断+工具调用
+      enable_thinking: true    # 开思考但低 budget（~2000）：浅思考辅助归纳，budget 截断防无界循环
+      # max_tokens 不在此设：scheduler 按 scenario 取（Entry D=16000, 其余=8192）
 
 # ── Routing profiles ─────────────────────────────────────────
 routing:

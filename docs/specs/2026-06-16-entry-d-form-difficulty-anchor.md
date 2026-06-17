@@ -23,7 +23,34 @@ Entry D（往年期末卷参考）测试暴露三个漂移：形式（算法分�
 | `1df22e3` | feat: per-role 生成+思考配置（enable_thinking/max_tokens 每 role 独立，scheduler 动态取用）——Qwen3.6 上唯一有效的思考控制 | 单题 408s→200s（2× 提速），窄任务关思考 |
 | `df3746f` | fix: 修 `_gateway` typo（scheduler:713），传输错误处理不再崩（踩中"线上断线"场景） | test_node 全 pipeline 跑通不崩 |
 
-**关键事实**：`thinking_budget`（数值上限）对 Qwen3.6 **无效**（chat_template 无 thinking_budget 变量，只有 enable_thinking 开关）。原 thinking_budget 配置是 placebo。per-role `enable_thinking`（开/关）才是真控制。
+**关键事实（已订正 2026-06-17）**：`thinking_token_budget` 是 vLLM **引擎层**有效控制（非 placebo）。机制：reasoning parser 数 token，到 budget 强制注入 `reasoning_end_str` 截断思考块（实测 budget=200→reasoning 707字符，budget=2000→3512字符，比例~3.5字符/token）。需 vLLM serve 带 `--reasoning-parser qwen3` + `--reasoning-config`（当前部署已配）。
+
+- `enable_thinking`：开/关二元（chat_template 变量）
+- `thinking_token_budget`：数值思考深度（vLLM 引擎层，reasoning parser 实现）——**这才是精细控制旋钮**
+
+⚠️ **注意**：budget 单位是 token，不是字符。2000 token ≈ 6000-7000 中文字符的思考量，足够浅推理。早期曾误判 budget 无效，根因是拿 reasoning 字符数（~2233）与 token 预算（2000）直接比较，实际 2233 字符仅 ~640 token，远未触达预算。
+
+**⚠️ 线上模型注意**：budget 仅对本地 vLLM 生效（依赖 reasoning parser）。线上 API 模型无此能力，`_supports_thinking_budget` 会挡掉，传了等于没传。
+
+## ✅ 已修复：Entry D 轮次循环 bug（2026-06-17）
+
+**验证**（session `entry_d_fix`，关思考）：
+- Turn 1：出 `[PHASE: combined]` 草案，3 套方案、每题考法级（`[ ]` 细粒度考点）。skill 改动生效。
+- Turn 2：教师"选方案C，生成交接文档进入出题" → 1 次 LLM 调用直接产 `paper_request.yaml`（18 slot 全字段、含 expected_form）。**无重生成、无自动 `[✓]`、无卡死**。循环 bug 消失，方案①（combined 一轮）生效。
+
+### 修复内容（3 处）
+
+1. **`interact_core/SKILL.md`**：Entry D 归 `[PHASE: combined]`（`:89`）；Step6 草案头改 combined；Step7→Step8 直连（选完方案即 handoff，禁进 examination 轮、禁重生成）；加红线#9「禁自动 `[✓]`」。
+2. **`agents/interact.md`**：`:103` handoff 触发放宽到意图级（含"生成交接/进入出题/确认"即触发，不要求精确短语或"系统消息"）；关键规则补「禁替教师勾选」。
+3. **per-role 配置 + thinking_budget 膨胀治理**（修 Turn 2 超长 bug）：
+   - 根因：interact 无 per-role 配置 → `thinking_budget` 兜底 `DEFAULT_THINKING_BUDGET`(10000) → `llm_gateway:539` 把 max_tokens 膨胀 `max(16000, 10000+16000)=26000` → 叠 54k input 超 80k。
+   - `scheduler.py` interact 路径：补 `enable_thinking` 从 ROLE_PARAMS 读取；关思考时 `thinking_budget=None`（不触发膨胀）；工具循环 `_streaming_chat_call` 传 `enable_thinking`。
+   - `pipeline.yaml` roles 补 `interact: { enable_thinking: false }`（max_tokens 不设，保留 scheduler 的 D=16000/其他=8192 逻辑）。
+   - **结论：interact 关思考**（历史 entry_d_test1-4 全关思考跑通；开则 Qwen3.6 thinking 无界循环）。检索(grep_search)随 interact 关——检索是读+归纳，开思考只浪费时间。
+
+---
+
+### 旧记录（现象，保留供回溯）
 
 ## 🔴 已知问题：Entry D 轮次循环 bug（系统层状态错误）
 
