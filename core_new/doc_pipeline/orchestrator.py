@@ -1505,6 +1505,7 @@ class DocPipelineOrchestrator:
                 issues.append(f"## {label} 段缺失或空白")
         return issues
 
+    @staticmethod
     def _format_final(
         ws: Path,
         *,

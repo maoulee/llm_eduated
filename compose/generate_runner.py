@@ -231,7 +231,10 @@ async def _generate_doc(gateway, sb, slot_id, exp_card, *, output_dir="docs",
         if run_id:
             workspace_parts.append(run_id)
         doc_workspace = os.path.join(*workspace_parts)
-        dp = DocPipeline(workspace=doc_workspace, model_routing=model_routing)
+        # 透传 gateway：--routing 指定的 provider（all_local→api_vllm / glm5.1→线上）
+        # 必须真正注入 DocPipeline，否则回落 get_routed_gateway("doc_design") 读 config
+        # profile（默认 all_local），导致 --routing 对生成无效。
+        dp = DocPipeline(workspace=doc_workspace, gateway=gateway, model_routing=model_routing)
         result = await dp.run(
             slot_id=slot_id,
             slot_data=sb,
