@@ -65,6 +65,7 @@ def assemble(workspace: str, output_base: str, paper_request: str | None):
 
     # 读 paper_request 拿分值/题型分组信息
     slot_meta = {}
+    subject = "期末"
     if paper_request:
         import yaml
         req = yaml.safe_load(open(paper_request, encoding="utf-8"))
@@ -75,6 +76,10 @@ def assemble(workspace: str, output_base: str, paper_request: str | None):
                 "complexity": s.get("complexity", "standard"),
                 "topic": s.get("primary_target_name", ""),
             }
+        # 科目名：取首个 slot 的 target_subject（避免硬编码"计算机组成原理"导致跨科目串标题）
+        _slots = req.get("slots", [])
+        _first = _slots[0] if _slots else {}
+        subject = _first.get("target_subject") or _first.get("subject") or "期末"
 
     # 收集所有有 final.md 的 slot，按 slot_id 排序
     slots = []
@@ -90,7 +95,7 @@ def assemble(workspace: str, output_base: str, paper_request: str | None):
 
     # ── 构建试卷（题干）──
     exam_lines = [
-        "# 计算机组成原理 期末试卷",
+        f"# {subject} 期末试卷",
         "",
         f"（共 {len(slots)} 题）",
         "",
@@ -99,7 +104,7 @@ def assemble(workspace: str, output_base: str, paper_request: str | None):
     ]
     # ── 构建解析（题干+答案）──
     sol_lines = [
-        "# 计算机组成原理 期末试卷 · 参考答案与解析",
+        f"# {subject} 期末试卷 · 参考答案与解析",
         "",
         f"（共 {len(slots)} 题）",
         "",
