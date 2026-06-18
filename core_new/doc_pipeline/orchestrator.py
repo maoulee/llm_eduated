@@ -563,6 +563,17 @@ class DocPipelineOrchestrator:
         )
         if not solution_path.exists():
             return self._fail_result(slot_id, "design_solve did not write solution.md")
+        # §code-as-truth 强制锚定：非概念题必须产出 gen.py。
+        # 根因：design agent 是 artifact_writer（文本输出），弱模型（本地 Qwen）固守文本、
+        # 不调 exec_file → 跳过 gen.py 直接心算 solution.md → 多步计算必错（实测补码除法/堆排）。
+        # 此处把 gen.py 钉成"必须产出"：缺失即判失败（检出而非静默错答）。强模型（线上 GLM-5.2）
+        # 本就产出 gen.py，此校验对其透明；弱模型则被拦下，需换 capable 模型重跑。
+        if slot_data.get("complexity") != "conceptual" and not gen_path.exists():
+            logger.warning("[%s] design_solve 未产出 gen.py（code-as-truth 违规，疑似心算）", slot_id)
+            return self._fail_result(
+                slot_id,
+                "design_solve 未产出 gen.py：计算题必须用代码求解（code-as-truth），不得心算",
+            )
         # Clear design session after solve round (§20 isolation)
         if hasattr(self.scheduler, "clear_session"):
             self.scheduler.clear_session(slot_id, "design")
