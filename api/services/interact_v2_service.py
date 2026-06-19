@@ -7,7 +7,13 @@ session lifecycle management.
 Architecture:
     InteractV2Service (facade)
     +-- SessionManager -- session CRUD, message persistence
-    +-- ClarificationHandler -- Scenario C heuristics + GLM outline
+
+Design principle: behaviour decisions (scenario detection, clarification,
+planning, revision handling) belong to the interact LLM agent, NOT to this
+service layer. The service only threads the teacher message through verbatim,
+reads back artifacts, and guards the boundary (explicit confirmation gate +
+handoff YAML field-completeness check). Regex/keyword interception of the
+agent's process was removed — see send_turn's ``intent`` parameter.
 """
 
 from __future__ import annotations
@@ -22,15 +28,12 @@ import time
 from pathlib import Path
 from typing import Optional
 
-_ENABLE_SCENARIO_C_INTERCEPTION = os.getenv("ENABLE_SCENARIO_C_INTERCEPTION", "true") == "true"
-
 from api.schemas_interact_v2 import (
     AnnotationSubmission,
     DraftData,
     InteractSessionInfo,
     InteractTurnResponse,
 )
-from api.services.interact_clarification import ClarificationHandler
 from api.services.interact_session_manager import SessionManager, validate_session_id
 
 logger = logging.getLogger(__name__)
@@ -72,7 +75,6 @@ class InteractV2Service:
 
     Delegates to:
         - ``SessionManager`` for session CRUD and message persistence
-        - ``ClarificationHandler`` for Scenario C detection and outline
     """
 
     def __init__(self) -> None:
@@ -80,7 +82,6 @@ class InteractV2Service:
         self._drafts: dict[str, DraftData] = {}  # session_id -> latest draft
         self._annotations: dict[str, AnnotationSubmission] = {}  # session_id -> latest draft annotation
         self._scheduler_cache: dict[str, object] = {}  # cache_key -> DocScheduler
-        self._clarification = ClarificationHandler
 
     def _restore_sessions_from_disk(self) -> None:
         """Delegate to SessionManager for backward compat with tests.
@@ -160,12 +161,28 @@ class InteractV2Service:
     # ------------------------------------------------------------------
 
     async def send_turn(
-        self, session_id: str, message: str
+        self, session_id: str, message: str, *, intent: str = "discuss"
     ) -> InteractTurnResponse:
         """Send a teacher message and get agent response.
 
-        Creates scheduler + gateway lazily, then delegates to
-        ``DocScheduler.run_conversation_turn()``.
+        Behavior decisions (scenario detection, clarification, planning,
+        revision handling) are left entirely to the interact agent — this
+        method no longer pre-processes the message with regex/keyword
+        interception. The service layer only:
+
+        - threads the teacher message through verbatim,
+        - reads back the agent's artifacts (draft / handoff YAML),
+        - guards the boundary: the pipeline is triggered ONLY when the
+          caller passes ``intent="confirm_handoff"`` (explicit teacher
+          confirmation). An accidentally-produced handoff YAML without
+          that intent is quarantined, not triggered.
+
+        ``intent`` is the explicit confirmation gate:
+        - ``discuss`` (default): normal conversation / draft refinement.
+        - ``request_revision``: teacher wants the draft revised (agent reads
+          annotations and rewrites the draft).
+        - ``confirm_handoff``: teacher explicitly confirmed — may trigger the
+          generation pipeline once a complete handoff YAML exists.
         """
         validate_session_id(session_id)
         session = self._sessions.get(session_id)
@@ -177,11 +194,6 @@ class InteractV2Service:
             thinking=session["thinking"],
         )
 
-        # ── Scenario C: collect paper structure before outline generation ──
-        # Broad requests such as "出一套数据结构期末卷" need one clarification
-        # pass for question count and type mix before we ask GLM for an outline.
-        outline_context = ""
-        scenario_c_requirements = ""
         raw_message = message.strip()
         # Save first message as session title
         if session["turn_count"] == 0 and raw_message:
@@ -189,104 +201,12 @@ class InteractV2Service:
         ws = self._get_session_workspace(session_id)
         self._session_mgr._append_session_message(session_id, "teacher", raw_message, workspace_path=ws)
 
-        if _ENABLE_SCENARIO_C_INTERCEPTION:
-            pending = session.get("pending_clarification")
-            if pending and pending.get("kind") == "scenario_c_structure":
-                scenario_c_requirements = self._merge_scenario_c_requirements(
-                    str(pending.get("requirements", "")),
-                    raw_message,
-                )
-                if not self._has_scenario_c_structure(scenario_c_requirements):
-                    session["pending_clarification"] = {
-                        "kind": "scenario_c_structure",
-                        "requirements": scenario_c_requirements,
-                    }
-                    session["state"] = "collecting"
-                    session["scenario"] = "C"
-                    session["turn_count"] = int(session.get("turn_count", 0)) + 1
-                    # Persist updated clarification to disk
-                    self._session_mgr._persist_pending_clarification(
-                        session_id, session["pending_clarification"], workspace_path=ws,
-                    )
-                    response_text = self._scenario_c_clarification_message(scenario_c_requirements)
-                    self._session_mgr._append_session_message(session_id, "agent", response_text, workspace_path=ws)
-                    return InteractTurnResponse(
-                        response_text=response_text,
-                        session_state=session["state"],
-                        has_draft=False,
-                        has_result=False,
-                        files_written=[],
-                    )
-                session.pop("pending_clarification", None)
-                # Delete persisted clarification file
-                self._session_mgr._clear_pending_clarification_file(session_id, workspace_path=ws)
-            elif session["turn_count"] == 0 and self._needs_scenario_c_clarification(raw_message):
-                session["pending_clarification"] = {
-                    "kind": "scenario_c_structure",
-                    "requirements": raw_message,
-                }
-                session["state"] = "collecting"
-                session["scenario"] = "C"
-                session["turn_count"] = 1
-                # Persist clarification to disk
-                self._session_mgr._persist_pending_clarification(
-                    session_id, session["pending_clarification"], workspace_path=ws,
-                )
-                response_text = self._scenario_c_clarification_message(raw_message)
-                self._session_mgr._append_session_message(session_id, "agent", response_text, workspace_path=ws)
-                return InteractTurnResponse(
-                    response_text=response_text,
-                    session_state=session["state"],
-                    has_draft=False,
-                    has_result=False,
-                    files_written=[],
-                )
-
-        if _ENABLE_SCENARIO_C_INTERCEPTION:
-            should_prepare_scenario_c = bool(scenario_c_requirements) or (
-                session["turn_count"] == 0 and self._looks_like_scenario_c(raw_message)
-            )
-            if should_prepare_scenario_c:
-                outline_requirements = scenario_c_requirements or raw_message
-                outline_context = await self._pregenerate_outline(outline_requirements)
-                if outline_context:
-                    logger.info("[%s] Scenario C: pre-generated GLM outline (%d chars)",
-                                session_id, len(outline_context))
-                    # Write outline to workspace for the agent to reference
-                    if ws:
-                        compose_dir = ws / "compose"
-                        compose_dir.mkdir(parents=True, exist_ok=True)
-                        (compose_dir / "glm_outline.md").write_text(
-                            outline_context, encoding="utf-8"
-                        )
-
-        revision_pending = self._annotation_requests_revision(session_id)
-        if revision_pending:
-            self._quarantine_result_files(session_id, reason="stale-before-revision")
-
-        # Acquire per-session lock to prevent concurrent turn races
+        # Per-session lock to prevent concurrent turn races.
         lock = self._session_locks.setdefault(session_id, asyncio.Lock())
         async with lock:
-            # Append GLM outline context to teacher message if pre-generated
-            effective_message = message
-            if revision_pending:
-                effective_message = self._build_revision_turn_message(message)
-            elif _ENABLE_SCENARIO_C_INTERCEPTION and outline_context:
-                outline_requirements = scenario_c_requirements or raw_message
-                effective_message = (
-                    f"{outline_requirements}\n\n"
-                    f"═══ 系统预生成大纲（基于知识点图谱 + GLM-5.1）═══\n"
-                    f"{outline_context}\n"
-                    f"═══ 大纲结束 ═══\n\n"
-                    f"请基于以上大纲生成自由组卷第一轮草案，文件头必须写 [SCENARIO: C]、"
-                    f"[ROUND: 1]、[PHASE: knowledge]。第一轮只展示粗粒度考察范围，"
-                    f"不要展开最终考察方式；每个题位还必须包含一个 `## Qn 题型` section，"
-                    f"供教师确认或调整题型。大纲已写入 compose/glm_outline.md 供参考。"
-                )
-
             result = await scheduler.run_conversation_turn(
                 session_id=session_id,
-                teacher_message=effective_message,
+                teacher_message=message,
                 role="interact",
             )
 
@@ -327,16 +247,27 @@ class InteractV2Service:
                     session["scenario"] = interact_session.scenario
                 session["turn_count"] = interact_session.turn_count
 
-        if revision_pending:
-            self._quarantine_result_files(session_id, reason="blocked-by-revision")
-        has_result = self._find_result_path(session_id) is not None
+        result_path = self._find_result_path(session_id)
+        has_result = result_path is not None
+
+        # ── Boundary guard: the explicit confirmation gate ──
+        # The pipeline fires ONLY when the teacher explicitly confirmed
+        # (intent == "confirm_handoff"). An accidentally-produced handoff YAML
+        # without that intent is quarantined (boundary guard), never triggered.
+        # This replaces the old "has_result → auto-trigger" behaviour that
+        # could fire the pipeline before the teacher confirmed.
+        confirmed = intent == "confirm_handoff"
+        if has_result and not confirmed:
+            self._quarantine_result_files(session_id, reason="no-explicit-confirm")
+            logger.info("[%s] Handoff YAML present but intent!=confirm_handoff; quarantined", session_id)
+            has_result = False  # don't surface as a triggerable result
 
         # Prefer draft files written by the agent; fall back to response text.
         has_draft = False
         draft = self._load_draft_from_files(
             session_id,
             files_written,
-            allow_fallback=not revision_pending,
+            allow_fallback=True,
         )
         if draft:
             self._drafts[session_id] = draft
@@ -358,12 +289,16 @@ class InteractV2Service:
                     )
                     has_draft = False
 
-        if has_result:
-            session["state"] = "confirmed"
-            # Auto-trigger question generation pipeline
-            self._trigger_generation(session_id, session)
-        elif revision_pending:
-            session["state"] = "reviewing"
+        if confirmed and result_path is not None:
+            # Boundary check: validate handoff YAML has required fields before
+            # triggering. Missing fields → don't fire, let the agent complete.
+            missing = self._validate_handoff_fields(result_path)
+            if missing:
+                logger.warning("[%s] Handoff YAML missing fields %s; not triggering", session_id, missing)
+                session["state"] = "reviewing"
+            else:
+                session["state"] = "confirmed"
+                self._trigger_generation(session_id, session)
         elif has_draft and session.get("state") == "collecting":
             session["state"] = "reviewing"
 
@@ -435,34 +370,6 @@ class InteractV2Service:
         from api.services.pipeline_trigger import get_job
         job = get_job(session_id)
         return job.to_dict() if job else None
-
-    # ------------------------------------------------------------------
-    # Scenario C: backward-compat delegates to ClarificationHandler
-    # ------------------------------------------------------------------
-
-    @classmethod
-    def _needs_scenario_c_clarification(cls, message: str) -> bool:
-        return ClarificationHandler.needs_clarification(message)
-
-    @staticmethod
-    def _looks_like_scenario_c(message: str) -> bool:
-        return ClarificationHandler.looks_like_scenario_c(message)
-
-    @staticmethod
-    def _has_scenario_c_structure(message: str) -> bool:
-        return ClarificationHandler.has_structure(message)
-
-    @staticmethod
-    def _merge_scenario_c_requirements(previous: str, latest: str) -> str:
-        return ClarificationHandler.merge_requirements(previous, latest)
-
-    @staticmethod
-    def _scenario_c_clarification_message(requirements: str) -> str:
-        return ClarificationHandler.clarification_message(requirements)
-
-    @staticmethod
-    async def _pregenerate_outline(user_requirements: str) -> str:
-        return await ClarificationHandler.pregenerate_outline(user_requirements)
 
     # ------------------------------------------------------------------
     # Draft & annotation
@@ -583,37 +490,6 @@ class InteractV2Service:
             if any(str(value).strip() for value in slot.modified_text.values()):
                 return True
         return False
-
-    def _annotation_requests_revision(self, session_id: str) -> bool:
-        """Return True if the latest annotated draft contains teacher comments."""
-        annotation = self._annotations.get(session_id)
-        if annotation and self._annotation_payload_requests_revision(annotation):
-            return True
-
-        ws = self._get_session_workspace(session_id)
-        if ws is None:
-            return False
-        draft_path = self._safe_workspace_path(ws, "compose/interact_draft.md")
-        if not draft_path or not draft_path.exists():
-            return False
-        try:
-            text = draft_path.read_text(encoding="utf-8")
-        except Exception:
-            return False
-        return bool(re.search(r"^>\s*教师批注[:：]\s*\S+", text, re.MULTILINE))
-
-    @staticmethod
-    def _build_revision_turn_message(message: str) -> str:
-        """Wrap a client turn so annotated drafts cannot accidentally enter handoff."""
-        return (
-            f"{message.strip()}\n\n"
-            "【系统约束：当前草案含教师批注】\n"
-            "必须先读取 compose/interact_draft.md，并逐条处理 `> 教师批注:`。\n"
-            "本轮唯一允许的产物是修订后的 compose/interact_draft.md；"
-            "请重新 write_file 到该路径，并等待教师再次确认。\n"
-            "禁止生成 paper_request.yaml、slot_blueprint.yaml 或 retrieval_query.yaml；"
-            "禁止进入出题流水线。"
-        )
 
     def get_latest_annotation(self, session_id: str) -> AnnotationSubmission | None:
         """Return the latest draft annotation for a session."""
@@ -798,3 +674,42 @@ class InteractV2Service:
             if path.exists() and path.is_file():
                 return path
         return None
+
+    # Per-slot fields the handoff YAML must carry before the pipeline may run.
+    # These mirror interact_core SKILL.md's "硬性字段" contract — the boundary
+    # the regex layer is allowed to enforce (field completeness), in contrast
+    # to process/behaviour decisions which belong to the LLM.
+    _HANDOFF_REQUIRED_SLOT_FIELDS = (
+        "slot_id",
+        "question_type",
+        "primary_target_name",
+        "target_difficulty",
+        "examination_mode",
+    )
+
+    def _validate_handoff_fields(self, result_path: Path) -> list[str]:
+        """Boundary check: return names of required fields missing from the
+        handoff YAML's slots. Empty list = complete, OK to trigger.
+
+        This is the regex/structural guard's legitimate scope: validating the
+        *artifact's contract*, not controlling the agent's *behaviour*.
+        """
+        try:
+            import yaml
+            data = yaml.safe_load(result_path.read_text(encoding="utf-8")) or {}
+        except Exception as exc:
+            logger.warning("[%s] Handoff YAML unreadable: %s", result_path, exc)
+            return ["<unreadable_yaml>"]
+        slots = data.get("slots") if isinstance(data, dict) else None
+        if not isinstance(slots, list) or not slots:
+            return ["slots"]
+        missing: list[str] = []
+        for slot in slots:
+            if not isinstance(slot, dict):
+                missing.append("slot(not_dict)")
+                continue
+            for field in self._HANDOFF_REQUIRED_SLOT_FIELDS:
+                val = slot.get(field)
+                if val is None or (isinstance(val, str) and not val.strip()):
+                    missing.append(f"{slot.get('slot_id', '?')}.{field}")
+        return missing

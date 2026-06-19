@@ -195,11 +195,18 @@ class InteractTurnRequest(BaseModel):
     """Request to send a teacher message within a session."""
 
     message: str  # teacher message
+    # Explicit confirmation gate — the pipeline is triggered ONLY when the
+    # teacher passes ``confirm_handoff``. ``discuss`` is normal conversation /
+    # draft refinement; ``request_revision`` asks the agent to revise the
+    # draft based on annotations. Default ``discuss`` keeps the pipeline
+    # safely off until the teacher explicitly confirms.
+    intent: Literal["discuss", "confirm_handoff", "request_revision"] = "discuss"
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "message": "请出3道拓扑排序的题目，覆盖Kahn算法和DFS方法"
+                "message": "请出3道拓扑排序的题目，覆盖Kahn算法和DFS方法",
+                "intent": "discuss",
             }
         }
     )

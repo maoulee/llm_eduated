@@ -51,7 +51,7 @@ async def create_session(body: InteractSessionCreate):
 async def send_turn(session_id: str, body: InteractTurnRequest):
     """Send a teacher message and get agent response."""
     try:
-        return await _service.send_turn(session_id, body.message)
+        return await _service.send_turn(session_id, body.message, intent=body.intent)
     except ValueError as e:
         raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import unittest.mock
 from types import SimpleNamespace
 
 import pytest
@@ -133,61 +134,6 @@ def test_send_turn_parses_draft_from_written_file(tmp_path):
     assert draft.sections[0].options[0].text == "Cache映射"
 
 
-def test_scenario_c_broad_request_asks_for_paper_structure(tmp_path):
-    service = InteractV2Service()
-    fake_scheduler = RecordingDraftScheduler(tmp_path)
-    service._get_scheduler = lambda provider, thinking: fake_scheduler
-    session = service.create_session()
-
-    result = run_async(service.send_turn(session.session_id, "我想出关于数据结构的期末考卷"))
-
-    assert fake_scheduler.call_count == 0
-    assert result.has_draft is False
-    assert result.has_result is False
-    assert result.session_state == "collecting"
-    assert "题量" in result.response_text
-    assert "题型结构" in result.response_text
-    info = service.get_session_info(session.session_id)
-    assert info.scenario == "C"
-    history = service.get_session_history(session.session_id)
-    assert history["messages"][-1]["role"] == "agent"
-    assert "12题" in history["messages"][-1]["content"]
-
-
-def test_scenario_c_structure_answer_generates_knowledge_phase_draft(tmp_path):
-    service = InteractV2Service()
-    fake_scheduler = RecordingDraftScheduler(tmp_path)
-    service._get_scheduler = lambda provider, thinking: fake_scheduler
-    captured = {}
-
-    async def fake_outline(requirements):
-        captured["requirements"] = requirements
-        return "| 题号 | 建议题型 | 粗知识域候选 | 覆盖理由 | 难度(1-5) |\n| Q1 | 选择题 | 线性表/树 | 覆盖基础 | 3 |"
-
-    service._pregenerate_outline = fake_outline
-    session = service.create_session()
-
-    first = run_async(service.send_turn(session.session_id, "我想出关于数据结构的期末考卷"))
-    assert first.has_draft is False
-
-    result = run_async(
-        service.send_turn(
-            session.session_id,
-            "12题，5道选择、3道填空、2道简答、2道算法题，总分100，中等偏难",
-        )
-    )
-
-    assert fake_scheduler.call_count == 1
-    assert "我想出关于数据结构的期末考卷" in captured["requirements"]
-    assert "5道选择" in captured["requirements"]
-    assert "[PHASE: knowledge]" in fake_scheduler.last_teacher_message
-    assert "## Qn 题型" in fake_scheduler.last_teacher_message
-    assert result.has_draft is True
-    draft = service.get_draft(session.session_id)
-    assert draft.sections[0].phase == "knowledge"
-    assert draft.sections[1].phase == "question_type"
-
-
 def test_session_history_persists_turn_messages(tmp_path):
     service = InteractV2Service()
     fake_scheduler = FakeScheduler(tmp_path)
@@ -289,45 +235,6 @@ def test_submit_annotation_accepts_selected_option_id_only(tmp_path):
     history = service.get_session_history(session.session_id)
     assert history["messages"][-1]["role"] == "teacher"
     assert "已提交草案选择" in history["messages"][-1]["content"]
-
-
-def test_send_turn_blocks_handoff_when_annotation_requests_revision(tmp_path):
-    service = InteractV2Service()
-    fake_scheduler = HandoffOnlyScheduler(tmp_path)
-    service._get_scheduler = lambda provider, thinking: fake_scheduler
-    session = service.create_session()
-    service._drafts[session.session_id] = parse_draft_md(
-        "# 草案\n\n## Q1\n[ ] 栈和队列\n[ ] 树\n",
-        draft_id="current",
-    )
-    service.submit_annotation(
-        session.session_id,
-        AnnotationSubmission(
-            draft_id="current",
-            slots=[
-                SlotAnnotation(
-                    slot_id="Q1",
-                    selected_option_id="opt_1_1",
-                    annotation="我想考链表的题目",
-                )
-            ],
-        ),
-    )
-
-    result = run_async(
-        service.send_turn(
-            session.session_id,
-            "教师已确认草案选择，请生成交接文档（paper_request.yaml 或 slot_blueprint.yaml）。",
-        )
-    )
-
-    assert "当前草案含教师批注" in fake_scheduler.last_teacher_message
-    assert "禁止生成 paper_request.yaml" in fake_scheduler.last_teacher_message
-    assert result.has_result is False
-    assert result.session_state == "reviewing"
-    compose_dir = tmp_path / session.session_id / "compose"
-    assert not (compose_dir / "paper_request.yaml").exists()
-    assert list(compose_dir.glob("paper_request.yaml.blocked.blocked-by-revision.*"))
 
 
 def test_display_result_builds_teacher_view_from_draft_selection(tmp_path):
@@ -647,62 +554,6 @@ def test_pipeline_trigger_records_setup_failure(tmp_path):
         _jobs.pop(session_id, None)
 
 
-def test_pending_clarification_persists_across_restart(tmp_path):
-    """Scenario C clarification is written to disk and restored on service restart."""
-    import json
-    import unittest.mock
-
-    service = InteractV2Service()
-    fake_scheduler = RecordingDraftScheduler(tmp_path)
-    service._get_scheduler = lambda provider, thinking: fake_scheduler
-    session = service.create_session()
-
-    # Step 1: Trigger Scenario C clarification
-    first = run_async(service.send_turn(session.session_id, "我想出关于数据结构的期末考卷"))
-    assert first.has_draft is False
-    assert first.session_state == "collecting"
-
-    # Step 2: Verify the JSON file was written to disk
-    pc_path = tmp_path / session.session_id / "compose" / "pending_clarification.json"
-    assert pc_path.exists(), "pending_clarification.json should be written to disk"
-    pc_data = json.loads(pc_path.read_text(encoding="utf-8"))
-    assert pc_data["kind"] == "scenario_c_structure"
-    assert "数据结构" in pc_data["requirements"]
-
-    # Step 3: Simulate restart — new service instance restores from the same workspace
-    service2 = InteractV2Service()
-    service2._sessions.clear()
-    with unittest.mock.patch("api.services.interact_v2_service.Path") as MockPath:
-        MockPath.side_effect = lambda p=".": tmp_path if p == "workspace" else Path(p)
-        service2._restore_sessions_from_disk()
-
-    # Step 4: Verify pending_clarification was restored
-    restored = service2._sessions.get(session.session_id)
-    assert restored is not None, "Session should be restored from disk"
-    assert restored["state"] == "collecting"
-    assert restored["scenario"] == "C"
-    assert "pending_clarification" in restored
-    assert restored["pending_clarification"]["kind"] == "scenario_c_structure"
-
-    # Step 5: Complete the clarification with the restored service
-    service2._get_scheduler = lambda provider, thinking: RecordingDraftScheduler(tmp_path)
-
-    async def fake_outline(requirements):
-        return "| 题号 | 建议题型 | 粗知识域候选 |\n| Q1 | 选择题 | 线性表 |"
-
-    service2._pregenerate_outline = fake_outline
-    result = run_async(
-        service2.send_turn(
-            session.session_id,
-            "12题，5道选择、3道填空、2道简答、2道算法题，总分100，中等偏难",
-        )
-    )
-    assert result.has_draft is True, "Should produce draft after providing structure"
-
-    # Step 6: The clarification file should be deleted after completion
-    assert not pc_path.exists(), "pending_clarification.json should be deleted after completion"
-
-
 def test_v2_routes_return_400_for_invalid_session_id():
     with pytest.raises(HTTPException) as exc_info:
         run_async(interact_v2.get_draft("../bad"))
@@ -722,3 +573,70 @@ def test_pipeline_progress_returns_404_for_missing_session():
         run_async(interact_v2.get_pipeline_progress("abcdef123456"))
 
     assert exc_info.value.status_code == 404
+
+
+# ── 确认门 + 产物边界校验（行为归 LLM，边界归 service）──────────────
+
+
+def _make_service_with_handoff(tmp_path, slots):
+    """Build a service whose workspace already contains a paper_request.yaml.
+
+    Uses a no-op scheduler (doesn't overwrite the pre-written YAML), so the
+    confirm-gate logic sees exactly the slots we planted.
+    """
+    import yaml
+
+    class _NoopScheduler(FakeScheduler):
+        async def run_conversation_turn(self, session_id, teacher_message, role="interact"):
+            self._interact_sessions[session_id] = SimpleNamespace(
+                status="reviewing", scenario="unknown", turn_count=2,
+            )
+            return {"response_text": "ok", "files_written": []}
+
+    service = InteractV2Service()
+    service._get_scheduler = lambda provider, thinking: _NoopScheduler(tmp_path)
+    session = service.create_session()
+    compose_dir = tmp_path / session.session_id / "compose"
+    compose_dir.mkdir(parents=True, exist_ok=True)
+    (compose_dir / "paper_request.yaml").write_text(
+        yaml.dump({"schema_version": "paper_request_v1", "slots": slots}),
+        encoding="utf-8",
+    )
+    return service, session, compose_dir
+
+
+_COMPLETE_SLOT = {
+    "slot_id": "Q1", "question_type": "single_choice",
+    "primary_target_name": "AVL旋转", "target_difficulty": 3,
+    "examination_mode": "计算型",
+}
+
+
+def test_confirm_gate_quarantines_yaml_without_explicit_confirm(tmp_path):
+    """handoff YAML present but intent=discuss → quarantined, not triggered."""
+    service, session, compose_dir = _make_service_with_handoff(tmp_path, [_COMPLETE_SLOT])
+    result = run_async(service.send_turn(session.session_id, "再讨论一下", intent="discuss"))
+    assert result.has_result is False
+    assert result.session_state != "confirmed"
+    # YAML should have been quarantined (renamed .blocked.*)
+    assert not (compose_dir / "paper_request.yaml").exists()
+    assert list(compose_dir.glob("paper_request.yaml.blocked.*"))
+
+
+def test_confirm_gate_triggers_on_explicit_confirm_with_complete_yaml(tmp_path):
+    """intent=confirm_handoff + complete fields → pipeline triggered."""
+    service, session, compose_dir = _make_service_with_handoff(tmp_path, [_COMPLETE_SLOT])
+    with unittest.mock.patch.object(service, "_trigger_generation") as mock_trig:
+        result = run_async(service.send_turn(session.session_id, "确认出题", intent="confirm_handoff"))
+    assert result.session_state == "confirmed"
+    assert mock_trig.called
+
+
+def test_confirm_gate_rejects_incomplete_yaml(tmp_path):
+    """intent=confirm_handoff but missing required fields → not triggered."""
+    incomplete = [{"slot_id": "Q1"}]  # missing question_type/difficulty/etc.
+    service, session, compose_dir = _make_service_with_handoff(tmp_path, incomplete)
+    with unittest.mock.patch.object(service, "_trigger_generation") as mock_trig:
+        result = run_async(service.send_turn(session.session_id, "确认出题", intent="confirm_handoff"))
+    assert result.session_state == "reviewing"
+    assert not mock_trig.called
