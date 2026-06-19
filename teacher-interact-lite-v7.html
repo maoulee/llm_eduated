@@ -1083,10 +1083,10 @@
           body: JSON.stringify({ provider, thinking, ui_mode: "api", user_id: USER_ID })
         });
       },
-      turn(sessionId, message) {
+      turn(sessionId, message, intent = "discuss") {
         return this.request(`/api/v2/interact/sessions/${sessionId}/turn`, {
           method: "POST",
-          body: JSON.stringify({ message }),
+          body: JSON.stringify({ message, intent }),
           timeoutMs: 300000
         });
       },
@@ -2020,7 +2020,7 @@
           setStage("collecting");
           renderGeneratingDraft();
 
-          const turn = await api.turn(sessionId, "已确认第一轮考察范围和题型选择。请读取 compose/interact_draft.md，只围绕已选粗知识域和题型展开具体考察方式，生成第二轮草案。[SCENARIO: C][ROUND: 2][PHASE: examination]");
+          const turn = await api.turn(sessionId, "已确认第一轮考察范围和题型选择。请读取 compose/interact_draft.md，只围绕已选粗知识域和题型展开具体考察方式，生成第二轮草案。[SCENARIO: C][ROUND: 2][PHASE: examination]", "discuss");
           addMessage("agent", turn.response_text || "正在生成第二轮草案…", turn.has_draft);
           if (turn.has_draft) {
             state.draft = normalizeDraft(await api.getDraft(sessionId));
@@ -2041,7 +2041,8 @@
 
           const turn = await api.turn(
             sessionId,
-            "教师对草案提出了修改批注。请读取 compose/interact_draft.md，严格根据教师批注修订草案，并重新 write_file 到 compose/interact_draft.md。不要生成 paper_request.yaml 或 slot_blueprint.yaml，不要进入出题流水线；只返回修订后的可选草案。"
+            "教师对草案提出了修改批注。请读取 compose/interact_draft.md，严格根据教师批注修订草案，并重新 write_file 到 compose/interact_draft.md。不要生成 paper_request.yaml 或 slot_blueprint.yaml，不要进入出题流水线；只返回修订后的可选草案。",
+            "request_revision"
           );
           addMessage("agent", turn.response_text || "草案已根据批注调整，请重新确认。", turn.has_draft);
           if (turn.has_draft) {
@@ -2067,7 +2068,7 @@
         setStage("generating");
         renderGeneratingProgress(slotCount);
 
-        const turn = await api.turn(sessionId, "教师已确认草案选择，请生成交接文档（paper_request.yaml 或 slot_blueprint.yaml）。");
+        const turn = await api.turn(sessionId, "教师已确认草案选择，请生成交接文档（paper_request.yaml 或 slot_blueprint.yaml）。", "confirm_handoff");
         if (turn.response_text) addMessage("agent", turn.response_text);
         if (turn.has_result) {
           /* Agent directly produced the handoff YAML */
