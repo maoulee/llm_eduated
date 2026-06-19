@@ -17,6 +17,9 @@ from compose.artifact_store import _extract_knowledge_graph_section
 from compose.compose_runner import _parse_outline_to_blueprint
 from compose.generate_runner import _extract_structured_fields_from_final_md
 from core_new.doc_pipeline.doc_parser import parse_doc_header, parse_doc_section, get_doc_status
+from core_new.doc_pipeline.doc_parser import _status_from_text
+from core_new.doc_pipeline.team_pipeline import status_of
+from core_new.markdown_parser import _extract_sections
 from core_new.doc_pipeline.context import ContextRegistry, FileProvider, InlineProvider, ProviderDef
 from core_new.doc_pipeline.agent_loader import load_agents, get_agent_dicts, AgentSpec, _parse_agent_md
 from core_new.doc_pipeline.dual_agent_orchestrator import DualAgentOrchestrator
@@ -268,6 +271,73 @@ class TestDocParser:
     def test_get_status_missing_file(self):
         with pytest.raises(FileNotFoundError):
             get_doc_status(os.path.join(self.tmpdir, "nonexistent.md"))
+
+    # ── harness 容错：格式小漂移不应触发 LLM 重跑 ───────────────────
+    # 以下 case 针对底层 _extract_sections 通路（此前零覆盖）。
+
+    def test_extract_inline_status(self):
+        """同行值：## status: pass 应拆成 key=status, value=pass。"""
+        path = self._write_doc("review.md", "## status: pass\n\n## summary\nOK")
+        header = parse_doc_header(path)
+        assert header["status"] == "pass"
+
+    def test_extract_case_insensitive_header(self):
+        """大小写漂移：## Status 应被归一化成 status。"""
+        path = self._write_doc("review.md", "## Status\npass\n\n## summary\nOK")
+        header = parse_doc_header(path)
+        assert header["status"] == "pass"
+
+    def test_extract_dash_underscore_header(self):
+        """分隔符漂移：## fix-instructions 应被 fix_instructions 命中。"""
+        path = self._write_doc("review.md", (
+            "## status\nneeds_fix\n\n"
+            "## fix-instructions\n- 改 step2 的循环边界\n"
+        ))
+        section = parse_doc_section(path, "fix_instructions")
+        assert "循环边界" in section
+
+    def test_extract_inline_status_needs_fix(self):
+        """同行值 needs_fix 全链路：parse → normalize → get_doc_status。"""
+        path = self._write_doc("review.md", "## status: needs_fix\n\n## summary\n参数矛盾")
+        assert get_doc_status(path) == "needs_fix"
+
+    def test_extract_chinese_header_unchanged(self):
+        """回归保护：中文章节名归一化后仍可命中（lower/_- 对中文是 no-op）。"""
+        path = self._write_doc("review.md", "## 题干\n某题干内容\n\n## 选项\nA. x")
+        header = parse_doc_header(path)
+        assert "某题干内容" in header["题干"]
+        assert "A. x" in header["选项"]
+
+    def test_extract_chinese_header_colon_not_split(self):
+        """中文 header 带冒号不应被当同行值拆分（CJK 不是机器字段名）。
+
+        如 ## 设计说明：本题考查补码除法 —— 冒号是中文行文，key 应保持
+        原样，冒号后的说明不该被前置进 body 头部污染 _assemble_final 渲染。
+        """
+        path = self._write_doc("doc.md", "## 设计说明：本题考查补码除法\n正文内容")
+        header = parse_doc_header(path)
+        assert "本题考查补码除法" in header["设计说明"]
+
+    def test_status_from_text_matches_file_version(self):
+        """_status_from_text(内存串) 与 get_doc_status(文件) 等价（team_pipeline 复用前提）。"""
+        content = "## status: pass\n\n## summary\nOK"
+        path = self._write_doc("review.md", content)
+        assert _status_from_text(content) == get_doc_status(path)
+
+    def test_status_of_prefers_file_path(self):
+        """status_of 优先读 review_path 文件（落盘版本最可靠）。"""
+        path = self._write_doc("review.md", "## status: needs_fix\n\n## summary\n参数矛盾")
+        assert status_of("garbage text", review_path=path) == "needs_fix"
+
+    def test_status_of_falls_back_to_text(self):
+        """review_path 不可用时退化到内存字符串（复用 _status_from_text 全部 fallback）。"""
+        # 同行值 + 大小写漂移：内存字符串路径必须命中
+        assert status_of("## Status: pass", review_path=None) == "pass"
+
+    def test_status_of_returns_unknown_when_both_empty(self):
+        """文件和内存串都拿不到有效 status 时返回 unknown（保持原语义）。"""
+        assert status_of("", review_path=None) == "unknown"
+        assert status_of(None, review_path="/nonexistent/path.md") == "unknown"
 
 
 # ── Agent prompts tests ──────────────────────────────────────────

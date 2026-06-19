@@ -58,6 +58,14 @@ _REASONING_RE = re.compile(r"<reasoning\b[^>]*>.*?</reasoning\s*>", re.DOTALL | 
 _SECTION_RE = re.compile(r"^(#{2,3})\s+(.+)$", re.MULTILINE)
 # Matches any header level 2-4 (used by _extract_subsection internally).
 _SUBSECTION_HEADER_RE = re.compile(r"^#{2,4}\s+", re.MULTILINE)
+# Inline value on the header line: "## status: pass" → key=status, value=pass.
+# Only triggers on the first ASCII or fullwidth colon, and only when the
+# remainder looks like a short inline value (not a long descriptive title).
+_INLINE_HEADER_VALUE_RE = re.compile(r"^([^\s:：]+)\s*[：:]\s*(.+)$")
+# A machine field name: ASCII letter/digit/underscore/hyphen only, no CJK.
+# Guards inline-split so CJK descriptive headers ("设计说明：xxx") and
+# multi-word English headers ("Note about X") are never mis-split.
+_IS_FIELD_NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
 
 
 def _strip_thinking(text: str) -> str:
@@ -67,12 +75,47 @@ def _strip_thinking(text: str) -> str:
     return text.strip()
 
 
+def _normalize_section_key(raw: str) -> str:
+    """Normalize a ## header into a stable dict key.
+
+    Handles two classes of LLM output drift so callers can look up sections
+    by a single canonical name instead of enumerating variants:
+
+    1. Case drift: ``## Status`` → ``status`` (ASCII-only lowercasing;
+       CJK characters are unaffected).
+    2. Separator drift: ``## fix-instructions`` → ``fix_instructions``.
+
+    Trailing parenthetical notes (e.g. "fix_instructions（仅 needs_fix）")
+    are stripped so only the bare key is retained.
+    """
+    key = raw.strip()
+    # Drop trailing parenthetical annotations: "name（仅 needs_fix）" / "name (x)".
+    key = re.split(r"[（(]", key, maxsplit=1)[0].strip()
+    # ASCII-only lowercasing; CJK code points have no case mapping.
+    key = key.lower()
+    # Unify separator style: kebab-case → snake_case.
+    key = key.replace("-", "_")
+    return key
+
+
 def _extract_sections(text: str) -> Dict[str, str]:
     """Parse ### or ## headers into ``{header: content_between_headers}``.
 
     Only ``##`` and ``###`` level headers are recognised as section
     boundaries.  ``####`` sub-headers remain inside their parent section
     so they can be extracted by :func:`_extract_subsection`.
+
+    Performs two layers of harness-level tolerance on the header line so
+    minor formatting drift does not propagate into missed lookups (and the
+    cost of an LLM retry):
+
+    * **Inline value splitting** — ``## status: pass`` is parsed as
+      ``status`` whose content begins with ``pass`` (rather than a bogus
+      key ``"status: pass"``).  Only a bare token before the first colon
+      is treated as the key; descriptive headers without a colon
+      (``## findings``) are left untouched, so body content is never
+      mis-parsed.
+    * **Key normalisation** — see :func:`_normalize_section_key`.
     """
     matches = list(_SECTION_RE.finditer(text))
     if not matches:
@@ -80,10 +123,30 @@ def _extract_sections(text: str) -> Dict[str, str]:
 
     sections: Dict[str, str] = {}
     for i, m in enumerate(matches):
-        header = m.group(2).strip()
+        raw_header = m.group(2).strip()
+        inline_value = ""
+        iv = _INLINE_HEADER_VALUE_RE.match(raw_header)
+        if iv:
+            key_part, rest = iv.group(1), iv.group(2).strip()
+            if _IS_FIELD_NAME_RE.match(key_part):
+                # Machine field name "status: pass" → inline value:
+                # key=status, value prepended to body so callers read it.
+                raw_header = key_part
+                inline_value = rest
+            else:
+                # Descriptive header carrying a colon, e.g. CJK
+                # "设计说明：本题考查补码除法". Strip the suffix from the
+                # key (so "设计说明" is the lookup key) but keep it in the
+                # body (the suffix is part of the section's prose content).
+                raw_header = key_part
+                inline_value = rest
+        key = _normalize_section_key(raw_header)
         start = m.end()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        sections[header] = text[start:end].strip()
+        body = text[start:end].strip()
+        if inline_value:
+            body = inline_value + "\n" + body if body else inline_value
+        sections[key] = body
     return sections
 
 

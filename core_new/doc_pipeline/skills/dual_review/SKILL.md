@@ -53,7 +53,7 @@ task 里会写明本轮标记，三选一：
 3. 变量对应：solve() 参数对应题干输入，无错配/遗漏。
 4. 无结构性错误：循环终止、边界、符号处理等结构性问题（看代码逻辑，不代入算）。
 
-- fail → routing=`solve_system`，issue_type=`modeling_error`。
+- fail → routing=`write_gen`，issue_type=`modeling_error`。
 - **不审"代入参数后结果对不对"**（exec 的事）。**不审 solution.md**（那是文档部分的活）。
 
 ## 文档部分（仅当 task 标记为"审文档"时执行）
@@ -66,14 +66,25 @@ task 里会写明本轮标记，三选一：
 2. 单步抄写无误：solution 改写的每一步数值，是否和 gen.py 的 exec 输出一致（逐步对照数值，不自己算）。
 3. 无幻觉：solution 里有没有代码/exec 根本没产出的内容（捏造的步骤/不存在的数值/没做的操作）。
 
-- fail → routing=`solve_system`，issue_type=`doc_unfaithful`。
+- fail → routing=`write_solution`，issue_type=`doc_unfaithful`。
 - **不审代码建模对不对**（那是代码部分的活，且已通过）。只审文档忠不忠实。
 
 ---
 
 ## 输出格式
 
-write_file(path="review.md")。Markdown：
+write_file(path="review.md")。Markdown。
+
+### 格式硬规则（下游解析器按此契约读，违反会导致字段丢失）
+
+1. **每个字段独占一个 `##` 区**——字段名单独一行，值写在下一行或区体内。
+   - ✅ 对：`## status` 换行 `pass`
+   - ❌ 错：`## status: pass`（值与字段名挤在同一行，解析器会丢字段）
+2. **字段名用小写下划线**——`status` / `fix_instructions` / `keep_unchanged`，不要写 `Status`、`Fix-Instructions`、`fix instructions` 等变体。
+3. **字段顺序固定**——按下方模板顺序写，便于人工核对。
+4. **pass 时省略 needs_fix 专属区**——pass 不写 `fix_instructions` / `keep_unchanged`，routing 写 `none`。
+
+### 模板
 
 ```
 ## status
@@ -88,12 +99,14 @@ none（pass时）/ stem_conflict / modeling_error / doc_unfaithful
 ## findings
 - [判据] + 具体问题 + 证据（引用代码行/exec输出/原文）
 
-## fix_instructions（仅 needs_fix）
+## fix_instructions
+（仅 needs_fix 时写；pass 时整段省略）
 - fail类型 / 修改对象 / 修改位置 / 当前问题 / 修改目标 / 最小修改指令
 
-## keep_unchanged（仅 needs_fix）
+## keep_unchanged
+（仅 needs_fix 时写；pass 时整段省略）
 - 不得修改的部分
 
 ## routing
-design_direct / solve_system / none（pass时）
+design_direct / write_gen / write_solution / none（pass时）
 ```

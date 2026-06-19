@@ -169,44 +169,76 @@ def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None =
     return ""
 
 
-def get_doc_status(filepath: str | Path, allowed: set[str] | frozenset[str] | None = None) -> str:
-    """Extract the ## status field from a document.
+def _status_from_text(text: str, allowed: set[str] | frozenset[str] | None = None) -> str:
+    """Extract the ## status value from in-memory markdown *text*.
 
-    Returns "" if the field is missing.
-    Falls back to keyword extraction if ## status is absent.
+    This is the file-path-free core of :func:`get_doc_status`. Callers that
+    hold an agent's raw text output (e.g. ``team_pipeline`` receives the
+    ``run_agent`` return value rather than a written file) can reuse the
+    full fallback chain here instead of reimplementing a fragile regex.
+
+    Returns "" if no status can be determined.
     """
-    header = parse_doc_header(filepath)
-    status = normalize_doc_status(header.get("status", ""), allowed)
+    text = text or ""
+    if not text.strip():
+        return ""
+
+    cleaned = _strip_thinking(text)
+    sections = _extract_sections(cleaned)
+    status = normalize_doc_status(sections.get("status", ""), allowed)
     if status:
         return status
 
-    # Fallback: search for status keywords in the full text
-    try:
-        text = Path(filepath).read_text(encoding="utf-8")
-    except (FileNotFoundError, OSError):
-        return ""
+    # Fallback for "## status: value" (value on the same line as the header).
+    # _extract_sections now splits inline header values itself, but this
+    # regex is retained as a defensive belt-and-suspenders layer.
+    m = re.search(
+        r"^##\s*status\s*[：:]\s*\*?\*?\s*([A-Za-z_]+)",
+        cleaned, re.IGNORECASE | re.MULTILINE,
+    )
+    if m:
+        status = normalize_doc_status(m.group(1), allowed)
+        if status:
+            return status
 
     # Review agent: pass / needs_fix
     # Final review: pass / expression_fix / question_error / solution_error
     for pattern in (
         r"审核结论[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"最终判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
-        r"路由判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|expression_fix|question_error|solution_error)\b",
+        r"路由判定[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"\*\*(?:审核结论|路由判定|判定|状态|status)\*\*[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"\*\*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*(pass|needs_fix|expression_fix|question_error|solution_error)\*\*",
         r"(?:^|\n)\s*(?:审核结论|判定|状态|status)[：:]\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
         r"##\s*(?:审核结论|判定)\s*\n+\s*[✅✔❌]*\s*\*?\*?\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
     ):
-        m = re.search(pattern, text, re.IGNORECASE)
+        m = re.search(pattern, cleaned, re.IGNORECASE)
         if m:
             return normalize_doc_status(m.group(1), allowed)
 
     # Bare-header fallback: "status\n\npass" (WebGPT sometimes omits ##)
     m = re.search(
         r"(?:^|\n)\s*status\s*\n+\s*(pass|needs_fix|expression_fix|question_error|solution_error)\b",
-        text, re.IGNORECASE,
+        cleaned, re.IGNORECASE,
     )
     if m:
         return normalize_doc_status(m.group(1), allowed)
 
     return ""
+
+
+def get_doc_status(filepath: str | Path, allowed: set[str] | frozenset[str] | None = None) -> str:
+    """Extract the ## status field from a document.
+
+    Returns "" if the field is missing.
+    Falls back to keyword extraction if ## status is absent.
+
+    Thin file-reading shell over :func:`_status_from_text`; all parsing
+    and fallback logic lives there so in-memory callers share the same
+    robustness.
+    """
+    try:
+        text = Path(filepath).read_text(encoding="utf-8")
+    except (FileNotFoundError, OSError):
+        raise
+    return _status_from_text(text, allowed)
