@@ -278,3 +278,75 @@ if review_s.status == "needs_fix":
 - B. 各 skill 加精准思考纪律（像 func_model 那样，针对每步的"脑内过度思考"诱因）。
 - C. 混合：产题链（design/write_gen/write_solution）关思考，review 思考ON。
 
+---
+
+## 2026-06-19 重大突破：Anthropic 端点 + reasoning_effort（轻思考档）
+
+### 根因最终确认：同一个模型差12倍 = 端点 + 参数
+
+ZCode（Claude/GLM-5.2 同源）能快速给代码，write_gen 开思考 200s+ 撑爆——**同一个模型，同一个 API key**。通过查 ZCode 的 rollout 日志，发现差异：
+
+| | ZCode（快） | write_gen（慢） |
+|---|---|---|
+| 端点 | `api/anthropic/v1/messages`（Anthropic 格式） | `api/coding/paas/v4/`（OpenAI 格式） |
+| 思考控制 | `chat_template_kwargs.reasoning_effort`（**强度可调**） | `thinking.type=enabled`（**全开/关**） |
+| 补码除法 | **16s 产出**（reasoning≈0） | **200s+ 撑爆**（reasoning 50000+） |
+
+**`reasoning_effort` 是"轻思考档"**——它让模型开思考但不深度推理（reasoning≈0），直接产出代码。这实现了"允许有效探索，禁止内耗"。
+
+### 实现：Anthropic transport
+
+- `config.py`：新增 `glm5.2_anthropic` provider（Anthropic 端点 + `reasoning_effort=high`）。
+- `remote_api.py`：新增 `reasoning_effort` thinking control method。
+- `llm_gateway.py`：新增 `_read_anthropic_stream` transport（OpenAI messages → Anthropic messages 格式转换 + 直接 HTTP POST + Anthropic response → 统一返回格式）。
+
+### 最终配置（全步骤开轻思考，不再关思考）
+
+所有步骤统一：`glm5.2_anthropic` provider + `reasoning_effort=high`。
+- **不再关任何步骤的思考**——轻思考（high）让开思考也能快速产出。
+- 速度快（10min 全流水线）、质量好（验证通过）、稳定（无撞墙）。
+
+### 全流水线实测（四类型组卷，全步骤开轻思考）
+
+| 步骤 | 耗时 | 备注 |
+|---|---|---|
+| concept_creator | 14s | 批量出2道 |
+| design_direct | 21-38s | 稳定不撞墙 |
+| write_gen | 31-64s | **开轻思考，不再关思考** |
+| write_solution | 17-43s | 开轻思考 |
+| review_code | 32-45s | **开轻思考，不再关思考** |
+| review_doc | 52-57s | |
+| **总耗时** | **10.0min** | vs 之前 34.7min（快 3.5 倍）|
+
+### 质量提升（轻思考 vs 关思考）
+
+| | 关思考（之前）| **轻思考（现在）** |
+|---|---|---|
+| 综合题 gen.py | ❌ 验证失败 | **✅ 验证通过** |
+| 选择题选项区分度 | ❌ A/B/D 重合 | **✅ assert 自动检测重复** |
+| 融合题 | — | **✅ 完全正确**（ASL+树平衡）|
+
+**轻思考 > 关思考**——同时解决速度（快3.5倍）和质量（验证通过 vs 失败）。
+
+### CORE.md 深度升级（5 缺口全补）
+
+基于 Claude 自省报告（区分"可教规则"vs"模型能力"），补齐 CORE.md 的 5 个缺口：
+1. 先锁 scope（思考量以 output_file 为天花板）
+2. 查表不算思考（已有事实直接用）
+3. output_file 硬墙（可执行判据）
+4. 质量自检（参数可行性/选项区分度/验证通过）—— 最高杠杆
+5. 工具纪律（单一方案成型=转工具信号）
+
+### CORE ↔ skill 分层
+
+- CORE.md（通用）：思考纪律/边界/质量自检/工具纪律（类似 CLAUDE.md）。
+- skill（特定）：各角色的具体操作（stem_anchor/func_model/dual_review）。
+- 分层原则：CORE 管通用约束，skill 管特定操作，不重复。
+
+### 待做（后续）
+
+1. **复用智能体团队**：目前每道题重新拉起团队（scheduler 重新初始化），考虑团队复用（同一 scheduler 实例处理多道题）。
+2. **前端优化**：前端本质是 plan 模式，可用推理模式（reasoning_effort）优化。
+3. **orchestrator 接入**：让新架构在真实 pipeline 跑（不只靠测试脚本）。
+4. **gen.py 纠错循环**：验证失败 → 改码 → 再跑 → 直到通过（assert 触发闭环）。
+
