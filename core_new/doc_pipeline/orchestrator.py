@@ -175,6 +175,54 @@ class DocPipelineOrchestrator:
         self.max_tokens = max_tokens
         self.max_analysis_iterations = max_analysis_iterations
         self._registry = context_registry
+        # ── 跨题黑板（team_pipeline 路径用）──
+        # paper_state.md 落在 workspace 根（slot 外），同 workspace 的多题共享。
+        # 节点经 self.board_path / read_board / append_board / _board_inject 访问。
+        self.board_path = self.workspace / "paper_state.md"
+
+    # ── 跨题黑板（team_pipeline 四角色 graph 用）────────────────────
+    # 从 team_pipeline.py 搬移：跨 slot 的"已出题记录"，供 design_direct
+    # 软性避开重复考点。黑板持久化在 workspace 根，绕过 write_file 沙箱。
+
+    _BOARD_HEADER = (
+        "# 组卷进度黑板\n"
+        "（每题完成后追加一行；design_direct 参考，软性避开重复考点）\n"
+    )
+
+    def read_board(self) -> str:
+        """供下题 design_direct 注入的已出题记录。"""
+        return self.board_path.read_text(encoding="utf-8") if self.board_path.exists() else ""
+
+    def append_board(self, slot_id: str, slot: dict[str, Any] | None = None, fallback_status: str = "") -> bool:
+        """每题结束后把 team_state_entry.md 追加到全卷黑板。
+
+        两级来源：① 优先读 slot 内的 team_state_entry.md（agent 自写）；
+        ② agent 没写时编排层用 slot 元数据 + review status 兜底拼一行。
+        """
+        entry = self.workspace / slot_id / "team_state_entry.md"
+        line = ""
+        if entry.exists():
+            line = entry.read_text(encoding="utf-8").strip()
+        if not line and slot is not None:
+            st = fallback_status or "unknown"
+            line = (
+                f"| {slot_id} | {slot.get('primary_target_name', '')} | "
+                f"{slot.get('question_type', '')} | K{slot.get('target_difficulty', '?')} | {st} |"
+            )
+        if not line:
+            return False
+        if not self.board_path.exists():
+            self.board_path.parent.mkdir(parents=True, exist_ok=True)
+            self.board_path.write_text(self._BOARD_HEADER, encoding="utf-8")
+        with open(self.board_path, "a", encoding="utf-8") as f:
+            f.write(f"{line}\n")
+        return True
+
+    def _board_inject(self) -> dict[str, Path]:
+        """构造 design_direct 的黑板注入项（仅在黑板非空时注入）。"""
+        if self.board_path.exists() and self.read_board().strip() != self._BOARD_HEADER.strip():
+            return {"paper_state.md": self.board_path}
+        return {}
 
     # ── Public entry point ────────────────────────────────────────
 
@@ -1151,6 +1199,22 @@ class DocPipelineOrchestrator:
             )
         return self._split_design_enabled
 
+    def _should_use_team_pipeline(self) -> bool:
+        """Feature flag: use the team_pipeline four-role graph
+        (design_direct → write_gen → write_solution → dual_review).
+
+        Gated independently so the team architecture can be A/B-tested
+        against the split graph without disturbing it. When true,
+        ``_run_graph`` selects ``build_team_pipeline_graph``.
+        """
+        if not hasattr(self, "_team_pipeline_enabled"):
+            from .pipeline_config import load_pipeline_config
+            cfg = load_pipeline_config()
+            self._team_pipeline_enabled = cfg.params.features.get(
+                "enable_team_pipeline", False
+            )
+        return self._team_pipeline_enabled
+
     async def _run_concept_pipeline(
         self,
         slot_id: str,
@@ -1307,6 +1371,7 @@ class DocPipelineOrchestrator:
             PipelineState,
             build_pipeline_graph,
             build_split_pipeline_graph,
+            build_team_pipeline_graph,
         )
 
         ws = self.workspace / slot_id
@@ -1323,7 +1388,9 @@ class DocPipelineOrchestrator:
             return blueprint_ok
 
         # ── Graph: Layer 1.5 → done ──────────────────────────────
-        use_split = self._should_use_split_design()
+        # 优先级：team_pipeline > split > 稳定 graph。
+        use_team = self._should_use_team_pipeline()
+        use_split = (not use_team) and self._should_use_split_design()
         state = PipelineState.resume(
             slot_id, self.workspace, slot_data,
             code_as_truth=self._should_use_graph(),
@@ -1331,11 +1398,12 @@ class DocPipelineOrchestrator:
             slot_id=slot_id, slot_data=slot_data, workspace=self.workspace,
             code_as_truth=self._should_use_graph(),
         )
-        graph = (
-            build_split_pipeline_graph(self, self.workspace)
-            if use_split
-            else build_pipeline_graph(self, self.workspace)
-        )
+        if use_team:
+            graph = build_team_pipeline_graph(self, self.workspace)
+        elif use_split:
+            graph = build_split_pipeline_graph(self, self.workspace)
+        else:
+            graph = build_pipeline_graph(self, self.workspace)
         await graph.run(state)
 
         # If a node recorded a hard failure, surface it.
