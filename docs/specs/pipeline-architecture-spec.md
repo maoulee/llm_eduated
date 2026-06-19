@@ -1296,9 +1296,77 @@ Phase 4: Creator Step 4
   - 旧 5 层智能体和 orchestrator 不删除
 ```
 
+---
+
+# v5.0 架构加固轮（2026-06-19）
+
+本轮围绕三个核心问题做架构加固，共 8 个 commit（`46491e0`..`0563259`）。
+**审查者请先读本节，再深入 §20/§21/§22 看实现细节。**
+
+## 三个问题 → 诊断 → 决策（一览）
+
+| # | 用户提出的问题 | 诊断发现（证据） | 架构决策 | 章节 |
+|---|---|---|---|---|
+| 1 | "不能完全依靠 LLM，代码层级也要检查，小错误系统层面修补" | 三套 status 解析容错度不一；`_extract_sections` 零测试；audit_judge skill 静默加载失败 | 容错下沉到底层解析器（harness 兜底）+ 清理废弃代码 | §20 |
+| 2 | "思考机制锚定到网关层，角色配置不同模型和思考，本地线上统一" | 出题 GLM 路径 thinking 硬编码 False；budget 对 GLM 静默失效；reasoning_effort 无法 per-request 调 | gateway 成思考决策唯一入口；出题改 glm5.2；per-role effort | §21 |
+| 3 | "正则控制行为不对，本质是控制边界；LLM 自行决定追问" | 正则越权控制场景/追问/修订；_pregenerate 替 agent 做规划；确认门缺失（没确认就出题） | 拆正则干预 + 加 intent 确认门 + 正则只守产物边界 | §22 |
+
+## 本轮贯穿的设计原则
+
+**code-as-truth 的延伸：代码层守边界，LLM 做决策**
+- §20：代码层兜底格式漂移（边界 = 产物格式契约）
+- §21：代码层统一思考控制（边界 = 传输协议决策）
+- §22：代码层只校验产物字段（边界 = yaml 完整性），**不控制** agent 怎么思考/追问/规划
+
+反例（被修正的）：正则猜"教师是否要修订"、service 旁路调 GLM 替 agent 做知识点排布、
+硬编码 `enable_thinking=(provider in vllm)` ——这些都是代码层在越权做 LLM 该做的决策。
+
+## 审查重点（最该 scrutiny 的点）
+
+1. **§22.0 严重风险 1**：确认门修复是否彻底？intent 默认 discuss 是否会导致
+   pipeline 永不触发（前端未配合时）？这是有意的安全默认，但需确认前端会跟进
+2. **§21.0 认知陷阱**：thinking_budget 对 GLM 静默失效——修复后是否真的生效了？
+   需实测验证 gateway 传的 reasoning_effort 被 GLM endpoint 真正接收
+3. **§20.0 风险**：CJK header 带冒号的拆分逻辑（ASCII 字段名白名单）在极端 case 下
+   是否有遗漏？综合场景已测，但混合中英文 header 未覆盖
+4. **§22.0 未验证**：拆掉 _pregenerate_outline 后 agent 规划质量——这是把规划责任
+   从 service 旁路交回 agent，质量完全靠 glm5.2 + skill 表述，需端到端实测
+
 ## 20. Harness 解析层容错 + 废弃清理 (2026-06-19 v5.0)
 
 > commit `46491e0` `550ed33` —— 让小格式漂移在系统层兜底，不触发 LLM 重跑。
+
+### 20.0 为什么改：诊断发现与决策依据
+
+**起因**：交接产物（review.md）的 status 字段偶发解析失败，导致 team_pipeline
+路由误判。排查发现根因是 LLM 产出的 markdown 有小格式漂移（同行值、大小写），
+而解析器 `_extract_sections` 零容错——取整行作 key，`## status: pass` 变成
+key=`"status: pass"`，下游 `get("status")` 全 miss。
+
+**关键诊断（基于代码证据）**：
+- `_extract_sections`（markdown_parser.py）此前**零单元测试覆盖**
+- 全项目存在**三套 status 解析逻辑**，容错度天差地别：
+  - `get_doc_status`（doc_parser.py）——最强，4 层 fallback
+  - `status_of`（team_pipeline.py）——最弱，一行正则只认下一行格式，零 fallback
+  - 主流程 team_pipeline 路由直接依赖最弱的 `status_of`
+- skill 加载有**隐性失败**：`audit_judge` 目录文件名是 `review_skill.md` 而非
+  加载器硬编码的 `SKILL.md`，导致 review/review2 的审核判据 skill 静默未注入
+  （skill_content=0 字符，agent 裸跑审核）
+
+**决策**：用户明确要求"不能完全依靠 LLM，代码层级也要检查，小错误系统层面修补"。
+选择把容错**下沉到底层** `_extract_sections`（一处改、全局受益），而非每个调用方
+各自兜底。同时实测确认所有调用方的 key 查询要么是中文（lower 无副作用）、要么
+已是小写下划线（仍命中），无回归。
+
+**考虑过的替代方案**：
+- (A) 在每个调用方加 fallback —— 沿用项目已有模式，但分散且重复（已有迹象：
+  get_doc_status 和 parse_doc_header 各自做了 bare-header 兜底）
+- (B) 强化 skill 契约让 LLM 产出规范 —— 也做了（dual_review SKILL.md 加格式硬规则），
+  但这是"减少漂移概率"，不能替代 harness 兜底（防御纵深）
+
+**未验证的风险**：CJK header 带冒号的拆分逻辑（`设计说明：xxx`）用了
+ASCII 字段名白名单判断，实测综合场景无回归，但极端 case（混合中英文 header
+带冒号）未覆盖。
 
 ### 20.1 设计原则：harness 兜底小错误
 
@@ -1357,6 +1425,46 @@ LLM 产出的 markdown 难免有小漂移（同行值、大小写、分隔符）
 
 > commit `5d0afa0` `f59d6a3` —— 让深度推理在线上 GLM 路径真正生效。
 
+### 21.0 为什么改：深度推理在线上根本没生效
+
+**起因**：用户反馈"之前是关思考来着，明白深度推理的问题后需要优化"。
+排查发现这不是配置问题，而是**架构性缺陷**——出题路径的思考被硬编码关闭，
+且深度控制机制对线上 provider 静默失效。
+
+**关键诊断（逐层追溯的根源链）**：
+1. `pipeline_trigger.py:266` 硬编码 `enable_thinking=(provider in ("api_vllm","vllm"))`
+   ——**GLM 出题时 thinking=False**，根本没开思考
+2. 即便开思考，出题用的 glm5.1 `thinking_control_method="param"` 只能 on/off，
+   **无深度控制**（reasoning_effort 是 glm5.2_anthropic 才有的）
+3. glm5.2_anthropic 的 reasoning_effort 写死在 provider 实例属性
+   （`gateway._read_anthropic_stream` line 701 `getattr(provider, "reasoning_effort_level")`），
+   **stream_chat 无形参，无法 per-request 调**
+4. pipeline.yaml 给所有角色配了 `thinking_budget`，但 `_supports_thinking_budget`
+   只对 `chat_template_kwargs`（vllm）为 True——**budget 对 GLM 静默丢弃**
+5. `run_agent` 和 `run_conversation_turn` 的 thinking 优先级**相反**
+   （前者 ROLE_PARAMS 优先，后者 session 级优先）
+
+**认知陷阱（最该警惕的）**：thinking_budget 配置对 GLM 静默失效——
+配置层以为开了深度（yaml 有值），传输层静默丢弃（gateway 守卫 False），
+**没有任何报错或日志**。这意味着"深度推理"在线上 GLM 路径上可能从未生效。
+
+**决策**：用户明确要求"思考机制锚定到网关层，角色配置不同模型和不同配置，
+本地和线上统一"。选择把思考控制**统一到 gateway**（单一决策点），
+scheduler 只传 role + session flag，gateway 查 ROLE 表决策。
+出题改用 glm5.2_anthropic（有 reasoning_effort 深度控制）。
+
+**考虑过的替代方案**：
+- (A) scheduler 保留决策权，只打通优先级 —— 改动小，但思考控制仍分散在两层，
+  没解决"gateway 不知道 role"的根本割裂
+- (B) 把 ROLE 表整体下沉到 gateway —— 最彻底，但改动大、有循环 import 风险。
+  实际采用了折中：gateway 延迟 import `_role_thinking_config` 查 ROLE 表，
+  决策权归 gateway，但 ROLE 表物理位置不变（pipeline.yaml）
+
+**未验证的风险**：
+- glm5.2_anthropic 出题质量未实测（从 glm5.1 换代，思考更深但可能更慢）
+- reasoning_effort 取值域（high/max/low/none）的完整合法值未从 API 文档确认，
+  yaml 配置的约束靠人工保证
+
 ### 21.1 问题：思考控制分散 + GLM 关思考
 
 ```
@@ -1406,6 +1514,61 @@ roles:
 ## 22. 交互逻辑重构：行为归 LLM，正则只守边界 (2026-06-19 v5.2)
 
 > commit `c2569ab` `b58eba7` —— LLM 自主决策行为，正则只守产物边界。
+
+### 22.0 为什么改：正则在越权控制 LLM 行为 + 确认门缺失
+
+**起因**：用户提问"与人交互的逻辑是否对的"。审计交互链路后发现**两个严重风险**
++ 一个架构哲学错误。
+
+**严重风险 1：fire-and-forget 触发出题，只看文件存在，无教师显式确认**
+- `interact_v2_service.py:332-364`：触发条件是 `has_result = _find_result_path() is not None`
+  ——**只要工作区出现 paper_request.yaml 就触发**，不看教师是否点了确认
+- 场景：agent 在 reviewing 阶段（教师还在看草案）因 prompt 漂移提前写了 yaml，
+  且该轮没触发 quarantine → pipeline 立即 fire-and-forget，教师想停都停不了
+- 唯一护栏是 agent 的 prompt 自觉（interact.md 要求"教师明确确认才写 yaml"），
+  **没有代码 enforcement**
+
+**严重风险 2：Scenario C 正则追问误判 + 体验差**
+- `interact_clarification.py` 的 `looks_like_scenario_c` 用关键词正则猜场景：
+  "出一套数据结构 408 期末模拟卷"同时命中排除词 `408`（→判 A）和 C 关键词
+  `期末`（→判 C），正则优先返回 False，**场景被误判**
+- `has_structure` 要求题量+题型**同时**满足才放行，教师说"12题难度中等"
+  （有题量无题型）→ 持续追问，体验像挤牙膏
+
+**架构哲学错误：正则在控制 LLM 的行为决策**
+- service 层用正则猜"该不该追问"（has_structure）、"是什么场景"（looks_like_scenario_c）、
+  "教师是否要修订"（_annotation_requests_revision 正则版）
+- 更严重的是 `_pregenerate_outline`：**service 旁路调 GLM 替 agent 做知识点排布**，
+  再把结果塞进 message 下达指令——agent 沦为格式化器，
+  与 interact.md 声称的"自主规划原则"直接冲突
+
+**用户的核心洞察（决策依据）**：
+> "正则追问不行得 LLM 自行决定追问，只对最终的产物做正则。模型能力应该足够，
+> 但是核心是需要优化 skill 的表述。正则控制行为我觉得不对，本质应该是控制边界。"
+
+这和 code-as-truth 哲学一致：代码层负责**验证产物的契约**（边界），
+不负责**指导 LLM 怎么思考**（行为）。
+
+**决策**：
+1. 完全拆掉正则干预子系统（interact_clarification.py 整个文件 + send_turn 的拦截块）
+2. 加显式确认门（intent 字段），只有 confirm_handoff 才触发 pipeline
+3. 正则回归正确用途：只做产物字段完整性校验（_validate_handoff_fields）
+4. skill 从"中介"改"主体"：agent 自主生成知识点排布方案
+
+**考虑过的替代方案**：
+- 确认门实现：(A) 前端发 intent 信号 vs (B) 后端检查 agent 产物 marker。
+  选 A——marker 还是要 agent 诚实写，和"agent 自律写 yaml"一样脆弱；
+  intent 是确定性的显式信号，完全不依赖 LLM
+- 正则干预处理：(A) 完全拆 vs (B) 拆追问但保留 pregenerate_outline 辅助。
+  选 A——用户明确"完全拆掉正则干预"，且 pregenerate 正是"替 agent 做事"的根源
+
+**未验证的风险**：
+- 拆掉 _pregenerate_outline 后，知识点排布质量完全靠 agent（glm5.2 + reasoning_effort），
+  需实测确认不回归。但旁路 LLM 调用本就是临时方案
+- 前端 submitDraft 还没传 intent（默认 discuss），**当前 pipeline 永不触发**
+  ——必须前端配合加 intent 传递才能恢复出题能力。这是有意的安全默认
+- agent 规划能力依赖 interact skill 表述优化是否到位（已改"中介→主体"，
+  但 LLM 是否真按主体行为需实测）
 
 ### 22.1 设计原则
 
