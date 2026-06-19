@@ -155,7 +155,7 @@ async def _run_calc_question(sched, slot, label, timings):
         t0 = time.monotonic()
         ra = await sched.run_agent(
             "dual_review", task="## 本轮阶段\n本轮审求解-代码（阶段2·A）。审 gen.py 建模思路对不对（看代码结构，不代入参数）。",
-            slot_id=slot_id, inject_files={"question.md": slot_ws / "question.md", "gen.py": slot_ws / "gen.py"}, target_file="review.md")
+            slot_id=slot_id, inject_files={"question.md": slot_ws / "question.md", "gen.py": slot_ws / "gen.py"}, target_file="review.md", enable_thinking=False)
         sa = _status_of(ra)
         timings[f"{label}·review_code"] = time.monotonic() - t0
         print(f"  [review_code] {timings[f'{label}·review_code']:.0f}s | status={sa}", flush=True)
