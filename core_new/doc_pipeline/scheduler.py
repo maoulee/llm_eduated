@@ -802,7 +802,14 @@ class DocScheduler:
                     fn_args_str = tc["function"]["arguments"]
                     try:
                         fn_args = json.loads(fn_args_str) if isinstance(fn_args_str, str) else fn_args_str
-                    except json.JSONDecodeError:
+                    except (json.JSONDecodeError, ValueError):
+                        fn_args = {}
+                    # 模型偶尔返回 list 或非 dict 的 arguments；工具需要 dict。
+                    if not isinstance(fn_args, dict):
+                        logger.warning(
+                            "[%s] tool %s args not a dict (got %s); coercing to {}",
+                            slot_id, fn_name, type(fn_args).__name__,
+                        )
                         fn_args = {}
 
                     if (
