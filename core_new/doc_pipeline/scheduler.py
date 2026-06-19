@@ -1264,7 +1264,14 @@ class DocScheduler:
         # Interact role config from ROLE_PARAMS (pipeline.yaml roles). Fall back to
         # the scenario-specific max_tokens logic when not set there.
         _interact_role_cfg = ROLE_PARAMS.get("interact", {})
-        effective_enable_thinking = _interact_role_cfg.get("enable_thinking", True)
+        # Session-level thinking (passed via scheduler ctor from createSession) takes
+        # precedence over the yaml default when explicitly set; otherwise fall back to
+        # ROLE_PARAMS then True. Fixes the prior hard-coded True that ignored the
+        # session's thinking flag entirely.
+        if self.enable_thinking is not None:
+            effective_enable_thinking = self.enable_thinking
+        else:
+            effective_enable_thinking = _interact_role_cfg.get("enable_thinking", True)
         if role == "interact" and not max_tokens:
             # Entry D (past paper reference) needs more tokens for multi-plan drafts
             _is_scenario_d = bool(
