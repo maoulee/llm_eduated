@@ -241,3 +241,43 @@ def test_review_solve_exhaustion_edge_exists():
     assert ("review_solve", "exhausted", "done") in edges
     assert ("review_stem", "suggestion", "write_gen") in edges  # suggestion 不阻塞建模
 
+
+# ── 6. 单选题：选项层 adequacy assert（干扰项撞值/正确选项标错）─────────
+def _run_sc_gen(tmp_path, correct, A, B, C, D):
+    """合成单选题 gen.py：算正确值 + 4 选项 + adequacy assert，跑 exec。"""
+    src = (
+        f"correct = {correct}\n"
+        f"A = {A}\nB = {B}\nC = {C}\nD = {D}\n"
+        "options = [A, B, C, D]\n"
+        "# 通过条件（选择题）：4 选项互异 + A 是正确值\n"
+        'assert len(set(options)) == 4, "选项撞值: " + str(options)\n'
+        'assert A == correct, "正确选项标错: A=%s correct=%s" % (A, correct)\n'
+        "print('OK options=', options)\n"
+    )
+    gen = tmp_path / "gen_sc.py"
+    gen.write_text(src, encoding="utf-8")
+    return subprocess.run([sys.executable, str(gen)], capture_output=True, text=True)
+
+
+def test_single_choice_collision_caught(tmp_path):
+    """干扰项撞值（B==C）→ assert len(set)==4 炸 → returncode!=0。选择题 defect 同形。"""
+    r = _run_sc_gen(tmp_path, correct=42, A=42, B=43, C=43, D=84)  # B==C 碰撞
+    assert r.returncode != 0, f"撞值应被拦下，实得 0\n{r.stdout}"
+    assert "选项撞值" in r.stderr
+
+
+def test_single_choice_mislabeled_correct_caught(tmp_path):
+    """正确选项标错（A≠算出的正确值，但 4 选项互异）→ assert A==correct 炸。
+    这与撞值是不同 defect：选项互异但 A 标的不是正确答案。"""
+    r = _run_sc_gen(tmp_path, correct=42, A=43, B=44, C=45, D=46)  # A 标错，4 互异
+    assert r.returncode != 0
+    assert "正确选项标错" in r.stderr
+
+
+def test_single_choice_valid_options_pass(tmp_path):
+    """对照组：4 互异 + A=正确 → exec returncode==0（assert 不误杀）。"""
+    r = _run_sc_gen(tmp_path, correct=42, A=42, B=43, C=44, D=84)
+    assert r.returncode == 0, f"valid 选项应通过，实得 {r.returncode}\n{r.stderr}"
+    assert "OK options=" in r.stdout
+
+

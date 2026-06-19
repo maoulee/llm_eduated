@@ -56,20 +56,22 @@
 5. **通过条件被 assert 覆盖**：题干声明的每个通过条件，gen.py 是否都有对应 assert？漏一个 = 漏译 → fail。
 6. **assert 没弱化**：有没有把"考旋转"弱化成 `assert is_balanced(tree)` 这类结构判据（零旋转也过）？弱化 = 让坏题静默放行 → fail。
 7. **assert 非恒真**：有没有 `assert True` / `assert len(x) >= 0` 这类永远成立的废话断言凑数？→ fail。
+8. **选择题专属**：选项通过条件是否被 assert？应有 `assert len({A,B,C,D})==4`（互异）+ `assert A==correct`（A 标的是正确值）。漏 → fail。
 
 ### 维度C 充分性 + 设计一致性（routing=write_gen 或 design_direct）——堵根因的关键
-8. **充分性（合围）**：gen.py exec 的**事实输出**，满足题干声明的通过条件吗？读 exec 输出比对声明特征——
+9. **充分性（合围）**：gen.py exec 的**事实输出**，满足题干声明的通过条件吗？读 exec 输出比对声明特征——
    - 例：声明"至少 1 次旋转"，exec 显示 0 次旋转 → **充分性 fail**（参数没触发考点）。
    - 这是"参数打败考点"的唯一可靠卡口（零旋转 defect 就是这里漏的）。
-9. **设计一致性**：exec 产出的结构/覆盖面，是否对齐 design_card 的 core_knowledge_intent / expected_form？跑偏 → fail。
+10. **选择题专属充分性**：读 exec 算出的 4 个选项值——撞值（{A,B,C,D}<4）/ 正确值不唯一（A∈{B,C,D}）/ 干扰项不像声明的错误类型产物 → **adequacy_fail**。这是选择题 defect（坏选项集静默放行）的唯一可靠卡口。
+11. **设计一致性**：exec 产出的结构/覆盖面，是否对齐 design_card 的 core_knowledge_intent / expected_form？跑偏 → fail。
    - 充分性/一致性 fail 的 routing 判据（区分两类，避免在 fix_gen/fix_design 间横跳）：
      - **参数没触发**：通过条件在 hard_constraints 下原则可达（存在已知参数组合能触发，只是当前这组没命中）→ `write_gen`（换参数重算）。
      - **通过条件本身定错/不可达**：条件与考察意图矛盾，或在该题型下无解（如要求 AVL 旋转但序列恒平衡无解）→ `design_direct`（重定条件 / 换考点角度）。
 
 ### 维度D 文档忠实（routing=write_solution）
-10. 形式一致：solution.md 的求解形式/结构是否与 gen.py 一致。
-11. 单步抄写无误：solution 改写的每步数值，是否与 gen.py exec 输出一致（逐步对照，不自己算）。
-12. 无幻觉：solution 里有没有 exec 根本没产出的内容（捏造步骤/数值/操作）。
+12. 形式一致：solution.md 的求解形式/结构是否与 gen.py 一致。
+13. 单步抄写无误：solution 改写的每步数值，是否与 gen.py exec 输出一致（逐步对照，不自己算）。
+14. 无幻觉：solution 里有没有 exec 根本没产出的内容（捏造步骤/数值/操作）。
 
 - 多维度同时 fail → findings 写多条，issue_type 写多个，routing 取**最上游**修复点（如建模错+文档错 → routing=write_gen，文档会随之重算）。
 
