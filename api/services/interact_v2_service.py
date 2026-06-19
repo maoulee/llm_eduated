@@ -408,7 +408,9 @@ class InteractV2Service:
                     session_id=session_id,
                     handoff_yaml_path=result_path,
                     workspace=ws,
-                    provider="glm5.1",
+                    # Use the provider the teacher chose at session creation;
+                    # default to glm5.2_anthropic (has reasoning_effort depth control).
+                    provider=session.get("provider") or "glm5.2_anthropic",
                 )
             except Exception as exc:
                 logger.exception("[%s] Pipeline generation failed", session_id)

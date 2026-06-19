@@ -655,8 +655,11 @@ class DocScheduler:
         gateway = self._get_gateway_for_role(role)
         _role_cfg = ROLE_PARAMS.get(role, {})
         effective_max_tokens = max_tokens or _role_cfg.get("max_tokens") or self.max_tokens
-        effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
-        effective_enable_thinking = _role_cfg.get("enable_thinking", self.enable_thinking)
+        # Thinking control (enable_thinking / reasoning_effort / thinking_budget)
+        # is resolved by the gateway from ROLE_THINKING_CONFIG. We only thread
+        # through self.enable_thinking as an optional session-level override.
+        effective_thinking_budget = None
+        effective_enable_thinking = self.enable_thinking
         final_text = ""
 
         # Model decides when to call tools. Boundary detection (streak counters)
@@ -701,6 +704,7 @@ class DocScheduler:
                 raw = await self._streaming_chat_call(
                     gateway, messages,
                     max_tokens=effective_max_tokens,
+                    role=role,
                     thinking_budget=effective_thinking_budget,
                     enable_thinking=effective_enable_thinking,
                     tools=openai_tools,
@@ -1075,6 +1079,7 @@ class DocScheduler:
                 sec_raw = await self._streaming_chat_call(
                     gateway, messages,
                     max_tokens=effective_max_tokens,
+                    role=role,
                     thinking_budget=effective_thinking_budget,
                     tools=write_only_tools,
                     tool_choice=forced_write_choice,
@@ -1261,17 +1266,13 @@ class DocScheduler:
 
         gateway = self._get_gateway_for_role(role)
         effective_max_tokens = max_tokens or self.max_tokens
-        # Interact role config from ROLE_PARAMS (pipeline.yaml roles). Fall back to
-        # the scenario-specific max_tokens logic when not set there.
-        _interact_role_cfg = ROLE_PARAMS.get("interact", {})
-        # Session-level thinking (passed via scheduler ctor from createSession) takes
-        # precedence over the yaml default when explicitly set; otherwise fall back to
-        # ROLE_PARAMS then True. Fixes the prior hard-coded True that ignored the
-        # session's thinking flag entirely.
-        if self.enable_thinking is not None:
-            effective_enable_thinking = self.enable_thinking
-        else:
-            effective_enable_thinking = _interact_role_cfg.get("enable_thinking", True)
+        # Thinking control (enable_thinking / reasoning_effort / thinking_budget)
+        # is resolved by the gateway from ROLE_THINKING_CONFIG. We only thread
+        # through self.enable_thinking as an optional session-level override
+        # (from createSession). The prior interact-specific ROLE_PARAMS lookup
+        # and hard-coded True are gone — gateway is the single decision point.
+        effective_enable_thinking = self.enable_thinking
+        effective_thinking_budget = None
         if role == "interact" and not max_tokens:
             # Entry D (past paper reference) needs more tokens for multi-plan drafts
             _is_scenario_d = bool(
@@ -1282,15 +1283,6 @@ class DocScheduler:
                 session.scenario = "D"
             else:
                 effective_max_tokens = min(effective_max_tokens, 8192)
-        # thinking_token_budget is a real vLLM engine control (requires
-        # --reasoning-parser at serve time): caps reasoning length, forcing
-        # reasoning_end_str at the budget. Only meaningful when thinking on.
-        # Budget caps reasoning, so max_tokens is NOT inflated (output gets
-        # the remainder) — the old inflation caused >80k overflows.
-        if effective_enable_thinking:
-            effective_thinking_budget = ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET)
-        else:
-            effective_thinking_budget = None
 
         response_text = ""
         files_written: list[str] = []
@@ -1317,6 +1309,7 @@ class DocScheduler:
                 raw = await self._streaming_chat_call(
                     gateway, session.messages,
                     max_tokens=effective_max_tokens,
+                    role=role,
                     thinking_budget=effective_thinking_budget,
                     enable_thinking=effective_enable_thinking,
                     tools=openai_tools,
@@ -1891,7 +1884,8 @@ class DocScheduler:
                 self.gateway,
                 messages,
                 max_tokens=self.max_tokens,
-                thinking_budget=ROLE_THINKING_BUDGET.get(role, DEFAULT_THINKING_BUDGET),
+                role=role,
+                thinking_budget=None,
                 tools=openai_tools,
                 tool_choice=forced_tool_choice,
             )
@@ -2198,16 +2192,27 @@ class DocScheduler:
         messages: list[dict[str, Any]],
         *,
         max_tokens: int,
+        role: str | None = None,
         thinking_budget: int | None = None,
         enable_thinking: bool | None = None,
         tools: list[dict[str, Any]],
         tool_choice: Any | None = None,
     ) -> dict[str, Any]:
-        """Delegate streaming transport to the shared LLMGateway."""
+        """Delegate streaming transport to the shared LLMGateway.
+
+        Thinking control is resolved by the gateway (single decision point):
+        it looks up ROLE_THINKING_CONFIG for *role*, then applies explicit
+        overrides. We no longer pre-compute effective_thinking here — we just
+        thread through what the caller pinned (session-level override) and let
+        the gateway fill the rest from the ROLE table.
+        """
         return await gateway.stream_chat(
             messages,
             max_tokens=max_tokens,
-            enable_thinking=self.enable_thinking if enable_thinking is None else enable_thinking,
+            role=role,
+            # Only pass these when the caller pinned them (session override);
+            # otherwise let gateway resolve from ROLE_THINKING_CONFIG.
+            enable_thinking=enable_thinking,
             thinking_budget=thinking_budget,
             tools=tools,
             tool_choice=tool_choice,

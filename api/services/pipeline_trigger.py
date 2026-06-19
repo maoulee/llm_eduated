@@ -146,7 +146,7 @@ async def trigger_generation(
     handoff_yaml_path: Path,
     workspace: Path,
     *,
-    provider: str = "glm5.1",
+    provider: str = "glm5.2_anthropic",
     on_slot_complete: Callable[[str, str], None] | None = None,
 ) -> PipelineProgress:
     """Trigger question generation from a handoff YAML file.
@@ -263,7 +263,12 @@ async def trigger_generation(
                         gateway=gateway,
                         workspace=doc_workspace,
                         model_routing={"_default": provider},
-                        enable_thinking=(provider in ("api_vllm", "vllm")),
+                        # Thinking on/off + depth is now resolved by the gateway
+                        # from ROLE_THINKING_CONFIG (per-role). Passing None lets
+                        # each role use its configured enable_thinking/reasoning_effort
+                        # instead of the old hard-coded (provider in vllm) formula
+                        # that silently disabled thinking on the GLM path.
+                        enable_thinking=None,
                     )
 
                     # 概念题：如果有多个概念题 slot，合并 concept_topics 批量出

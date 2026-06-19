@@ -130,6 +130,38 @@ class LLMResult:
 
 # ── Gateway ────────────────────────────────────────────────
 
+
+def _role_thinking_config(role: str) -> dict:
+    """Look up a role's thinking defaults from pipeline.yaml (ROLE_PARAMS +
+    ROLE_THINKING_BUDGET).
+
+    Gateway is the single decision point for thinking control, so it needs to
+    resolve role→(enable_thinking, reasoning_effort, thinking_budget) without
+    the scheduler pre-computing it. Import is deferred to avoid a circular
+    import (doc_pipeline.config imports nothing from llm_gateway, but keeping
+    it lazy is safest for load order).
+
+    Returns a dict that may be empty (role unknown / config missing); callers
+    treat missing keys as "not pinned, fall back to provider default".
+    """
+    if not role:
+        return {}
+    try:
+        from core_new.doc_pipeline.config import ROLE_PARAMS, ROLE_THINKING_BUDGET
+    except Exception:  # noqa: BLE001 — config optional at import time
+        return {}
+    cfg: dict = {}
+    role_params = ROLE_PARAMS.get(role, {})
+    if "enable_thinking" in role_params:
+        cfg["enable_thinking"] = role_params["enable_thinking"]
+    if "reasoning_effort" in role_params:
+        cfg["reasoning_effort"] = role_params["reasoning_effort"]
+    budget = ROLE_THINKING_BUDGET.get(role)
+    if budget:
+        cfg["thinking_budget"] = budget
+    return cfg
+
+
 class LLMGateway:
     """
     Unified gateway for all LLM operations.
@@ -444,6 +476,8 @@ class LLMGateway:
         max_tokens: Optional[int] = None,
         enable_thinking: Optional[bool] = None,
         thinking_budget: Optional[int] = None,
+        reasoning_effort: Optional[str] = None,
+        role: Optional[str] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
         tool_choice: Optional[Any] = None,
         sampling_overrides: Optional[Dict[str, Any]] = None,
@@ -456,8 +490,23 @@ class LLMGateway:
         retries, retryable error classification, and provider-specific extension
         filtering all live here.  Orchestrators should vary prompts, sampling,
         tools, and routing, not reimplement transport behavior.
+
+        Thinking control is resolved here (gateway is the single decision point):
+        - ``role``: looked up in ROLE_THINKING_CONFIG (pipeline.yaml) to get the
+          default enable_thinking / reasoning_effort / thinking_budget for that role.
+        - Explicit kwargs (enable_thinking/reasoning_effort/thinking_budget) override
+          the role defaults — use this for session-level overrides.
+        - Provider defaults are the final fallback.
         """
         provider = self._provider
+        # Resolve thinking config from ROLE table, then apply explicit overrides.
+        role_cfg = _role_thinking_config(role) if role else {}
+        if enable_thinking is None:
+            enable_thinking = role_cfg.get("enable_thinking")
+        if reasoning_effort is None:
+            reasoning_effort = role_cfg.get("reasoning_effort")
+        if thinking_budget is None:
+            thinking_budget = role_cfg.get("thinking_budget")
         max_tokens = self._floor_max_tokens(max_tokens, bool(enable_thinking))
         params = self._build_chat_params(
             provider,
@@ -465,6 +514,7 @@ class LLMGateway:
             max_tokens=max_tokens,
             enable_thinking=enable_thinking,
             thinking_budget=thinking_budget,
+            reasoning_effort=reasoning_effort,
             tools=tools,
             tool_choice=tool_choice,
             sampling_overrides=sampling_overrides,
@@ -495,11 +545,12 @@ class LLMGateway:
         max_tokens: Optional[int],
         enable_thinking: Optional[bool],
         thinking_budget: Optional[int],
-        tools: Optional[List[Dict[str, Any]]],
-        tool_choice: Optional[Any],
-        sampling_overrides: Optional[Dict[str, Any]],
-        json_mode: bool,
-        stream: bool,
+        reasoning_effort: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+        sampling_overrides: Optional[Dict[str, Any]] = None,
+        json_mode: bool = False,
+        stream: bool = True,
     ) -> Dict[str, Any]:
         if enable_thinking is not None and hasattr(provider, "_prepare_messages"):
             processed = provider._prepare_messages(
@@ -545,6 +596,12 @@ class LLMGateway:
             extra_body = provider._extra_body_for_thinking(enable_thinking)
             if extra_body:
                 params.setdefault("extra_body", {}).update(extra_body)
+
+        # reasoning_effort: GLM-5.2 Anthropic depth control (high/max/low/none).
+        # Stashed in params so _read_anthropic_stream can pick it up (per-request
+        # override of the provider-level default). Other providers ignore it.
+        if reasoning_effort is not None:
+            params["reasoning_effort"] = reasoning_effort
 
         return params
 
@@ -698,7 +755,9 @@ class LLMGateway:
 
         # Build Anthropic payload
         base_url = provider.api_base_url.rstrip("/")
-        effort = getattr(provider, "reasoning_effort_level", "high")
+        # Per-request reasoning_effort overrides the provider-level default.
+        # _build_chat_params stashes it in params when caller (or ROLE table) sets it.
+        effort = params.get("reasoning_effort") or getattr(provider, "reasoning_effort_level", "high")
         payload: Dict[str, Any] = {
             "model": params.get("model", "GLM-5.2"),
             "max_tokens": params.get("max_tokens", 8000),
