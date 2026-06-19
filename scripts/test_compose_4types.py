@@ -30,8 +30,8 @@ from core_new.doc_pipeline.config import ROLE_PARAMS
 
 # 各 agent 策略（今天验证过的）
 ROLE_PARAMS["design_direct"] = {"max_tokens": 16000, "max_attempts": 4, "multi_turn": True, "enable_thinking": True}
-ROLE_PARAMS["write_gen"] = {"max_tokens": 12000, "max_attempts": 8, "multi_turn": True, "enable_thinking": False}
-ROLE_PARAMS["write_solution"] = {"max_tokens": 8000, "max_attempts": 4, "multi_turn": True, "enable_thinking": False}
+ROLE_PARAMS["write_gen"] = {"max_tokens": 12000, "max_attempts": 8, "multi_turn": True, "enable_thinking": True}
+ROLE_PARAMS["write_solution"] = {"max_tokens": 8000, "max_attempts": 4, "multi_turn": True, "enable_thinking": True}
 ROLE_PARAMS["dual_review"] = {"max_tokens": 16000, "max_attempts": 3, "multi_turn": True, "enable_thinking": True}
 ROLE_PARAMS["concept_creator"] = {"max_tokens": 8000, "max_attempts": 3, "multi_turn": True, "enable_thinking": True}
 ROLE_PARAMS["review"] = {"max_tokens": 6000, "max_attempts": 3, "multi_turn": True, "enable_thinking": True}
@@ -136,7 +136,7 @@ async def _run_calc_question(sched, slot, label, timings):
     g = await sched.run_agent(
         "write_gen", task=f"读 question.md 写 gen.py 并 exec 验证（关思考，按工作规范分步）。{gen_task_extra}",
         slot_id=slot_id, inject_files={"question.md": slot_ws / "question.md", "design_card": slot_ws / "design_card.md"},
-        target_file="gen.py", enable_thinking=False)
+        target_file="gen.py", enable_thinking=True)
     timings[f"{label}·gen"] = time.monotonic() - t0
     genok = (slot_ws / "gen.py").exists()
     print(f"  [write_gen] {timings[f'{label}·gen']:.0f}s | gen.py={'✓' if genok else '✗'}", flush=True)
@@ -155,7 +155,7 @@ async def _run_calc_question(sched, slot, label, timings):
         t0 = time.monotonic()
         ra = await sched.run_agent(
             "dual_review", task="## 本轮阶段\n本轮审求解-代码（阶段2·A）。审 gen.py 建模思路对不对（看代码结构，不代入参数）。",
-            slot_id=slot_id, inject_files={"question.md": slot_ws / "question.md", "gen.py": slot_ws / "gen.py"}, target_file="review.md", enable_thinking=False)
+            slot_id=slot_id, inject_files={"question.md": slot_ws / "question.md", "gen.py": slot_ws / "gen.py"}, target_file="review.md", enable_thinking=True)
         sa = _status_of(ra)
         timings[f"{label}·review_code"] = time.monotonic() - t0
         print(f"  [review_code] {timings[f'{label}·review_code']:.0f}s | status={sa}", flush=True)
@@ -175,7 +175,7 @@ async def main():
         if f.is_dir():
             for sf in f.glob("*"):
                 sf.unlink()
-    gw = get_gateway("glm5.1")
+    gw = get_gateway("glm5.2_anthropic")
     sched = DocScheduler(gateway=gw, workspace=str(WS), enable_thinking=True)
     print(f"模型: glm-5.2 | 共 {len(slots)} 个 slot | workspace: {WS}\n", flush=True)
 
