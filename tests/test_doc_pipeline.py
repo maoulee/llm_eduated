@@ -345,13 +345,19 @@ class TestDocParser:
 
 class TestAgentPrompts:
     def test_all_roles_have_prompts(self):
+        # 已删除的死 agent：human_intake(被interact取代)、model(被write_gen取代)、
+        # paper_outline(被outline取代)。
+        # team_pipeline 新架构四角色（design_direct/write_gen/write_solution/dual_review）
+        # 的 agent md 存在即被加载，纳入此集合。
         expected_roles = {
             "outline", "question_design",
             "review", "solve", "final_review",
-            "paper_outline",
-            "interact", "human_intake",
+            "interact",
             # §19/§21 design agents
             "design", "exam_form", "concept_creator",
+            "review2",
+            # team_pipeline 新架构四角色
+            "design_direct", "write_gen", "write_solution", "dual_review",
         }
         assert set(AGENT_PROMPTS.keys()) == expected_roles
 
@@ -359,10 +365,10 @@ class TestAgentPrompts:
         expected_roles = {
             "outline", "question_design",
             "review", "solve", "final_review",
-            "paper_outline",
-            "interact", "human_intake",
-            # §19/§21 design agents
+            "interact",
             "design", "exam_form", "concept_creator",
+            "review2",
+            "design_direct", "write_gen", "write_solution", "dual_review",
         }
         assert set(AGENT_OUTPUT_FILES.keys()) == expected_roles
 
@@ -1471,13 +1477,15 @@ class TestGatewayGenerateWithTools:
 class TestAgentLoader:
     def test_loads_online_runtime_agents(self):
         specs = load_agents()
+        # 已删 human_intake/model/paper_outline（被 interact/write_gen/outline 取代）；
+        # team_pipeline 四角色（design_direct/write_gen/write_solution/dual_review）+ review2 纳入。
         expected = {
             "outline", "question_design",
             "review", "solve", "final_review",
-            "paper_outline",
-            "interact", "human_intake",
-            # §19/§21 design agents
+            "interact",
             "design", "exam_form", "concept_creator",
+            "review2",
+            "design_direct", "write_gen", "write_solution", "dual_review",
         }
         assert set(specs.keys()) == expected
 
@@ -1508,10 +1516,10 @@ class TestAgentLoader:
         expected_roles = {
             "outline", "question_design",
             "review", "solve", "final_review",
-            "paper_outline",
-            "interact", "human_intake",
-            # §19/§21 design agents
+            "interact",
             "design", "exam_form", "concept_creator",
+            "review2",
+            "design_direct", "write_gen", "write_solution", "dual_review",
         }
         assert set(prompts.keys()) == expected_roles
         assert set(output_files.keys()) == expected_roles
