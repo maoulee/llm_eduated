@@ -1295,3 +1295,218 @@ Phase 4: Creator Step 4
 保留(向后兼容):
   - 旧 5 层智能体和 orchestrator 不删除
 ```
+
+## 20. Harness 解析层容错 + 废弃清理 (2026-06-19 v5.0)
+
+> commit `46491e0` `550ed33` —— 让小格式漂移在系统层兜底，不触发 LLM 重跑。
+
+### 20.1 设计原则：harness 兜底小错误
+
+LLM 产出的 markdown 难免有小漂移（同行值、大小写、分隔符）。与其让这些小错误
+触发昂贵的 LLM 重跑，不如在解析层（harness）兜底——提升鲁棒性和响应速度。
+
+### 20.2 `_extract_sections` 容错下沉（markdown_parser.py）
+
+底层解析器新增两层容错（一处改、全局受益）：
+
+```
+┌──┬──────────────────────┬──────────────────────────────────────────────┐
+│层│ 漂移类型            │ 处理                                          │
+├──┼──────────────────────┼──────────────────────────────────────────────┤
+│ 1│ 同行值              │ ## status: pass → key=status, value=pass      │
+│  │ ## status: pass     │ 前置进 body（下游正常按多行 value 处理）      │
+│  │                     │ 只对 ASCII 字段名拆（_IS_FIELD_NAME_RE 白名单）│
+│  │                     │ CJK header（设计说明：xxx）冒号后缀保留 body  │
+├──┼──────────────────────┼──────────────────────────────────────────────┤
+│ 2│ header key 归一化   │ _normalize_section_key:                       │
+│  │ ## Status           │ ASCII 小写 + -/_ 统一 + 去尾括注              │
+│  │ ## fix-instructions │ ## Status→status, ## fix-instructions→       │
+│  │                     │ fix_instructions                              │
+└──┴──────────────────────┴──────────────────────────────────────────────┘
+```
+
+### 20.3 status 解析统一（doc_parser.py + team_pipeline.py）
+
+- 抽出 `_status_from_text(text)` 核心函数，`get_doc_status` 变薄外壳
+- 内存字符串调用方享受与文件路径版一致的完整 fallback 链
+- `team_pipeline.status_of` 从一行脆弱正则升级为
+  `get_doc_status(review_path) + _status_from_text(text)` 兜底
+
+### 20.4 废弃清理（以实际 pipeline 为准）
+
+```
+删除（0 调用、被取代）:
+  - agents/human_intake.md   → 被 interact 取代
+  - agents/model.md          → 被 write_gen 取代
+  - agents/paper_outline.md  → 被 outline 取代
+  - skills/intake_core, param_model, outline_v2（对应孤儿 skill）
+  - tests/test_teacher_simulation, test_intake_e2e_artifacts
+  - api/services/interact_clarification.py（正则干预，见 §22）
+
+修复:
+  - skills/audit_judge/review_skill.md → SKILL.md（重命名）
+    review/review2 的审核判据 skill 从 0 字符恢复到 1757 字符
+```
+
+### 20.5 测试
+
+`_extract_sections` 此前零覆盖。新增 21 个解析器测试（同行值/大小写/分隔符/
+中文回归/status_of 三态），全绿。
+
+## 21. 思考控制统一到 Gateway 层 (2026-06-19 v5.1)
+
+> commit `5d0afa0` `f59d6a3` —— 让深度推理在线上 GLM 路径真正生效。
+
+### 21.1 问题：思考控制分散 + GLM 关思考
+
+```
+出题关思考的根源链:
+  pipeline_trigger.py:266  enable_thinking=(provider in ("api_vllm","vllm"))
+    → GLM 出题时 thinking=False
+  glm5.1 thinking_control_method="param" → 只能 on/off，无深度
+  glm5.2_anthropic reasoning_effort 写死 provider 级 → 无法 per-request 调
+  thinking_budget 对 GLM 静默失效 → 只有 vllm 认
+  run_agent 与 run_conversation_turn 的 thinking 优先级相反
+```
+
+### 21.2 Gateway 层统一决策
+
+```
+数据流（改后）:
+  scheduler.run_agent(role)
+    → 只传 role + enable_thinking(session flag, 可选)
+    → gateway.stream_chat(role=role, enable_thinking=flag)
+      → _role_thinking_config(role) 查 pipeline.yaml 得 (开/关, effort/budget)
+      → 按 provider.thinking_control_method 选传输:
+          reasoning_effort (glm5.2) → chat_template_kwargs.reasoning_effort
+          chat_template_kwargs (vllm) → enable_thinking + thinking_token_budget
+          param (glm5.1) → extra_body.thinking.type
+      → session flag 覆盖（显式传参 > ROLE 表 > provider 默认）
+```
+
+决策优先级统一：**显式传参 > ROLE 表 > provider 默认**。
+两条 run_* 路径（run_agent / run_conversation_turn）行为一致。
+
+### 21.3 per-role 思考深度配置（pipeline.yaml）
+
+```yaml
+roles:
+  design:        { enable_thinking: true, reasoning_effort: high }  # 出题创造性
+  solve:         { enable_thinking: true, reasoning_effort: high }  # 算法求解
+  review:        { enable_thinking: true, reasoning_effort: low }   # 轻量审核
+  dual_review:   { enable_thinking: true, reasoning_effort: high }  # 深度审核
+  write_gen:     { enable_thinking: true, reasoning_effort: high }  # 建模+exec
+```
+
+### 21.4 provider 切换
+
+出题默认 provider: `glm5.1` → `glm5.2_anthropic`（有 reasoning_effort 深度控制）。
+删除 `enable_thinking=(provider in vllm)` 硬编码公式，改传 None（gateway 按 role 决策）。
+
+## 22. 交互逻辑重构：行为归 LLM，正则只守边界 (2026-06-19 v5.2)
+
+> commit `c2569ab` `b58eba7` —— LLM 自主决策行为，正则只守产物边界。
+
+### 22.1 设计原则
+
+```
+错误做法（改前）: 正则控制 LLM 的行为决策
+  - looks_like_scenario_c 正则猜场景（A/B/C/D 分类）
+  - has_structure 正则猜"信息是否充分"决定追问
+  - _pregenerate_outline 旁路调 GLM 替 agent 做知识点排布
+  - _annotation_requests_revision 正则猜"教师是否要修订"
+
+正确做法（改后）:
+  - 行为归 LLM: 场景判定/追问/规划/修订全由 agent 自主
+  - 正则守边界: 只校验最终产物（yaml 字段完整性）
+```
+
+### 22.2 拆掉的正则干预
+
+```
+删除:
+  - api/services/interact_clarification.py（整个文件）
+    looks_like_scenario_c / has_structure / needs_clarification /
+    pregenerate_outline / clarification_message
+  - send_turn 的 C 场景拦截块 + _pregenerate_outline 调用 +
+    effective_message 注入 + _build_revision_turn_message
+  - _annotation_requests_revision（正则版）
+
+效果: teacher_message 原样传给 agent，service 不预处理/不拦截/不注入。
+净删 311 行正则干预死代码。
+```
+
+### 22.3 显式确认门（防没确认就出题）
+
+```
+InteractTurnRequest 加 intent 字段:
+  - discuss (默认): 正常对话/草案细化
+  - request_revision: 教师要修订草案
+  - confirm_handoff: 教师显式确认 → 才可能触发出题
+
+触发逻辑（send_turn）:
+  只有 intent == "confirm_handoff" 才触发 pipeline
+  agent 误产 yaml 但无 confirm_handoff → 隔离（quarantine），不触发
+
+修复的严重风险: 改前 has_result（文件存在）就 fire-and-forget 出题，
+教师没确认也会触发。
+```
+
+### 22.4 产物边界校验（正则的正确用法）
+
+`_validate_handoff_fields`: 触发前校验 paper_request.yaml 每个 slot 的必填字段
+（slot_id/question_type/primary_target_name/target_difficulty/examination_mode）。
+缺字段 → 不触发，回退让 agent 补全。
+
+### 22.5 skill 表述：中介 → 主体
+
+```
+SKILL.md (interact_core):
+  改前: "大纲/方案由专门工具或模块生成。你的职责：调用工具获取方案"
+  改后: "你是规划主体。知识点排布、每题锚定由你自主决策，不依赖旁路系统"
+
+interact.md (agent):
+  改前: "你不是大纲生成者" + "大纲由专门工具完成" + "调用后端预生成大纲"
+  改后: "你是规划主体，自主生成知识点排布方案（基于 KG + 参数知识）"
+  收敛链路: "固定流程必须走完" → "按信息缺口灵活走"
+```
+
+### 22.6 team_pipeline 四角色接入 graph（commit `0b48df5`）
+
+```
+build_team_pipeline_graph:
+  design_direct → write_gen → write_solution → dual_review(code)
+    → [needs_fix 回退 write_gen，带 fix_instructions] / [pass]
+    → dual_review(doc) → final（复用 FinalNode 产 final.md）
+
+跨题黑板: orchestrator 持有 paper_state.md（workspace 级），
+design_direct 经 _board_inject() 注入已出题记录。
+feature flag: enable_team_pipeline（默认 false，A/B 测试用）。
+```
+
+### 22.7 文件索引
+
+```
+本次改动（7 commits 46491e0..b58eba7）:
+  core_new/markdown_parser.py          — _extract_sections 容错下沉
+  core_new/doc_pipeline/doc_parser.py  — _status_from_text 抽取
+  core_new/doc_pipeline/team_pipeline.py — status_of + 四角色 graph 节点源
+  core_new/doc_pipeline/pipeline_graph.py — build_team_pipeline_graph + 5 节点
+  core_new/doc_pipeline/orchestrator.py — 黑板 + _should_use_team_pipeline
+  core_new/doc_pipeline/scheduler.py   — 简化思考决策（传 role 给 gateway）
+  core_new/llm_gateway.py              — 统一思考决策 + reasoning_effort 形参
+  core_new/doc_pipeline/skills/interact_core/SKILL.md — 中介→主体
+  core_new/doc_pipeline/agents/interact.md — 自主规划强化
+  api/services/interact_v2_service.py  — 拆正则干预 + 确认门 + 产物校验
+  api/services/interact_clarification.py — 删除（正则干预子系统）
+  api/schemas_interact_v2.py           — intent 字段
+  api/routes/interact_v2.py            — 透传 intent
+  api/services/pipeline_trigger.py     — glm5.2 + 删 enable_thinking 硬编码
+  config/pipeline.yaml                 — enable_team_pipeline + per-role effort
+  tests/test_doc_pipeline.py           — 21 个解析器测试
+  tests/test_interact_v2_api_service.py — 确认门测试
+
+后续（需线上环境）:
+  - 前端 submitDraft 传 intent（3 分支改传 intent 字段）
+  - glm5.2 出题端到端实测（验证质量不回归）
+```
