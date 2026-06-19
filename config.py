@@ -69,6 +69,10 @@ class ProviderSettings(BaseModel):
     # 线上 GLM 用 thinking.clear_thinking=False。
     preserve_thinking: bool = False
 
+    # GLM-5.2 Anthropic endpoint: reasoning_effort controls thinking DEPTH.
+    # high = light (16s, reasoning≈0), max = deep (default).
+    reasoning_effort: str = "high"
+
     quantization: Optional[str] = None
     max_model_len: int = 10000
     serve_as_api: bool = False
@@ -117,6 +121,25 @@ class GlobalSettings(BaseSettings):
             request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600")),
             max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
             thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "param"),
+            preserve_thinking=os.getenv("GLM_PRESERVE_THINKING", "true").lower() == "true",
+            supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
+            default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),
+            temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
+            top_p=float(os.getenv("GLM_TOP_P", "0.95")),
+        ),
+        # GLM-5.2 via Anthropic endpoint — reasoning_effort controls thinking depth
+        # (not just on/off). This is what ZCode uses; 16s vs 200s+ vs OpenAI endpoint.
+        "glm5.2_anthropic": ProviderSettings(
+            provider_type="api",
+            model_path=os.getenv("GLM_ANT_MODEL", "GLM-5.2"),
+            api_url=os.getenv("GLM_ANT_API_BASE", "https://open.bigmodel.cn/api/anthropic"),
+            api_key=os.getenv("GLM_API_KEY"),
+            api_protocol="openai_chat",  # still OpenAI client, but Anthropic-compatible base
+            batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
+            request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600")),
+            max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
+            thinking_control_method="reasoning_effort",  # new method: chat_template_kwargs.reasoning_effort
+            reasoning_effort=os.getenv("GLM_REASONING_EFFORT", "high"),  # high=轻思考(16s), max=深度
             preserve_thinking=os.getenv("GLM_PRESERVE_THINKING", "true").lower() == "true",
             supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),

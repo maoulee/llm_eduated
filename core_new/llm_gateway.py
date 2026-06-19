@@ -549,6 +549,12 @@ class LLMGateway:
         return params
 
     async def _read_chat_stream(self, provider, params: Dict[str, Any]) -> Dict[str, Any]:
+        # Anthropic endpoint transport: GLM-5.2 via Anthropic format (16s vs 200s+).
+        # OpenAI client sends OpenAI format → Anthropic endpoint returns empty.
+        # Must use direct HTTP with Anthropic message format instead.
+        if getattr(provider, "thinking_control_method", "") == "reasoning_effort":
+            return await self._read_anthropic_stream(provider, params)
+
         content_parts: List[str] = []
         reasoning_parts: List[str] = []
         tool_calls_accum: Dict[int, Dict[str, str]] = {}
@@ -628,6 +634,129 @@ class LLMGateway:
             len(reasoning_content),
             len(tool_calls) if tool_calls else 0,
             finish_reason,
+        )
+        return {
+            "content": content,
+            "reasoning_content": reasoning_content,
+            "tool_calls": tool_calls,
+            "finish_reason": finish_reason,
+        }
+
+    async def _read_anthropic_stream(self, provider, params: Dict[str, Any]) -> Dict[str, Any]:
+        """Anthropic endpoint transport for GLM-5.2 (reasoning_effort).
+
+        Converts OpenAI-style params to Anthropic message format, sends via
+        direct HTTP (not AsyncOpenAI), parses Anthropic SSE → unified result.
+        """
+        import httpx
+        import json as _json
+
+        # Convert OpenAI messages → Anthropic messages
+        anthropic_messages = []
+        system_text = ""
+        for msg in params.get("messages", []):
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            if role == "system":
+                system_text += (system_text and "\n" or "") + str(content)
+            elif role == "tool":
+                # tool result → user message with tool_result
+                anthropic_messages.append({
+                    "role": "user",
+                    "content": [{"type": "tool_result", "tool_use_id": msg.get("tool_call_id", ""), "content": str(content)}]
+                })
+            elif role == "assistant":
+                blocks = []
+                if content:
+                    blocks.append({"type": "text", "text": str(content)})
+                if msg.get("tool_calls"):
+                    for tc in msg["tool_calls"]:
+                        fn = tc.get("function", {})
+                        blocks.append({
+                            "type": "tool_use",
+                            "id": tc.get("id", ""),
+                            "name": fn.get("name", ""),
+                            "input": _json.loads(fn.get("arguments", "{}")) if fn.get("arguments") else {},
+                        })
+                if msg.get("reasoning_content"):
+                    blocks.insert(0, {"type": "thinking", "thinking": msg["reasoning_content"]})
+                anthropic_messages.append({"role": "assistant", "content": blocks or [{"type": "text", "text": " "}]})
+            else:
+                anthropic_messages.append({"role": role, "content": str(content)})
+
+        # Convert OpenAI tools → Anthropic tools
+        anthropic_tools = None
+        if params.get("tools"):
+            anthropic_tools = []
+            for t in params["tools"]:
+                fn = t.get("function", t)
+                anthropic_tools.append({
+                    "name": fn.get("name", ""),
+                    "description": fn.get("description", ""),
+                    "input_schema": fn.get("parameters", {"type": "object", "properties": {}}),
+                })
+
+        # Build Anthropic payload
+        base_url = provider.api_base_url.rstrip("/")
+        effort = getattr(provider, "reasoning_effort_level", "high")
+        payload: Dict[str, Any] = {
+            "model": params.get("model", "GLM-5.2"),
+            "max_tokens": params.get("max_tokens", 8000),
+            "messages": anthropic_messages,
+            "chat_template_kwargs": {"reasoning_effort": effort},
+        }
+        if system_text:
+            payload["system"] = system_text
+        if anthropic_tools:
+            payload["tools"] = anthropic_tools
+
+        headers = {
+            "x-api-key": provider.api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+        }
+
+        url = f"{base_url}/v1/messages"
+        logger.info("[stream_chat] anthropic endpoint: %s effort=%s tools=%d", url, effort, len(anthropic_tools or []))
+
+        # Non-streaming (simpler, Anthropic endpoint is fast with reasoning_effort)
+        async with httpx.AsyncClient(timeout=provider.request_timeout if hasattr(provider, "request_timeout") else 300) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code != 200:
+                raise RuntimeError(f"Anthropic endpoint error {resp.status_code}: {resp.text[:300]}")
+
+            data = resp.json()
+
+        # Parse Anthropic response → unified format
+        content_parts: List[str] = []
+        reasoning_parts: List[str] = []
+        tool_calls = None
+        finish_reason = data.get("stop_reason", "stop")
+
+        for block in data.get("content", []):
+            btype = block.get("type", "")
+            if btype == "thinking":
+                reasoning_parts.append(block.get("thinking", ""))
+            elif btype == "text":
+                content_parts.append(block.get("text", ""))
+            elif btype == "tool_use":
+                if tool_calls is None:
+                    tool_calls = []
+                tool_calls.append({
+                    "id": block.get("id", ""),
+                    "type": "function",
+                    "function": {
+                        "name": block.get("name", ""),
+                        "arguments": _json.dumps(block.get("input", {}), ensure_ascii=False),
+                    },
+                })
+
+        content = "".join(content_parts)
+        reasoning_content = "".join(reasoning_parts)
+        logger.info(
+            "[stream_chat] anthropic provider=%s content=%d reasoning=%d tool_calls=%s finish=%s",
+            self._provider_name, len(content), len(reasoning_content),
+            len(tool_calls) if tool_calls else 0, finish_reason,
         )
         return {
             "content": content,

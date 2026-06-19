@@ -154,6 +154,8 @@ class RemoteAPIProvider(BaseLLMProvider):
         self.preserve_thinking = bool(
             kwargs.get("preserve_thinking", _env_bool("VLLM_PRESERVE_THINKING", False))
         )
+        # GLM-5.2 Anthropic endpoint: reasoning_effort controls thinking depth.
+        self.reasoning_effort_level = kwargs.get("reasoning_effort", "high")
         self.prompt_template_style = kwargs.get("prompt_template_style", "qwen")
         self.supports_response_format = bool(kwargs.get("supports_response_format", True))
         self.batch_size = max(1, int(kwargs.get("batch_size", 8)))
@@ -208,6 +210,15 @@ class RemoteAPIProvider(BaseLLMProvider):
 
     def _extra_body_for_thinking(self, enable_thinking: bool) -> Dict[str, Any]:
         """Provider-specific thinking parameter support."""
+        if self.thinking_control_method == "reasoning_effort":
+            # GLM-5.2 Anthropic endpoint: chat_template_kwargs.reasoning_effort
+            # controls thinking DEPTH (not just on/off).
+            # high = light thinking (16s, reasoning≈0, direct output)
+            # max = deep thinking (default, full reasoning)
+            effort = getattr(self, "reasoning_effort_level", "high")
+            if not enable_thinking:
+                effort = "none"  # skip thinking entirely
+            return {"chat_template_kwargs": {"reasoning_effort": effort}}
         if self.thinking_control_method == "param":
             thinking_param = {"type": "enabled" if enable_thinking else "disabled"}
             # §20 线上思考记忆：clear_thinking=False 让 API 保留 reasoning_content，
