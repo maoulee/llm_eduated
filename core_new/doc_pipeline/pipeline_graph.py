@@ -554,10 +554,15 @@ class FormGateNode2(_OrchestratorNode):
         return AgentResult(signal=status, feedback=feedback)
 
 
+# team_pipeline 审求解(review_solve) 的 needs_fix 轮数上限。超过即 exhausted→done
+# （显式 fail），防止 inherent 缺陷在 fix_gen↔review_solve 间烧满 MAX_NODE_VISITS。
+REVIEW_SOLVE_MAX_ROUNDS = 3
+
+
 # ── team_pipeline 四角色节点（build_team_pipeline_graph 用）──────────
 # 把 team_pipeline.run_question 的手写过程式编排 graph 化：每个角色一个节点，
-# 回退靠 edge（dual_review_code --needs_fix--> write_gen），feedback 靠
-# feedback_buffer（fix_instructions）。黑板/experience 经 self.orch 注入。
+# 回退靠 edge（review_solve --fix_gen/fix_solution/fix_design--> 目标节点），feedback 靠
+# feedback_buffer（fix_instructions，键=节点名）。黑板/experience 经 self.orch 注入。
 
 
 class TeamDesignNode(_OrchestratorNode):
@@ -576,9 +581,16 @@ class TeamDesignNode(_OrchestratorNode):
         # 跨题黑板注入（软提示去重）
         inject.update({k: str(v) for k, v in self.orch._board_inject().items()})
         board_hint = " 参考注入的 paper_state.md（已出题记录），软性避开重复考点。" if self.orch._board_inject() else ""
+        # 审核回退反馈：审题干 needs_fix（review_stem）或 审求解 fix_design（review_solve）
+        feedback = state.feedback_buffer.get("review_solve") or state.feedback_buffer.get("review_stem") or ""
+        fix_hint = (
+            f"\n\n## 审核反馈需修正\n{feedback}\n按 fix_instructions 修正 question.md（含声明的通过条件）。"
+            "注意：声明通过条件 ≠ 脑内计算。"
+            if feedback else ""
+        )
         await self.orch.scheduler.run_agent(
             "design_direct",
-            task=f"根据 design_card 设计题干（含设计意图），写出 question.md。{board_hint}",
+            task=f"根据 design_card 设计题干（含设计意图 + 声明「通过条件」——本题成立需要满足的可机检特征），写出 question.md。{board_hint}{fix_hint}",
             slot_id=state.slot_id, inject_files=inject, target_file="question.md",
         )
         if not (ws / "question.md").exists():
@@ -590,8 +602,8 @@ class TeamDesignNode(_OrchestratorNode):
 class TeamGenNode(_OrchestratorNode):
     """write_gen：读 question.md，写 gen.py + exec 验证。选择题派生干扰项。
 
-    逻辑搬自 team_pipeline.run_question:244-253。回退轮次（dual_review_code
-    needs_fix 后重入）携带 fix_instructions feedback，经 feedback_buffer 传入。
+    逻辑搬自 team_pipeline.run_question:244-253。回退轮次（review_solve 的
+    fix_gen 后重入）携带 fix_instructions feedback，经 feedback_buffer["review_solve"] 传入。
     """
 
     name = "write_gen"
@@ -599,17 +611,18 @@ class TeamGenNode(_OrchestratorNode):
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         is_choice = state.slot_data.get("question_type") == "single_choice"
-        # dual_review_code 的 fix_instructions（回退时携带）
-        feedback = state.feedback_buffer.get("dual_review_code", "")
+        # 审求解(review_solve) 的 fix_instructions（回退时携带）
+        feedback = state.feedback_buffer.get("review_solve", "")
         gen_task_extra = (
             " 写完 gen.py 后，若为选择题，用 exec 输出的正确值派生3个干扰项"
             "（真实计算错误：常见错误步骤的产物），填入 question.md 的 A/B/C/D（A=正确）。"
             if is_choice else ""
         )
+        assert_hint = " 务必把 question.md 声明的「通过条件」翻译成 assert（打到特征、禁弱化为结构判据/禁恒真）。"
         fix_hint = f"\n\n## 审核反馈需修正\n{feedback}\n按 fix_instructions 修正 gen.py，exec 验证通过。" if feedback else ""
         await self.orch.scheduler.run_agent(
             "write_gen",
-            task=f"读 question.md 写 gen.py 并 exec 验证（关思考，按工作规范分步）。{gen_task_extra}{fix_hint}",
+            task=f"读 question.md 写 gen.py 并 exec 验证（关思考，按工作规范分步）。{assert_hint}{gen_task_extra}{fix_hint}",
             slot_id=state.slot_id,
             inject_files={"question.md": str(ws / "question.md"), "design_card": str(DesignCardNode._ref_path(state))},
             target_file="gen.py", enable_thinking=True,
@@ -630,9 +643,12 @@ class TeamSolutionNode(_OrchestratorNode):
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
+        # 审求解(review_solve) 文档忠实维度 fail 的 fix_instructions（回退时携带）
+        feedback = state.feedback_buffer.get("review_solve", "")
+        fix_hint = f"\n\n## 审核反馈需修正\n{feedback}\n按 fix_instructions 修正 solution.md（忠实对照 gen.py exec 输出，不重算）。" if feedback else ""
         await self.orch.scheduler.run_agent(
             "write_solution",
-            task="读 gen.py + exec 输出，整理成 solution.md（不重算，忠实整理）。",
+            task=f"读 gen.py + exec 输出，整理成 solution.md（不重算，忠实整理）。{fix_hint}",
             slot_id=state.slot_id,
             inject_files={"gen.py": str(ws / "gen.py"), "question.md": str(ws / "question.md")},
             target_file="solution.md",
@@ -643,63 +659,108 @@ class TeamSolutionNode(_OrchestratorNode):
         return AgentResult(signal="ok")
 
 
-class TeamReviewCodeNode(_OrchestratorNode):
-    """dual_review 阶段A（审代码）：审 gen.py 建模思路。needs_fix 回退到 write_gen。
+def _parse_review(review_path: Path) -> tuple[str, str]:
+    """Parse review.md → (status, fix_instructions). status ∈ pass/needs_fix."""
+    if not review_path.exists():
+        return "pass", ""
+    status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+    feedback = parse_doc_section(str(review_path), "fix_instructions")
+    return status, feedback
 
-    逻辑搬自 team_pipeline.run_question:281-295。status 用 get_doc_status 解析
-    落盘 review.md，fix_instructions 作为 feedback 传给 write_gen。
+
+def _review_signal(status: str, routing: str) -> str:
+    """Map merged 审求解 review (status, routing) → graph signal.
+
+    pass → 'pass'; needs_fix → 'fix_gen'/'fix_solution'/'fix_design' by routing
+    (default write_gen). Extracted as a pure function so the adequacy/routing
+    contract is unit-testable without running the LLM agent.
+    """
+    if status != "needs_fix":
+        return "pass"
+    routing = (routing or "").lower()
+    if "solution" in routing:
+        return "fix_solution"
+    if "design" in routing:
+        return "fix_design"
+    return "fix_gen"
+
+
+class TeamReviewStemNode(_OrchestratorNode):
+    """dual_review 阶段1（审题干）：write_gen 之前，审 question.md 自洽 + 通过条件合格。
+
+    needs_fix → 回退 design_direct（fix_instructions 经 feedback_buffer 传递）。这是
+    team_pipeline 原本缺失的审题干 gate（split graph 的 form_gate 对应物），也是堵
+    "参数打败考点"的第一道：通过条件是否声明、可证伪、覆盖考察目标。
     """
 
-    name = "dual_review_code"
+    name = "review_stem"
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         await self.orch.scheduler.run_agent(
             "dual_review",
             task=(
-                "## 本轮阶段\n本轮审求解-代码（阶段2·A）。审 gen.py 建模思路对不对"
-                "（看代码结构，不代入参数）。"
+                "## 本轮阶段\n本轮审题干（阶段1，write_gen 之前）。审 question.md："
+                "题干自洽 + 通过条件合格（存在/可证伪/覆盖考察目标）。"
             ),
             slot_id=state.slot_id,
-            inject_files={"question.md": str(ws / "question.md"), "gen.py": str(ws / "gen.py")},
+            inject_files={"question.md": str(ws / "question.md"),
+                          "design_card": str(DesignCardNode._ref_path(state))},
             target_file="review.md", enable_thinking=True,
         )
-        review_path = ws / "review.md"
-        status = "pass"
-        feedback = ""
-        if review_path.exists():
-            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
-            feedback = parse_doc_section(str(review_path), "fix_instructions")
+        status, feedback = _parse_review(ws / "review.md")
         return AgentResult(signal=status, feedback=feedback)
 
 
-class TeamReviewDocNode(_OrchestratorNode):
-    """dual_review 阶段B（审文档）：审 solution.md 是否忠实转写 gen.py。pass 后进 final。
+class TeamReviewNode(_OrchestratorNode):
+    """dual_review 阶段2（审求解）：write_solution 之后，合并审核（原 审代码+审文档 合一）。
 
-    逻辑搬自 team_pipeline.run_question:348-352。审完搬运 entry 到黑板。
+    一次审 gen.py+solution.md+exec：建模忠实 + 断言合适（assert 打到通过条件、非弱化、
+    非恒真）+ 充分性（exec 满足声明条件=合围，"参数打败考点"的唯一可靠卡口）+ 设计一致性
+    + 文档忠实。按 review.md 的 routing 决定回退目标（write_gen/write_solution/design_direct）。
+    审完搬运 entry 到全卷黑板。
     """
 
-    name = "dual_review_doc"
+    name = "review_solve"
 
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         await self.orch.scheduler.run_agent(
             "dual_review",
             task=(
-                "## 本轮阶段\n本轮审求解-文档（阶段2·B）。审 solution.md 是否忠实转写 gen.py"
-                "（形式一致/抄写无误/无幻觉）。"
+                "## 本轮阶段\n本轮审求解（阶段2，write_solution 之后，合并审核）。"
+                "审 gen.py+solution.md：建模忠实 + 断言合适 + 充分性（exec 满足通过条件）"
+                "+ 设计一致性 + 文档忠实。读 gen.py exec 输出比对声明条件，不代入算、不重跑。"
             ),
             slot_id=state.slot_id,
-            inject_files={"gen.py": str(ws / "gen.py"), "solution.md": str(ws / "solution.md")},
-            target_file="review.md",
+            inject_files={"question.md": str(ws / "question.md"),
+                          "gen.py": str(ws / "gen.py"),
+                          "solution.md": str(ws / "solution.md")},
+            target_file="review.md", enable_thinking=True,
         )
         review_path = ws / "review.md"
-        status = "pass"
-        if review_path.exists():
+        if not review_path.exists():
+            # review.md 缺失 = agent 异常未产出，按 pass 兜底（routing 此分支不生效）
+            status, feedback, routing = "pass", "", "write_gen"
+        else:
             status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
-        # 审完搬运 entry 到全卷黑板（跨题记忆）
-        self.orch.append_board(state.slot_id, slot=state.slot_data, fallback_status=status)
-        return AgentResult(signal=status)
+            feedback = parse_doc_section(str(review_path), "fix_instructions")
+            routing = (parse_doc_section(str(review_path), "routing") or "write_gen").strip()
+        signal = _review_signal(status, routing)
+        # 环路安全：review_solve 的 needs_fix 轮数兜底。inherent 缺陷（参数 inherently
+        # 不触发考点）会在 fix_gen↔review_solve 间反复；超阈值→显式 fail 终止（exhausted→done），
+        # 不留半成品 final（orchestrator 见 state.result fail 会 surface）。
+        if signal != "pass" and state.visit_counts.get("review_solve", 0) >= REVIEW_SOLVE_MAX_ROUNDS:
+            state.result = self.orch._fail_result(
+                state.slot_id,
+                f"review_solve {state.visit_counts.get('review_solve', 0)} 轮 needs_fix 未收敛，终止（防死循环）",
+            )
+            return AgentResult(signal="exhausted", feedback=feedback)
+        # 仅在通过时登记全卷黑板（对齐原 team_pipeline "review 退出后登记一次" 语义；
+        # needs_fix 重试不重复登记，避免同一 slot 在 paper_state.md 写多行）
+        if signal == "pass":
+            self.orch.append_board(state.slot_id, slot=state.slot_data, fallback_status=status)
+        return AgentResult(signal=signal, feedback=feedback)
 
 
 def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
@@ -753,14 +814,17 @@ def build_team_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     """Declare the team_pipeline four-role graph.
 
     team flow (code-as-truth 四角色常驻团队):
-      design_direct → write_gen → write_solution → dual_review(code)
-                                                     needs_fix → write_gen（带 fix_instructions）
-                                                    pass → dual_review(doc)
-                                                       pass → final（产出 final.md 三段式）
+      design_direct → 审题干(review_stem)
+                        needs_fix → design_direct（带 fix_instructions）
+                        pass → write_gen → write_solution → 审求解(review_solve，合并审核)
+                        fix_gen → write_gen / fix_solution → write_solution / fix_design → design_direct
+                        pass → final（产出 final.md 三段式）
 
     vs split graph：四角色合一（design_direct 一步出题干，write_gen 独立建模，
-    write_solution 独立转写，dual_review 双阶段审核）。黑板（paper_state.md）
-    由 orchestrator 持有，design_direct 经 ``self.orch._board_inject()`` 注入。
+    write_solution 独立转写，dual_review 两阶段审核——审题干 + 审求解合并）。
+    审题干是 team_pipeline 原本缺失的 gate；审求解合并原 审代码+审文档（避深度思考的
+    拆分在 §21 思考强度统一后已无必要），并新增断言合适 + 充分性判据堵"参数打败考点"。
+    黑板（paper_state.md）由 orchestrator 持有，design_direct 经 ``self.orch._board_inject()`` 注入。
 
     复用现有 FinalNode（调 _run_final_review_loop 产 final.md + experience 注入）。
 
@@ -770,24 +834,32 @@ def build_team_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     g = PipelineGraph()
     g.initial = "design_direct"  # team graph 从 design_direct 开始（非默认的 design_card）
     g.add_node("design_direct", TeamDesignNode(scheduler, workspace))
+    g.add_node("review_stem", TeamReviewStemNode(scheduler, workspace))
     g.add_node("write_gen", TeamGenNode(scheduler, workspace))
     g.add_node("write_solution", TeamSolutionNode(scheduler, workspace))
-    g.add_node("dual_review_code", TeamReviewCodeNode(scheduler, workspace))
-    g.add_node("dual_review_doc", TeamReviewDocNode(scheduler, workspace))
+    g.add_node("review_solve", TeamReviewNode(scheduler, workspace))
     g.add_node("final", FinalNode(scheduler, workspace))
 
-    # design_direct 写 question.md → write_gen 建模
-    g.edge("design_direct", "ok", "write_gen")
+    # design_direct 写 question.md → 审题干（自洽 + 通过条件合格）
+    g.edge("design_direct", "ok", "review_stem")
+    # 审题干 needs_fix → 回 design_direct（带 fix_instructions feedback）
+    g.edge("review_stem", "needs_fix", "design_direct")
+    # 审题干 suggestion（表述小问题，不阻塞建模）→ write_gen，对齐 split form_gate 语义
+    g.edge("review_stem", "suggestion", "write_gen")
+    # 审题干通过 → write_gen 建模
+    g.edge("review_stem", "pass", "write_gen")
     # write_gen 写 gen.py + exec → write_solution 转写
     g.edge("write_gen", "ok", "write_solution")
-    # write_solution 写 solution.md → dual_review_code 审代码
-    g.edge("write_solution", "ok", "dual_review_code")
-    # 代码审核 needs_fix → 回 write_gen（带 fix_instructions feedback，graph 自动计数防死循环）
-    g.edge("dual_review_code", "needs_fix", "write_gen")
-    # 代码审核通过 → dual_review_doc 审文档
-    g.edge("dual_review_code", "pass", "dual_review_doc")
-    # 文档审核通过 → final（整合交付，复用 FinalNode）
-    g.edge("dual_review_doc", "pass", "final")
+    # write_solution 写 solution.md → 审求解（合并审核）
+    g.edge("write_solution", "ok", "review_solve")
+    # 审求解按 routing 回退（graph 自动计数防死循环）
+    g.edge("review_solve", "fix_gen", "write_gen")
+    g.edge("review_solve", "fix_solution", "write_solution")
+    g.edge("review_solve", "fix_design", "design_direct")
+    # 审求解 exhausted（needs_fix 轮数超 REVIEW_SOLVE_MAX_ROUNDS）→ done（显式 fail）
+    g.edge("review_solve", "exhausted", "done")
+    # 审求解通过 → final（整合交付，复用 FinalNode）
+    g.edge("review_solve", "pass", "final")
     # final 是整合交付，pass/expression_fix 都直接 done
     g.edge("final", "pass", "done")
     g.edge("final", "expression_fix", "done")

@@ -1,73 +1,77 @@
 # Skill: dual_review（审核）
 
-你收到一个审核任务。**先读 task 里的标记，只执行标记对应的那一段。其他段落此刻与你无关——不要读、不要想、不要做。**
+你收到一个审核任务。**先读 task 里的阶段标记，只执行标记对应的那一段。** 阶段有两段：
 
-## 执行规则（先做这一步）
+- `审题干`（阶段1，write_gen 之前）→ 只执行【阶段1】
+- `审求解`（阶段2，write_solution 之后）→ 只执行【阶段2】（**合并审核**，一次过）
 
-task 里会写明本轮标记，三选一：
-- `审题干` → 只执行【任务1】
-- `审代码` → 只执行【任务2】
-- `审文档` → 只执行【任务2】（仅当审代码通过后，orchestrator 才会调审文档）
-
-**判定你自己该做哪个：看 task 写的字。task 写"审题干"就只做任务1，task 写"审代码"就只做任务2 的代码部分，task 写"审文档"就只做任务2 的文档部分。没写的，不碰。**
-
-做完判据 → 写 review.md → 完事。不要展开推演、不要代入参数算数值、不要做其他任务的活。
+做完判据 → 写 review.md → 完事。不展开无界推演、不代入参数算数值、不重跑 gen.py。
 
 ---
 
-## 通用纪律（所有任务适用）
+## 通用纪律（两阶段适用）
 
 - **审核是对照判据做判断，不是重新解题。** 读 → 判断（符合/不符合）→ 记录。
-- **不代入参数算数值**——数值正确性由 exec 保证，不归你审。发现自己在算"X代入后等于多少"→ 停。
-- **不审"能否解出正确答案"**——那是 exec 的事。
-- findings 必须有证据（引用代码行/exec输出/原文）。
+- **不代入参数算数值**——数值正确性由 exec 保证，不归你审。发现自己在算"X 代入后等于多少"→ 停。
+- **不重跑 gen.py**——exec 已跑通，读它的输出对照即可。
+- findings 必须有证据（引用题干原文 / gen.py 代码行 / exec 输出）。
 
 ---
 
-# 【任务1】审题干（仅当 task 标记为"审题干"时执行）
+# 【阶段1】审题干（task 标记"审题干"时执行）
 
 **输入**：design_card + question.md
-**审**：question.md 是否自洽。
+**时机**：write_gen 之前。审题干自洽 + **通过条件是否合格**。
 
-判据（任一 fail → needs_fix）：
+判据（任一 fail → needs_fix，routing=design_direct）：
 1. 知识点无冲突（题干考的知识点之间不矛盾）。
 2. 参数不耦合（给定参数无不兼容，如位宽与数值范围冲突）。
 3. 条件自洽（所有条件能同时成立、无冗余/缺失）。
 4. 符合 design_card（考察意图、should_be/should_not_be、hard_constraints 被尊重）。
+5. **通过条件已声明且合格**（核心判据）：
+   - **存在**：题干有没有声明"本题成立 ⇔ 期待结果的可机检特征"？
+   - **可证伪**：特征是能被 exec 检出"没满足"的具体断言，不是"结构合法""合理"这类空话。
+   - **覆盖考察目标**：特征能不能检出"考点没被参数真的触发"？
+     - 反例：题干说考旋转辨析，但通过条件只写"树保持平衡"——零旋转也满足，没覆盖考点 → **fail**。应声明"至少触发 1 次旋转"。
 
-- fail → routing=`design_direct`，issue_type=`stem_conflict`。
-- **此任务不碰 gen.py / solution.md**（它们此时可能还没产出）。不审答案。
+- fail → routing=`design_direct`，issue_type=`stem_conflict`（含通过条件缺陷）。
+- **不碰 gen.py / solution.md**（此时还没产出）。不审答案。
 
 ---
 
-# 【任务2】审求解
+# 【阶段2】审求解（task 标记"审求解"时执行）
 
-## 代码部分（仅当 task 标记为"审代码"时执行）
-
-**输入**：question.md + gen.py
-**审**：gen.py 的建模思路对不对——看代码结构、规则映射，**不代入参数走算法**。
+**输入**：question.md + gen.py + solution.md（+ gen.py 的 exec 输出）
+**时机**：write_solution 之后。**合并审核**——建模忠实 + 断言合适 + 充分性 + 设计一致性 + 文档忠实，一次过。
 
 判据（任一 fail → needs_fix）：
-1. 建模思路对题：solve() 建的模对应题干要算的东西（看函数结构 vs 题干要求，不代入数值）。
-2. 规则映射正确：题干给的运算规则，solve() 是否忠实代码化（对照规则文本看代码，不在脑内跑一遍）。
-3. 变量对应：solve() 参数对应题干输入，无错配/遗漏。
-4. 无结构性错误：循环终止、边界、符号处理等结构性问题（看代码逻辑，不代入算）。
 
-- fail → routing=`write_gen`，issue_type=`modeling_error`。
-- **不审"代入参数后结果对不对"**（exec 的事）。**不审 solution.md**（那是文档部分的活）。
+### 维度A 建模忠实（routing=write_gen）
+1. solve() 建的模对应题干要算的东西（函数结构 vs 题干要求，不代入数值）。
+2. 规则映射正确：题干运算规则是否忠实代码化（对照规则文本看代码，不在脑内跑一遍）。
+3. 变量对应：参数对应题干输入，无错配/遗漏。
+4. 无结构性错误：循环终止、边界、符号处理（看代码逻辑，不代入算）。
 
-## 文档部分（仅当 task 标记为"审文档"时执行）
+### 维度B 断言合适（routing=write_gen）——这次的重点
+5. **通过条件被 assert 覆盖**：题干声明的每个通过条件，gen.py 是否都有对应 assert？漏一个 = 漏译 → fail。
+6. **assert 没弱化**：有没有把"考旋转"弱化成 `assert is_balanced(tree)` 这类结构判据（零旋转也过）？弱化 = 让坏题静默放行 → fail。
+7. **assert 非恒真**：有没有 `assert True` / `assert len(x) >= 0` 这类永远成立的废话断言凑数？→ fail。
 
-**输入**：gen.py + solution.md（+ gen.py 的 exec 输出）
-**审**：solution.md 是不是 gen.py 的忠实文档化转写——防整理时出幻觉。
+### 维度C 充分性 + 设计一致性（routing=write_gen 或 design_direct）——堵根因的关键
+8. **充分性（合围）**：gen.py exec 的**事实输出**，满足题干声明的通过条件吗？读 exec 输出比对声明特征——
+   - 例：声明"至少 1 次旋转"，exec 显示 0 次旋转 → **充分性 fail**（参数没触发考点）。
+   - 这是"参数打败考点"的唯一可靠卡口（零旋转 defect 就是这里漏的）。
+9. **设计一致性**：exec 产出的结构/覆盖面，是否对齐 design_card 的 core_knowledge_intent / expected_form？跑偏 → fail。
+   - 充分性/一致性 fail 的 routing 判据（区分两类，避免在 fix_gen/fix_design 间横跳）：
+     - **参数没触发**：通过条件在 hard_constraints 下原则可达（存在已知参数组合能触发，只是当前这组没命中）→ `write_gen`（换参数重算）。
+     - **通过条件本身定错/不可达**：条件与考察意图矛盾，或在该题型下无解（如要求 AVL 旋转但序列恒平衡无解）→ `design_direct`（重定条件 / 换考点角度）。
 
-判据（任一 fail → needs_fix）：
-1. 形式一致：solution 的求解形式/结构是否和代码一致（代码按什么步骤算，solution 是否按那个形式组织）。
-2. 单步抄写无误：solution 改写的每一步数值，是否和 gen.py 的 exec 输出一致（逐步对照数值，不自己算）。
-3. 无幻觉：solution 里有没有代码/exec 根本没产出的内容（捏造的步骤/不存在的数值/没做的操作）。
+### 维度D 文档忠实（routing=write_solution）
+10. 形式一致：solution.md 的求解形式/结构是否与 gen.py 一致。
+11. 单步抄写无误：solution 改写的每步数值，是否与 gen.py exec 输出一致（逐步对照，不自己算）。
+12. 无幻觉：solution 里有没有 exec 根本没产出的内容（捏造步骤/数值/操作）。
 
-- fail → routing=`write_solution`，issue_type=`doc_unfaithful`。
-- **不审代码建模对不对**（那是代码部分的活，且已通过）。只审文档忠不忠实。
+- 多维度同时 fail → findings 写多条，issue_type 写多个，routing 取**最上游**修复点（如建模错+文档错 → routing=write_gen，文档会随之重算）。
 
 ---
 
@@ -75,12 +79,12 @@ task 里会写明本轮标记，三选一：
 
 write_file(path="review.md")。Markdown。
 
-### 格式硬规则（下游解析器按此契约读，违反会导致字段丢失）
+### 格式硬规则（下游解析器按此契约读，违反会丢字段）
 
 1. **每个字段独占一个 `##` 区**——字段名单独一行，值写在下一行或区体内。
    - ✅ 对：`## status` 换行 `pass`
-   - ❌ 错：`## status: pass`（值与字段名挤在同一行，解析器会丢字段）
-2. **字段名用小写下划线**——`status` / `fix_instructions` / `keep_unchanged`，不要写 `Status`、`Fix-Instructions`、`fix instructions` 等变体。
+   - ❌ 错：`## status: pass`（值与字段名挤同行，解析器会丢字段）
+2. **字段名用小写下划线**——`status` / `fix_instructions` / `keep_unchanged` / `routing`，不要写变体。
 3. **字段顺序固定**——按下方模板顺序写，便于人工核对。
 4. **pass 时省略 needs_fix 专属区**——pass 不写 `fix_instructions` / `keep_unchanged`，routing 写 `none`。
 
@@ -91,22 +95,23 @@ write_file(path="review.md")。Markdown。
 pass / needs_fix
 
 ## stage
-question / code / doc   （按本次执行的标记）
+question / solution   （按本次执行的阶段标记）
 
 ## issue_type
-none（pass时）/ stem_conflict / modeling_error / doc_unfaithful
+none（pass 时）/ stem_conflict（阶段1）/ modeling_error / assertion_defect / adequacy_fail / doc_unfaithful（阶段2，可多个）
+（人工诊断字段——下游 graph 只读 status+routing 做路由，不消费 issue_type；写它是为了审计可追溯）
 
 ## findings
-- [判据] + 具体问题 + 证据（引用代码行/exec输出/原文）
+- [维度/判据] + 具体问题 + 证据（引用题干原文 / gen.py 代码行 / exec 输出）
 
 ## fix_instructions
 （仅 needs_fix 时写；pass 时整段省略）
-- fail类型 / 修改对象 / 修改位置 / 当前问题 / 修改目标 / 最小修改指令
+- fail 类型 / 修改对象 / 修改位置 / 当前问题 / 修改目标 / 最小修改指令
 
 ## keep_unchanged
 （仅 needs_fix 时写；pass 时整段省略）
 - 不得修改的部分
 
 ## routing
-design_direct / write_gen / write_solution / none（pass时）
+design_direct / write_gen / write_solution / none（pass 时）
 ```
