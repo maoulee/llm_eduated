@@ -14,7 +14,7 @@ pipeline:
     enable_question_design: true  # Phase 1: generate design_card.md before question writer
     enable_pipeline_graph: true  # code-as-truth: declarative signal+edge graph is the sole path; legacy _run_standard_pipeline/_run_conceptual_pipeline kept as fallback
     enable_split_design: true   # §18 split design (exam_form→skeleton→form_gate→solve→distractor) is the default path; set false to fall back to the stable graph.
-    enable_team_pipeline: false # team_pipeline 四角色常驻团队路径（design_direct→write_gen→write_solution→dual_review），A/B 测试用；true 时 graph 走 build_team_pipeline_graph
+    enable_team_pipeline: true # team_pipeline 四角色常驻团队路径（design_direct→审题干→write_gen→write_solution→审求解），已验证为出题主路径（声明通过条件→assert→审充分性）；true 时 graph 走 build_team_pipeline_graph
 
   sampling:
     temperature: 0.2
@@ -35,6 +35,12 @@ pipeline:
     review: 2000             # 结构审核/判断
     solve: 12000             # 求解需推演算法
     final_review: 2000       # 终审一致性检查
+    # ── team_pipeline 四角色（vLLM 思考预算；此前缺失=uncapped，本地慢的根因）──
+    # adequacy 安全网（assert + review 充分性）兜底，故 budget 可比旧 design/solve 砍半
+    design_direct: 7000      # 题干锚定+声明通过条件：出题创造性，中等偏深（5000 偏低→偶题干不全）
+    write_gen: 6000          # 建模+exec：算法建模需推演，中等深思考
+    write_solution: 2000     # 文档转写：忠实转写 gen.py→solution，浅思考
+    dual_review: 3000        # 审题干+审求解：对照判据+充分性合围，中等思考
 
   # Per-role system parameters (moved from agent MD frontmatter)
   # enable_thinking: 思考开关。配合 thinking_token_budget 控制：开思考 + 低 budget

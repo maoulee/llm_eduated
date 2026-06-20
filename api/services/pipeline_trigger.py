@@ -228,9 +228,11 @@ async def trigger_generation(
         except ImportError:
             K_RADAR_DEFINITIONS = ""
 
-        # 本地模型（api_vllm/vllm）支持并发，线上模型（glm5.1 等）线性出题
+        # 并发：本地默认 4，线上默认 1（线上 API 限流，最多 ~2）。均可由
+        # PIPELINE_SLOT_CONCURRENCY 覆盖（线上实测可 2 并发）。
         is_local = provider in ("api_vllm", "vllm")
-        slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", "2")) if is_local else 1
+        _default_conc = 4 if is_local else 1
+        slot_concurrency = int(os.getenv("PIPELINE_SLOT_CONCURRENCY", str(_default_conc)))
         semaphore = asyncio.Semaphore(max(1, slot_concurrency))
         logger.info("[%s] 出题并发: %d (provider=%s, local=%s)",
                     session_id, slot_concurrency, provider, is_local)
