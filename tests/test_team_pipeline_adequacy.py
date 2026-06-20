@@ -296,3 +296,46 @@ def test_concept_review_rubric_is_type_aware():
     assert "不执行" in R and "无 gen.py" in R  # 概念题不执行
 
 
+# ── 8. TeamDesignNode 识别教师个人需求（teacher_annotation）─────────────
+def test_team_design_node_surfaces_teacher_annotation(tmp_path):
+    """前端锚定的教师个人需求 → handoff → slot_data.teacher_annotation，
+    TeamDesignNode 必须显式注入 design_direct 任务，确保被设计层识别
+    （不依赖 design_card 是否逐字保留）。"""
+    import asyncio
+    from core_new.doc_pipeline.pipeline_graph import TeamDesignNode, PipelineState
+
+    captured: dict = {}
+
+    class MockScheduler:
+        async def run_agent(self, role, task, *, slot_id, inject_files, target_file, **kw):
+            captured["task"] = task
+            (tmp_path / slot_id).mkdir(parents=True, exist_ok=True)
+            (tmp_path / slot_id / target_file).write_text("# q", encoding="utf-8")
+            return ""
+
+    class MockOrch:
+        scheduler = MockScheduler()
+        def _board_inject(self): return {}
+        def _fail_result(self, *a, **k): return None
+
+    ws = tmp_path
+    slot_id = "Q_TEST"
+    (ws / slot_id).mkdir(parents=True, exist_ok=True)
+    node = TeamDesignNode(MockOrch(), ws)
+
+    # 有 teacher_annotation → 注入任务
+    state = PipelineState(slot_id=slot_id, slot_data={
+        "teacher_annotation": "侧重 AVL 旋转辨析，避免纯记忆题",
+    }, workspace=ws)
+    asyncio.run(node.run(state))
+    assert "教师个人需求" in captured["task"]
+    assert "侧重 AVL 旋转辨析" in captured["task"]
+
+    # 对照：无 teacher_annotation → 不注入
+    captured.clear()
+    state2 = PipelineState(slot_id=slot_id, slot_data={}, workspace=ws)
+    asyncio.run(node.run(state2))
+    assert "教师个人需求" not in captured["task"]
+
+
+

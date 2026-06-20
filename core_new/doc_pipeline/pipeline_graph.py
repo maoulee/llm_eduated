@@ -581,6 +581,14 @@ class TeamDesignNode(_OrchestratorNode):
         # 跨题黑板注入（软提示去重）
         inject.update({k: str(v) for k, v in self.orch._board_inject().items()})
         board_hint = " 参考注入的 paper_state.md（已出题记录），软性避开重复考点。" if self.orch._board_inject() else ""
+        # 教师个人需求/批注（前端锚定 → handoff → slot_data.teacher_annotation）。
+        # design_card 生成时已参考，但这里显式再注入，确保 design_direct 稳定识别并
+        # 落到题干设计 + 通过条件里（不依赖 design_card 是否逐字保留）。
+        teacher_ann = state.slot_data.get("teacher_annotation", "")
+        ann_hint = (
+            f"\n\n## 教师个人需求/批注（务必参考——题干设计、通过条件都要体现）\n{teacher_ann}"
+            if teacher_ann else ""
+        )
         # 审核回退反馈：审题干 needs_fix（review_stem）或 审求解 fix_design（review_solve）
         feedback = state.feedback_buffer.get("review_solve") or state.feedback_buffer.get("review_stem") or ""
         fix_hint = (
@@ -590,7 +598,7 @@ class TeamDesignNode(_OrchestratorNode):
         )
         await self.orch.scheduler.run_agent(
             "design_direct",
-            task=f"根据 design_card 设计题干（含设计意图 + 声明「通过条件」——本题成立需要满足的可机检特征），写出 question.md。{board_hint}{fix_hint}",
+            task=f"根据 design_card 设计题干（含设计意图 + 声明「通过条件」——本题成立需要满足的可机检特征），写出 question.md。{board_hint}{ann_hint}{fix_hint}",
             slot_id=state.slot_id, inject_files=inject, target_file="question.md",
         )
         if not (ws / "question.md").exists():
