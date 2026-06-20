@@ -1627,6 +1627,11 @@ class DocPipelineOrchestrator:
         q_sections = _extract_sections(question_text)
 
         stem = q_sections.get("题干") or q_sections.get("题目") or extract_h2_section(question_text, "题干") or extract_h2_section(question_text, "题目")
+        # 概念题兜底（conceptual_batch 格式：## 第 N 题，无 ## 题干 段）：
+        # question.md 本身就是题目集合，去掉 **答案**：X 行后整体作为题目。
+        # 否则 _format_final 会对概念题产出空的 ## 题目（final 装配 bug）。
+        if not stem.strip() and question_text.strip():
+            stem = re.sub(r"^\s*\*\*答案\*\*[：:].*$", "", question_text, flags=re.M).strip()
         sub_questions = q_sections.get("子问题", "")
         options = q_sections.get("选项", "")
 
