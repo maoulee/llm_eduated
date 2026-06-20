@@ -281,3 +281,18 @@ def test_single_choice_valid_options_pass(tmp_path):
     assert "OK options=" in r.stdout
 
 
+# ── 7. 概念题审核 rubric：题型自适应（简答/填空/判断/选择）──────────────
+def test_concept_review_rubric_is_type_aware():
+    """概念题有多种题型，rubric 不能默认选择题。验证 rubric 含题型识别 +
+    4 个题型专属分支 + 通用项（事实性/覆盖考点/解析自洽），且不执行/不算值。"""
+    from core_new.doc_pipeline.orchestrator import _CONCEPT_REVIEW_RUBRIC as R
+    assert "识别每道题的题型" in R  # 先识别题型
+    assert "通用 rubric" in R and "事实性" in R and "解析自洽" in R  # 所有题型都判
+    assert "覆盖声明的 concept_topic" in R
+    for t in ("### 选择题", "### 判断题", "### 填空题", "### 简答题"):  # 4 题型分支
+        assert t in R, f"rubric 缺题型分支: {t}"
+    assert "恰 1 个正确" in R and "干扰项" in R  # 选择题专属
+    assert "唯一确定" in R and "要点完整" in R  # 填空/简答专属
+    assert "不执行" in R and "无 gen.py" in R  # 概念题不执行
+
+
