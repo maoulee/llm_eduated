@@ -1,0 +1,41 @@
+{
+  "slot_id": "Q43",
+  "step": "verify",
+  "round": 0,
+  "timestamp": "2026-06-02T04:27:30",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "next_action": "revise_stem",
+    "fix_target": "stem",
+    "checks": {
+      "code_executed": "fail",
+      "variables_from_stem": "pass",
+      "formula_correct": "pass",
+      "answer_unique": "pass",
+      "intent_match": "mismatch",
+      "blueprint_match": "fail",
+      "single_correct_option": "n/a",
+      "distractor_quality": "n/a",
+      "option_stem_coupled": "n/a",
+      "sub_answer_consistent": "n/a",
+      "rubric_coverage": "n/a",
+      "actual_K1": "4",
+      "actual_K2": "2",
+      "actual_K3": "5",
+      "actual_K4": "4",
+      "actual_K5": "2",
+      "radar_match": "fail",
+      "overall_quality": "1"
+    },
+    "trusted": "false",
+    "computed_answer": "无输出",
+    "evidence": "1. **代码执行失败**：Solver 返回的 `computed_results` 为空，且未提供具体的调度过程推演结果。虽然 `error` 字段为空，但 `python_exec_count: 1` 且无输出表明求解器未能生成有效答案或代码逻辑存在严重缺陷导致中断。\n2. **蓝图严重不匹配**：题目设计方案（蓝图）明确要求考点为“多级存储系统平均访问时间计算”、“Cache命中率”、“写直达策略”等计算机组成原理考点。然而，实际提供的题干却是关于“实时操作系统进程调度”和“优先级老化机制”的操作系统考点。两者完全无关，属于严重的选题错误。\n3. **意图不匹配**：出题意图显然是考察 Cache 性能计算，但题目内容却是 OS 调度推演，导致无法按照蓝图要求进行审核和评分。",
+    "fix_detail": "题干内容与蓝图契约完全不符。蓝图要求考察 Cache/内存层次结构性能，而题干是 OS 进程调度。需要重写题干，使其符合“多级存储系统平均访问时间计算”的考点。同时，Solver 代码也需要重写以匹配新的题干。",
+    "corrected_stem": "",
+    "corrected_code": "",
+    "comment": "1. **代码执行失败**：Solver 返回的 `computed_results` 为空，且未提供具体的调度过程推演结果。虽然 `error` 字段为空，但 `python_exec_count: 1` 且无输出表明求解器未能生成有效答案或代码逻辑存在严重缺陷导致中断。\n2. **蓝图严重不匹配**：题目设计方案（蓝图）明确要求考点为“多级存储系统平均访问时间计算”、“Cache命中率”、“写直达策略”等计算机组成原理考点。然而，实际提供的题干却是关于“实时操作系统进程调度”和“优先级老化机制”的操作系统考点。两者完全无关，属于严重的选题错误。\n3. **意图不匹配**：出题意图显然是考察",
+    "_raw_text": "## verdict\n- **status**: needs_fix\n- **next_action**: revise_stem\n- **fix_target**: stem\n\n## checks\n- **code_executed**: fail\n- **variables_from_stem**: pass\n- **formula_correct**: pass\n- **answer_unique**: pass\n- **intent_match**: mismatch\n- **blueprint_match**: fail\n- **single_correct_option**: n/a\n- **distractor_quality**: n/a\n- **option_stem_coupled**: n/a\n- **sub_answer_consistent**: n/a\n- **rubric_coverage**: n/a\n- **actual_K1**: 4\n- **actual_K2**: 2\n- **actual_K3**: 5\n- **actual_K4**: 4\n- **actual_K5**: 2\n- **radar_match**: fail\n- **overall_quality**: 1\n\n## verified_result\n- **trusted**: false\n- **computed_answer**: 无输出\n\n## evidence\n1. **代码执行失败**：Solver 返回的 `computed_results` 为空，且未提供具体的调度过程推演结果。虽然 `error` 字段为空，但 `python_exec_count: 1` 且无输出表明求解器未能生成有效答案或代码逻辑存在严重缺陷导致中断。\n2. **蓝图严重不匹配**：题目设计方案（蓝图）明确要求考点为“多级存储系统平均访问时间计算”、“Cache命中率”、“写直达策略”等计算机组成原理考点。然而，实际提供的题干却是关于“实时操作系统进程调度”和“优先级老化机制”的操作系统考点。两者完全无关，属于严重的选题错误。\n3. **意图不匹配**：出题意图显然是考察 Cache 性能计算，但题目内容却是 OS 调度推演，导致无法按照蓝图要求进行审核和评分。\n\n## fix_instruction\n- **fix_detail**: 题干内容与蓝图契约完全不符。蓝图要求考察 Cache/内存层次结构性能，而题干是 OS 进程调度。需要重写题干，使其符合“多级存储系统平均访问时间计算”的考点。同时，Solver 代码也需要重写以匹配新的题干。\n\n## corrected_content\n\n### corrected_stem\n某计算机系统采用多级存储层次结构，包含 Cache 和主存（Main Memory）。系统参数如下：\n1. **Cache 参数**：\n   - 块大小（Block Size）为 32 Bytes。\n   - 访问 Cache 的时间 $T_c = 10ns$。\n   - Cache 命中率为 0.95。\n2. **主存参数**：\n   - 访问主存的时间 $T_m = 100ns$（每次访问一个字节，但数据以块为单位传输，传输时间与块大小成正比，此处简化为：从主存读取一个块到 Cache 的总时间为 $100ns \\times \\text{块大小} / 4 \\text{Bytes} + 50ns$ 的固定开销，或者更简单地设定：缺失惩罚 $P = 200ns$，即当 Cache 缺失时，从主存调入一块数据到 Cache 并供 CPU 读取所需的额外时间）。\n   - **修正设定**：为简化计算并符合 408 常见题型，设定缺失惩罚（Miss Penalty）$P = 200ns$。这意味着当 Cache 缺失时，CPU 需等待 $200ns$ 才能从主存获取所需数据并放入 Cache。\n3. **写策略**：\n   - 采用 **Write-Through（写直达）** 策略。\n   - 采用 **Write-Allocate（写分配）** 策略。\n   - **无**写缓冲器（Write Buffer）。\n   - 当 Cache 命中时，写操作只需访问 Cache，耗时 $T_c = 10ns$。\n   - 当 Cache 缺失时，需先从主存读取块到 Cache（耗时 $P=200ns$），然后写入 Cache 和主存。由于是写直达，写入主存也需要时间。假设写入主存一个块的时间等于读取一个块的时间，即缺失时的写操作总开销为 $P_{read} + P_{write} = 200ns + 200ns = 400ns$？\n   - **更标准的 408 设定**：通常定义 $T_c$ 为访问 Cache 时间，$T_m$ 为访问主存时间（或块传输时间）。\n   - 让我们采用更清晰的参数：\n     - 读操作：\n       - 命中时间：$T_{hit\\_read} = 10ns$。\n       - 缺失惩罚：$T_{miss\\_read} = 200ns$（从主存取块并放入 Cache 的时间）。\n     - 写操作：\n       - 命中时间：$T_{hit\\_write} = 10ns$（仅写 Cache，同时启动写主存，但题目说无 Buffer，通常 Write-Through 无 Buffer 意味着 CPU 必须等待主存写完成？或者并行？408 经典题通常假设：命中时，写 Cache 并写主存，CPU 等待最慢的操作。若主存写慢，则命中写时间也长。但为了简化，常设：命中写时间为 $T_c$，缺失写时间为 $T_{miss} + T_{write\\_mem}$。\n       - **明确设定**：\n         - 读操作：命中率 $H_r = 0.95$。命中耗时 $10ns$。缺失时，需从主存读取块，耗时 $200ns$。\n         - 写操作：命中率 $H_w = 0.95$。采用 Write-Through。\n           - 命中时：写入 Cache 和主存。假设写入 Cache 耗时 $10ns$，写入主存耗时 $200ns$。若无缓冲，CPU 需等待两者完成，故命中写耗时 $200ns$（由主存速度决定）。\n           - 缺失时：先从主存读取块（$200ns$），然后写入 Cache 和主存（$200ns$）。总耗时 $400ns$。\n         - **或者采用更常见的简化模型**：\n           - 读平均时间：$T_{read} = H \\times T_c + (1-H) \\times P$。\n           - 写平均时间：$T_{write} = H \\times T_{write\\_hit} + (1-H) \\times T_{write\\_miss}$。\n           - 设定：$T_c = 10ns$。$P_{read} = 200ns$（读缺失惩罚）。\n           - 写策略 Write-Through, Write-Allocate, No Buffer。\n           - 写命中：写 Cache ($10ns$) + 写主存 ($200ns$) = $200ns$ (串行或取最大值)。\n           - 写缺失：读主存 ($200ns$) + 写 Cache ($10ns$) + 写主存 ($200ns$) = $400ns$? 或者读主存块到Cache后，写操作覆盖。\n           - 为了便于计算和考察，设定如下：\n             - 读访问：$T_{read} = H \\cdot T_c + (1-H) \\cdot (T_c + P)$。其中 $P$ 是缺失后从主存取块的时间。\n             - 写访问：$T_{write} = H \\cdot T_{w\\_hit} + (1-H) \\cdot T_{w\\_miss}$。\n             - 已知：$T_c = 10ns$, $T_m = 100ns$ (主存访问时间, 块大小32B, 假设一次访问4B, 则传输时间 $32/4 * 100 = 800ns$? 不，直接给缺失惩罚更清楚)。\n             - **最终题干参数**：\n               - Cache 访问时间 $T_c = 10ns$。\n               - 主存块传输时间 $T_{transfer} = 200ns$ (缺失时从主存到Cache的时间)。\n               - 读写命中率均为 $0.95$。\n               - 读策略：Read-Modify-Write 不适用，仅读。命中 $10ns$，缺失 $10ns + 200ns = 210ns$。\n               - 写策略：Write-Through, Write-Allocate, 无缓冲。\n                 - 写命中：写 Cache ($10ns$) 且写主存 ($200ns$)。无缓冲，CPU 等待最慢者，故 $200ns$。\n                 - 写缺失：先读块 ($200ns$)，再写 Cache ($10ns$) 且写主存 ($200ns$)。总 $200+200=400ns$ (假设读写主存串行或取最大，此处简化为缺失开销 $400ns$)。\n               - 程序执行中，读指令占比 $60\\%$，写指令占比 $40\\%$。\n               - 求平均内存访问时间。\n\n请计算该系统的平均内存访问时间（AMAT）。\n\n### corrected_code\n```python\ndef calculate_amat():\n    \"\"\"\n    计算平均内存访问时间 (AMAT)\n    \n    参数设定:\n    - T_c: Cache 访问时间, 10ns\n    - T_transfer: 缺失时从主存传输一个块到 Cache 的时间, 200ns\n    - Hit Rate (H): 0.95\n    - 读指令比例: 0.6\n    - 写指令比例: 0.4\n    \n    读操作:\n    - 命中: T_c = 10ns\n    - 缺失: T_c + T_transfer = 10 + 200 = 210ns\n    \n    写操作 (Write-Through, Write-Allocate, No Buffer):\n    - 命中: 写 Cache 和写主存。CPU 等待最慢操作。\n      写 Cache: 10ns, 写主存: 200ns. 故 T_write_hit = 200ns.\n    - 缺失: 先读块 (200ns), 然后写 Cache 和写主存 (200ns).\n      T_write_miss = T_transfer + max(T_c, T_write_mem) = 200 + 200 = 400ns.\n    \"\"\"\n    \n    T_c = 10  # ns\n    T_transfer = 200  # ns\n    H = 0.95\n    \n    # 读操作平均时间\n    T_read_hit = T_c\n    T_read_miss = T_c + T_transfer\n    T_read_avg = H * T_read_hit + (1 - H) * T_read_miss\n    \n    # 写操作平均时间\n    # 命中: 写Cache和主存，无缓冲，等待最慢\n    T_write_hit = max(T_c, T_transfer) # 200ns\n    # 缺失: 先读块，再写\n    T_write_miss = T_transfer + max(T_c, T_transfer) # 200 + 200 = 400ns\n    T_write_avg = H * T_write_hit + (1 - H) * T_write_miss\n    \n    # 总平均时间\n    P_read = 0.6\n    P_write = 0.4\n    AMAT = P_read * T_read_avg + P_write * T_write_avg\n    \n    return {\n        \"T_read_avg\": T_read_avg,\n        \"T_write_avg\": T_write_avg,\n        \"AMAT\": AMAT\n    }\n\nresult = calculate_amat()\nprint(f\"读操作平均时间: {result['T_read_avg']} ns\")\nprint(f\"写操作平均时间: {result['T_write_avg']} ns\")\nprint(f\"平均内存访问时间 (AMAT): {result['AMAT']} ns\")\n```",
+    "overall_quality": "1"
+  }
+}

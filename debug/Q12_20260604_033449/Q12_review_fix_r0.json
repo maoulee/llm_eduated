@@ -1,0 +1,24 @@
+{
+  "slot_id": "Q12",
+  "step": "review_fix",
+  "round": 0,
+  "timestamp": "2026-06-04T03:51:23",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "overall_quality": "9",
+    "issues": "无",
+    "verified_answer": "C\n",
+    "fix_target": "none",
+    "fixed_stem": "原文",
+    "fixed_options": {},
+    "fixed_answer": "C\n",
+    "correct_answer": "C",
+    "explanation": "程序执行时间的计算公式为 $T = \\dfrac{IC \\times CPI}{f}$，其中 $IC$ 为指令条数，$CPI$ 为平均每条指令所需时钟周期数，$f$ 为主频。代入数据：$T = \\dfrac{3 \\times 10^9 \\times 2}{1.5 \\times 10^9} = \\dfrac{6 \\times 10^9}{1.5 \\times 10^9} = 4$ 秒。故选 C。选项 B 的干扰性较强，其值为忽略 CPI（即按 CPI=1 计算时 IC/f 的结果），考查考生是否遗漏\"平均 CPI=2\"这一条件。",
+    "key_steps": "根据公式 $T = IC \\times CPI / f$，计算总时钟周期数 = $3 \\times 10^9 \\times 2 = 6 \\times 10^9$；代入主频 $f = 1.5 \\times 10^9$ Hz，得执行时间 = $6 \\times 10^9 / 1.5 \\times 10^9 = 4$ 秒；对照选项确定答案为 C",
+    "difficulty_self_assessment": "2",
+    "key_steps_list": [
+      "根据公式 $T = IC \\times CPI / f$，计算总时钟周期数 = $3 \\times 10^9 \\times 2 = 6 \\times 10^9$；代入主频 $f = 1.5 \\times 10^9$ Hz，得执行时间 = $6 \\times 10^9 / 1.5 \\times 10^9 = 4$ 秒；对照选项确定答案为 C"
+    ]
+  }
+}

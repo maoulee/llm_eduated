@@ -1,0 +1,32 @@
+{
+  "slot_id": "Q12",
+  "step": "merged_design",
+  "round": 0,
+  "timestamp": "2026-06-04T04:18:36",
+  "timing_s": null,
+  "output": {
+    "stem": "假定某计算机的主频为 2 GHz。运行某程序时，共执行了 $4 \\times 10^5$ 条 A 类指令（CPI 为 2）和 $2 \\times 10^5$ 条 B 类指令（CPI 为 4）。则执行该程序的时间为（ ）。",
+    "given_conditions": [
+      "主频为 2 GHz",
+      "A类指令条数为 4*10^5，CPI为 2",
+      "B类指令条数为 2*10^5，CPI为 4"
+    ],
+    "difficulty_self_assessment": "3",
+    "knowledge_points": "CPU执行时间, CPI, 主频与时钟周期\n",
+    "option_A": "0.3 ms",
+    "option_B": "0.6 ms",
+    "option_C": "0.8 ms",
+    "option_D": "0.9 ms",
+    "correct_answer": "C",
+    "option_style_used": "数字结果\n",
+    "distractor_intent_A": "错误选项 A：忽略了不同指令的 CPI 差异，直接用总指令条数除以主频计算时间，即 $6 \\times 10^5 / (2 \\times 10^9) = 0.3 \\times 10^{-3}$ s。",
+    "distractor_intent_B": "错误选项 B：混淆了指令条数与时钟周期数，错误地将总指令条数乘以 A 类指令的 CPI 进行计算，即 $6 \\times 10^5 \\times 2 / (2 \\times 10^9) = 0.6 \\times 10^{-3}$ s。",
+    "distractor_intent_C": "正确选项：计算两类指令的总时钟周期数 $4 \\times 10^5 \\times 2 + 2 \\times 10^5 \\times 4 = 1.6 \\times 10^6$，再除以主频 $2 \\times 10^9$ Hz，得到 $0.8 \\times 10^{-3}$ s = 0.8 ms。",
+    "distractor_intent_D": "错误选项 D：在计算平均 CPI 时未采用加权平均，而是错误地使用了算术平均值 $(2+4)/2=3$，进而求出总周期数为 $6 \\times 10^5 \\times 3 = 1.8 \\times 10^6$，除以主频得到 $0.9 \\times 10^{-3}$ s。\n",
+    "blueprint_compliance": "PASS — 考点严格匹配 CO-1 计算机系统概述中的 CPU 性能指标计算。",
+    "difficulty_alignment": "PASS — 目标难度 3，包含基本公式应用及数值量级（ms）的单位换算，符合 K1-K2 平衡型的认知雷达要求。",
+    "option_uniqueness": "PASS — 基于严格的物理公式计算，正确答案数值唯一。",
+    "no_contradiction": "PASS — 给定的主频、指令条数与 CPI 条件在逻辑和计算上完全兼容，无冲突。",
+    "reasoning_hint": "先根据各类指令条数和对应的 CPI 计算出程序总时钟周期数，再通过主频转换为 CPU 执行时间，最后统一单位为毫秒。"
+  }
+}

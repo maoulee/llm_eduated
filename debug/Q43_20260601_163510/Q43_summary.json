@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T16:49:07",
+  "total_time_s": 784.21,
+  "rounds": 2,
+  "final_stem": "某32位RISC-V风格处理器采用经典的五级流水线（IF, ID, EX, MEM, WB），每级耗时均为1个时钟周期。该处理器配备一个直接映射（Direct-Mapped）指令Cache，参数如下：Cache总容量1KB，数据块大小（Block Size）16B，主存地址32位。\n\n系统执行以下指令序列（假设所有寄存器初始值为0，内存地址 `0x0000_0000` 处存放整数 `1`）：\n\n1. `lw  $t0, 0($zero)`    # I1: 从内存地址 0 加载数据到 $t0\n2. `add $t1, $t0, $t0`    # I2: $t1 = $t0 + $t0\n3. `slt $t2, $t1, 10`     # I3: 若 $t1 < 10 则 $t2=1，否则 $t2=0\n4. `bne $t2, $zero, Exit` # I4: 若 $t2 != 0 则跳转至 Exit\n5. `sw  $t1, 0($zero)`    # I5: 将 $t1 存入内存地址 0 (若执行到此处)\n\n已知条件：\n1. **前递机制**：硬件支持数据前递（Forwar",
+  "solver_execs": 8,
+  "review_status": "needs_fix",
+  "review_quality": "4",
+  "review_raw_text_length": 6441
+}

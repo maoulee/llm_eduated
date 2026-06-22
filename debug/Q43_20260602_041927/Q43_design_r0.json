@@ -1,0 +1,28 @@
+{
+  "slot_id": "Q43",
+  "step": "design",
+  "round": 0,
+  "timestamp": "2026-06-02T04:31:36",
+  "timing_s": null,
+  "output": {
+    "stem": "某实时系统中有三个周期性任务 $\\tau_1, \\tau_2, \\tau_3$，共享一个临界资源 $S$，通过互斥锁 $M$ 进行保护。系统采用基于优先级的抢占式调度（数值越小优先级越高），并采用**优先级继承协议（Priority Inheritance Protocol, PIP）**。\n\n任务参数与结构如下：\n- $\\tau_1$：优先级 $P_1=1$，周期 $T_1=50$ ms，最坏执行时间 $C_1=10$ ms。执行序列为：非临界区代码（8 ms） -> 临界区代码（2 ms）。\n- $\\tau_2$：优先级 $P_2=3$，周期 $T_2=100$ ms，最坏执行时间 $C_2=20$ ms。执行序列为：临界区代码（10 ms） -> 非临界区代码（10 ms）。\n- $\\tau_3$：优先级 $P_3=2$，周期 $T_3=40$ ms，最坏执行时间 $C_3=5$ ms。执行序列为：全为非临界区代码。\n\n**初始状态**：在 $t=0$ 时刻，任务 $\\tau_2$ 已持有互斥锁 $M$ 并正在执行其临界区代码，**剩余**临界区执行时间为 10 ms。此时，任务 $\\tau_1$ 和 $\\tau_3$ 同时被激活（到达处理器就绪队列），且互斥锁 $M$ 处于忙状态。忽略上下文切换开销。\n",
+    "sub_questions": "\n[\n\"(1) 描述并画出从 $t=0$ 到 $\\tau_1$ 第一个周期实例执行完毕这段时间内，CPU 的执行时间片分配甘特图，并标注各时刻的任务优先级状态（包括继承状态）。\",\n\"(2) 计算任务 $\\tau_1$ 的第一个实例的响应时间（从激活到执行完成的时间），并验证其是否满足实时性约束。\",\n\"(3) 若系统不使用任何优先级继承或天花板协议（即标准优先级抢占调度，锁机制仅导致高优先级任务阻塞等待，不改变低优先级任务优先级），计算此时 $\\tau_1$ 的响应时间，并简述 PIP 在此场景下的作用。\"\n]",
+    "given_conditions": "\n[\n\"Task Params: T1=50,C1=10,P1=1; T2=100,C2=20,P2=3; T3=40,C3=5,P3=2\",\n\"Structure: tau1=[Non(8), Crit(2)]; tau2=[Crit(10), Non(10)]; tau3=[Non(5)]\",\n\"Sync: Mutex M with Priority Inheritance Protocol (PIP)\",\n\"Initial State (t=0): tau2 holds M, remaining Crit time=10ms; tau1 and tau3 just activated\"\n]",
+    "difficulty_self_assessment": "4",
+    "knowledge_points": "优先级继承协议, 实时任务调度分析, 响应时间计算, 优先级反转",
+    "parameter_notes": "\n1. 参数设计确保 $\\tau_1$ 在非临界区执行完毕后（$t=8$）请求锁时，$\\tau_2$ 仍持锁（剩余 $10-8=2$ms），从而触发阻塞和优先级继承。\n2. $\\tau_3$ 的优先级（2）介于 $\\tau_1$（1）和 $\\tau_2$（3）之间，且在中优先级任务 $\\tau_3$ 激活后，若无 PIP，它将抢占低优先级的 $\\tau_2$，导致 $\\tau_1$ 进一步延迟；若有 PIP，$\\tau_2$ 继承优先级 1，$\\tau_3$ 无法抢占，体现 PIP 优势。\n3. 时间参数均为整数，便于手绘甘特图和计算。\n",
+    "reasoning_form": "simulation",
+    "reasoning_rationale": "需要根据时间推进，模拟任务状态变化、锁状态、优先级动态调整及 CPU 抢占行为。",
+    "condition_utilization": "\n- **任务参数与结构**：决定执行时长和临界区位置。\n- **初始持锁状态**：是触发同步问题的关键前置条件。\n- **PIP 协议**：决定 $\\tau_2$ 在持锁且 $\\tau_1$ 等待时的优先级变化，进而决定 $\\tau_3$ 是否能抢占 $\\tau_2$。\n- **优先级顺序**：决定默认调度顺序。\n",
+    "sub_q1_intent": "考察 PIP 的动态调度过程。学生需推演出：$0-8$ms $\\tau_1$ 运行；$8$ms $\\tau_1$ 阻塞，$\\tau_2$ 继承优先级 1；$8-10$ms $\\tau_2$ 运行（不被 $\\tau_3$ 抢占）；$10$ms $\\tau_2$ 释放锁，优先级恢复 3，$\\tau_1$ 获取锁；$10-12$ms $\\tau_1$ 运行临界区；$12$ms $\\tau_1$ 完成。",
+    "sub_q2_intent": "考察响应时间的定义和计算。$R_1 = 12$ms。$12 < 50$，满足约束。",
+    "sub_q3_intent": "考察 PIP 的核心价值——消除优先级反转带来的额外延迟。在无协议情况下，$8-10$ms $\\tau_2$ 运行，但 $8$ms 时 $\\tau_3$ (P=2) 会抢占 $\\tau_2$ (P=3)。$\\tau_3$ 运行 $5$ms ($8-13$)，然后 $\\tau_2$ 继续运行 $2$ms ($13-15$) 释放锁，$\\tau_1$ 再运行 $2$ms ($15-17$)。$R_1 = 17$ms。对比 12ms 和 17ms，说明 PIP 减少了 5ms 的阻塞时间（即 $\\tau_3$ 的执行时间）。",
+    "trap_design": "学生可能忽略 $\\tau_3$ 的抢占行为，误以为无协议时 $\\tau_2$ 会直接跑完；或者在 PIP 模式下误以为 $\\tau_3$ 能抢占继承了高优先级的 $\\tau_2$。",
+    "sub_question_logic": "递进关系。Q1 是过程模拟，Q2 是基于 Q1 的结果计算，Q3 是基于 Q1 的对比分析。\n",
+    "parameter_consistency": "PASS",
+    "no_contradiction": "PASS",
+    "unique_solution": "PASS",
+    "reasoning_path_complete": "PASS",
+    "all_conditions_used": "PASS"
+  }
+}

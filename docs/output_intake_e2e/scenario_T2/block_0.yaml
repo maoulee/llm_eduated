@@ -1,0 +1,44 @@
+assessment:
+  duration_minutes: null
+  subjects:
+  - 计算机网络
+  - 计算机组成原理
+  total_score: null
+  type: null
+confidence:
+  contradictions: []
+  level: low
+  missing_fields:
+  - assessment.type
+  - assessment.total_score
+  - assessment.duration_minutes
+  - knowledge_scope.primary_chapters
+  - knowledge_scope.focus_points
+  notes: 教师明确了多套卷子，当前先收集第一套的需求。难度倾向easy，目标及格率。
+  unverified_scope: false
+difficulty:
+  anchor_source: null
+  distribution: null
+  target: easy
+intake_status: collecting
+knowledge_scope:
+  coverage_strategy: null
+  excluded_points: []
+  focus_points: []
+  primary_chapters: []
+question_config: null
+routing:
+  can_route: false
+  next_action: ask_user
+  next_input: null
+  reason: 缺少考试类型、分数/时长、知识范围等关键信息，paper_route_gate未通过
+schema_version: intake_result_v1
+source:
+  intake_type: human_input
+  raw_input: 搞几张卷子，学生基础不太好，考及格就行，别太难，计算机网络和那个什么组成原理都要有
+task_confidence: high
+task_type: paper
+teacher_preferences:
+  avoid: []
+  require: []
+  style_notes: 学生基础薄弱，目标是及格，难度要偏低

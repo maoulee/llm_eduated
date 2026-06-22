@@ -1,0 +1,195 @@
+# Pipeline configuration — routing, params, context injection
+# Loaded by core_new/doc_pipeline/pipeline_config.py
+
+# ── Pipeline parameters ──────────────────────────────────────
+pipeline:
+  max_analysis_iterations: 3
+  max_agent_attempts: 30
+  default_max_tokens: 20000
+  default_thinking_budget: 10000
+  python_exec_timeout: 30
+  slot_concurrency: 2          # env PIPELINE_SLOT_CONCURRENCY overrides this
+
+  features:
+    enable_question_design: true  # Phase 1: generate design_card.md before question writer
+
+  sampling:
+    temperature: 0.2
+    top_p: 0.9
+
+  thinking_budget:
+    outline: 8000
+    question_design: 2000
+    question_sc: 12000
+    question_comp: 8000
+    review: 4000
+    solve: 10000
+    final_review: 8000
+
+  # Per-role system parameters (moved from agent MD frontmatter)
+  roles:
+    outline:
+      multi_turn: false
+      max_attempts: 2
+    question_design:
+      multi_turn: false
+      max_attempts: 1
+    question_sc:
+      multi_turn: true
+      max_attempts: 3
+    question_comp:
+      multi_turn: true
+      max_attempts: 3
+    review:
+      multi_turn: false
+      max_attempts: 2
+    solve:
+      multi_turn: false
+      max_attempts: 2
+    final_review:
+      multi_turn: false
+      max_attempts: 2
+    creator:
+      multi_turn: true
+      max_attempts: 6
+    reviewer:
+      multi_turn: true
+      max_attempts: 3
+
+# ── Routing profiles ─────────────────────────────────────────
+routing:
+  default_profile: all_local
+
+  providers:
+    fallback: "glm5.1"
+    local: "api_vllm"
+    health_check_ttl: 60
+
+  profiles:
+    all_local:
+      _default: local
+      model_routing: {}
+
+    all_remote:
+      _default: remote
+      model_routing: {}
+
+    mixed:
+      _default: local
+      doc_review: remote
+      doc_fix: remote
+      review: remote
+      model_routing:
+        review: "{fallback}"
+        solve: "{fallback}"
+
+    glm_gen_qwen_review:
+      _default: remote
+      doc_review: local
+      doc_format: local
+      review: local
+      model_routing:
+        question_sc: "{fallback}"
+        question_comp: "{fallback}"
+        solve: "{fallback}"
+        review: "{local}"
+
+    qwen_gpt_core:
+      _default: local
+      model_routing:
+        question_sc: webgpt
+        question_comp: webgpt
+        review: webgpt
+        solve: webgpt
+        final_review: webgpt
+
+    hybrid:
+      _default: local
+      model_routing:
+        paper_composer: hybrid
+        question_sc: hybrid
+        question_comp: hybrid
+        solve: hybrid
+        review: hybrid
+        final_review: hybrid
+
+    glm_gpt_review:
+      _default: "{fallback}"
+      model_routing:
+        final_review: hybrid
+
+# ── Model routing ──────────────────────────────────────────────
+model_routing:
+  # 交互层模型（渲染/grep/归纳）
+  interaction: api_vllm
+  # 自由组卷模型（路线3 Step1）
+  free_compose: glm5.1
+
+# ── Context providers ────────────────────────────────────────
+context_providers:
+  builtins:
+    - name: assembled
+      type: file
+      path_pattern: "{workspace}/{slot_id}/blueprint.md"
+      label: "规划"
+      phases: [2, 3, 5]
+
+    - name: question
+      type: file
+      path_pattern: "{workspace}/{slot_id}/question.md"
+      label: "题目"
+      phases: [3, 5]
+
+    - name: question_public
+      type: file
+      path_pattern: "{workspace}/{slot_id}/question_public.md"
+      label: "题目"
+      phases: [4]
+
+    - name: solution
+      type: file
+      path_pattern: "{workspace}/{slot_id}/solution.md"
+      label: "求解结果"
+      phases: [5]
+
+    - name: solve_output
+      type: file
+      path_pattern: "{workspace}/{slot_id}/solve_output.txt"
+      label: "代码输出"
+      phases: [5]
+      optional: true
+
+    - name: review_comments
+      type: file
+      path_pattern: "{workspace}/{slot_id}/review.md"
+      label: "审核意见"
+      phases: [2]
+      optional: true
+
+    - name: design_card
+      type: file
+      path_pattern: "{workspace}/{slot_id}/design_card.md"
+      label: "设计卡"
+      phases: [2, 5]
+      optional: true
+
+    - name: experience_doc
+      type: inline
+      label: "经验文档"
+      phases: [1]
+      optional: true
+
+    - name: k_definitions
+      type: inline
+      label: "K值定义"
+      phases: [1]
+      optional: true
+
+  role_bindings:
+    outline: [experience_doc, k_definitions]
+    question_design: [assembled]
+    question_sc: [design_card, assembled, review_comments]
+    question_comp: [design_card, assembled, review_comments]
+    review: [assembled, question]
+    solve: [question_public]
+    final_review: [design_card, assembled, question, solution, solve_output]

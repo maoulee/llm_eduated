@@ -1,0 +1,228 @@
+/* EduTeacher Workbench - Open Design Style */
+:root {
+  /* Backgrounds */
+  --bg: #faf9f7;
+  --bg-app: #faf9f7;
+  --bg-panel: #fdfcfa;
+  --bg-subtle: #f4f5f7;
+  --bg-muted: #eef1f5;
+  --bg-fill-tertiary: rgba(0, 0, 0, 0.03);
+  --bg-fill-secondary: rgba(0, 0, 0, 0.06);
+  --bg-fill: rgba(0, 0, 0, 0.12);
+  --bg-elevated: #fffefc;
+
+  /* Borders */
+  --border: #e1e5eb;
+  --border-strong: #c9d0da;
+  --border-soft: #edf0f4;
+
+  /* Text */
+  --text: #1a1916;
+  --text-strong: #0d0c0a;
+  --text-muted: #74716b;
+  --text-soft: #989590;
+  --text-faint: #b3b0a8;
+
+  /* Accent — warm terracotta orange */
+  --accent: #c96442;
+  --accent-strong: #b45a3b;
+  --accent-soft: #f5d8cb;
+  --accent-tint: #fbeee5;
+  --accent-hover: #b45a3b;
+
+  /* Semantic colors */
+  --green: #1f7a3a;
+  --green-bg: #e8f7ee;
+  --blue: #2348b8;
+  --blue-bg: #e8efff;
+  --red: #9c2a25;
+  --red-bg: #fdecea;
+  --amber: #b26200;
+  --amber-bg: #fff3e0;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
+  --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
+  --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Fonts */
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Noto Sans', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Animations */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --duration-enter: 200ms;
+  --duration-exit: 140ms;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 140ms var(--ease-out);
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  outline: none;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-fill);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--bg-fill-secondary);
+}
+
+/* Utility classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg);
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-sm {
+  gap: var(--space-sm);
+}
+
+.gap-md {
+  gap: var(--space-md);
+}
+
+.gap-lg {
+  gap: var(--space-lg);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-soft {
+  color: var(--text-soft);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn var(--duration-enter) var(--ease-out);
+}
+
+/* Loading spinner */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--bg-fill);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}

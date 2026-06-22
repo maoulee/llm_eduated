@@ -1,0 +1,82 @@
+--- After inserting 2 (step 1) ---
+  No imbalance triggered.
+[2](h=1, bf=0)
+
+
+--- After inserting 1 (step 2) ---
+  No imbalance triggered.
+[2](h=2, bf=1)
+  [1](h=1, bf=0)
+
+
+--- After inserting 6 (step 3) ---
+  No imbalance triggered.
+  [6](h=1, bf=0)
+[2](h=2, bf=0)
+  [1](h=1, bf=0)
+
+
+--- After inserting 5 (step 4) ---
+  No imbalance triggered.
+  [6](h=2, bf=1)
+    [5](h=1, bf=0)
+[2](h=3, bf=-1)
+  [1](h=1, bf=0)
+
+
+--- After inserting 3 (step 5) ---
+  IMBALANCE: node=6, type=LL, operation=rightRotate(6)
+    [6](h=1, bf=0)
+  [5](h=2, bf=0)
+    [3](h=1, bf=0)
+[2](h=3, bf=-1)
+  [1](h=1, bf=0)
+
+
+--- After inserting 4 (step 6) ---
+  IMBALANCE: node=2, type=RL, operation=rightRotate(5)+leftRotate(2)
+    [6](h=1, bf=0)
+  [5](h=2, bf=0)
+    [4](h=1, bf=0)
+[3](h=3, bf=0)
+  [2](h=2, bf=1)
+    [1](h=1, bf=0)
+
+
+--- After inserting 7 (step 7) ---
+  No imbalance triggered.
+      [7](h=1, bf=0)
+    [6](h=2, bf=-1)
+  [5](h=3, bf=-1)
+    [4](h=1, bf=0)
+[3](h=4, bf=-1)
+  [2](h=2, bf=1)
+    [1](h=1, bf=0)
+
+
+==================================================
+FINAL TREE:
+      [7](h=1, bf=0)
+    [6](h=2, bf=-1)
+  [5](h=3, bf=-1)
+    [4](h=1, bf=0)
+[3](h=4, bf=-1)
+  [2](h=2, bf=1)
+    [1](h=1, bf=0)
+
+Root: 3
+Root left child: 2
+Root right child: 5
+Root left child's children: L=1, R=None
+Root right child's children: L=4, R=6
+Inorder traversal: [1, 2, 3, 4, 5, 6, 7]
+
+==================================================
+ANSWER for (3):
+① A->left = B->right;
+② B->right = A;
+③ updateHeight(A);
+
+ANSWER: (1) Step5 insert 3 -> node 6 LL, rightRotate(6); Step6 insert 4 -> node 2 RL, rightRotate(6)+leftRotate(2); Step7 insert 7 no imbalance
+ANSWER: (2) Root=3, L=2(R=1), R=5(L=4,R=6(R=7))
+ANSWER: (3) A->left=B->right; B->right=A; updateHeight(A);

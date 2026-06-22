@@ -1,0 +1,19 @@
+{
+  "slot_id": "Q43",
+  "step": "gate",
+  "round": 0,
+  "timestamp": "2026-06-01T13:19:22",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "severity": "none",
+    "next_action": "continue",
+    "fix_target": "none",
+    "checks": {},
+    "evidence": "",
+    "code_verification": "",
+    "fix_detail": "",
+    "comment": "",
+    "_raw_text": "## fix_instruction\n\n- **fix_detail**: \n1. **补充时间参数**：在题干中明确给出 Cache 访问时间（Hit Time）、主存访问时间（Miss Penalty 或 Memory Access Time）、以及可能的替换开销或总线延迟的具体数值（单位：ns），以便计算 AMAT。例如：“Cache 访问时间为 1ns，主存访问时间为 10ns，替换开销为 5ns”。\n2. **添加子问**：根据蓝图要求，添加 3 个子问。建议结构如下：\n    - (1) 计算数据 Cache 的地址结构（标记位、组号、块内偏移的位数），并验证地址 `0x1000` 和 `0x1800` 是否映射到同一组。\n    - (2) 跟踪上述 6 条访存操作中数据 Cache 的命中/缺失情况，计算该序列的命中率。\n    - (3) 结合给定的时间参数，计算该访存序列的平均内存访问时间（AMAT）。\n3. **明确问题目标**：确保每个子问都有明确的求解目标，避免考生猜测。"
+  }
+}

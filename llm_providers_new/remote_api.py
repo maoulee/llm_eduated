@@ -1,168 +1,541 @@
-# llm_providers_new/remote_api.py (Final Reinforced Version)
+# llm_providers_new/remote_api.py
+
+"""
+Remote LLM provider implementations.
+
+Supported online API protocols:
+
+1. openai_chat
+   - OpenAI-compatible `/v1/chat/completions`.
+   - Use this for GLM 5.1 and other online OpenAI-compatible models.
+
+2. vllm_chat_batch
+   - vLLM `/v1/chat/completions/batch`.
+   - Payload uses `messages` as a list of conversations.
+   - Response contains one choice per conversation, with `choice.index` mapping
+     back to the input conversation index.
+
+3. openai_completions_batch
+   - Legacy fallback for `/v1/completions` with `prompt` as a list.
+"""
 
 import asyncio
 import json
 import logging
-import copy
-from typing import List, Dict, Union, Optional
+import os
+import re
+from typing import Any, Dict, List, Optional
 
-from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIStatusError
+import httpx
+from openai import AsyncOpenAI
+
 from .base import BaseLLMProvider
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+# Module-level shared httpx client for connection pooling
+_shared_client: Optional[httpx.AsyncClient] = None
+_shared_client_timeout: float = 300.0
+
+
+async def _get_shared_client(timeout: float = 300.0) -> httpx.AsyncClient:
+    """Get or create the shared httpx.AsyncClient with connection pooling."""
+    global _shared_client, _shared_client_timeout
+    if _shared_client is None or _shared_client.is_closed:
+        _shared_client_timeout = timeout
+        _shared_client = httpx.AsyncClient(timeout=timeout)
+    return _shared_client
+
+
+async def close_shared_client():
+    """Close the shared httpx client. Call when shutting down the application."""
+    global _shared_client
+    if _shared_client is not None and not _shared_client.is_closed:
+        await _shared_client.aclose()
+    _shared_client = None
 
 
 class RemoteAPIProvider(BaseLLMProvider):
-    """
-    一个实现了 BaseLLMProvider 接口的异步客户端。
-    此版本将所有思考模式和JSON模式的控制逻辑集中在 _make_api_call 中，
-    以确保行为的一致性和健壮性。
-    """
-    def __init__(self, model_name: str, api_base_url: str, api_key: str, **kwargs):
-        self.client = AsyncOpenAI(api_key=api_key, base_url=api_base_url)
+    """OpenAI-compatible remote provider with configurable thinking control."""
+
+    def __init__(self, model_name: str, api_base_url: str, api_key: str = "EMPTY", **kwargs):
         self.model_name = model_name
         self.provider_type = "api"
+        self.api_base_url = api_base_url.rstrip("/")
+        self.api_key = api_key or "EMPTY"
+        self.request_timeout = float(kwargs.get("request_timeout", 300.0))
+        self.max_retries = int(kwargs.get("max_retries", 0))
+        self.max_connections = int(kwargs.get("max_connections", os.getenv("LLM_HTTP_MAX_CONNECTIONS", "20")))
+        self.max_keepalive_connections = int(
+            kwargs.get("max_keepalive_connections", os.getenv("LLM_HTTP_MAX_KEEPALIVE", "10"))
+        )
+        self.keepalive_expiry = float(kwargs.get("keepalive_expiry", os.getenv("LLM_HTTP_KEEPALIVE_EXPIRY", "120")))
+
+        timeout = httpx.Timeout(
+            timeout=self.request_timeout,
+            connect=min(30.0, self.request_timeout),
+            read=self.request_timeout,
+            write=min(120.0, self.request_timeout),
+            pool=min(30.0, self.request_timeout),
+        )
+        limits = httpx.Limits(
+            max_connections=self.max_connections,
+            max_keepalive_connections=self.max_keepalive_connections,
+            keepalive_expiry=self.keepalive_expiry,
+        )
+        self.http_client = httpx.AsyncClient(timeout=timeout, limits=limits)
+
+        self.client = AsyncOpenAI(
+            api_key=self.api_key,
+            base_url=self.api_base_url,
+            timeout=timeout,
+            max_retries=self.max_retries,
+            http_client=self.http_client,
+        )
+
+        self.api_protocol = kwargs.get("api_protocol", "openai_chat")
+
+        # Thinking control methods:
+        # - none: do not modify request/prompt.
+        # - prompt: append /no_think when thinking is disabled.
+        # - param: send provider-specific extra_body {"thinking": {"type": ...}}.
+        # - chat_template_kwargs: send vLLM-style
+        #   {"chat_template_kwargs": {"enable_thinking": bool}}.
         self.thinking_control_method = kwargs.get("thinking_control_method", "prompt")
-        logger.info(f"Thinking control method for '{self.model_name}' is set to: '{self.thinking_control_method}'")
+        self.prompt_template_style = kwargs.get("prompt_template_style", "qwen")
+        self.supports_response_format = bool(kwargs.get("supports_response_format", True))
+        self.batch_size = max(1, int(kwargs.get("batch_size", 8)))
 
         self.sampling_params = {
-            "temperature": 0.6,
-            "top_p": 0.9,
-            "max_tokens": 4096
+            "temperature": float(kwargs.get("temperature", 0.6)),
+            "top_p": float(kwargs.get("top_p", 0.9)),
+            "top_k": int(kwargs.get("top_k", -1)),
+            "max_tokens": int(kwargs.get("default_max_tokens", 4096)),
         }
-        logger.info(f"RemoteAPIProvider initialized for model '{model_name}' at '{api_base_url}'")
 
-    async def _make_api_call(
+        logger.info(
+            "RemoteAPIProvider initialized: model=%s base_url=%s protocol=%s batch_size=%s thinking=%s",
+            self.model_name,
+            self.api_base_url,
+            self.api_protocol,
+            self.batch_size,
+            self.thinking_control_method,
+        )
+
+    def _base_server_url(self) -> str:
+        """Return server root URL. Handles configs ending in /v1."""
+        if self.api_base_url.endswith("/v1"):
+            return self.api_base_url[:-3].rstrip("/")
+        return self.api_base_url
+
+    def _prepare_messages(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> List[Dict[str, Any]]:
+        """Copy and lightly modify messages according to prompt/json control."""
+        if not messages:
+            return []
+        # Only need to copy the last message if we'll modify it
+        needs_modify = (
+            messages[-1].get("role") == "user"
+            and (
+                (self.thinking_control_method == "prompt" and (not enable_thinking or json_mode))
+                or json_mode
+            )
+        )
+        if needs_modify:
+            processed = list(messages)  # shallow copy the list
+            processed[-1] = dict(messages[-1])  # copy only the last dict
+        else:
+            return list(messages)  # return shallow copy (caller shouldn't mutate)
+
+        last = processed[-1]
+        if last.get("role") == "user":
+            if self.thinking_control_method == "prompt" and (not enable_thinking or json_mode):
+                last["content"] = f"{last.get('content', '')} /no_think"
+            if json_mode:
+                last["content"] = f"{last.get('content', '')}\n\n请只输出一个合法 JSON 对象，不要输出 Markdown 或额外解释。"
+        return processed
+
+    def _extra_body_for_thinking(self, enable_thinking: bool) -> Dict[str, Any]:
+        """Provider-specific thinking parameter support."""
+        if self.thinking_control_method == "param":
+            return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
+        if self.thinking_control_method == "chat_template_kwargs":
+            return {"chat_template_kwargs": {"enable_thinking": bool(enable_thinking)}}
+        return {}
+
+    def _messages_to_prompt(self, messages: List[Dict[str, Any]], enable_thinking: bool, json_mode: bool) -> str:
+        """Convert chat messages into a text prompt for legacy batched completions."""
+        processed = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
+
+        if self.prompt_template_style == "qwen":
+            chunks = []
+            for msg in processed:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                chunks.append(f"<|im_start|>{role}\n{content}<|im_end|>")
+            chunks.append("<|im_start|>assistant\n")
+            return "\n".join(chunks)
+
+        parts = []
+        for msg in processed:
+            parts.append(f"{msg.get('role', 'user').upper()}: {msg.get('content', '')}")
+        parts.append("ASSISTANT:")
+        return "\n".join(parts)
+
+    async def _chat_call(
         self,
-        messages: List[Dict],
-        stop_sequences: Optional[List[str]] = None,
-        max_tokens: Optional[int] = None,
-        enable_thinking: bool = True,
-        json_mode: bool = False
-    ) -> str:
-        """
-        对单个请求进行健壮的、异步的API调用。
-        所有控制逻辑都在此函数内部处理。
-        """
-        
-        # --- 核心改动：在此处统一处理所有控制逻辑 ---
-        
-        # 1. 复制 messages 以安全地进行修改
-        processed_messages = copy.deepcopy(messages)
-        
-        # 2. 准备参数字典
-        params = {
+        messages: List[Dict[str, Any]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+        tools: Optional[List[Dict[str, Any]]] = None,
+        tool_choice: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        processed_messages = self._prepare_messages(messages, enable_thinking=enable_thinking, json_mode=json_mode)
+        # OpenAI client doesn't accept top_k; pass it via extra_body for vLLM
+        sampling = {k: v for k, v in self.sampling_params.items() if k != "top_k"}
+        params: Dict[str, Any] = {
             "model": self.model_name,
             "messages": processed_messages,
-            **self.sampling_params
+            **sampling,
         }
         if max_tokens:
-            params['max_tokens'] = max_tokens
+            params["max_tokens"] = max_tokens
         if stop_sequences:
-            params['stop'] = stop_sequences
+            params["stop"] = stop_sequences
+        if json_mode and self.supports_response_format:
+            params["response_format"] = {"type": "json_object"}
+        if tools:
+            params["tools"] = tools
+        if tool_choice and tools:
+            params["tool_choice"] = tool_choice
 
-        # 3. 根据策略应用控制
-        extra_body = {}
-        if self.thinking_control_method == 'param':
-            # 策略1: 使用原生参数 (for GLM-4.5)
-            extra_body["thinking"] = {"type": "enabled" if enable_thinking else "disabled"}
-            if json_mode:
-                extra_body["response_format"] = {"type": "json_object"}
-        
-        elif self.thinking_control_method == 'prompt':
-            # 策略2: 使用Prompt注入 (for Qwen)
-            # 如果需要关闭思考，或者强制进入JSON模式（JSON模式下不应思考）
-            if not enable_thinking or json_mode:
-                if len(processed_messages) > 0 and processed_messages[-1]['role'] == 'user':
-                    logger.info("Injecting '/no_think' into prompt to disable thinking.")
-                    processed_messages[-1]['content'] += " /no_think"
-        
+        extra_body = self._extra_body_for_thinking(enable_thinking)
         if extra_body:
             params["extra_body"] = extra_body
-        # ----------------------------------------------------
 
         try:
             response = await self.client.chat.completions.create(**params)
-            return response.choices[0].message.content
+            msg = response.choices[0].message
+            reasoning_content = getattr(msg, "reasoning_content", None) or getattr(msg, "reasoning", None) or ""
+            # Extract tool calls if present
+            tool_calls = None
+            raw_tool_calls = getattr(msg, "tool_calls", None)
+            if raw_tool_calls:
+                tool_calls = []
+                for tc in raw_tool_calls:
+                    tool_calls.append({
+                        "id": tc.id,
+                        "type": tc.type,
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        },
+                    })
+            return {
+                "content": msg.content or "",
+                "reasoning_content": reasoning_content,
+                "tool_calls": tool_calls,
+            }
         except Exception as e:
-            logger.error(f"An unexpected error occurred during API call: {e}", exc_info=True)
-            return f"Error: An unexpected error occurred. Details: {e}"
+            logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
+            raise  # Let gateway handle retries
+
+    async def _vllm_chat_batch_call(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[Dict[str, Any]]:
+        processed_batch = [
+            self._prepare_messages(msgs, enable_thinking=enable_thinking, json_mode=json_mode)
+            for msgs in messages_batch
+        ]
+        payload: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": processed_batch,
+            **self.sampling_params,
+        }
+        if max_tokens:
+            payload["max_tokens"] = max_tokens
+        if stop_sequences:
+            payload["stop"] = stop_sequences
+        if json_mode and self.supports_response_format:
+            payload["response_format"] = {"type": "json_object"}
+
+        # vLLM Qwen-family thinking control can be passed through chat_template_kwargs.
+        # This is useful when the server applies chat templates itself.
+        extra_body = self._extra_body_for_thinking(enable_thinking)
+        payload.update(extra_body)
+
+        url = f"{self._base_server_url()}/v1/chat/completions/batch"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key and self.api_key != "EMPTY":
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        try:
+            client = await _get_shared_client(self.request_timeout)
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                logger.warning("vLLM batch endpoint not available (404), falling back to sequential calls")
+                return await self._fallback_sequential_chat(processed_batch, stop_sequences, max_tokens, enable_thinking, json_mode)
+            logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
+            return [{"content": f"Error: vLLM chat batch call failed. Details: {e}", "reasoning_content": ""} for _ in processed_batch]
+        except Exception as e:
+            logger.error("vLLM chat batch call failed: %s", e, exc_info=True)
+            return [{"content": f"Error: vLLM chat batch call failed. Details: {e}", "reasoning_content": ""} for _ in processed_batch]
+
+        ordered: List[Dict[str, Any]] = [{"content": "", "reasoning_content": ""} for _ in processed_batch]
+        for choice in data.get("choices", []):
+            idx = choice.get("index")
+            if idx is None or idx >= len(ordered):
+                continue
+            message = choice.get("message") or {}
+            ordered[idx] = {
+                "content": message.get("content") or "",
+                "reasoning_content": message.get("reasoning_content") or message.get("reasoning") or "",
+            }
+        return ordered
+
+    async def _fallback_sequential_chat(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[Dict[str, Any]]:
+        """Fallback: send batch requests as individual concurrent chat calls."""
+        semaphore = asyncio.Semaphore(self.batch_size)
+
+        async def single_call(msgs):
+            async with semaphore:
+                return await self._chat_call(
+                    msgs,
+                    stop_sequences=stop_sequences,
+                    max_tokens=max_tokens,
+                    enable_thinking=enable_thinking,
+                    json_mode=json_mode,
+                )
+
+        return list(await asyncio.gather(*[single_call(msgs) for msgs in messages_batch]))
+
+    async def _completion_batch_call(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[Dict[str, Any]]:
+        prompts = [
+            self._messages_to_prompt(msgs, enable_thinking=enable_thinking, json_mode=json_mode)
+            for msgs in messages_batch
+        ]
+        params: Dict[str, Any] = {
+            "model": self.model_name,
+            "prompt": prompts,
+            **self.sampling_params,
+        }
+        if max_tokens:
+            params["max_tokens"] = max_tokens
+        if stop_sequences:
+            params["stop"] = stop_sequences
+
+        try:
+            response = await self.client.completions.create(**params)
+            ordered: List[Dict[str, Any]] = [{"content": "", "reasoning_content": ""} for _ in prompts]
+            for choice in response.choices:
+                idx = getattr(choice, "index", None)
+                if idx is None or idx >= len(ordered):
+                    continue
+                ordered[idx] = {"content": choice.text or "", "reasoning_content": ""}
+            return ordered
+        except Exception as e:
+            logger.error("online completion batch call failed: %s", e, exc_info=True)
+            return [{"content": f"Error: batch API call failed. Details: {e}", "reasoning_content": ""} for _ in prompts]
+
+    async def _generate_raw_batch(
+        self,
+        messages_batch: List[List[Dict[str, Any]]],
+        stop_sequences: Optional[List[str]],
+        max_tokens: Optional[int],
+        enable_thinking: bool,
+        json_mode: bool,
+    ) -> List[Dict[str, Any]]:
+        if not messages_batch:
+            return []
+
+        # Fast path: single message with openai_chat protocol
+        if len(messages_batch) == 1 and self.api_protocol == "openai_chat":
+            result = await self._chat_call(
+                messages_batch[0], stop_sequences=stop_sequences,
+                max_tokens=max_tokens, enable_thinking=enable_thinking,
+                json_mode=json_mode,
+            )
+            return [result]
+
+        if self.api_protocol in {"vllm_chat_batch", "openai_chat_batch"}:
+            # Use sequential chat calls instead of /batch endpoint
+            # for better stability with tool calling scenarios.
+            return await self._fallback_sequential_chat(
+                messages_batch, stop_sequences=stop_sequences,
+                max_tokens=max_tokens, enable_thinking=enable_thinking,
+                json_mode=json_mode,
+            )
+
+        if self.api_protocol in {"openai_completions_batch", "vllm_completions_batch"}:
+            chunks = [
+                messages_batch[start:start + self.batch_size]
+                for start in range(0, len(messages_batch), self.batch_size)
+            ]
+            chunk_results = await asyncio.gather(*[
+                self._completion_batch_call(
+                    chunk, stop_sequences=stop_sequences, max_tokens=max_tokens,
+                    enable_thinking=enable_thinking, json_mode=json_mode,
+                )
+                for chunk in chunks
+            ])
+            outputs = []
+            for result in chunk_results:
+                outputs.extend(result)
+            return outputs
+
+        semaphore = asyncio.Semaphore(self.batch_size)
+
+        async def guarded_call(msgs: List[Dict[str, Any]]) -> Dict[str, Any]:
+            async with semaphore:
+                return await self._chat_call(
+                    msgs,
+                    stop_sequences=stop_sequences,
+                    max_tokens=max_tokens,
+                    enable_thinking=enable_thinking,
+                    json_mode=json_mode,
+                )
+
+        return list(await asyncio.gather(*[guarded_call(msgs) for msgs in messages_batch]))
+
+    @staticmethod
+    def _parse_think_answer(output: Dict[str, Any], enable_thinking: bool) -> Dict[str, str]:
+        """Parse thinking and answer from API response.
+
+        Args:
+            output: Dict with 'content' and 'reasoning_content' keys from API response.
+            enable_thinking: Whether thinking mode was enabled.
+
+        Returns:
+            Dict with 'think' and 'answer' keys.
+        """
+        reasoning = output.get("reasoning_content", "")
+        content = output.get("content", "")
+
+        if reasoning:
+            if not content and enable_thinking:
+                xml_match = re.search(r'(<\w+>.*?</\w+>\s*)+$', reasoning, re.DOTALL)
+                if xml_match:
+                    xml_part = xml_match.group(0)
+                    think_part = reasoning[:xml_match.start()].strip()
+                    return {"think": think_part, "answer": xml_part.strip()}
+                code_match = re.search(r'(```\w*\n.*?```)', reasoning, re.DOTALL)
+                if code_match:
+                    code_part = code_match.group(1)
+                    think_part = reasoning[:code_match.start()].strip()
+                    return {"think": think_part, "answer": code_part.strip()}
+                md_match = re.search(r'(^|\n)(#{1,3}\s+.+)', reasoning, re.MULTILINE)
+                if md_match:
+                    md_part = reasoning[md_match.start():].strip()
+                    think_part = reasoning[:md_match.start()].strip()
+                    return {"think": think_part, "answer": md_part}
+                # Final fallback: reasoning contains the actual answer, use it directly
+                return {"think": "", "answer": reasoning.strip()}
+            return {"think": reasoning, "answer": content}
+
+        # Fallback for legacy responses without reasoning_content field
+        if enable_thinking and "<think" in content:
+            try:
+                parts = content.split("<think", 1)[1].split("</think", 1)
+                return {"think": parts[0].strip(), "answer": parts[1].strip()}
+            except IndexError:
+                return {"think": "N/A (parse error)", "answer": content.strip()}
+        return {"think": "N/A (thinking disabled or not present)", "answer": content.strip()}
+
+    @staticmethod
+    def _parse_json(raw_output: str) -> Optional[Dict[str, Any]]:
+        try:
+            return json.loads(raw_output)
+        except json.JSONDecodeError:
+            pass
+
+        try:
+            if "```json" in raw_output:
+                clean_output = raw_output.split("```json\n", 1)[1].rsplit("```", 1)[0]
+            else:
+                start, end = raw_output.find("{"), raw_output.rfind("}")
+                clean_output = raw_output[start:end + 1] if start != -1 and end != -1 else raw_output
+            return json.loads(clean_output)
+        except (json.JSONDecodeError, IndexError) as e:
+            logger.warning("Failed to parse JSON. Error: %s Raw output: %s", e, raw_output[:200])
+            return None
 
     async def generate_with_think_and_parse_batch(
         self,
         messages_batch: List[List[Dict]],
         stop_sequences: Optional[List[str]] = None,
         enable_thinking: bool = True,
-        max_token: Optional[int] = None
+        max_token: Optional[int] = None,
     ) -> List[Dict]:
-        """
-        异步批量生成和解析。现在只负责传递意图。
-        """
-        # 不再需要处理 processed_messages_batch，所有逻辑都在 _make_api_call 中
-        tasks = [
-            self._make_api_call(
-                msgs, 
-                stop_sequences, 
-                max_token,
-                enable_thinking=enable_thinking,
-                json_mode=False # 普通模式下关闭json_mode
-            )
-            for msgs in messages_batch
-        ]
-        
-        raw_outputs = await asyncio.gather(*tasks)
-
-        # 解析逻辑保持不变
+        raw_outputs = await self._generate_raw_batch(
+            messages_batch=messages_batch,
+            stop_sequences=stop_sequences,
+            max_tokens=max_token,
+            enable_thinking=enable_thinking,
+            json_mode=False,
+        )
         results = []
-        for raw_output in raw_outputs:
-            if enable_thinking and "<think>" in raw_output and "</think>" in raw_output:
-                try:
-                    parts = raw_output.split("<think>", 1)[1].split("</think>", 1)
-                    results.append({"think": parts[0].strip(), "answer": parts[1].strip()})
-                except IndexError:
-                    results.append({"think": "N/A (parse error)", "answer": raw_output.strip()})
-            else:
-                results.append({"think": "N/A (thinking disabled or not present)", "answer": raw_output.strip()})
-        
+        retry_indices = []
+        for i, output in enumerate(raw_outputs):
+            parsed = self._parse_think_answer(output, enable_thinking=enable_thinking)
+            # GLM thinking mode sometimes empties content into reasoning_content only.
+            # Retry once for affected messages.
+            if enable_thinking and not parsed.get("answer"):
+                retry_indices.append(i)
+            results.append(parsed)
+
+        if retry_indices:
+            logger.warning("GLM returned empty content for %d messages, retrying", len(retry_indices))
+            retry_batch = [messages_batch[i] for i in retry_indices]
+            retry_outputs = await self._generate_raw_batch(
+                messages_batch=retry_batch,
+                stop_sequences=stop_sequences,
+                max_tokens=max_token,
+                enable_thinking=enable_thinking,
+                json_mode=False,
+            )
+            for j, idx in enumerate(retry_indices):
+                retry_parsed = self._parse_think_answer(retry_outputs[j], enable_thinking=enable_thinking)
+                if retry_parsed.get("answer"):
+                    results[idx] = retry_parsed
+                    logger.info("Retry succeeded for message %d", idx)
+
         return results
 
     async def generate_json_batch(
-        self, 
-        messages_batch: List[List[Dict]], 
+        self,
+        messages_batch: List[List[Dict]],
         max_tokens: Optional[int] = None,
-        enable_thinking: bool = True,
+        enable_thinking: bool = False,
     ) -> List[Optional[Dict]]:
-        """
-        异步批量生成并解析JSON。现在只负责传递意图。
-        """
-        # 之前版本的 enable_thinking=None 可能会导致问题，现在我们明确意图
-        tasks = [
-            self._make_api_call(
-                msgs, 
-                max_tokens=max_tokens,
-                enable_thinking=enable_thinking, # 明确关闭思考
-                json_mode=True         # 明确开启JSON模式
-            ) 
-            for msgs in messages_batch
-        ]
-        raw_outputs = await asyncio.gather(*tasks)
-
-        # 解析逻辑保持不变
-        results = []
-        for raw_output in raw_outputs:
-            try:
-                results.append(json.loads(raw_output))
-            except json.JSONDecodeError:
-                try:
-                    if "```json" in raw_output:
-                        clean_output = raw_output.split("```json\n", 1)[1].rsplit("```", 1)[0]
-                    else:
-                        start, end = raw_output.find('{'), raw_output.rfind('}')
-                        clean_output = raw_output[start : end+1] if start != -1 and end != -1 else raw_output
-                    results.append(json.loads(clean_output))
-                except (json.JSONDecodeError, IndexError) as e:
-                    logger.warning(f"Failed to parse JSON. Error: {e}\nRaw output: {raw_output[:100]}...")
-                    results.append(None)
-        
-        return results
+        raw_outputs = await self._generate_raw_batch(
+            messages_batch=messages_batch,
+            stop_sequences=None,
+            max_tokens=max_tokens,
+            enable_thinking=enable_thinking,
+            json_mode=True,
+        )
+        return [self._parse_json(output.get("content", "")) for output in raw_outputs]

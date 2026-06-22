@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T18:14:16",
+  "total_time_s": 776.99,
+  "rounds": 2,
+  "final_stem": "\n在计算机系统中，浮点数的加法运算需要经过“对阶、尾数相加、规格化”等多个步骤。已知两个十进制实数分别为 $x = -5.75$ 和 $y = 1.125$。\n\n假设系统采用 IEEE 754 单精度浮点数标准（1位符号位，8位阶码采用移码表示，偏移值为127，23位尾数采用原码表示且隐含最高位1），请回答下列问题。\n",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

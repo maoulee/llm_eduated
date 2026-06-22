@@ -1,0 +1,12 @@
+{
+  "label": "T1_intake",
+  "task_type": "paper",
+  "intake_status": "ready",
+  "confidence_level": "high",
+  "confidence_missing": [],
+  "confidence_contradictions": [],
+  "can_route": true,
+  "next_action": "run_compose",
+  "next_input": "paper_request.yaml",
+  "routing_reason": "paper_route_gate 通过：全部必需字段已填充，无矛盾，可路由至组卷团队"
+}

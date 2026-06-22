@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T13:43:24",
+  "total_time_s": 488.72,
+  "rounds": 2,
+  "final_stem": "\n某高性能数据记录仪系统采用SCSI-3接口硬盘存储传感器数据，并将数据以IEEE 754单精度浮点格式写入内存缓冲区。系统关键参数如下：\n1. **磁盘参数**：转速为 7200 RPM（转/分），采用 Zone Bit Recording (ZBR) 技术，外圈磁道容量为 16 MB。\n2. **接口参数**：磁盘控制器接口带宽为 100 MB/s（1 MB = $10^6$ Bytes）。\n3. **数据格式**：传感器采集的瞬时值为十进制 $0.15625$。\n\n假设系统执行一次典型的记录操作：先从磁盘读取一个位于外圈磁道起始位置的扇区（扇区大小为 512 Bytes，假设该扇区数据为全零填充以便计算），随后将该瞬时值 $0.15625$ 转换为IEEE 754单精度浮点数，并写入该扇区缓存区的第0个字节开始的4个字节中（采用小端字节序存储）。\n",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

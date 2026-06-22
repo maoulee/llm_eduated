@@ -33,7 +33,20 @@ __pycache__/
 .eggs/
 dist/
 build/
+.venv/
+uv.lock
+
+# Model weights (too large for git)
+models/
+.home/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Reference projects (not tracked)
+reference/
+*.zip
+
+# Temp
+tmp/

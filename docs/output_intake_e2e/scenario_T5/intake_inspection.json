@@ -1,0 +1,12 @@
+{
+  "label": "T5_intake",
+  "task_type": "single_question",
+  "intake_status": "ready",
+  "confidence_level": "medium",
+  "confidence_missing": [],
+  "confidence_contradictions": [],
+  "can_route": true,
+  "next_action": "run_single_pipeline",
+  "next_input": "slot_blueprint.yaml",
+  "routing_reason": "single_question_route_gate 通过：task_type/subject/知识点/题型/难度/分值均已明确"
+}

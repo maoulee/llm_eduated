@@ -1,0 +1,28 @@
+{
+  "scenario": "T2",
+  "name": "口语化模糊需求 — 多轮才能确认",
+  "teacher_input": "搞几张卷子，学生基础不太好，考及格就行，别太难，计算机网络和那个什么组成原理都要有",
+  "elapsed_sec": 32.9,
+  "intake": {
+    "label": "T2_intake",
+    "task_type": "paper",
+    "intake_status": "collecting",
+    "confidence_level": "low",
+    "confidence_missing": [
+      "assessment.type",
+      "assessment.total_score",
+      "assessment.duration_minutes",
+      "knowledge_scope.primary_chapters",
+      "knowledge_scope.focus_points"
+    ],
+    "confidence_contradictions": [],
+    "can_route": false,
+    "next_action": "ask_user",
+    "next_input": null,
+    "routing_reason": "缺少考试类型、分数/时长、知识范围等关键信息，paper_route_gate未通过"
+  },
+  "has_downstream": false,
+  "compose_trace": null,
+  "issues": [],
+  "overall_pass": true
+}

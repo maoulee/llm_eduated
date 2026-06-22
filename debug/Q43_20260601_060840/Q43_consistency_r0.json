@@ -1,0 +1,125 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-06-01T06:30:54",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "conflicts": [
+      {
+        "field_a": "solver_result",
+        "field_b": "final_question.answer",
+        "value_a": "key values: ['4819.86', '100', '0.04']...",
+        "value_b": "missing: ['4819.86', '100', '69.3']...",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "1",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "120",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "8.33",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "4",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "0.08",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "16.41",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "1.5",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "393",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "216",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "2",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "64",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "3.0",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "1.875",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "6452.67",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "0.039",
+        "value_b": "no match in ['4816.34', '0.04']",
+        "severity": "warning"
+      }
+    ],
+    "summary": "16 conflicts found"
+  }
+}
