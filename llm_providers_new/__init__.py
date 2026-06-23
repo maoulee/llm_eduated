@@ -47,6 +47,17 @@ def get_llm_provider(config: Dict[str, Any]) -> BaseLLMProvider:
             k: v for k, v in config.items()
             if k not in {"provider_type", "model_path", "api_url", "api_key"}
         }
+
+        # Protocol routing: anthropic_messages -> AnthropicProvider, else OpenAI-compatible.
+        if config.get("api_protocol") == "anthropic_messages":
+            from .anthropic_provider import AnthropicProvider
+            return AnthropicProvider(
+                model_name=model_name,
+                api_base_url=api_url,
+                api_key=api_key,
+                **provider_kwargs,
+            )
+
         return RemoteAPIProvider(
             model_name=model_name,
             api_base_url=api_url,

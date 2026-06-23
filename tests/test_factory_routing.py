@@ -17,9 +17,20 @@ def test_glm52_provider_config():
     assert cfg["supports_response_format"] is False, cfg
 
 
+def test_factory_routes_glm52_to_anthropic():
+    from llm_providers_new import get_llm_provider
+    from llm_providers_new.anthropic_provider import AnthropicProvider
+    cfg = get_provider_config("glm5.2")
+    prov = get_llm_provider(cfg)
+    assert isinstance(prov, AnthropicProvider), type(prov)
+    assert prov.api_base_url.rstrip("/").endswith("/api/anthropic"), prov.api_base_url
+
+
 def main():
     test_glm52_provider_config()
     print("PASS test_glm52_provider_config")
+    test_factory_routes_glm52_to_anthropic()
+    print("PASS test_factory_routes_glm52_to_anthropic")
 
 
 if __name__ == "__main__":
