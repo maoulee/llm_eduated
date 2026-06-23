@@ -602,6 +602,10 @@ class LLMGateway:
         # override of the provider-level default). Other providers ignore it.
         if reasoning_effort is not None:
             params["reasoning_effort"] = reasoning_effort
+        # Stash enable_thinking so the Anthropic path (_read_anthropic_stream) can gate
+        # thinking.type=enabled — which is what makes GLM actually RETURN thinking blocks.
+        if enable_thinking is not None:
+            params["enable_thinking"] = enable_thinking
 
         return params
 
@@ -757,13 +761,21 @@ class LLMGateway:
         base_url = provider.api_base_url.rstrip("/")
         # Per-request reasoning_effort overrides the provider-level default.
         # _build_chat_params stashes it in params when caller (or ROLE table) sets it.
+        enable_thinking = params.get("enable_thinking", True)
         effort = params.get("reasoning_effort") or getattr(provider, "reasoning_effort_level", "high")
+        if not enable_thinking:
+            effort = "none"  # disable thinking entirely
         payload: Dict[str, Any] = {
             "model": params.get("model", "GLM-5.2"),
             "max_tokens": params.get("max_tokens", 8000),
             "messages": anthropic_messages,
             "chat_template_kwargs": {"reasoning_effort": effort},
         }
+        if enable_thinking:
+            # thinking.type=enabled makes GLM RETURN thinking blocks (visible reasoning_content).
+            # Without it, reasoning_effort only controls server-side depth — no thinking is returned,
+            # so callers can't tell whether/why thinking happened.
+            payload["thinking"] = {"type": "enabled"}
         if system_text:
             payload["system"] = system_text
         if anthropic_tools:
