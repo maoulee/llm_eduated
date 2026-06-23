@@ -16,6 +16,19 @@ Knowledge:
   K_RADAR_DEFINITIONS — K1-K5 cognitive radar scoring rubrics
 """
 
+from pathlib import Path
+
+# 408 考研大纲（data/kg/dagang.md）——注入 slot 评估 prompt 的 {_syllabus_ref}。
+# 原常量定义在抢救中丢失；此处从大纲文件恢复内容。
+_SYLLABUS_REF = ""
+try:
+    _syllabus_path = Path(__file__).resolve().parent.parent / "data" / "kg" / "dagang.md"
+    if _syllabus_path.exists():
+        _SYLLABUS_REF = _syllabus_path.read_text(encoding="utf-8")
+except OSError:
+    pass
+
+
 SLOT_SINGLE_EVAL_PROMPT_SC = """你是一位408考研教研专家。请对以下**选择题**进行深度分析，产出单题经验文档。
 
 {cognitive_radar_scale}
