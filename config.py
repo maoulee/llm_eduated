@@ -131,7 +131,7 @@ class GlobalSettings(BaseSettings):
         # (not just on/off). This is what ZCode uses; 16s vs 200s+ vs OpenAI endpoint.
         "glm5.2_anthropic": ProviderSettings(
             provider_type="api",
-            model_path=os.getenv("GLM_ANT_MODEL", "GLM-5.2"),
+            model_path=os.getenv("GLM_ANT_MODEL", "glm-5.2"),
             api_url=os.getenv("GLM_ANT_API_BASE", "https://open.bigmodel.cn/api/anthropic"),
             api_key=os.getenv("GLM_API_KEY"),
             api_protocol="openai_chat",  # still OpenAI client, but Anthropic-compatible base

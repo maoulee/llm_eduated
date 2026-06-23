@@ -613,7 +613,11 @@ class LLMGateway:
         # Anthropic endpoint transport: GLM-5.2 via Anthropic format (16s vs 200s+).
         # OpenAI client sends OpenAI format → Anthropic endpoint returns empty.
         # Must use direct HTTP with Anthropic message format instead.
-        if getattr(provider, "thinking_control_method", "") == "reasoning_effort":
+        # The Anthropic /v1/messages path is only for the /api/anthropic endpoint (its
+        # thinking is unbounded/runaway on complex prompts). For coding/paas/v4, use the
+        # standard OpenAI path (reasoning_effort via extra_body) — bounded, controllable.
+        if (getattr(provider, "thinking_control_method", "") == "reasoning_effort"
+                and "/api/anthropic" in str(getattr(provider, "api_base_url", ""))):
             return await self._read_anthropic_stream(provider, params)
 
         content_parts: List[str] = []
@@ -771,15 +775,20 @@ class LLMGateway:
             effort = "none"  # disable thinking entirely
         payload: Dict[str, Any] = {
             "model": params.get("model", "GLM-5.2"),
-            "max_tokens": params.get("max_tokens", 8000),
+            "max_tokens": params.get("max_tokens", 16000),
             "messages": anthropic_messages,
-            "chat_template_kwargs": {"reasoning_effort": effort},
+            # NOTE: chat_template_kwargs.reasoning_effort REMOVED — when combined with
+            # thinking.type=enabled, it amplifies thinking unboundedly (40K+ blowup on
+            # heavy tasks). thinking.type=enabled ALONE gives bounded visible thinking
+            # (~12-19K) + content. Empirically verified 2026-06-24.
         }
         if enable_thinking:
-            # thinking.type=enabled makes GLM RETURN thinking blocks (visible reasoning_content).
-            # Without it, reasoning_effort only controls server-side depth — no thinking is returned,
-            # so callers can't tell whether/why thinking happened.
-            payload["thinking"] = {"type": "enabled"}
+            # adaptive + output_config = bounded visible thinking (~4-6K) + content.
+            # Verified on GLM 2026-06-24: adaptive alone → intermittent 43K blowup;
+            # adding output_config stabilizes it. context_management NOT needed (GLM ignores it).
+            # Retry-on-runaway (below) catches the rare intermittent blowup.
+            payload["thinking"] = {"type": "adaptive"}
+            payload["output_config"] = {"effort": "medium"}
         if system_text:
             payload["system"] = system_text
         if anthropic_tools:
@@ -833,6 +842,44 @@ class LLMGateway:
             self._provider_name, len(content), len(reasoning_content),
             len(tool_calls) if tool_calls else 0, finish_reason,
         )
+        # Retry-on-runaway: if thinking consumed the entire budget (no content, no tool_calls,
+        # hit max_tokens), retry ONCE with thinking disabled to guarantee output.
+        if not content and not tool_calls and finish_reason == "max_tokens" and enable_thinking:
+            logger.warning(
+                "[stream_chat] runaway detected (reasoning=%dc, content=0) — retrying with thinking disabled",
+                len(reasoning_content),
+            )
+            retry_payload = {**payload, "thinking": {"type": "disabled"}}
+            retry_payload.pop("output_config", None)
+            retry_payload.pop("context_management", None)
+            async with httpx.AsyncClient(
+                timeout=provider.request_timeout if hasattr(provider, "request_timeout") else 300
+            ) as retry_client:
+                retry_resp = await retry_client.post(url, json=retry_payload, headers=headers)
+            if retry_resp.status_code == 200:
+                retry_data = retry_resp.json()
+                content_parts, tool_calls = [], None
+                finish_reason = retry_data.get("stop_reason", "stop")
+                for block in retry_data.get("content", []):
+                    btype = block.get("type", "")
+                    if btype == "text":
+                        content_parts.append(block.get("text", ""))
+                    elif btype == "tool_use":
+                        if tool_calls is None:
+                            tool_calls = []
+                        tool_calls.append({
+                            "id": block.get("id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": block.get("name", ""),
+                                "arguments": _json.dumps(block.get("input", {}), ensure_ascii=False),
+                            },
+                        })
+                content = "".join(content_parts)
+                logger.info(
+                    "[stream_chat] runaway retry OK: content=%dc tool_calls=%s",
+                    len(content), len(tool_calls) if tool_calls else 0,
+                )
         return {
             "content": content,
             "reasoning_content": reasoning_content,
