@@ -242,6 +242,86 @@ class RemoteAPIProvider(BaseLLMProvider):
             logger.error("OpenAI-compatible chat call failed: %s", e, exc_info=True)
             raise  # Let gateway handle retries
 
+    async def stream(self, params):
+        """Unified stream interface for the gateway.
+
+        Owns message preparation + thinking translation (gateway no longer preps).
+        params: model, messages, max_tokens?, temperature?, thinking_intent?, tools?,
+                tool_choice?, response_format?, stream?
+        Returns {content, reasoning_content, tool_calls, finish_reason}.
+        """
+        ti = params.get("thinking_intent") or {}
+        enable_thinking = ti.get("enabled", True)
+        json_mode = bool(params.get("response_format"))
+        processed = self._prepare_messages(
+            params["messages"], enable_thinking=enable_thinking, json_mode=json_mode
+        )
+
+        sampling = {k: v for k, v in self.sampling_params.items() if k != "top_k"}
+        for k in ("temperature", "top_p", "max_tokens"):
+            if k in params:
+                sampling[k] = params[k]
+
+        req = {"model": params["model"], "messages": processed, "stream": True, **sampling}
+        if params.get("max_tokens"):
+            req["max_tokens"] = params["max_tokens"]
+        if params.get("tools"):
+            req["tools"] = params["tools"]
+        if params.get("tool_choice") and params.get("tools"):
+            req["tool_choice"] = params["tool_choice"]
+        if json_mode and self.supports_response_format:
+            req["response_format"] = params["response_format"]
+        extra_body = dict(params.get("extra_body") or {})  # carry thinking_token_budget etc. from gateway
+        eb = self._extra_body_for_thinking(enable_thinking)
+        if eb:
+            extra_body.update(eb)
+        if extra_body:
+            req["extra_body"] = extra_body
+
+        content_parts, reasoning_parts = [], []
+        tool_calls_accum: Dict[int, Dict[str, str]] = {}
+        finish_reason = None
+
+        chunk_stream = await self.client.chat.completions.create(**req)
+        async for chunk in chunk_stream:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = choice.delta
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
+            if delta.content:
+                content_parts.append(delta.content)
+            reasoning = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None) or ""
+            if reasoning:
+                reasoning_parts.append(reasoning)
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_calls_accum:
+                        tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
+                    if tc.id:
+                        tool_calls_accum[idx]["id"] = tc.id
+                    if tc.function:
+                        if tc.function.name:
+                            tool_calls_accum[idx]["name"] = tc.function.name
+                        if tc.function.arguments:
+                            tool_calls_accum[idx]["arguments"] += tc.function.arguments
+
+        tool_calls = None
+        if tool_calls_accum:
+            tool_calls = [
+                {"id": v["id"], "type": "function",
+                 "function": {"name": v["name"], "arguments": v["arguments"]}}
+                for _, v in sorted(tool_calls_accum.items())
+            ]
+        return {
+            "content": "".join(content_parts),
+            "reasoning_content": "".join(reasoning_parts),
+            "tool_calls": tool_calls,
+            "finish_reason": finish_reason,
+        }
+
     async def _vllm_chat_batch_call(
         self,
         messages_batch: List[List[Dict[str, Any]]],
