@@ -87,7 +87,7 @@ class GlobalSettings(BaseSettings):
         ),
         "api_vllm": ProviderSettings(
             provider_type="api",
-            model_path=os.getenv("VLLM_MODEL", os.path.join(MODELS_DIR, "Qwen3.6-27B-AWQ-INT4")),
+            model_path=os.getenv("VLLM_MODEL", ""),
             api_url=os.getenv("VLLM_API_BASE", f"http://127.0.0.1:{ServerSettings().vllm_api_port}/v1"),
             api_key=os.getenv("VLLM_API_KEY", "EMPTY"),
             api_protocol=os.getenv("VLLM_API_PROTOCOL", "vllm_chat_batch"),
@@ -111,6 +111,21 @@ class GlobalSettings(BaseSettings):
             max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
             thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "param"),
             supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
+            default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),
+            temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
+            top_p=float(os.getenv("GLM_TOP_P", "0.95")),
+        ),
+        "glm5.2": ProviderSettings(
+            provider_type="api",
+            model_path=os.getenv("GLM_MODEL", "glm-5.2"),
+            api_url=os.getenv("GLM_API_BASE", "https://open.bigmodel.cn/api/anthropic"),
+            api_key=os.getenv("GLM_API_KEY"),
+            api_protocol="anthropic_messages",   # routes to AnthropicProvider
+            batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
+            request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600")),
+            max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
+            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "none"),
+            supports_response_format=False,      # anthropic protocol; OpenAI response_format N/A
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),
             temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
             top_p=float(os.getenv("GLM_TOP_P", "0.95")),
