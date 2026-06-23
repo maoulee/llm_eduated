@@ -2,8 +2,13 @@
 
 **日期**：2026-06-22
 **子项目**：A（地基层）—— 5 大设计点重构的第 1 个
-**版本**：v3（基于 anthropic 端点实测，最终方案）
-**状态**：已通过 brainstorming，待写实现计划
+**版本**：v4（v3 + 逐行代码核验修正：路由层定位 / 协议中立思考意图 / .env 实测对齐）
+**状态**：已通过 brainstorming + 代码核验，待写实现计划
+
+> **v4 相对 v3 的修正**（核验了 `llm_gateway.py` / `provider_router.py` / `config.py` / `agent_roles.py` / `.env` 后）：
+> - **B1**：v3 全文未提已存在的 `core_new/provider_router.py`。v4 补上 `agent_router` 与它的关系定位（§3.4 末）。
+> - **B2**：v3 的 `_build_chat_params` 改写直接写 anthropic 格式字段，会回归 OpenAI provider 思考；且 §3.5 的 `stream()` 会与 gateway **各调一次** `_prepare_messages`，对已转换消息二次处理导致崩溃。v4 改为：gateway 只产协议中立的 `thinking_intent` 且不再预调 `_prepare_messages`，消息/思考翻译全部下沉到 `provider.stream()`（§3.3、§3.5）。
+> - **S1/S2/S3**：修正 `TransportRetryPolicy` 字段断言、glm5.1 向后兼容断言、补 `.env.example`、加 anthropic 安装前置（§3.2、§3.6、§5、§6）。
 
 ---
 
@@ -200,7 +205,7 @@ async def _wait_with_backoff(self, attempt: int) -> None:
 
 **为什么加 jitter**：避免多并发请求同时重试造成"惊群"（thundering herd）——Claude Code 重试机制的标准做法。
 
-**配置位置**：base/max_wait 作为 `TransportRetryPolicy`（`agent_roles.py` 里已有）的字段，不硬编码。仅改一个方法，零风险。
+**配置位置**：`TransportRetryPolicy`（`agent_roles.py:43`）目前只有 `backoff: str = "exponential_jitter"` 标签，**没有** `base`/`max_wait` 数值字段——需给该 frozen dataclass 新增 `base: float = 2.0`、`max_wait: float = 30.0`（frozen dataclass 加带默认值字段不破坏现有实例）。注意 `backoff` 默认值早已是 `"exponential_jitter"`，说明策略意图早有，只是 gateway 的 `_wait_with_backoff`（固定 3s）没兑现。改动：1 个方法 + 2 个字段，低风险。
 
 ### 3.3 增强 2：reasoning_effort 参数支持（gateway 层）
 
@@ -225,30 +230,33 @@ async def stream_chat(
 ) -> Dict[str, Any]:
 ```
 
-**改动点 2**：`_build_chat_params` 注入 thinking（同时支持两种 provider）：
+**改动点 2**：`_build_chat_params` 注入**协议中立**的思考意图（不写 anthropic/openai 专有字段），由各 provider 的 `stream()` 翻译。**同时 stream 路径不再调用 `provider._prepare_messages`**——消息准备也下沉到 `provider.stream()`（否则 gateway 与 stream() 各调一次 `_prepare_messages`，对 anthropic 会拿到 `(list, system)` 元组再遍历而崩溃；详见 §3.5 修正）。
+
 ```python
-# 思考控制：gateway 层统一构造 thinking 字段
-# enabled + effort（本项目主路径）
+# 思考控制：gateway 只产出中立意图 thinking_intent，不碰协议字段
 if enable_thinking is True and thinking_effort:
-    params["thinking"] = {"type": "enabled"}
-    params["reasoning_effort"] = thinking_effort
-# 仅 enabled（无 effort，用模型默认 max）
+    params["thinking_intent"] = {"enabled": True, "effort": thinking_effort}   # 本项目主路径
 elif enable_thinking is True:
-    params["thinking"] = {"type": "enabled"}
-# disabled
+    params["thinking_intent"] = {"enabled": True}                              # 用模型默认（max）
 elif enable_thinking is False:
-    params["thinking"] = {"type": "disabled"}
+    params["thinking_intent"] = {"enabled": False}                             # 关思考
 
 # budget（本地 vLLM 或 anthropic budget，本次不接通）
 if thinking_budget and self._supports_thinking_budget(provider):
-    params["thinking"]["budget_tokens"] = thinking_budget
+    params["thinking_intent"] = {"enabled": True, "budget": thinking_budget}
+
+# messages 原样传入 params["messages"]，由 provider.stream() 自行 _prepare_messages
 ```
+
+**翻译职责**（在各 provider.stream() 内，gateway 对协议无感）：
+- `AnthropicProvider.stream()`：`thinking_intent` → `thinking.type`(enabled/disabled) + `extra_body={"reasoning_effort": effort}`；messages 经自身 `_prepare_messages` 分离 system。
+- `RemoteAPIProvider.stream()`：`thinking_intent` → 现有 `_extra_body_for_thinking` 的 `extra_body`（**glm5.1 等的 OpenAI 思考路径零变化、不回归**）；messages 经其现有 `_prepare_messages`。
 
 **改动点 3**：`_read_chat_stream` 重构为调 `provider.stream(params)`：
 ```python
 async def _read_chat_stream(self, provider, params: Dict[str, Any]) -> Dict[str, Any]:
     """统一流式读取——委托给 provider 协议适配。
-    provider.stream() 返回统一的 {content, reasoning, tool_calls, finish_reason}。
+    provider.stream() 返回统一的 {content, reasoning_content, tool_calls, finish_reason}。
     """
     return await provider.stream(params)
 ```
@@ -320,6 +328,15 @@ result = await gw.stream_chat(
     thinking_effort=tc.get("effort"),    # None 时不传
 )
 ```
+
+**与现有 `provider_router.py` 的关系**（v3 遗漏，v4 补）：
+
+仓库已存在 `core_new/provider_router.py`，提供 `get_routed_gateway(role)`——按 pipeline role 做 local(Qwen)/remote(GLM) 加速切换，带 `_gateway_cache`，已被 scheduler/doc_pipeline/compose 实际使用。两者定位如下：
+
+- **维度不同，不是重复**：`provider_router` 管"role → local/remote（可用性加速）"；`agent_router` 管"agent → provider + 思考强度（配置）"。
+- **当前环境无本地模型**（`.env` 的 `LOCAL_MODEL_PATH`/`VLLM_MODEL` 均为占位 `/path/to/...`），`provider_router` 的 local 加速目前空转（健康检查失败即回落 remote）。故 `agent_router` 直接 `get_gateway(provider_name)` 绕过它，**当前不损失任何功能**。
+- **定位**：`agent_router` 是 agent 流水线**今后**的权威路由入口；`provider_router` 暂保留供 legacy/experiments。**当本地 Qwen 回归时**，把 local/remote 加速并入 `agent_router`（或让 `agent_router` 委托 `provider_router` 选 provider），而非再建第三层。
+- **缓存去重**：`agent_router` 的 `lru_cache` 与 `provider_router._gateway_cache` 功能重叠——实现时让两者共享同一 provider→gateway 缓存，避免两份。
 
 ### 3.5 新写 `anthropic_provider.py`
 
@@ -409,11 +426,12 @@ class AnthropicProvider(BaseLLMProvider):
         }
         if system:
             kwargs["system"] = system
-        if "thinking" in params:
-            kwargs["thinking"] = params["thinking"]
-        if "reasoning_effort" in params:
-            # GLM 扩展字段，SDK 通过 extra_body 传
-            kwargs["extra_body"] = {"reasoning_effort": params["reasoning_effort"]}
+        # thinking_intent（中立意图）→ anthropic 协议字段
+        ti = params.get("thinking_intent")
+        if ti:
+            kwargs["thinking"] = {"type": "enabled" if ti.get("enabled") else "disabled"}
+            if ti.get("effort"):
+                kwargs["extra_body"] = {"reasoning_effort": ti["effort"]}  # GLM 扩展，SDK 经 extra_body 传
         if params.get("tools"):
             kwargs["tools"] = self._convert_tools(params["tools"])
         if params.get("stream", True):
@@ -470,7 +488,7 @@ class AnthropicProvider(BaseLLMProvider):
 
 1. **不继承 OpenAI 的 `_chat_call`/`_extra_body_for_thinking`**：anthropic 协议完全不同，重新实现
 2. **新增 `stream(params)` 方法**：统一接口供 gateway 调用。gateway 不再直接碰 SDK
-3. **`_prepare_messages` 处理 system 分离**：anthropic 要求 system 单独传，与 OpenAI 的 messages 列表不同
+3. **`_prepare_messages` 处理 system 分离 + 独占消息准备**：anthropic 要求 system 单独传。**消息准备完全由 `provider.stream()` 负责**——gateway 不再预调 `_prepare_messages`。v3 里 gateway 与 stream() 各调一次，会对已转换的 `(list, system)` 元组二次遍历而 `AttributeError` 崩溃；v4 修正为只 provider 调一次
 4. **tools 格式转换**：anthropic 的 `input_schema` vs OpenAI 的 `parameters`
 5. **batch 接口抛 NotImplementedError**：批量标注不经过 anthropic provider，走旧的 remote_api
 
@@ -506,6 +524,9 @@ agent_router 依赖 `config.py` 里有 `glm5.2` provider，当前不存在（只
 - `GLM_API_BASE="https://open.bigmodel.cn/api/anthropic"` ✅（已正确，无需改）
 - `GLM_MODEL=glm-5.2` ✅（已正确）
 - `GLM_THINKING_CONTROL_METHOD=none` ✅（保持 none，effort 由 gateway 注入，不靠 provider 的 param/prompt 机制）
+- `GLM_DEFAULT_MAX_TOKENS=20000`（.env 实测值，覆盖 provider 默认的 30000——以 .env 为准）
+- ⚠️ **glm5.1 与 glm5.2 共用 `GLM_API_BASE`/`GLM_MODEL`**：这把 .env 已指向 anthropic 端点 + glm-5.2，故 `glm5.1`（openai_chat 协议）**实际不可用**（OpenAI 客户端打 anthropic 端点会失败）。本子项目接受 glm5.1 失效（见 §6）。
+- `GLM_SUPPORTS_RESPONSE_FORMAT=true` 是死值——glm5.2 provider 硬编码 `False` 不读它，glm5.1 又已失效。改 `false` 更整洁，但不影响功能。
 
 **为什么 GLM_THINKING_CONTROL_METHOD=none**：现有 `remote_api.py:160-162` 的 `param` 方式传的是 `{"thinking": {"type": "enabled"}}`（开关）。但 anthropic provider 不走这套，thinking 字段完全由 gateway 的 `_build_chat_params` 构造。设为 none 让 provider 不自作主张传思考参数——职责清晰。
 
@@ -552,6 +573,8 @@ def _classify_exception(error: Exception) -> str:
 
 不写 mock，全部**真实 GLM API 端到端验证**。每个测试独立、可单独跑。
 
+> **前置（计划里的 task 0）**：当前环境 `anthropic` SDK 导入失败（残留 py3.10 版本 + 系统 python 3.10 < pyproject 要求的 ≥3.12）。测试 2/4 跑之前必须先在 py3.12 环境装好 `pip install anthropic`。`anthropic>=0.90` 已在 pyproject 核心依赖，无需改 pyproject。
+
 ### 测试 1（指数退避）
 - **触发**：临时把 `api_url` 改成错误地址（强制连接失败）
 - **验证**：观察重试间隔是否从 ~2s 增长到 ~4s、~8s（看日志时间戳）
@@ -588,7 +611,7 @@ def _classify_exception(error: Exception) -> str:
 
 | 调用方式 | 状态 |
 |---------|------|
-| 旧：`get_gateway("glm5.1")` | ✅ 继续可用（glm5.1 provider 保留，向后兼容） |
+| 旧：`get_gateway("glm5.1")` | ⚠️ **不可用**——glm5.1 与 glm5.2 共用 `GLM_API_BASE`/`GLM_MODEL`，现指向 anthropic 端点；glm5.1 的 openai_chat 协议打 anthropic 端点会失败。provider 定义保留但实际失效（本子项目接受） |
 | 新：`get_gateway_for("write_gen")` | ✅ 新方式，配置驱动 |
 
 本次设计**只提供新接口、不改现有调用点**。等子项目 B（思考准则外化）落地时，scheduler 自然改成按 agent 名路由。
@@ -598,19 +621,20 @@ def _classify_exception(error: Exception) -> str:
 | 文件 | 操作 | 改动量 |
 |------|------|--------|
 | `config.py` | 改 | ~25 行（新增 `glm5.2` provider + `api_protocol=anthropic_messages` 标识 + 清除 `api_vllm` 的 32B 默认） |
-| `.env` | 不改 | 0（GLM_API_BASE 已正确指向 /api/anthropic） |
+| `.env` | 不改 | 0（已实测：`GLM_API_BASE=/api/anthropic/`、`GLM_MODEL=glm-5.2`、`GLM_THINKING_CONTROL_METHOD=none`，与方案一致） |
+| `.env.example` | 改 | ~6 行（模板仍是 `paas/v4`+`glm-5.1`，需更新为 anthropic+glm-5.2 样例，并标注 glm5.1 已失效） |
 | `core_new/llm_gateway.py` | 改 | ~60 行（`_wait_with_backoff` 重写 + `stream_chat`/`_build_chat_params` 加 `thinking_effort` + `_read_chat_stream` 重构为调 `provider.stream()` + `_classify_exception` 加 anthropic 分支） |
 | `core_new/agent_router.py` | 新建 | ~50 行 |
 | `llm_providers_new/anthropic_provider.py` | 新建 | ~180 行（含流式解析、tools 转换、message 适配） |
 | `llm_providers_new/remote_api.py` | 改 | ~30 行（加 `stream(params)` 方法，从 gateway 搬现有流式逻辑） |
 | `llm_providers_new/__init__.py` | 改 | ~10 行（`get_llm_provider` 工厂加 anthropic_messages 协议分支） |
 | `config/agents_llm.yaml` | 新建 | ~25 行 |
-| `pyproject.toml` | 改 | ~1 行（确认 anthropic 在 dependencies，非 optional） |
+| `pyproject.toml` | 不改 | 0（`anthropic>=0.90` 与 `pyyaml>=6.0` 已在核心 dependencies，非 optional） |
 | `tests/test_agent_router.py` | 新建 | ~40 行（测试 3） |
 | `tests/test_gateway_enhancements.py` | 新建 | ~60 行（测试 1+2） |
 | `tests/test_anthropic_provider.py` | 新建 | ~50 行（测试 4） |
 
-**总改动量：约 530 行**，其中测试约 150 行。
+**总改动量：约 535 行**（含 `.env.example` 模板更新；测试约 150 行；pyproject 0 行因依赖已声明）。
 
 ---
 
