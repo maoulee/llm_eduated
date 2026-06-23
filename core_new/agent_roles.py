@@ -44,6 +44,8 @@ class PipelineFixTarget(str, Enum):
 class TransportRetryPolicy:
     max_attempts: int = 10
     backoff: str = "exponential_jitter"
+    base: float = 2.0          # exponential base in seconds (NEW)
+    max_wait: float = 30.0     # backoff cap in seconds (NEW)
     retry_on: tuple[str, ...] = (
         "connection_error",
         "timeout",
