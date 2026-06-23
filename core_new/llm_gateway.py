@@ -630,6 +630,10 @@ class LLMGateway:
             params.get("max_tokens"),
         )
 
+        # Drop gateway-internal keys stashed by _build_chat_params for the Anthropic
+        # path — the OpenAI SDK rejects unknown kwargs (enable_thinking/reasoning_effort).
+        params.pop("enable_thinking", None)
+        params.pop("reasoning_effort", None)
         stream = await provider.client.chat.completions.create(**params)
         _chunk_count = 0
         _last_monitor = 0
