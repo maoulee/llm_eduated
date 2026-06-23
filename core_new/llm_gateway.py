@@ -446,19 +446,13 @@ class LLMGateway:
         max_tokens: Optional[int] = None,
         enable_thinking: Optional[bool] = None,
         thinking_budget: Optional[int] = None,
+        thinking_effort: Optional[str] = None,
         tools: Optional[List[Dict[str, Any]]] = None,
         tool_choice: Optional[Any] = None,
         sampling_overrides: Optional[Dict[str, Any]] = None,
         json_mode: bool = False,
     ) -> Dict[str, Any]:
-        """Run one streaming chat request through the shared gateway policy.
-
-        This is the common infrastructure path for agent-style streaming calls:
-        provider message preparation, local/remote concurrency limits, transport
-        retries, retryable error classification, and provider-specific extension
-        filtering all live here.  Orchestrators should vary prompts, sampling,
-        tools, and routing, not reimplement transport behavior.
-        """
+        """Run one streaming chat request through the shared gateway policy."""
         provider = self._provider
         max_tokens = self._floor_max_tokens(max_tokens, bool(enable_thinking))
         params = self._build_chat_params(
@@ -467,6 +461,7 @@ class LLMGateway:
             max_tokens=max_tokens,
             enable_thinking=enable_thinking,
             thinking_budget=thinking_budget,
+            thinking_effort=thinking_effort,
             tools=tools,
             tool_choice=tool_choice,
             sampling_overrides=sampling_overrides,
@@ -497,20 +492,15 @@ class LLMGateway:
         max_tokens: Optional[int],
         enable_thinking: Optional[bool],
         thinking_budget: Optional[int],
+        thinking_effort: Optional[str],
         tools: Optional[List[Dict[str, Any]]],
         tool_choice: Optional[Any],
         sampling_overrides: Optional[Dict[str, Any]],
         json_mode: bool,
         stream: bool,
     ) -> Dict[str, Any]:
-        if enable_thinking is not None and hasattr(provider, "_prepare_messages"):
-            processed = provider._prepare_messages(
-                messages,
-                enable_thinking=enable_thinking,
-                json_mode=json_mode,
-            )
-        else:
-            processed = list(messages)
+        # Message preparation is now the provider's job (provider.stream()).
+        processed = list(messages)
 
         sampling = {k: v for k, v in getattr(provider, "sampling_params", {}).items() if k != "top_k"}
         if sampling_overrides:
@@ -531,28 +521,34 @@ class LLMGateway:
         if tool_choice and tools:
             params["tool_choice"] = tool_choice
 
+        # effort and budget are mutually exclusive (spec §3.3 contract) — guard it.
+        assert not (thinking_effort and thinking_budget), \
+            "thinking_effort and thinking_budget are mutually exclusive"
+
+        # Neutral thinking intent — provider.stream() translates per protocol.
+        if enable_thinking is True and thinking_effort:
+            params["thinking_intent"] = {"enabled": True, "effort": thinking_effort}
+        elif enable_thinking is True:
+            params["thinking_intent"] = {"enabled": True}
+        elif enable_thinking is False:
+            params["thinking_intent"] = {"enabled": False}
+
+        # Local vLLM thinking-budget path — PRESERVE existing behavior verbatim
+        # (spec §7: "不做 thinking_budget 的自动膨胀 max_tokens 逻辑调整（现有逻辑保留）").
+        # Emit the OpenAI extra_body field AND inflate max_tokens so reasoning tokens
+        # don't consume the output budget. RemoteAPIProvider.stream() must MERGE this
+        # extra_body (see T6), not overwrite it.
         if thinking_budget and self._supports_thinking_budget(provider):
-            params.setdefault("extra_body", {})
-            params["extra_body"]["thinking_token_budget"] = thinking_budget
-            # Thinking models count reasoning tokens against max_tokens.
-            # Inflate output budget so reasoning doesn't consume it entirely.
+            params["thinking_intent"] = {"enabled": True, "budget": thinking_budget}
+            params.setdefault("extra_body", {})["thinking_token_budget"] = thinking_budget
             current_max = params.get("max_tokens", 0)
             if current_max and current_max > 0:
                 params["max_tokens"] = max(current_max, thinking_budget + 16000)
 
-        if enable_thinking is not None and hasattr(provider, "_extra_body_for_thinking"):
-            extra_body = provider._extra_body_for_thinking(enable_thinking)
-            if extra_body:
-                params.setdefault("extra_body", {}).update(extra_body)
-
         return params
 
     async def _read_chat_stream(self, provider, params: Dict[str, Any]) -> Dict[str, Any]:
-        content_parts: List[str] = []
-        reasoning_parts: List[str] = []
-        tool_calls_accum: Dict[int, Dict[str, str]] = {}
-        finish_reason: str | None = None
-
+        """Delegate stream parsing to the provider (protocol-agnostic)."""
         logger.debug(
             "[stream_chat] provider=%s model=%s tool_choice=%s tools=%d max_tokens=%s",
             self._provider_name,
@@ -561,79 +557,16 @@ class LLMGateway:
             len(params.get("tools", [])),
             params.get("max_tokens"),
         )
-
-        stream = await provider.client.chat.completions.create(**params)
-        _chunk_count = 0
-        _last_monitor = 0
-        async for chunk in stream:
-            _chunk_count += 1
-            if not chunk.choices:
-                continue
-            choice = chunk.choices[0]
-            delta = choice.delta
-
-            # Monitor: log every 50 chunks to detect stuck streams
-            if _chunk_count - _last_monitor >= 50:
-                _last_monitor = _chunk_count
-                logger.info(
-                    "[stream_chat] streaming... chunks=%d reasoning=%d content=%d provider=%s",
-                    _chunk_count, sum(len(p) for p in reasoning_parts), sum(len(p) for p in content_parts),
-                    self._provider_name,
-                )
-
-            if choice.finish_reason:
-                finish_reason = choice.finish_reason
-
-            if delta.content:
-                content_parts.append(delta.content)
-
-            reasoning = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None) or ""
-            if reasoning:
-                reasoning_parts.append(reasoning)
-
-            if delta.tool_calls:
-                for tc_delta in delta.tool_calls:
-                    idx = tc_delta.index
-                    if idx not in tool_calls_accum:
-                        tool_calls_accum[idx] = {"id": "", "name": "", "arguments": ""}
-                    if tc_delta.id:
-                        tool_calls_accum[idx]["id"] = tc_delta.id
-                    if tc_delta.function:
-                        if tc_delta.function.name:
-                            tool_calls_accum[idx]["name"] = tc_delta.function.name
-                        if tc_delta.function.arguments:
-                            tool_calls_accum[idx]["arguments"] += tc_delta.function.arguments
-
-        tool_calls = None
-        if tool_calls_accum:
-            tool_calls = []
-            for idx in sorted(tool_calls_accum):
-                tc = tool_calls_accum[idx]
-                tool_calls.append({
-                    "id": tc["id"],
-                    "type": "function",
-                    "function": {
-                        "name": tc["name"],
-                        "arguments": tc["arguments"],
-                    },
-                })
-
-        content = "".join(content_parts)
-        reasoning_content = "".join(reasoning_parts)
+        result = await provider.stream(params)
         logger.info(
             "[stream_chat] provider=%s content=%d reasoning=%d tool_calls=%s finish_reason=%s",
             self._provider_name,
-            len(content),
-            len(reasoning_content),
-            len(tool_calls) if tool_calls else 0,
-            finish_reason,
+            len(result.get("content") or ""),
+            len(result.get("reasoning_content") or ""),
+            len(result.get("tool_calls") or []),
+            result.get("finish_reason"),
         )
-        return {
-            "content": content,
-            "reasoning_content": reasoning_content,
-            "tool_calls": tool_calls,
-            "finish_reason": finish_reason,
-        }
+        return result
 
     @staticmethod
     def _supports_thinking_budget(provider) -> bool:

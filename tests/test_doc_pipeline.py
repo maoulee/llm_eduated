@@ -64,6 +64,40 @@ class FakeStreamClient:
 
         return _stream()
 
+    async def stream(self, params):
+        """Unified provider.stream() entry point used by the refactored gateway.
+
+        Records the gateway-built params (assertions read client.calls) and reduces
+        the queued chunk-list (or re-raises the queued exception) into the unified
+        {content, reasoning_content, tool_calls, finish_reason} shape.
+        """
+        self.calls.append(params)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+
+        content_parts, reasoning_parts = [], []
+        tool_calls = None
+        finish_reason = None
+        for chunk in response:
+            if not chunk.choices:
+                continue
+            choice = chunk.choices[0]
+            delta = choice.delta
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
+            if delta.content:
+                content_parts.append(delta.content)
+            reasoning = getattr(delta, "reasoning", None) or getattr(delta, "reasoning_content", None) or ""
+            if reasoning:
+                reasoning_parts.append(reasoning)
+        return {
+            "content": "".join(content_parts),
+            "reasoning_content": "".join(reasoning_parts),
+            "tool_calls": tool_calls,
+            "finish_reason": finish_reason,
+        }
+
 
 class FakeChatCallProvider:
     model_name = "fake-chat-model"
@@ -1124,15 +1158,17 @@ class TestRunSlotCompositionArtifacts:
 
 class TestGatewayStreamChat:
     def test_stream_chat_does_not_send_thinking_budget_to_remote_provider(self):
+        client = FakeStreamClient([
+            [_stream_chunk(content="ok", finish_reason="stop")]
+        ])
         provider = SimpleNamespace(
             model_name="glm-test",
             provider_type="api",
             api_base_url="https://example.invalid/v1",
             thinking_control_method="none",
             sampling_params={"temperature": 1.0, "top_p": 0.95, "top_k": 20},
-            client=FakeStreamClient([
-                [_stream_chunk(content="ok", finish_reason="stop")]
-            ]),
+            client=client,
+            stream=client.stream,
         )
         gateway = LLMGateway.from_provider(provider, name="glm5.1")
 
@@ -1150,16 +1186,18 @@ class TestGatewayStreamChat:
         assert "extra_body" not in params
 
     def test_stream_chat_retries_retryable_stream_error(self):
+        client = FakeStreamClient([
+            httpx.ReadError("stream dropped"),
+            [_stream_chunk(content="ok", finish_reason="stop")],
+        ])
         provider = SimpleNamespace(
             model_name="glm-test",
             provider_type="api",
             api_base_url="https://example.invalid/v1",
             thinking_control_method="none",
             sampling_params={},
-            client=FakeStreamClient([
-                httpx.ReadError("stream dropped"),
-                [_stream_chunk(content="ok", finish_reason="stop")],
-            ]),
+            client=client,
+            stream=client.stream,
         )
         gateway = LLMGateway.from_provider(
             provider,
