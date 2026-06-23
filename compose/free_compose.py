@@ -291,7 +291,7 @@ async def run_free_compose(
         slot_templates: Dict of slot_id -> template
         user_requirements: Teacher requirements
         free_gateway: Gateway for free_compose model (glm5.2)
-        interaction_gateway: Gateway for interaction model (api_vllm), defaults to free_gateway
+        interaction_gateway: Gateway for interaction model (glm5.2), defaults to free_gateway
         model_routing: Optional model routing config
         data_dir: Question experience directory
 

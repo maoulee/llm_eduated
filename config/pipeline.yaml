@@ -61,8 +61,8 @@ routing:
   default_profile: all_local
 
   providers:
-    fallback: "glm5.1"
-    local: "api_vllm"
+    fallback: "glm5.2"
+    local: "qwen36_a35"
     health_check_ttl: 60
 
   profiles:
@@ -121,9 +121,9 @@ routing:
 # ── Model routing ──────────────────────────────────────────────
 model_routing:
   # 交互层模型（渲染/grep/归纳）
-  interaction: api_vllm
+  interaction: glm5.2
   # 自由组卷模型（路线3 Step1）
-  free_compose: glm5.1
+  free_compose: glm5.2
 
 # ── Context providers ────────────────────────────────────────
 context_providers:

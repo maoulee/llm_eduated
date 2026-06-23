@@ -361,7 +361,7 @@ def test_display_result_reads_generated_final_md(tmp_path):
     fake_scheduler = FakeScheduler(tmp_path)
     service._get_scheduler = lambda provider, thinking: fake_scheduler
     session = service.create_session()
-    service._scheduler_cache["api_vllm_False"] = fake_scheduler
+    service._scheduler_cache["glm5.2_False"] = fake_scheduler
     qdir = tmp_path / session.session_id / "Q12"
     qdir.mkdir(parents=True)
     (qdir / "final.md").write_text(
@@ -385,7 +385,7 @@ def test_display_result_uses_handoff_title_for_internal_topic_slot(tmp_path):
     fake_scheduler = FakeScheduler(tmp_path)
     service._get_scheduler = lambda provider, thinking: fake_scheduler
     session = service.create_session()
-    service._scheduler_cache["api_vllm_False"] = fake_scheduler
+    service._scheduler_cache["glm5.2_False"] = fake_scheduler
     handoff = tmp_path / session.session_id / "compose" / "slot_blueprint.yaml"
     handoff.parent.mkdir(parents=True, exist_ok=True)
     handoff.write_text(
@@ -412,7 +412,7 @@ def test_display_result_collapses_nested_pipeline_work_artifacts(tmp_path):
     fake_scheduler = FakeScheduler(tmp_path)
     service._get_scheduler = lambda provider, thinking: fake_scheduler
     session = service.create_session()
-    service._scheduler_cache["api_vllm_False"] = fake_scheduler
+    service._scheduler_cache["glm5.2_False"] = fake_scheduler
     handoff = tmp_path / session.session_id / "compose" / "slot_blueprint.yaml"
     handoff.parent.mkdir(parents=True, exist_ok=True)
     handoff.write_text(

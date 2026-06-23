@@ -5,19 +5,19 @@ turn tracking) is persisted as JSON in workspace so context survives across call
 
 Usage:
   # Turn 1: teacher sends request
-  python scripts/test_interact_cli.py api_vllm sim_test --msg "出一道Cache映射的选择题，难度中等"
+  python scripts/test_interact_cli.py glm5.2 sim_test --msg "出一道Cache映射的选择题，难度中等"
 
   # (read and edit the draft file manually)
   # (mark [✓]/[✗], add annotations)
 
   # Turn 2: teacher confirms
-  python scripts/test_interact_cli.py api_vllm sim_test --msg "确认写入文件"
+  python scripts/test_interact_cli.py glm5.2 sim_test --msg "确认写入文件"
 
   # Turn 3: teacher edits and sends back
-  python scripts/test_interact_cli.py api_vllm sim_test --msg "我已完成标注，请读取编辑后的文档"
+  python scripts/test_interact_cli.py glm5.2 sim_test --msg "我已完成标注，请读取编辑后的文档"
 
   # Reset a session
-  python scripts/test_interact_cli.py api_vllm sim_test --reset
+  python scripts/test_interact_cli.py glm5.2 sim_test --reset
 
 Options:
   --msg TEXT       Teacher message
@@ -171,7 +171,7 @@ async def run_single_turn(provider: str, session_id: str, msg: str,
 
 def main():
     parser = argparse.ArgumentParser(description="Interact agent CLI (one turn per invocation)")
-    parser.add_argument("provider", help="LLM provider name (e.g. api_vllm)")
+    parser.add_argument("provider", help="LLM provider name (e.g. glm5.2)")
     parser.add_argument("session_id", help="Session ID (persisted across turns)")
     parser.add_argument("--msg", help="Teacher message")
     parser.add_argument("--workspace", default="docs/output_interact_cli/workspace",

@@ -7,7 +7,7 @@ Uses real LLM (local vLLM or remote GLM) to test the interact agent pipeline:
 4. Teacher confirms → agent generates handoff yaml
 
 Usage:
-  python scripts/test_interact_live.py                    # default: api_vllm
+  python scripts/test_interact_live.py                    # default: glm5.2
   GLM_API_KEY=xxx python scripts/test_interact_live.py glm5.2  # remote GLM
 """
 
