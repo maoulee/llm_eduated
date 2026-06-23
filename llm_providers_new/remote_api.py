@@ -103,6 +103,8 @@ class RemoteAPIProvider(BaseLLMProvider):
         # - chat_template_kwargs: send vLLM-style
         #   {"chat_template_kwargs": {"enable_thinking": bool}}.
         self.thinking_control_method = kwargs.get("thinking_control_method", "prompt")
+        self.reasoning_effort = kwargs.get("reasoning_effort")
+        self.preserve_thinking = bool(kwargs.get("preserve_thinking", True))
         self.prompt_template_style = kwargs.get("prompt_template_style", "qwen")
         self.supports_response_format = bool(kwargs.get("supports_response_format", True))
         self.batch_size = max(1, int(kwargs.get("batch_size", 8)))
@@ -155,8 +157,14 @@ class RemoteAPIProvider(BaseLLMProvider):
                 last["content"] = f"{last.get('content', '')}\n\n请只输出一个合法 JSON 对象，不要输出 Markdown 或额外解释。"
         return processed
 
-    def _extra_body_for_thinking(self, enable_thinking: bool) -> Dict[str, Any]:
+    def _extra_body_for_thinking(self, enable_thinking: bool, effort: Optional[str] = None) -> Dict[str, Any]:
         """Provider-specific thinking parameter support."""
+        if self.thinking_control_method == "reasoning_effort":
+            # GLM coding/paas/v4: reasoning_effort drives thinking depth.
+            # "none" disables thinking (0 tokens); high/max = deeper.
+            if not enable_thinking:
+                return {"reasoning_effort": "none"}
+            return {"reasoning_effort": effort or self.reasoning_effort or "high"}
         if self.thinking_control_method == "param":
             return {"thinking": {"type": "enabled" if enable_thinking else "disabled"}}
         if self.thinking_control_method == "chat_template_kwargs":
@@ -272,7 +280,7 @@ class RemoteAPIProvider(BaseLLMProvider):
         if json_mode and self.supports_response_format:
             req["response_format"] = params["response_format"]
         extra_body = dict(params.get("extra_body") or {})  # carry thinking_token_budget etc. from gateway
-        eb = self._extra_body_for_thinking(enable_thinking)
+        eb = self._extra_body_for_thinking(enable_thinking, effort=ti.get("effort"))
         if eb:
             extra_body.update(eb)
         if extra_body:

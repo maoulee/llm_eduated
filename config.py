@@ -63,6 +63,9 @@ class ProviderSettings(BaseModel):
     # - param: send provider-specific thinking parameter.
     # - chat_template_kwargs: send vLLM chat_template_kwargs.enable_thinking.
     thinking_control_method: str = "prompt"
+    # reasoning_effort control (GLM coding/paas/v4): inject extra_body={"reasoning_effort": ...}
+    reasoning_effort: Optional[str] = None
+    preserve_thinking: bool = True
     quantization: Optional[str] = None
     max_model_len: int = 10000
     serve_as_api: bool = False
@@ -82,14 +85,16 @@ class GlobalSettings(BaseSettings):
         "glm5.2": ProviderSettings(
             provider_type="api",
             model_path=os.getenv("GLM_MODEL", "glm-5.2"),
-            api_url=os.getenv("GLM_API_BASE", "https://open.bigmodel.cn/api/anthropic"),
+            api_url=os.getenv("GLM_API_BASE", "https://open.bigmodel.cn/api/coding/paas/v4"),
             api_key=os.getenv("GLM_API_KEY"),
-            api_protocol="anthropic_messages",   # routes to AnthropicProvider
+            api_protocol="openai_chat",          # single-protocol: OpenAI client at coding/paas/v4
             batch_size=int(os.getenv("GLM_BATCH_SIZE", "4")),
             request_timeout=float(os.getenv("GLM_REQUEST_TIMEOUT", "600")),
             max_retries=int(os.getenv("GLM_MAX_RETRIES", "0")),
-            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "none"),
-            supports_response_format=False,      # anthropic protocol; OpenAI response_format N/A
+            thinking_control_method=os.getenv("GLM_THINKING_CONTROL_METHOD", "reasoning_effort"),
+            reasoning_effort=os.getenv("GLM_REASONING_EFFORT", "high"),   # high=轻思考, max=深度
+            preserve_thinking=os.getenv("GLM_PRESERVE_THINKING", "true").lower() == "true",
+            supports_response_format=os.getenv("GLM_SUPPORTS_RESPONSE_FORMAT", "true").lower() == "true",
             default_max_tokens=int(os.getenv("GLM_DEFAULT_MAX_TOKENS", "30000")),
             temperature=float(os.getenv("GLM_TEMPERATURE", "1.0")),
             top_p=float(os.getenv("GLM_TOP_P", "0.95")),
