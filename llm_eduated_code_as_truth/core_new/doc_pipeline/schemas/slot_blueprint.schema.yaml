@@ -1,0 +1,28 @@
+# slot_blueprint schema — intake layer output for single question tasks
+# Maps directly to contracts.py SlotBlueprint dataclass
+
+schema_version: slot_blueprint_v1
+slot_id: TOPIC_001  # required
+question_type: single_choice | comprehensive  # required
+score: 2
+target_subject: ""  # required
+target_family: ""  # required (or kg_node_path)
+primary_target_name: ""  # required
+target_difficulty: 3
+k_target: ""
+examination_mode: ""
+teacher_annotation: ""
+active_selection:
+  mode_id: ""
+  mode_name: ""
+  selected_knowledge: []
+candidate_pool_visible: []
+excluded_modes: []
+excluded_knowledge: []
+confidence:
+  level: high | medium  # required — low/blocked/unsupported cannot route
+  missing_fields: []
+  contradictions: []
+routing:
+  can_route: true
+  next_action: run_single_pipeline

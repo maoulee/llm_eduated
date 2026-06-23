@@ -1,0 +1,38 @@
+{
+  "slot_id": "TEST_SC",
+  "current_node": "solve",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "solve": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "review failed: Review agent returned invalid or missing status"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+assessment: null
+confidence:
+  contradictions: []
+  level: medium
+  missing_fields: []
+  notes: 科目'数据结构'为安全推断（AVL树仅属于数据结构）；difficulty_level=4 对应'中等偏上'；score=10 明确指定
+  unverified_scope: false
+difficulty:
+  level_numeric: 4
+  target: medium_hard
+intake_status: ready
+keywords:
+- AVL树
+- 旋转
+- LR型
+- RL型
+knowledge_scope: null
+primary_target_name: AVL树旋转（LR型和RL型判断）
+question_config: null
+routing:
+  can_route: true
+  next_action: run_single_pipeline
+  next_input: slot_blueprint.yaml
+  reason: single_question_route_gate 通过：task_type/subject/知识点/题型/难度/分值均已明确
+schema_version: intake_result_v1
+source:
+  intake_type: human_input
+  raw_input: 出一道关于AVL树旋转的综合题，要包含LR型和RL型的判断，难度中等偏上，10分
+target_subject: 数据结构
+task_confidence: high
+task_type: single_question

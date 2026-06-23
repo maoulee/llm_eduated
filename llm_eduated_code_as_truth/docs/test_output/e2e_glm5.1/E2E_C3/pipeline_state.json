@@ -1,0 +1,32 @@
+{
+  "slot_id": "E2E_C3",
+  "current_node": "form_gate",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题干设计质量合格。知识点（AVL 插入与旋转）、考察模式（结构操作与状态维护模拟）、K 难度目标（K3-K4 平衡型）均与规划蓝图一致。条件充分无矛盾，风格合规，解题意图与设计卡对齐。选择题在此阶段无选项值属正常状态，由后续阶段基于求解结果组装。准予放行进入下一阶段。"
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "slot_id": "Q10",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 3,
+    "review_stem": 3,
+    "write_gen": 1,
+    "write_solution": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型：adequacy_fail（选项 B/C 碰撞）\n- 修改对象：question.md 中的初始序列\n- 修改位置：题干中 `给定初始序列：[45, 12, 78, 33, 56, 21, 89, 67]`\n- 当前问题：第一趟划分后右侧子数组的 pivot 为最小值，导致\"先划右侧\"不产生变化，B=C\n- 修改目标：更换初始序列，使得第一趟划分后**右侧子数组的 pivot "
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型：stem_conflict / 修改对象：选项设计 + 通过条件 / 修改位置：题干选项 B/C 及通过条件4 / 当前问题：B/C 对应\"第二趟划分顺序不同\"，但左右子数组划分独立，顺序不影响最终结果，导致 B=C，选项碰撞 / 修改目标：确保 4 选项互异，每个干扰项对应真正能产生不同数组状态的错误路径 / 最小修改指令：将 B 或 C 替换为其他错误路径（如\"partit"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "write_solution",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

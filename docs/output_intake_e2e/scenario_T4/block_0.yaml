@@ -1,0 +1,29 @@
+confidence:
+  contradictions:
+  - 科目为数据结构，但Cache地址映射属于计算机组成原理
+  - 难度要求5星但必须简单，相互矛盾
+  level: blocked
+  missing_fields:
+  - target_family
+  - kg_node_path
+  - target_subject
+  - difficulty_level
+  notes: 需教师确认科目和难度后方可继续
+  unverified_scope: false
+difficulty_level: null
+intake_status: needs_user_choice
+primary_target_name: Cache地址映射
+question_type: comprehensive
+routing:
+  can_route: false
+  next_action: ask_user
+  next_input: null
+  reason: 存在两处矛盾，需教师选择后才能确定target_subject和difficulty_level
+schema_version: intake_result_v1
+score: 2
+source:
+  intake_type: human_input
+  raw_input: 出一道数据结构的Cache地址映射题，要综合题但只要2分，难度5星但必须简单
+target_subject: 数据结构
+task_confidence: high
+task_type: single_question

@@ -1,0 +1,350 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["数据结构"]
+  total_score: 100
+
+slots:
+  - slot_id: Q1
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 线性表 > 顺序表"
+    primary_target_name: "顺序表与链表的随机访问特性对比"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——存储结构与随机访问特性"
+    expected_form: ""
+    examination_focus: "顺序表支持随机访问而链表不支持，对比两者存储特点与访问方式"
+    reference_questions:
+      - "data/question_experiences/simulation_00049.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查对顺序表与链表存储特性的理解，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: "方案C每题第2选项"
+
+  - slot_id: Q2
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 栈队列和数组 > 栈的应用"
+    primary_target_name: "括号匹配过程中栈的变化分析"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——栈的应用场景与过程分析"
+    expected_form: ""
+    examination_focus: "括号匹配过程中栈的入栈出栈操作变化，判断某时刻栈的状态"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查栈在括号匹配中的应用机制，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 栈队列和数组 > 数组和特殊矩阵"
+    primary_target_name: "二维数组列优先存储的地址计算"
+    target_difficulty: 3
+    examination_mode: "计算型——地址公式应用"
+    expected_form: ""
+    examination_focus: "给定二维数组的维度和基地址，按列优先存储推算某元素的存储地址"
+    reference_questions: []
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "单步公式代入计算题，需掌握列优先地址公式，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 串 > 串的模式匹配"
+    primary_target_name: "KMP算法中next数组的某一位值计算"
+    target_difficulty: 3
+    examination_mode: "计算型——next数组求解"
+    expected_form: ""
+    examination_focus: "给定模式串，按KMP算法求next数组中指定位置的值"
+    reference_questions:
+      - "data/question_experiences/2015_Q8.md"
+      - "data/question_experiences/2024_Q6.md"
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "需理解next数组构造规则并代入计算，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 树与二叉树 > 二叉树性质"
+    primary_target_name: "二叉树叶子结点数与度为2结点数的关系应用"
+    target_difficulty: 3
+    examination_mode: "计算型——二叉树性质应用"
+    expected_form: ""
+    examination_focus: "利用 n0 = n2 + 1 等二叉树性质，由已知条件推算叶子结点数"
+    reference_questions: []
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "需代入二叉树结点数公式计算，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q6
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 图 > 图的基本概念"
+    primary_target_name: "连通图、连通分量、生成树的概念辨析"
+    target_difficulty: 3
+    examination_mode: "概念辨析型——图论基本概念"
+    expected_form: ""
+    examination_focus: "辨析连通图、连通分量、生成树的定义与关系，判断各选项正确性"
+    reference_questions:
+      - "data/question_experiences/simulation_00006.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查图论基本术语理解，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q7
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 图 > 图的应用"
+    primary_target_name: "Floyd算法与Dijkstra算法的适用范围对比"
+    target_difficulty: 3
+    examination_mode: "概念辨析型——最短路径算法比较"
+    expected_form: ""
+    examination_focus: "对比Dijkstra（单源、不能负权）与Floyd（全源、可负权但不可负回路）的适用条件和特性"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查两种最短路径算法的特性比较，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q8
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 查找 > B树和B+树"
+    primary_target_name: "B树与B+树的结构差异辨析"
+    target_difficulty: 3
+    examination_mode: "概念辨析型——B树与B+树比较"
+    expected_form: ""
+    examination_focus: "辨析B树（所有结点存关键字、叶结点不链）与B+树（非叶仅索引、叶结点链表）的结构差异"
+    reference_questions:
+      - "data/question_experiences/2023_Q7.md"
+      - "data/question_experiences/2013_Q10.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查B树与B+树结构差异，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q9
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 排序 > 排序算法比较"
+    primary_target_name: "给定排序趟数与初始序列关系判断排序算法"
+    target_difficulty: 3
+    examination_mode: "概念辨析型——排序算法特性判断"
+    expected_form: ""
+    examination_focus: "根据排序趟数是否依赖初始序列等特性，判断使用的排序算法"
+    reference_questions:
+      - "data/question_experiences/simulation_00219.md"
+      - "data/question_experiences/2009_Q10.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查排序算法特性区分，轻量启发式估算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q10
+    question_type: single_choice
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 排序 > 交换排序"
+    primary_target_name: "给定序列用快速排序求前两趟划分结果"
+    target_difficulty: 4
+    examination_mode: "计算型——快速排序过程模拟"
+    expected_form: ""
+    examination_focus: "给定关键字序列，模拟快速排序前两趟partition的划分过程并写出结果"
+    reference_questions:
+      - "data/question_experiences/simulation_00180.md"
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "需手动模拟快速排序partition过程，多步计算，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q11
+    question_type: comprehensive
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 树与二叉树 > 二叉树遍历"
+    primary_target_name: "给后序+中序还原二叉树写出先序序列"
+    target_difficulty: 3
+    examination_mode: "推演型——遍历序列还原二叉树"
+    expected_form: "题干给后序遍历序列和中序遍历序列，要求还原二叉树结构并写出先序遍历序列"
+    examination_focus: "由后序和中序遍历序列推导二叉树结构，写出先序遍历序列"
+    reference_questions:
+      - "data/question_experiences/2026_Q3.md"
+      - "data/question_experiences/2012_Q3.md"
+    k_radar: {K3: 4, K1: 1, K2: 2, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需多步递归推导还原二叉树结构，机制推演为主，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q12
+    question_type: comprehensive
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 图 > 图的应用"
+    primary_target_name: "给定有向带权图用Dijkstra求单源最短路径"
+    target_difficulty: 4
+    examination_mode: "推演型——Dijkstra算法手工模拟"
+    expected_form: "题干给有向带权图的邻接矩阵或边集，要求用Dijkstra算法逐顶点写出dist数组的更新过程，给出最终最短路径"
+    examination_focus: "用Dijkstra算法逐趟更新距离数组，求源点到各顶点的最短路径"
+    reference_questions: []
+    k_radar: {K3: 4, K1: 1, K2: 2, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需手动模拟Dijkstra算法多轮松弛过程，长程推演，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q13
+    question_type: comprehensive
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 查找 > 散列表"
+    primary_target_name: "给关键字序列和散列函数用拉链法构造散列表求ASL"
+    target_difficulty: 3
+    examination_mode: "计算型——散列表构造与ASL计算"
+    expected_form: "题干给关键字序列和除留余数法散列函数，要求用拉链法构造散列表，计算查找成功和查找失败的平均查找长度"
+    examination_focus: "用拉链法构造散列表并计算查找成功/失败的ASL"
+    reference_questions: []
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "需构造散列表并代入ASL公式计算，公式计算为主，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q14
+    question_type: comprehensive
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 排序 > 插入排序与交换排序"
+    primary_target_name: "给定序列用直接插入和冒泡排序写出每趟结果对比"
+    target_difficulty: 4
+    examination_mode: "推演型——排序过程手工模拟与对比"
+    expected_form: "题干给待排序关键字序列，要求分别用直接插入排序和冒泡排序写出每一趟的排序结果，并对比分析两种算法的特点"
+    examination_focus: "用直接插入排序和冒泡排序分别写出每趟结果，对比效率"
+    reference_questions:
+      - "data/question_experiences/2010_Q11.md"
+      - "data/question_experiences/2020_Q11.md"
+    k_radar: {K3: 4, K1: 1, K2: 2, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需手动模拟两种排序的多趟过程并对比分析，多步推演为主，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q15
+    question_type: comprehensive
+    score: 5
+    target_subject: "数据结构"
+    target_family: "数据结构 > 栈队列和数组 > 循环队列"
+    primary_target_name: "循环队列入队/出队操作代码填空"
+    target_difficulty: 3
+    examination_mode: "代码补全型——循环队列操作实现"
+    expected_form: "题干给循环队列的入队或出队函数框架，部分语句用空格代替，要求填写正确语句使函数功能完整"
+    examination_focus: "循环队列入队/出队操作的代码补全（判满、rear更新、判空、front更新等）"
+    reference_questions:
+      - "data/question_experiences/2011_Q3.md"
+      - "data/question_experiences/2014_Q3.md"
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "代码补全题，需理解循环队列操作逻辑填入正确语句，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q16
+    question_type: comprehensive
+    score: 5
+    target_subject: "数据结构"
+    target_family: "数据结构 > 线性表 > 单链表"
+    primary_target_name: "单链表逆序输出函数填空并说明功能"
+    target_difficulty: 3
+    examination_mode: "代码阅读型——链表递归函数分析"
+    expected_form: "题干给一段操作单链表的递归函数代码（含空格），要求填写空白语句并简述函数功能"
+    examination_focus: "分析单链表递归逆序输出函数，填补关键语句并说明功能"
+    reference_questions: []
+    k_radar: {K2: 3, K3: 2, K1: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "代码阅读题，需理解递归函数逻辑填空并描述功能，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q17
+    question_type: comprehensive
+    score: 14
+    target_subject: "数据结构"
+    target_family: "数据结构 > 线性表 > 单链表"
+    primary_target_name: "删除单链表中所有值为x的结点"
+    target_difficulty: 4
+    examination_mode: "算法设计型——链表操作算法设计"
+    expected_form: "题干给带头结点的单链表，要求设计算法删除链表中所有data域值为x的结点。要求：定义结点类型、描述算法思想、写出C/C++代码并给出注释"
+    examination_focus: "设计删除单链表中所有值为x的结点的算法，包括结点定义、设计思想、代码实现"
+    reference_questions: []
+    k_radar: {K5: 4, K3: 2, K1: 1, K2: 2, K4: 3}
+    k_dominant: "K5"
+    k_source: "heuristic"
+    difficulty_rationale: "算法设计题，需自行设计完整算法（定义+思想+实现），综合设计为主，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q18
+    question_type: comprehensive
+    score: 16
+    target_subject: "数据结构"
+    target_family: "数据结构 > 树与二叉树 > 二叉树遍历"
+    primary_target_name: "求二叉树中所有叶子结点到根的路径"
+    target_difficulty: 4
+    examination_mode: "算法设计型——二叉树遍历与路径算法设计"
+    expected_form: "题干给二叉链表存储的二叉树，要求设计算法输出所有叶子结点到根结点的路径。要求：定义结点类型、描述算法思想、写出C/C++代码并给出注释"
+    examination_focus: "设计求二叉树所有叶子结点到根路径的算法，包括结点定义、设计思想、代码实现"
+    reference_questions:
+      - "data/question_experiences/2014_Q41.md"
+    k_radar: {K5: 4, K3: 2, K1: 1, K2: 2, K4: 3}
+    k_dominant: "K5"
+    k_source: "heuristic"
+    difficulty_rationale: "算法设计题，需结合遍历与路径保存设计完整算法，综合设计为主，轻量启发式估算"
+    complexity: standard
+    teacher_annotation: ""

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>408 考研自适应出题系统 · Tech Sharing</title>
+<link rel="stylesheet" href="../.agents/skills/html-ppt/assets/fonts.css">
+<link rel="stylesheet" href="../.agents/skills/html-ppt/assets/base.css">
+<link rel="stylesheet" href="../.agents/skills/html-ppt/assets/animations/animations.css">
+<link rel="stylesheet" href="../.agents/skills/html-ppt/assets/themes/tokyo-night.css">
+<style>
+/* 408 system presentation — tech-sharing dark style */
+.tpl-408{
+  --bg:#0d1117;--bg-soft:#161b22;--surface:#161b22;--surface-2:#1c2230;
+  --border:rgba(139,148,158,.22);--border-strong:rgba(139,148,158,.4);
+  --text-1:#e6edf3;--text-2:#8b949e;--text-3:#6e7681;
+  --accent:#7ee787;--accent-2:#79c0ff;--accent-3:#ff7b72;--accent-4:#d2a8ff;
+  --grad:linear-gradient(120deg,#7ee787 0%,#79c0ff 60%,#d2a8ff 100%);
+  --radius:14px;--radius-lg:20px;
+  --shadow:0 20px 60px rgba(0,0,0,.5);
+  font-family:'Inter','Noto Sans SC',sans-serif;
+}
+.tpl-408{background:#0d1117;color:var(--text-1)}
+.tpl-408 .slide{padding:64px 88px;background:#0d1117;color:var(--text-1);min-height:100vh}
+.tpl-408 .slide::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(60% 50% at 90% 10%,rgba(121,192,255,.12),transparent 60%),
+  radial-gradient(50% 50% at 10% 90%,rgba(126,231,135,.08),transparent 60%);
+  pointer-events:none;z-index:0}
+.tpl-408 .slide>*{position:relative;z-index:1}
+.tpl-408 .h1{font-size:68px;line-height:1.06;font-weight:800;letter-spacing:-.03em;color:#fff}
+.tpl-408 .h2{font-size:46px;font-weight:700;letter-spacing:-.025em;color:#fff}
+.tpl-408 h3,.tpl-408 h4{color:#fff}
+.tpl-408 .kicker{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;letter-spacing:.02em}
+.tpl-408 .kicker::before{content:"> "}
+.tpl-408 .mono{font-family:'JetBrains Mono','IBM Plex Mono',monospace}
+.tpl-408 .terminal{background:#010409;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.65}
+.tpl-408 .terminal .bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#161b22;border-bottom:1px solid var(--border);font-size:12px;color:var(--text-3)}
+.tpl-408 .terminal .dot{width:12px;height:12px;border-radius:50%;background:#ff5f56}
+.tpl-408 .terminal .dot:nth-child(2){background:#ffbd2e}
+.tpl-408 .terminal .dot:nth-child(3){background:#27c93f}
+.tpl-408 .terminal pre{margin:0;padding:20px 24px;color:#e6edf3;overflow:auto;max-height:420px}
+.tpl-408 .kw{color:#ff7b72} .tpl-408 .fn{color:#d2a8ff} .tpl-408 .str{color:#a5d6ff} .tpl-408 .cmt{color:#8b949e;font-style:italic} .tpl-408 .num{color:#79c0ff}
+.tpl-408 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:24px}
+.tpl-408 .card-accent{border-top:3px solid var(--accent)}
+.tpl-408 .card-blue{border-top:3px solid var(--accent-2)}
+.tpl-408 .card-purple{border-top:3px solid var(--accent-4)}
+.tpl-408 .card-red{border-top:3px solid var(--accent-3)}
+.tpl-408 .tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--surface-2);border:1px solid var(--border);color:var(--text-2)}
+.tpl-408 .tag-green{background:rgba(126,231,135,.12);color:var(--accent);border-color:rgba(126,231,135,.35)}
+.tpl-408 .tag-blue{background:rgba(121,192,255,.12);color:var(--accent-2);border-color:rgba(121,192,255,.35)}
+.tpl-408 .tag-red{background:rgba(255,123,114,.12);color:var(--accent-3);border-color:rgba(255,123,114,.35)}
+.tpl-408 .tag-purple{background:rgba(210,168,255,.12);color:var(--accent-4);border-color:rgba(210,168,255,.35)}
+.tpl-408 .agenda-row{display:flex;align-items:baseline;gap:24px;padding:14px 0;border-bottom:1px dashed var(--border);font-family:'JetBrains Mono',monospace}
+.tpl-408 .agenda-row .num{color:var(--accent);flex:none;width:40px}
+.tpl-408 .agenda-row .t{color:#fff;font-size:20px;flex:1;font-family:'Inter','Noto Sans SC',sans-serif;font-weight:600}
+.tpl-408 .lede{color:var(--text-2)}
+.tpl-408 .grid{display:grid;gap:20px}
+.tpl-408 .g2{grid-template-columns:1fr 1fr}
+.tpl-408 .g3{grid-template-columns:1fr 1fr 1fr}
+.tpl-408 .g5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+.tpl-408 .g6{grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr}
+.tpl-408 .mt-s{margin-top:8px} .tpl-408 .mt-m{margin-top:16px} .tpl-408 .mt-l{margin-top:32px}
+.tpl-408 .dim{color:var(--text-2);font-size:15px;line-height:1.6}
+.tpl-408 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.tpl-408 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;text-align:center}
+.tpl-408 .kpi .val{font-size:36px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.tpl-408 .kpi .lbl{font-size:13px;color:var(--text-2);margin-top:6px}
+.tpl-408 .flow-row{display:flex;align-items:center;gap:12px;flex-wrap:nowrap}
+.tpl-408 .flow-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;text-align:center;min-width:100px}
+.tpl-408 .flow-box .fb-title{font-size:14px;font-weight:700;color:#fff}
+.tpl-408 .flow-box .fb-sub{font-size:11px;color:var(--text-3);margin-top:2px}
+.tpl-408 .flow-arrow{color:var(--text-3);font-size:20px;flex:none}
+.tpl-408 .stack{display:flex;flex-direction:column;gap:10px}
+.tpl-408 .profile-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.tpl-408 .profile-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.tpl-408 .profile-card h4{font-size:16px;margin-bottom:8px}
+.tpl-408 .profile-card .weakness{font-size:13px;color:var(--text-2);line-height:1.5}
+.tpl-408 .pipeline-row{display:flex;gap:12px;align-items:stretch}
+.tpl-408 .pipe-step{background:var(--surface);border-radius:var(--radius);padding:16px;flex:1;border-top:3px solid var(--accent-2)}
+.tpl-408 .pipe-step h4{font-size:15px;margin-bottom:6px}
+.tpl-408 .pipe-step p{font-size:12px;color:var(--text-2);line-height:1.5}
+.tpl-408 .pipe-arrow{display:flex;align-items:center;color:var(--text-3);font-size:24px;flex:none}
+.tpl-408 .deck-footer{display:flex;justify-content:space-between;align-items:center;position:absolute;bottom:24px;left:88px;right:88px;color:var(--text-3);font-size:12px}
+.tpl-408 .slide-number{font-family:'JetBrains Mono',monospace}
+.tpl-408 .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tpl-408 .center{display:flex;justify-content:center;align-items:center}
+.tpl-408 .tc{text-align:center}
+.tpl-408 ul.checklist{list-style:none;padding:0}
+.tpl-408 ul.checklist li{padding:6px 0;color:var(--text-2);font-size:15px}
+.tpl-408 ul.checklist li::before{content:"✓ ";color:var(--accent);font-weight:700}
+</style>
+</head>
+<body class="tpl-408">
+<div class="deck">
+
+  <!-- 1. Cover -->
+  <section class="slide" data-title="Cover">
+    <p class="kicker">tech-sharing / 2026-05-15</p>
+    <h1 class="h1 anim-fade-up" data-anim="fade-up">408 考研<br><span style="background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent">自适应出题系统</span></h1>
+    <p class="lede mt-m">本地 LLM + 工作流管线：知识抽取 → 画像构建 → 多角色出题 → 验证</p>
+    <div class="row mt-l">
+      <span class="tag tag-green">Qwen3.6-27B</span>
+      <span class="tag tag-blue">vLLM 本地推理</span>
+      <span class="tag tag-purple">5角色出题管线</span>
+      <span class="tag tag-red">195题测试</span>
+    </div>
+    <div class="deck-footer"><span class="mono">#408 #自适应出题 #本地LLM</span><span class="slide-number" data-current="1" data-total="10"></span></div>
+  </section>
+
+  <!-- 2. Architecture Overview -->
+  <section class="slide" data-title="Architecture">
+    <p class="kicker">// architecture</p>
+    <h2 class="h2">系统架构总览</h2>
+    <div class="flow-row mt-l" style="justify-content:center">
+      <div class="flow-box" style="border-top:3px solid var(--accent-4)"><div class="fb-title">真题题库</div><div class="fb-sub">200+题</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent)"><div class="fb-title">P1-P5 抽取</div><div class="fb-sub">5遍管线</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-2)"><div class="fb-title">知识库</div><div class="fb-sub">结构化</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-3)"><div class="fb-title">用户画像</div><div class="fb-sub">6类典型</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-4)"><div class="fb-title">出题工作流</div><div class="fb-sub">5角色串行</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent)"><div class="fb-title">验证+测试</div><div class="fb-sub">Claude Team</div></div>
+    </div>
+
+    <div class="grid g3 mt-l">
+      <div class="card card-accent">
+        <h4>模型性能</h4>
+        <p class="dim">本地 Qwen3.6-27B + vLLM<br>批量推理高吞吐 · 零API成本</p>
+      </div>
+      <div class="card card-blue">
+        <h4>知识抽取格式</h4>
+        <p class="dim">P1结构 → P2知识 → P3触发 → P4推理 → P5审核<br>五遍渐进式结构化抽取</p>
+      </div>
+      <div class="card card-purple">
+        <h4>出题工作流</h4>
+        <p class="dim">画像解读 → 蓝图规划 → 题目撰写 → 解题验证 → 用户模拟<br>串行多角色对抗管线</p>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#architecture</span><span class="slide-number" data-current="2" data-total="10"></span></div>
+  </section>
+
+  <!-- 3. Local Model Performance -->
+  <section class="slide" data-title="Model Performance">
+    <p class="kicker">// local model performance</p>
+    <h2 class="h2">Qwen3.6-27B 本地模型性能</h2>
+    <p class="lede">Qwen3.6-27B-AWQ-INT4 · vLLM · temp=1.0 · top_p=0.95 · thinking mode</p>
+
+    <div class="kpi-grid mt-m">
+      <div class="kpi" style="border-top:3px solid var(--accent)"><div class="val" style="color:var(--accent)">76.9%</div><div class="lbl">总正确率 (150/195)</div></div>
+      <div class="kpi" style="border-top:3px solid var(--accent-2)"><div class="val" style="color:var(--accent-2)">89.0%</div><div class="lbl">概念路由 (89/100)</div></div>
+      <div class="kpi" style="border-top:3px solid var(--accent-3)"><div class="val" style="color:var(--accent-3)">64.2%</div><div class="lbl">代码路由 (61/95)</div></div>
+      <div class="kpi" style="border-top:3px solid var(--accent-4)"><div class="val" style="color:var(--accent-4)">91.5%</div><div class="lbl">选择题 (150/164)</div></div>
+    </div>
+
+    <div class="grid g2 mt-m">
+      <div class="card">
+        <h4>小规模实验 (6题)</h4>
+        <div class="stack mt-s">
+          <div class="tag">S1 纯推理: 2/6 = 33.3%</div>
+          <div class="tag">S3 增强: 3/6 = 50.0%</div>
+          <div class="tag tag-red">主观题: 0/31 = 0%</div>
+        </div>
+      </div>
+      <div class="card">
+        <h4>吞吐量优势</h4>
+        <div class="stack mt-s">
+          <div class="tag tag-green">路由分类: 14.5 prompts/s</div>
+          <div class="tag tag-green">批量推理: ~20 questions/batch</div>
+          <div class="tag tag-green">零 API 成本</div>
+          <div class="tag tag-blue">Reason-Code 一致: 29.7%</div>
+        </div>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#performance</span><span class="slide-number" data-current="3" data-total="10"></span></div>
+  </section>
+
+  <!-- 4. Dual Path Solver -->
+  <section class="slide" data-title="Dual Path Solver">
+    <p class="kicker">// dual-path solver</p>
+    <h2 class="h2">双路径求解器</h2>
+    <p class="lede">概念题走推理路径，计算题走推理+代码验证路径，仲裁一致性</p>
+
+    <div class="flow-row mt-m" style="justify-content:center">
+      <div class="flow-box" style="border-top:3px solid var(--accent-2)"><div class="fb-title">题目输入</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-4)"><div class="fb-title">路由分类</div><div class="fb-sub">14.5/s</div></div>
+      <div class="flow-arrow">→</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="flow-box" style="border-top:3px solid var(--accent)"><div class="fb-title">概念路径</div><div class="fb-sub">89.0%</div></div>
+        <div class="flow-box" style="border-top:3px solid var(--accent-3)"><div class="fb-title">代码路径</div><div class="fb-sub">64.2%</div></div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-2)"><div class="fb-title">一致性比较</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent)"><div class="fb-title">最终答案</div><div class="fb-sub">76.9%</div></div>
+    </div>
+
+    <div class="grid g2 mt-m">
+      <div class="terminal">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>solve_pipeline.py</span></div>
+<pre><span class="cmt"># Route → classify question type</span>
+route = <span class="fn">classify_route</span>(question)  <span class="cmt"># no thinking, 14.5/s</span>
+
+<span class="cmt"># Path 1: Pure reasoning (concept)</span>
+reason_answer = <span class="fn">reason</span>(question, thinking=<span class="kw">True</span>)
+
+<span class="cmt"># Path 2: Reason + Code (computational)</span>
+<span class="kw">if</span> route == <span class="str">"code"</span>:
+    code_result = <span class="fn">generate_and_exec</span>(question)
+
+<span class="cmt"># Consensus check</span>
+<span class="kw">if</span> reason_answer == code_answer:
+    <span class="kw">return</span> <span class="fn">consensus</span>(reason_answer)</pre>
+      </div>
+      <div class="stack">
+        <div class="card card-accent">
+          <h4>关键发现</h4>
+          <p class="dim">概念路由 89% 接近可用水平<br>代码路由 64.2%，代码执行成功率 38%<br>双路一致率 29.7%，不一致时取推理结果</p>
+        </div>
+        <div class="card card-red">
+          <h4>短板</h4>
+          <p class="dim">主观题评价: 0/31 = 0%<br>代码生成能工作但最终答案提取困难<br>需要更强大的代码沙箱</p>
+        </div>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#dual-path</span><span class="slide-number" data-current="4" data-total="10"></span></div>
+  </section>
+
+  <!-- 5. P1-P5 Extraction Pipeline -->
+  <section class="slide" data-title="Extraction Pipeline">
+    <p class="kicker">// knowledge extraction · P1-P5</p>
+    <h2 class="h2">五遍渐进式知识抽取</h2>
+
+    <div class="pipeline-row mt-m">
+      <div class="pipe-step">
+        <h4 style="color:var(--accent-2)">P1 题目结构</h4>
+        <p>已知条件 / 求解目标<br>隐含约束 / 干扰项分析<br>正确答案诊断</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="border-top-color:var(--accent)">
+        <h4 style="color:var(--accent)">P2 知识单元</h4>
+        <p>knowledge: 概念/定义/公式<br>mechanism: 机制影响推理<br>common_misunderstanding</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="border-top-color:var(--accent-3)">
+        <h4 style="color:var(--accent-3)">P3 触发规则</h4>
+        <p>source_signals → 信号映射<br>activation_condition<br>wrong_if_missing<br>diagnostic_value</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="border-top-color:var(--accent-4)">
+        <h4 style="color:var(--accent-4)">P4 推理模式</h4>
+        <p>steps: 有序原子操作<br>common_breakpoints<br>can_verify_with_code</p>
+      </div>
+      <div class="pipe-arrow">→</div>
+      <div class="pipe-step" style="border-top-color:var(--accent-3)">
+        <h4 style="color:var(--accent-3)">P5 审核</h4>
+        <p>RuleChecker: schema/一致性<br>DomainCritic: 学术审查<br>readiness + confidence</p>
+      </div>
+    </div>
+
+    <div class="grid g2 mt-m">
+      <div class="card card-blue">
+        <h4>遍次连接关系</h4>
+        <p class="dim">P1 提供题干结构 → P2 识别知识点 → P3 建立信号映射 → P4 抽取解题程序 → P5 交叉验证。后四遍互相引用，形成知识图谱。</p>
+      </div>
+      <div class="card card-accent">
+        <h4>审核模式</h4>
+        <div class="stack mt-s">
+          <div class="tag tag-green">fast: RuleChecker + DomainCritic (无思考)</div>
+          <div class="tag tag-blue">deep: RuleChecker + DomainCritic (思考开启)</div>
+          <div class="tag">legacy: 单遍 LLM 自审核</div>
+        </div>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#extraction</span><span class="slide-number" data-current="5" data-total="10"></span></div>
+  </section>
+
+  <!-- 6. Extraction Output Example -->
+  <section class="slide" data-title="Extraction Example">
+    <p class="kicker">// extraction output example</p>
+    <h2 class="h2">知识抽取输出示例</h2>
+
+    <div class="grid g2 mt-s">
+      <div class="terminal">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>pipeline_output.json</span></div>
+<pre>{
+  <span class="str">"P1_structure"</span>: {
+    <span class="str">"given"</span>: [<span class="str">"5段流水线 IF/ID/EX/MEM/WB"</span>,
+             <span class="str">"EX阶段转发"</span>, <span class="str">"无MEM转发"</span>],
+    <span class="str">"asked"</span>: <span class="str">"最小气泡总数"</span>,
+    <span class="str">"distractors"</span>: {
+      <span class="str">"A(1个)"</span>: <span class="str">"忘记无MEM转发"</span>,
+      <span class="str">"C(3个)"</span>: <span class="str">"混淆RAW/WAR"</span>
+    }
+  },
+  <span class="str">"P2_knowledge"</span>: [
+    {<span class="str">"name"</span>: <span class="str">"RAW数据冒险"</span>, <span class="str">"type"</span>: <span class="str">"mechanism"</span>},
+    {<span class="str">"name"</span>: <span class="str">"转发技术"</span>, <span class="str">"type"</span>: <span class="str">"mechanism"</span>}
+  ],
+  <span class="str">"P3_triggers"</span>: [
+    {<span class="str">"signal"</span>: <span class="str">"lw后紧跟使用"</span>,
+     <span class="str">"activates"</span>: <span class="str">"Load-Use冒险"</span>},
+    {<span class="str">"signal"</span>: <span class="str">"无MEM转发"</span>,
+     <span class="str">"activates"</span>: <span class="str">"额外1个气泡"</span>}
+  ],
+  <span class="str">"P4_pattern"</span>: {
+    <span class="str">"steps"</span>: [<span class="str">"识别依赖"</span>,<span class="str">"计算气泡"</span>,<span class="str">"汇总"</span>],
+    <span class="str">"breakpoints"</span>: [<span class="str">"MEM转发缺失易忽略"</span>]
+  },
+  <span class="str">"P5_review"</span>: {
+    <span class="str">"status"</span>: <span class="str">"verified"</span>,
+    <span class="str">"confidence"</span>: <span class="num">0.95</span>
+  }
+}</pre>
+      </div>
+      <div class="stack">
+        <div class="card card-blue"><h4>P1 题目结构</h4><p class="dim">将自然语言拆解为已知条件、求解目标、干扰项分析</p></div>
+        <div class="card card-accent"><h4>P2 知识单元</h4><p class="dim">识别基础概念 (definition) 和推理机制 (mechanism)</p></div>
+        <div class="card card-red"><h4>P3 触发规则</h4><p class="dim">建立题干信号 → 机制激活映射，含诊断价值评分</p></div>
+        <div class="card card-purple"><h4>P4 推理模式</h4><p class="dim">提取可复用的分步解题程序，标注易错断点</p></div>
+        <div class="card" style="border-top:3px solid var(--accent-3)"><h4>P5 审核验证</h4><p class="dim">规则校验 + 领域审核 → 输出就绪度和置信度</p></div>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#example</span><span class="slide-number" data-current="6" data-total="10"></span></div>
+  </section>
+
+  <!-- 7. User Profiles -->
+  <section class="slide" data-title="User Profiles">
+    <p class="kicker">// user profiles · 6 types</p>
+    <h2 class="h2">用户画像构建</h2>
+    <p class="lede">基于历史错题提取薄弱点，构建6类典型学生画像</p>
+
+    <div class="profile-grid mt-m">
+      <div class="profile-card" style="border-top:3px solid var(--accent-2)">
+        <h4 style="color:var(--accent-2)">P1 浮点数运算混淆型</h4>
+        <div class="weakness">算术/逻辑右移混淆<br>双符号位溢出判定<br>IEEE754偏置值</div>
+      </div>
+      <div class="profile-card" style="border-top:3px solid var(--accent)">
+        <h4 style="color:var(--accent)">P2 Cache映射混淆型</h4>
+        <div class="weakness">组号计算错误<br>Tag位+有效位开销<br>审题张冠李戴</div>
+      </div>
+      <div class="profile-card" style="border-top:3px solid var(--accent-3)">
+        <h4 style="color:var(--accent-3)">P3 流水线冒险型</h4>
+        <div class="weakness">RAW阻塞周期计算<br>单总线硬件约束<br>时空图绘制</div>
+      </div>
+      <div class="profile-card" style="border-top:3px solid var(--accent-4)">
+        <h4 style="color:var(--accent-4)">P4 中断总线模糊型</h4>
+        <div class="weakness">中断服务程序顺序<br>数据线传输内容<br>中断响应三条件</div>
+      </div>
+      <div class="profile-card" style="border-top:3px solid #ffa657">
+        <h4 style="color:#ffa657">P5 指令寻址计算型</h4>
+        <div class="weakness">字段位数分配<br>寻址范围计算<br>考试时间管理</div>
+      </div>
+      <div class="profile-card" style="border-top:3px solid #56d4dd">
+        <h4 style="color:#56d4dd">P6 存储器交叉编址型</h4>
+        <div class="weakness">体号计算<br>DRAM阵列选择<br>页号vs偏移位数</div>
+      </div>
+    </div>
+
+    <div class="card mt-m" style="border-top:3px solid var(--accent-2)">
+      <h4>画像结构</h4>
+      <p class="dim mono" style="font-size:13px">error_history (历史错题) → mastery_info (已掌握/薄弱) → training_goal (训练目标) → target_knowledge (目标知识点)</p>
+    </div>
+    <div class="deck-footer"><span class="mono">#profiles</span><span class="slide-number" data-current="7" data-total="10"></span></div>
+  </section>
+
+  <!-- 8. Generation Workflow -->
+  <section class="slide" data-title="Generation Workflow">
+    <p class="kicker">// generation workflow · 5 roles</p>
+    <h2 class="h2">出题工作流：5角色串行管线</h2>
+
+    <div class="flow-row mt-m" style="justify-content:center;font-size:13px">
+      <div class="flow-box" style="border-top:3px solid var(--accent-2);min-width:120px"><div class="fb-title">画像解读器</div><div class="fb-sub">ProfileInterpreter</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent);min-width:120px"><div class="fb-title">蓝图规划器</div><div class="fb-sub">BlueprintPlanner</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-3);min-width:120px"><div class="fb-title">题目撰写器</div><div class="fb-sub">QuestionWriter</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid var(--accent-4);min-width:120px"><div class="fb-title">解题验证器</div><div class="fb-sub">SolverVerifier</div></div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box" style="border-top:3px solid #ffa657;min-width:120px"><div class="fb-title">用户模拟器</div><div class="fb-sub">UserSimulator</div></div>
+    </div>
+
+    <div class="grid g3 mt-m">
+      <div class="card card-blue">
+        <h4>ProfileInterpreter</h4>
+        <p class="dim">解读历史错题 → 生成画像摘要<br>输出: known_strengths, weaknesses, likely_failure_modes</p>
+      </div>
+      <div class="card card-accent">
+        <h4>BlueprintPlanner</h4>
+        <p class="dim">基于画像+知识库 → 规划诊断题目蓝图<br>输出: question_type, diagnostic_focus, distractor_plan</p>
+      </div>
+      <div class="card card-red">
+        <h4>QuestionWriter</h4>
+        <p class="dim">按蓝图生成408风格题目<br>输出: stem, options, answer, solution</p>
+      </div>
+      <div class="card card-purple">
+        <h4>SolverVerifier</h4>
+        <p class="dim">独立盲解验证 → 检查答案唯一性<br>输出: derived_answer, unique_answer, confidence</p>
+      </div>
+      <div class="card" style="border-top:3px solid #ffa657">
+        <h4>UserSimulator</h4>
+        <p class="dim">按画像模拟薄弱学生 → 验证错误触发<br>输出: simulated_answer, matched_expected_failure</p>
+      </div>
+      <div class="card" style="border-top:3px solid var(--accent-2)">
+        <h4>Aggregator</h4>
+        <p class="dim">solver一致 + 模拟匹配 → accept<br>不一致 → reject/revise (最多2轮)</p>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#workflow</span><span class="slide-number" data-current="8" data-total="10"></span></div>
+  </section>
+
+  <!-- 9. Generation Result Demo -->
+  <section class="slide" data-title="Demo">
+    <p class="kicker">// demo · P1 浮点数+Cache 混合主观题</p>
+    <h2 class="h2">出题结果演示</h2>
+
+    <div class="grid g2 mt-s">
+      <div class="terminal">
+        <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span>question.md</span></div>
+<pre><span class="cmt">// 20分主观题 · 混合知识点</span>
+某计算机中，浮点数采用 <span class="kw">IEEE 754</span> 单精度格式
+（1+8+23位，偏置值127）。
+Cache采用<span class="kw">直接映射</span>，128行，每行16字节。
+
+<span class="kw">float</span> a = -<span class="num">13.75</span>, b = <span class="num">7.375</span>;
+<span class="kw">float</span> c;  c = a - b;
+<span class="cmt">// c @ 0x0848, a @ 0x0800</span>
+
+<span class="str">（1）8分</span> a和b的IEEE 754十六进制表示
+<span class="str">（2）8分</span> 变形补码(双符号位)求a-b
+<span class="str">（3）4分</span> a和c的Cache行号+冲突判断</pre>
+      </div>
+      <div class="stack">
+        <div class="card card-accent">
+          <h4>参考答案</h4>
+          <div class="dim" style="font-size:13px;line-height:1.7">
+            <span class="mono" style="color:var(--accent)">a = 0xC15C0000</span><br>
+            <span class="mono" style="color:var(--accent)">b = 0x40EC0000</span><br>
+            <span class="mono" style="color:var(--accent)">a-b = 0xC1A90000</span><br>
+            尾数求和: <span class="mono" style="color:var(--accent-2)">11.10110100</span><br>
+            双符号位: <span class="mono" style="color:var(--accent-2)">11</span> (负无溢出)<br>
+            a→Cache行0, c→Cache行4, 无冲突
+          </div>
+        </div>
+        <div class="card card-blue">
+          <h4>Pipeline 验证结果</h4>
+          <div class="stack mt-s">
+            <div class="tag tag-green">CodeSolver: 全部数值通过</div>
+            <div class="tag tag-green">Reviewer: 通过</div>
+            <div class="tag tag-green">Solver盲解: 6/6 匹配</div>
+            <div class="tag tag-blue">答案唯一性: 确认</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="deck-footer"><span class="mono">#demo</span><span class="slide-number" data-current="9" data-total="10"></span></div>
+  </section>
+
+  <!-- 10. Summary -->
+  <section class="slide" data-title="Summary">
+    <p class="kicker">// summary & future</p>
+    <h2 class="h2">总结与展望</h2>
+
+    <div class="grid g2 mt-l">
+      <div class="card card-accent">
+        <h4 style="font-size:20px">已实现</h4>
+        <ul class="checklist mt-s">
+          <li>P1-P5 五遍渐进式知识抽取管线</li>
+          <li>6类典型学生画像 (浮点/Cache/流水线/中断/指令/存储器)</li>
+          <li>5角色串行出题工作流 (解读→规划→撰写→验证→模拟)</li>
+          <li>双路径求解器 (概念89% + 代码64.2%)</li>
+          <li>195题批量测试 (选择题91.5%)</li>
+          <li>Claude Agent Team 验证流程</li>
+        </ul>
+      </div>
+      <div class="card card-red">
+        <h4 style="font-size:20px">待改进</h4>
+        <ul class="checklist mt-s" style="list-style:none">
+          <li style="color:var(--accent-3)">主观题评分能力 (当前 0/31)</li>
+          <li>Markdown 输出替代 JSON (减少解析失败)</li>
+          <li>Streaming Pipeline (vLLM→GLM并发)</li>
+          <li>跨科目混合知识点出题</li>
+          <li>难度自适应调整 (模拟反馈)</li>
+          <li>实际学生测试验证</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card mt-m" style="border-top:3px solid var(--accent-4)">
+      <p class="dim mono" style="text-align:center;font-size:13px">Tech Stack: Qwen3.6-27B (vLLM) + Claude Agent Team (验证) | Python + asyncio + OpenAI SDK</p>
+    </div>
+    <div class="deck-footer"><span class="mono">#summary</span><span class="slide-number" data-current="10" data-total="10"></span></div>
+  </section>
+
+</div>
+<script src="../.agents/skills/html-ppt/assets/runtime.js"></script>
+</body>
+</html>

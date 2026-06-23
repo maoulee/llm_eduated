@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-06-07T13-59-10",
+  "workspace": "/zhaoshu/llm_eduated/docs/workspace/2026-06-07T13-19-36-279984/q1/KP-untagged",
+  "results": [
+    {
+      "backend": "qwen",
+      "ok": true,
+      "content_len": 2958,
+      "reasoning_len": 550,
+      "elapsed": 27.2,
+      "quality": {
+        "removed_pseudo_code": true,
+        "removed_code_fence": true,
+        "has_question_body": true,
+        "has_sub_questions": true,
+        "has_design_notes": true,
+        "kept_insertion_sequence": true,
+        "kept_balance_factor_def": true,
+        "no_ABCD_options": true,
+        "score": "8/8",
+        "FIXED_CORE_ISSUE": true
+      }
+    }
+  ]
+}

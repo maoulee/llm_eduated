@@ -1,0 +1,50 @@
+{
+  "slot_id": "E2E_SC",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "solve": 1,
+    "design2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "review failed: Review agent returned invalid or missing status"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    },
+    {
+      "node": "design2",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

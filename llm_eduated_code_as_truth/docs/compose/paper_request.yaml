@@ -1,0 +1,143 @@
+schema_version: paper_request_v1
+
+source:
+  intake_type: interact_agent
+  scenario: C_free_compose
+
+assessment:
+  type: topic_practice
+  subjects: ["组成原理"]
+  total_score: 20
+  duration_minutes: 30
+
+knowledge_scope:
+  primary_chapters:
+    - "组成原理 > 数据的表示和运算"
+    - "组成原理 > 存储系统"
+  focus_points:
+    - "IEEE 754 浮点数表示与舍入"
+    - "类型转换（有符号/无符号）"
+    - "Cache 组相联映射与命中率"
+    - "补码加减运算与溢出判断"
+    - "补码综合运算（加减、移位、类型转换）"
+  excluded_points: []
+  coverage_strategy: balanced
+
+question_config:
+  types:
+    - type: single_choice
+      count_range: [4, 4]
+      score_per: 2
+    - type: comprehensive
+      count_range: [1, 1]
+      score_per: 12
+
+difficulty:
+  target: medium
+  distribution:
+    easy: 20
+    medium: 60
+    hard: 20
+
+slots:
+  - slot_id: Q1
+    question_type: single_choice
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > IEEE 754 浮点数"
+    primary_target_name: "IEEE 754 浮点数舍入表示"
+    target_difficulty: 3
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 3
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需将非精确十进制小数按 IEEE 754 就近舍入规则转换为单精度机器码，涉及符号位、阶码偏移、尾数规格化与舍入多步推演，属中等偏上难度。"
+    examination_mode: "舍入模式下的浮点表示：给定非精确小数（如 12.1），按就近舍入规则求 IEEE 754 单精度机器码"
+    teacher_annotation: ""
+
+  - slot_id: Q2
+    question_type: single_choice
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 类型转换"
+    primary_target_name: "有符号与无符号类型转换"
+    target_difficulty: 3
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 2
+      K4: 4
+      K5: 2
+    k_dominant: "K4"
+    k_source: "question_aggregate"
+    difficulty_rationale: "short/unsigned short 之间转换涉及符号位解释变化和真值重新计算，需辨析有符号补码与无符号数的机器码同形异义，属组合分析型中等难度。"
+    examination_mode: "有符号↔无符号转换：short/unsigned short 之间转换后的真值计算"
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: single_choice
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > Cache 命中率"
+    primary_target_name: "Cache 组相联映射与二维数组缺失率"
+    target_difficulty: 4
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 3
+      K4: 3
+      K5: 2
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需结合二维数组内存布局、组相联映射规则、Cache 参数（路数、块大小、容量）逐步推演访问序列的命中/缺失情况，涉及多步流程模拟，属较高难度。"
+    examination_mode: "组相联 + 二维数组访问：给定二维数组遍历代码和 Cache 参数，计算缺失率"
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: single_choice
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 补码运算"
+    primary_target_name: "补码加减法溢出判断"
+    target_difficulty: 3
+    k_radar:
+      K1: 4
+      K2: 3
+      K3: 3
+      K4: 4
+      K5: 2
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "给定两个补码操作数进行加减运算，需判断结果是否溢出并确定 OF 标志位，涉及补码表示范围与溢出规则的辨析，属中等难度。"
+    examination_mode: "加减法溢出判断（OF 标志）：给定两个补码操作数，判断加减运算是否溢出及 OF 值"
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: comprehensive
+    score: 12
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 补码综合运算"
+    primary_target_name: "补码多步运算链"
+    target_difficulty: 4
+    k_radar:
+      K1: 4
+      K2: 3
+      K3: 3
+      K4: 4
+      K5: 2
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "综合应用题，需连续进行补码加减、算术移位、类型转换等多步运算，求最终寄存器内容及标志位，涉及多知识点交叉分析，属较高难度。"
+    examination_mode: "多步补码运算链：连续进行补码加减、移位、类型转换，求最终寄存器内容及标志位"
+    teacher_annotation: ""
+
+teacher_preferences:
+  require:
+    - "主要考察基本计算能力"
+  avoid: []
+  style_notes: "教师要求五道题目均以计算为主"
+  annotations: {}

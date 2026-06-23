@@ -1,0 +1,54 @@
+{
+  "slot_id": "TEST_SC",
+  "current_node": "design2",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 2,
+    "form_gate": 2,
+    "solve": 1,
+    "design2": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "needs_fix",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题目设计质量良好。二叉树结构清晰，参数在规划范围内，条件充分无矛盾，解题意图与设计卡一致，风格合规，未触犯经验卡 should_not_be。选择题无选项值（A/B/C/D）为 form_gate 阶段正常状态，由后续 solve 阶段组装，不构成缺陷。"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    },
+    {
+      "node": "design2",
+      "signal": "ok",
+      "feedback": ""
+    }
+  ]
+}

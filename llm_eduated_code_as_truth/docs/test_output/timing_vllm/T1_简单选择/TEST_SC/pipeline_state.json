@@ -1,0 +1,50 @@
+{
+  "slot_id": "TEST_SC",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "solve": 1,
+    "design2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题目设计质量良好。题干结构清晰（图形+表格混合呈现），条件充分无矛盾，知识点与蓝图一致，K难度分布与目标匹配，风格合规，参数约束全部满足。无阻塞性问题。"
+    },
+    {
+      "node": "solve",
+      "signal": "success",
+      "feedback": ""
+    },
+    {
+      "node": "design2",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

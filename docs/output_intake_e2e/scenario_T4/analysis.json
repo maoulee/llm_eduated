@@ -1,0 +1,30 @@
+{
+  "scenario": "T4",
+  "name": "完全矛盾输入",
+  "teacher_input": "出一道数据结构的Cache地址映射题，要综合题但只要2分，难度5星但必须简单",
+  "elapsed_sec": 24.0,
+  "intake": {
+    "label": "T4_intake",
+    "task_type": "single_question",
+    "intake_status": "needs_user_choice",
+    "confidence_level": "blocked",
+    "confidence_missing": [
+      "target_family",
+      "kg_node_path",
+      "target_subject",
+      "difficulty_level"
+    ],
+    "confidence_contradictions": [
+      "科目为数据结构，但Cache地址映射属于计算机组成原理",
+      "难度要求5星但必须简单，相互矛盾"
+    ],
+    "can_route": false,
+    "next_action": "ask_user",
+    "next_input": null,
+    "routing_reason": "存在两处矛盾，需教师选择后才能确定target_subject和difficulty_level"
+  },
+  "has_downstream": false,
+  "compose_trace": null,
+  "issues": [],
+  "overall_pass": true
+}

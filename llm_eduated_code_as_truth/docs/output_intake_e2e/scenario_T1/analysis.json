@@ -1,0 +1,51 @@
+{
+  "scenario": "T1",
+  "name": "408全科卷 — 多科混合 + 矛盾难度",
+  "teacher_input": "我要一套完整的408考研模拟卷，难度整体偏难，但是数据结构部分简单点，操作系统部分要出些冷门考点，不要出Cache和虚拟内存的题，总分150分，180分钟",
+  "elapsed_sec": 57.5,
+  "intake": {
+    "label": "T1_intake",
+    "task_type": "paper",
+    "intake_status": "ready",
+    "confidence_level": "high",
+    "confidence_missing": [],
+    "confidence_contradictions": [],
+    "can_route": true,
+    "next_action": "run_compose",
+    "next_input": "paper_request.yaml",
+    "routing_reason": "paper_route_gate 通过：全部必需字段已填充，无矛盾，可路由至组卷团队"
+  },
+  "has_downstream": true,
+  "compose_trace": {
+    "label": "T1_compose_mapping",
+    "mapping_ok": true,
+    "user_requirements": "科目：数据结构, 计算机组成原理, 操作系统, 计算机网络。重点章节：数据结构 > 全部章节, 计算机组成原理 > 全部章节, 操作系统 > 全部章节, 计算机网络 > 全部章节。排除考点：Cache, 虚拟内存。覆盖策略：按考试权重。难度目标：较难。教师备注：整体难度偏难，接近考研真题上限。 数据结构部分降档为基础-中等难度，不出偏难怪题。 操作系统部分需要覆盖冷门考点，如：进程通信细节、磁盘调度高级算法、 文件系统实现细节等低频但大纲范围内知识点。 组成原理和计算机网络按正常偏难标准出题。。必须包含：操作系统冷门考点。避免：Cache, 虚拟内存。",
+    "subject_files": [
+      "data_structure.md",
+      "computer_organization.md",
+      "operating_system_knowledge.md",
+      "computer_network.md"
+    ],
+    "slot_templates_hints": [
+      {
+        "question_type": "single_choice",
+        "count_range": [
+          40,
+          40
+        ]
+      },
+      {
+        "question_type": "comprehensive",
+        "count_range": [
+          7,
+          7
+        ]
+      }
+    ],
+    "model_routing": {
+      "paper_composer": "hybrid"
+    }
+  },
+  "issues": [],
+  "overall_pass": true
+}

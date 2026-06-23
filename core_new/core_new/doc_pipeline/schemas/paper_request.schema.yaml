@@ -1,0 +1,51 @@
+# paper_request schema — intake layer output for paper (组卷) tasks
+# Reference: docs/specs/2026-06-09-intake-layer-design.md §5.7
+
+schema_version: paper_request_v1
+
+source:
+  intake_type: human_input | pre_extracted | merged  # required
+  pre_extracted_data: null  # optional reference to pre-extracted info
+
+assessment:
+  type: kaoyan_408 | course_final | topic_practice  # required
+  subjects:  # required — array, single-element for single subject, 4-element for 408
+    - "计算机组成原理"
+  total_score: 45  # optional
+  duration_minutes: null  # optional
+
+knowledge_scope:
+  primary_chapters: []  # KG h3 level chapters
+  focus_points: []  # teacher-specified focus areas
+  excluded_points: []  # teacher-excluded areas
+  coverage_strategy: balanced | focus_heavy | exam_weighted
+
+question_config:
+  types:
+    - type: single_choice | comprehensive
+      count_range: [10, 15]
+      score_per: 2  # for single_choice
+      score_range: [8, 13]  # for comprehensive
+
+difficulty:
+  target: easy | medium | hard
+  distribution:
+    easy: 30
+    medium: 50
+    hard: 20
+  anchor_source: kaoyan_408
+
+retrieval_policy:
+  prefer_existing: true
+  generate_gap: true
+  max_scan: 2000
+  top_k_per_slot: 3
+
+teacher_preferences:
+  require: []
+  avoid: []
+  style_notes: ""
+
+constraints:
+  allow_similar_to_past: false
+  min_knowledge_diversity: 3
