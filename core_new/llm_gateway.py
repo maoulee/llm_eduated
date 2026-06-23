@@ -775,7 +775,7 @@ class LLMGateway:
             effort = "none"  # disable thinking entirely
         payload: Dict[str, Any] = {
             "model": params.get("model", "GLM-5.2"),
-            "max_tokens": params.get("max_tokens", 16000),
+            "max_tokens": params.get("max_tokens", 32000),
             "messages": anthropic_messages,
             # NOTE: chat_template_kwargs.reasoning_effort REMOVED — when combined with
             # thinking.type=enabled, it amplifies thinking unboundedly (40K+ blowup on
@@ -788,7 +788,7 @@ class LLMGateway:
             # adding output_config stabilizes it. context_management NOT needed (GLM ignores it).
             # Retry-on-runaway (below) catches the rare intermittent blowup.
             payload["thinking"] = {"type": "adaptive"}
-            payload["output_config"] = {"effort": "medium"}
+            payload["output_config"] = {"effort": "high"}
         if system_text:
             payload["system"] = system_text
         if anthropic_tools:
