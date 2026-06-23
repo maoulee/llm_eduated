@@ -582,6 +582,18 @@ class LLMGateway:
 
     @staticmethod
     def _is_retryable_stream_error(exc: Exception) -> bool:
+        # anthropic SDK (lazy; ignored if not installed)
+        try:
+            import anthropic
+            if isinstance(exc, (
+                anthropic.APITimeoutError,
+                anthropic.APIConnectionError,
+                anthropic.RateLimitError,
+                anthropic.InternalServerError,
+            )):
+                return True
+        except ImportError:
+            pass
         # OpenAI SDK exceptions (APITimeoutError inherits APIConnectionError, order matters)
         if isinstance(exc, (
             openai.APITimeoutError,
@@ -927,6 +939,28 @@ def _parse_json(raw: str) -> Optional[Dict[str, Any]]:
 
 
 def _classify_exception(error: Exception) -> str:
+    # anthropic SDK (lazy)
+    try:
+        import anthropic
+        if isinstance(error, anthropic.APITimeoutError):
+            return "timeout"
+        if isinstance(error, anthropic.APIConnectionError):
+            return "connection_error"
+        if isinstance(error, anthropic.RateLimitError):
+            return "rate_limit"
+        if isinstance(error, anthropic.InternalServerError):
+            return "server_error"
+        if isinstance(error, anthropic.APIStatusError):
+            status = getattr(error, "status_code", None)
+            if status == 429:
+                return "rate_limit"
+            if status in {408, 425}:
+                return "timeout"
+            if status is not None and status >= 500:
+                return "server_error"
+            return "api_error"
+    except ImportError:
+        pass
     # OpenAI SDK exceptions (most specific first — APITimeoutError inherits APIConnectionError)
     if isinstance(error, openai.APITimeoutError):
         return "timeout"
