@@ -184,9 +184,11 @@ class LLMGateway:
         return False
 
     async def _wait_with_backoff(self, attempt: int) -> None:
-        """Fixed 3s backoff."""
-        logger.info("Transport retry attempt %d, waiting 3.0s", attempt + 1)
-        await asyncio.sleep(3.0)
+        """Exponential backoff with jitter: base * 2^attempt + jitter, capped at max_wait."""
+        policy = self._transport_retry
+        delay = min(policy.base * (2 ** attempt) + random.uniform(0, 1), policy.max_wait)
+        logger.info("Transport retry attempt %d, waiting %.1fs", attempt + 1, delay)
+        await asyncio.sleep(delay)
 
     # ── Batch methods ──────────────────────────────────────
 
