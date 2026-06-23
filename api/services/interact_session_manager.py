@@ -114,7 +114,7 @@ class SessionManager:
 
             self._sessions[sid] = {
                 "session_id": sid,
-                "provider": "api_vllm",
+                "provider": "glm5.2",
                 "thinking": False,
                 "ui_mode": "api",
                 "user_id": "default",
@@ -138,7 +138,7 @@ class SessionManager:
 
     def create_session(
         self,
-        provider: str = "api_vllm",
+        provider: str = "glm5.2",
         thinking: bool = True,
         ui_mode: str = "api",
         user_id: str = "default",

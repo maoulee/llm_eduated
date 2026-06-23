@@ -1170,7 +1170,7 @@ class TestGatewayStreamChat:
             client=client,
             stream=client.stream,
         )
-        gateway = LLMGateway.from_provider(provider, name="glm5.1")
+        gateway = LLMGateway.from_provider(provider, name="glm5.2")
 
         result = run_async(gateway.stream_chat(
             [{"role": "user", "content": "hello"}],
@@ -1201,7 +1201,7 @@ class TestGatewayStreamChat:
         )
         gateway = LLMGateway.from_provider(
             provider,
-            name="glm5.1",
+            name="glm5.2",
             transport_retry=TransportRetryPolicy(max_attempts=2),
         )
         async def no_wait(attempt):
@@ -1225,7 +1225,7 @@ class TestGatewayGenerateWithTools:
         ])
         gateway = LLMGateway.from_provider(
             provider,
-            name="api_vllm",
+            name="glm5.2",
             transport_retry=TransportRetryPolicy(max_attempts=2),
         )
 

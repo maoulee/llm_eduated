@@ -95,8 +95,8 @@ def _parse_config(raw: dict) -> PipelineConfig:
     # 2. Routing
     r = raw.get("routing", {})
     providers = r.get("providers", {})
-    fallback = providers.get("fallback", "glm5.1")
-    local = providers.get("local", "api_vllm")
+    fallback = providers.get("fallback", "glm5.2")
+    local = providers.get("local", "glm5.2")
     ttl = providers.get("health_check_ttl", 60)
 
     profiles: dict[str, RoutingProfile] = {}
@@ -188,8 +188,8 @@ def _default_config() -> PipelineConfig:
         routing_profiles=profiles,
         default_profile="all_local",
         context_registry=registry,
-        fallback_provider="glm5.1",
-        local_provider="api_vllm",
+        fallback_provider="glm5.2",
+        local_provider="glm5.2",
         health_check_ttl=60,
     )
 

@@ -8,7 +8,7 @@ Uses real LLM (local vLLM or remote GLM) to test the interact agent pipeline:
 
 Usage:
   python scripts/test_interact_live.py                    # default: api_vllm
-  GLM_API_KEY=xxx python scripts/test_interact_live.py glm5.1  # remote GLM
+  GLM_API_KEY=xxx python scripts/test_interact_live.py glm5.2  # remote GLM
 """
 
 import asyncio
@@ -26,7 +26,7 @@ from core_new.llm_gateway import get_gateway
 OUTPUT_DIR = Path("docs/output_interact_live_test")
 
 
-def create_gateway(provider_name: str = "api_vllm") -> "LLMGateway":
+def create_gateway(provider_name: str = "glm5.2") -> "LLMGateway":
     """Create a gateway for the given provider."""
     print(f"Using provider: {provider_name}")
     return get_gateway(provider_name)
@@ -34,7 +34,7 @@ def create_gateway(provider_name: str = "api_vllm") -> "LLMGateway":
 
 async def run_scenario_b():
     """Scenario B: 单知识点出题 — "出一道AVL树旋转的选择题"."""
-    provider = sys.argv[1] if len(sys.argv) > 1 else "api_vllm"
+    provider = sys.argv[1] if len(sys.argv) > 1 else "glm5.2"
     gateway = create_gateway(provider)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -103,7 +103,7 @@ async def run_scenario_b():
 
 async def run_scenario_c():
     """Scenario C: 自由组卷 — "出一套计算机组成原理期末卷"."""
-    provider = sys.argv[1] if len(sys.argv) > 1 else "api_vllm"
+    provider = sys.argv[1] if len(sys.argv) > 1 else "glm5.2"
     gateway = create_gateway(provider)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -195,7 +195,7 @@ def build_messages() -> list[dict]:
 
 async def call_model(messages: list[dict], backend: str) -> dict:
     """Call a model via LLMGateway and return response info."""
-    provider_name = "glm5.1" if backend == "glm" else "api_vllm"
+    provider_name = "glm5.2" if backend == "glm" else "glm5.2"
     print(f"\n{'='*60}")
     print(f"Calling {backend.upper()} via gateway: {provider_name}")
     print(f"Messages: {len(messages)} turns")

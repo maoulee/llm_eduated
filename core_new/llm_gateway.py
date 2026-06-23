@@ -6,7 +6,7 @@ Unified LLM Gateway - Single entry point for all LLM operations.
 Usage:
     from core_new.llm_gateway import get_gateway
 
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
     results = await gateway.generate_json_batch(messages_batch)
     for result in results:
         if result.ok:
@@ -146,8 +146,12 @@ class LLMGateway:
         self._provider = get_llm_provider(self._config)
         self._model_name = self._config.get("model_path", provider_name)
         self._transport_retry = transport_retry or TransportRetryPolicy()
-        # Determine scope: local (vLLM) vs remote (cloud API)
-        self._is_local = provider_name in ("api_vllm", "vllm") or "vllm" in provider_name.lower()
+        # Determine scope: local (vLLM, e.g. qwen36_a35) vs remote (cloud API, e.g. glm5.2).
+        # Classify by api_url pointing at localhost, or a vllm-style name.
+        _api_url = str(self._config.get("api_url", ""))
+        self._is_local = (
+            "vllm" in provider_name.lower() or "127.0.0.1" in _api_url or "localhost" in _api_url
+        )
         logger.info("LLMGateway initialized: provider=%s model=%s scope=%s max_attempts=%d",
                     self._provider_name, self._model_name,
                     "local" if self._is_local else "remote",

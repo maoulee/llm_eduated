@@ -53,7 +53,7 @@ async def run_test(slot_ids: list[str]):
 
     # Routing: GLM5.1 for question + solve, GPT for final_review
     model_routing = {
-        "_default": "glm5.1",  # GLM5.1 for all roles except final_review
+        "_default": "glm5.2",  # GLM5.1 for all roles except final_review
         "final_review": "hybrid",  # GPT generates, Qwen relays
     }
 

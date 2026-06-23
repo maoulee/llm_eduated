@@ -32,8 +32,8 @@ def get_gateway() -> LLMGateway:
     """Get or create the singleton LLMGateway instance."""
     global _gateway
     if _gateway is None:
-        # Use local Qwen provider by default (vLLM)
-        provider_name = os.getenv("EDUCATE_PROVIDER", "api_vllm")
+        # Use online GLM-5.2 by default (override EDUCATE_PROVIDER, e.g. qwen36_a35 for local)
+        provider_name = os.getenv("EDUCATE_PROVIDER", "glm5.2")
         provider_cfg = get_provider_config(provider_name)
         _gateway = LLMGateway(provider_name)
     return _gateway

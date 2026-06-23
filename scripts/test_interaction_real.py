@@ -117,8 +117,8 @@ async def main():
     _header("Interaction Layer E2E Test — Local Qwen")
     print(f"  Time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
-    gateway = get_gateway("api_vllm")
-    orch = InteractiveOrchestrator(gateway, model_routing={"_default": "api_vllm"})
+    gateway = get_gateway("glm5.2")
+    orch = InteractiveOrchestrator(gateway, model_routing={"_default": "glm5.2"})
 
     # Scenario selection via command line args
     scenarios = sys.argv[1:] if len(sys.argv) > 1 else ["1"]

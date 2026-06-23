@@ -290,7 +290,7 @@ async def main():
 
     # Get LLM gateway
     print("初始化 LLM gateway (GLM-5.1)...")
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
     print(f"  Gateway: {gateway._provider_name}")
 
     # Run scenarios

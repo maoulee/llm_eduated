@@ -418,7 +418,7 @@ async def main():
     system_prompt = load_system_prompt()
     print(f"System prompt: {len(system_prompt)} chars")
 
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
     print(f"Gateway: {gateway._provider_name}")
 
     results = []

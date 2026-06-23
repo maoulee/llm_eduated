@@ -1090,7 +1090,7 @@ async def main():
     gw_mod._LOCAL_CONCURRENCY = args.concurrency
 
     # Create gateway to local vLLM
-    gateway = LLMGateway("api_vllm")
+    gateway = LLMGateway("qwen36_a35")
 
     # Phase 1
     print("\n" + "=" * 60)

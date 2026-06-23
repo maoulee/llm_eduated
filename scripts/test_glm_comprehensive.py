@@ -117,7 +117,7 @@ async def test_glm_comprehensive():
         gen_result = await _generate_doc(
             gateway, slot_data, sid, "",
             output_dir="docs",
-            model_routing={"_default": "glm5.1"},
+            model_routing={"_default": "glm5.2"},
             assembled_experience_doc=assembled_md,
             resume_from=1,
             run_id=run_id,

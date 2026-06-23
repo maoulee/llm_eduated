@@ -110,7 +110,7 @@ class InteractV2Service:
 
     def create_session(
         self,
-        provider: str = "api_vllm",
+        provider: str = "glm5.2",
         thinking: bool = True,
         ui_mode: str = "api",
         user_id: str = "default",
@@ -403,7 +403,7 @@ class InteractV2Service:
                     session_id=session_id,
                     handoff_yaml_path=result_path,
                     workspace=ws,
-                    provider="glm5.1",
+                    provider="glm5.2",
                 )
             except Exception as exc:
                 logger.exception("[%s] Pipeline generation failed", session_id)

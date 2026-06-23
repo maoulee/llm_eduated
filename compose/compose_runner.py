@@ -60,7 +60,7 @@ def get_model_for_task(task: str, model_routing: dict | None = None) -> str:
         model_routing: 可选的模型路由字典（CLI 覆盖）
 
     Returns:
-        模型名称（如 'api_vllm', 'glm5.1'）
+        模型名称（如 'api_vllm', 'glm5.2'）
     """
     # 如果 task 存在于 model_routing 中，直接返回
     if model_routing and task in model_routing:
@@ -78,10 +78,10 @@ def get_model_for_task(task: str, model_routing: dict | None = None) -> str:
         if task in routing:
             return routing[task]
         # task 不在 model_routing 中，使用 interaction 作为默认
-        return routing.get("interaction", "api_vllm")
+        return routing.get("interaction", "glm5.2")
 
     # 最终 fallback
-    return "api_vllm"
+    return "glm5.2"
 
 
 def load_kg_for_subjects(subjects: list[str]) -> str:

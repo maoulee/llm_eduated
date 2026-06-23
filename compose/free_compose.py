@@ -33,7 +33,7 @@ async def generate_knowledge_draft(
 ) -> list[dict]:
     """GLM generates initial knowledge point assignments for all slots.
 
-    Uses config:free_compose model (default glm5.1) — the only step that
+    Uses config:free_compose model (default glm5.2) — the only step that
     may need deep reasoning.
 
     Args:
@@ -290,7 +290,7 @@ async def run_free_compose(
         subjects: Target subjects (e.g. ["计算机组成原理"])
         slot_templates: Dict of slot_id -> template
         user_requirements: Teacher requirements
-        free_gateway: Gateway for free_compose model (glm5.1)
+        free_gateway: Gateway for free_compose model (glm5.2)
         interaction_gateway: Gateway for interaction model (api_vllm), defaults to free_gateway
         model_routing: Optional model routing config
         data_dir: Question experience directory

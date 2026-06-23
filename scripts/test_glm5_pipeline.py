@@ -50,7 +50,7 @@ async def main():
     print(f"  Workspace: {workspace}")
 
     # Use GLM-5.1 for all agents
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
     print(f"  Gateway: GLM-5.1 ({gateway._model_name})")
 
     # Run pipeline
@@ -70,7 +70,7 @@ async def main():
     dp = DocPipeline(
         workspace=workspace,
         gateway=gateway,
-        model_routing={"_default": "glm5.1"},
+        model_routing={"_default": "glm5.2"},
     )
     result = await dp.run(
         slot_id=slot_id,

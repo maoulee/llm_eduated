@@ -49,7 +49,7 @@ async def _test_paper_request_through_compose():
 
     # Get gateway — use remote for reliability
     set_routing_profile("all_remote")
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
 
     # Build minimal slot_templates for a 408-like paper
     # These would normally come from CLI config, we simulate them

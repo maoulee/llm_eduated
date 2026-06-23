@@ -39,7 +39,7 @@ async def main():
 
     dp = DocPipeline(
         workspace=OUTPUT_DIR,
-        model_routing={"_default": "api_vllm"},
+        model_routing={"_default": "glm5.2"},
     )
 
     t0 = time.time()

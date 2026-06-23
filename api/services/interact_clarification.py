@@ -142,7 +142,7 @@ class ClarificationHandler:
 - 难度1-5，整体偏中等"""
 
         try:
-            gateway = get_gateway("glm5.1")
+            gateway = get_gateway("glm5.2")
             messages = [{"role": "user", "content": prompt}]
             result = await gateway.stream_chat(messages, max_tokens=4000)
             return result or ""

@@ -235,7 +235,7 @@ async def resynthesize(
 
     # 4. Initialize local vLLM gateway
     print("Initializing local vLLM gateway...")
-    gateway = LLMGateway("api_vllm")
+    gateway = LLMGateway("glm5.2")
     print(f"  Gateway: {gateway._model_name}")
 
     # 5. Batch synthesize

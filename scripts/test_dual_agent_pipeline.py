@@ -48,7 +48,7 @@ async def main():
     print(f"  Workspace: {workspace}")
 
     # Use GLM-5.1 for all agents
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
     print(f"  Gateway: GLM-5.1 ({gateway._model_name})")
 
     slot_id = "KP-untagged"
@@ -60,7 +60,7 @@ async def main():
     scheduler = DocScheduler(
         gateway=gateway,
         workspace=workspace,
-        model_routing={"_default": "glm5.1"},
+        model_routing={"_default": "glm5.2"},
     )
     orchestrator = DualAgentOrchestrator(
         scheduler=scheduler,

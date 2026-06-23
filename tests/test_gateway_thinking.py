@@ -31,30 +31,14 @@ def test_thinking_on_vs_off_differ():
     # unified shape intact
     for k in ("content", "reasoning_content", "tool_calls", "finish_reason"):
         assert k in on, on
-
-
-async def _call_openai():
-    # glm4flash = openai_chat on paas/v4 (live). Confirms the refactored gateway still
-    # drives RemoteAPIProvider.stream() end-to-end, not just the anthropic provider.
-    gw = get_gateway("glm4flash")
-    return await gw.stream_chat(
-        messages=[{"role": "user", "content": "Reply with exactly: ok"}],
-        max_tokens=256,
-        enable_thinking=False,
-    )
-
-
-def test_gateway_openai_path_still_works():
-    res = asyncio.run(_call_openai())
-    assert "ok" in (res["content"] or "").lower(), res
-    assert res["finish_reason"], res
+    # NOTE: the gateway->provider.stream() delegation for the OpenAI path is covered
+    # by tests/test_doc_pipeline.py::TestGatewayStreamChat (fake-based); glm4flash was
+    # removed from the config, so there is no live OpenAI endpoint to exercise here.
 
 
 def main():
     test_thinking_on_vs_off_differ()
     print("PASS test_thinking_on_vs_off_differ")
-    test_gateway_openai_path_still_works()
-    print("PASS test_gateway_openai_path_still_works")
 
 
 if __name__ == "__main__":

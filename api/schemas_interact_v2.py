@@ -172,7 +172,7 @@ class AnnotationSubmission(BaseModel):
 class InteractSessionCreate(BaseModel):
     """Request to create a new interact session."""
 
-    provider: str = "api_vllm"  # provider name from config.py
+    provider: str = "glm5.2"  # provider name from config.py
     thinking: bool = True  # enable thinking mode by default
     ui_mode: Literal["api", "file"] = "api"
     user_id: str = "default"  # tester/user namespace for session isolation
@@ -180,7 +180,7 @@ class InteractSessionCreate(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "provider": "api_vllm",
+                "provider": "glm5.2",
                 "thinking": False,
                 "ui_mode": "api",
                 "user_id": "tester_a",

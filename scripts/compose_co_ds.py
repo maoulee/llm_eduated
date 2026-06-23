@@ -198,7 +198,7 @@ async def generate_subject(subject_key: str, compose_result: dict | None = None)
     from core_new.llm_gateway import get_gateway
     from compose.generate_runner import run_generate
 
-    gateway = get_gateway("glm5.1")
+    gateway = get_gateway("glm5.2")
 
     output_dir = f"docs/output_{subject_key}"
     result = await run_generate(
