@@ -623,58 +623,45 @@ class TeamGenNode(_OrchestratorNode):
         feedback = state.feedback_buffer.get("review_solve", "")
         is_revisit = bool(feedback)
         assert_hint = " 务必把 question.md 声明的「通过条件」翻译成 assert（打到特征、禁弱化为结构判据/禁恒真）。"
-        # 新范式（合并 write_solution）：write_gen 全闭环——gen.py→exec→核对→(选项)→solution.md→finish
-        steps = [
-            "1. 读 question.md → 写 gen.py（func_model 翻译题干规则 + assert 通过条件）。",
-            "2. exec gen.py → 核对 exec 结果是否满足通过条件/asserts。",
-            "3. 不过 → edit gen.py 重 exec，循环直到通过（exit=0≠正确，看 assert 语义）。",
-        ]
-        if is_choice:
-            steps.append("4.（选择题）用 exec 正确值派生 BCD 干扰项（真实错误路径产物），edit question.md 填 A/B/C/D（A=正确）。")
-            steps.append("5. gen.py 通过后 → write solution.md：把 exec 输出（PARAMS/REASONING/ANSWER）逐字对照 exec stdout 转写，不重算、不凭记忆。")
-            steps.append("6. 都完成且有信心 → 调 finish(status=\"done\", summary=...) 通知系统。")
-        else:
-            steps.append("4. gen.py 通过后 → write solution.md：把 exec 输出逐字对照 exec stdout 转写，不重算。")
-            steps.append("5. 都完成且有信心 → 调 finish(status=\"done\", summary=...) 通知系统。")
+        # 节点上下文 delta：通用 gen.py→exec→solution.md→finish 流程已在 write_gen.md / code_writer /
+        # func_model 详述（agent 系统提示即载入它们），这里只注入【契约 + 选择题提示】，避免 4 处重复。
+        choice_hint = "（选择题）用 exec 正确值派生 BCD 干扰项填 A/B/C/D→" if is_choice else ""
         cycle_hint = (
-            "\n\n## 本轮全闭环（合并 write_solution 后，做完调 finish）\n"
-            + "\n".join(steps)
-            + "\n边界：gen.py 必须 exec 通过且 assert 命中通过条件；solution.md 必须忠实转写 exec 输出。"
-            " 你 finish 了但 gen.py/solution.md 缺或不一致=越界，系统退回让你重写。"
+            "\n\n## 本轮契约（合并 write_solution 后，做完调 finish）\n"
+            "做完整闭环：写 gen.py→exec 验证通过条件→" + choice_hint
+            + "写 solution.md 忠实转写 exec 输出→调 finish。"
+            "边界：gen.py 必须 exec 通过且 assert 命中通过条件；solution.md 必须忠实转写 exec 输出。"
+            "你 finish 了但 gen.py/solution.md 缺或不一致=越界，系统退回让你重写。"
         )
-        fix_hint = ""
-        if is_revisit:
-            fix_hint = (
-                f"\n\n## 审核反馈（review_solve 打回，按反馈修）\n{feedback}\n"
-                "按 fix_instructions 自己判断改哪个：gen.py 建模/assert/充分性问题 → edit gen.py 重 exec 再更新 solution.md；"
-                "solution.md 不忠实 → edit solution.md（不重算）；question.md 抄写错 → edit question.md。"
-                "小改 edit / 大改重写，你判断。改完调 finish。"
-            )
+        fix_hint = (
+            f"\n\n## 审核反馈（review_solve 打回，按反馈修）\n{feedback}\n"
+            "按 fix_instructions 自己判断改哪个：gen.py 建模/assert/充分性问题 → edit gen.py 重 exec 再更新 solution.md；"
+            "solution.md 不忠实 → edit solution.md（不重算）；question.md 抄写错 → edit question.md。"
+            "小改 edit / 大改重写，你判断。改完调 finish。"
+        ) if is_revisit else ""
         inject = {"question.md": str(ws / "question.md"), "design_card": str(DesignCardNode._ref_path(state))}
-        await self.orch.scheduler.run_agent(
-            "write_gen",
-            task=f"读 question.md 完成出题闭环（gen.py→exec→核对→solution.md）。{assert_hint}{cycle_hint}{fix_hint}",
-            slot_id=state.slot_id,
-            inject_files=inject,
-            target_file="gen.py",            # 仅 unlink 语义用；完成由 finish 决定
-            gate_on_file=False,              # 新范式：完成只认 finish（多产物，不靠文件闸）
-            preserve_existing=is_revisit,    # revisit 保住已验证的 gen.py/solution.md，做最小 edit
-            continue_session=is_revisit,     # revisit 保留上下文
-        )
-        # 边界核对（越界检测）：finish 了但 gen.py/solution.md 缺 → 退回重写（bounded），仍缺才 fail
-        for _ in range(2):
-            missing = [f for f in ("gen.py", "solution.md") if not (ws / f).exists()]
-            if not missing:
-                return AgentResult(signal="ok")
-            logger.warning("[%s] write_gen finish 但产物缺失 %s，越界退回重写", state.slot_id, missing)
+        # 越界退回重写：首次正常跑 + 至多 2 次补齐重写（合并了原先重复的 run_agent 调用点，行为不变）
+        MAX_REWRITE = 2
+        full_task = f"读 question.md 完成出题闭环（gen.py→exec→核对→solution.md）。{assert_hint}{cycle_hint}{fix_hint}"
+        for attempt in range(MAX_REWRITE + 1):
+            if attempt == 0:
+                task, preserve = full_task, is_revisit
+            else:
+                missing = [f for f in ("gen.py", "solution.md") if not (ws / f).exists()]
+                logger.warning("[%s] write_gen finish 但产物缺失 %s，越界退回重写 (attempt %d)",
+                               state.slot_id, missing, attempt)
+                task = (f"你上一轮 finish 了但产物缺失：{missing}。补齐（gen.py 必须 exec 通过；"
+                        "solution.md 忠实转写 exec 输出），再调 finish。")
+                preserve = True
             await self.orch.scheduler.run_agent(
-                "write_gen",
-                task=(f"你上一轮 finish 了但产物缺失：{missing}。补齐（gen.py 必须 exec 通过；"
-                      "solution.md 忠实转写 exec 输出），再调 finish。"),
-                slot_id=state.slot_id,
-                inject_files=inject,
-                target_file="gen.py", gate_on_file=False, preserve_existing=True, continue_session=True,
+                "write_gen", task=task, slot_id=state.slot_id, inject_files=inject,
+                target_file="gen.py",            # 仅 unlink 语义用；完成由 finish 决定（见 gate_on_file=False）
+                gate_on_file=False,              # 完成只认 finish（多产物，不靠文件闸）
+                preserve_existing=preserve,      # 首次按 is_revisit；重写恒 True（保住已验证文件做最小 edit）
+                continue_session=(is_revisit or attempt > 0),
             )
+            if all((ws / f).exists() for f in ("gen.py", "solution.md")):
+                return AgentResult(signal="ok")
         state.result = self.orch._fail_result(
             state.slot_id, "write_gen 越界：finish 后 gen.py/solution.md 经重写仍缺失",
         )

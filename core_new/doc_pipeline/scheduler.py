@@ -521,9 +521,15 @@ class DocScheduler:
             pre_copy_source: If set, copy this file to expected_path after unlink
                 (so the agent can use edit_file on a pre-populated file).
             target_file: Override the role's default output file for this call.
+                Dual role: (a) the stale-cleanup/unlink target (always), and
+                (b) the completion-gate filename — only when gate_on_file=True.
             preserve_existing: Keep an existing target file so the agent can
                 edit_file it during feedback rounds. Stale files are still not
                 accepted as success unless this call writes/edits the target.
+            gate_on_file: If True (default), writing/editing target_file completes
+                the round (legacy file-gate). If False, completion is by the agent
+                calling `finish` only — target_file is then just the unlink target
+                (used by multi-artifact agents like the merged write_gen).
 
         Returns:
             The final text content from the agent.
