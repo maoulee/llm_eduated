@@ -104,10 +104,10 @@ pipeline:
       max_attempts: 8
       enable_thinking: false   # 关思考：写码靠 exec 验证，提速 ~250s（实测 none 产出正确 gen.py）
       max_tokens: 12000
-    write_solution:            # 文档转写（gen.py → solution.md），单轮直出
-      multi_turn: false        # 读gen.py输出→直接写solution文本，不需工具循环
-      max_attempts: 1
-      enable_thinking: false
+    write_solution:            # 文档转写（gen.py → solution.md）
+      multi_turn: true         # 需 write_file 落盘（调度器通过工具写 output_file）
+      max_attempts: 4
+      enable_thinking: false   # 关思考：忠实转写
       max_tokens: 8000
     dual_review:               # 双阶段审核（A 代码 / B 文档）
       multi_turn: true
