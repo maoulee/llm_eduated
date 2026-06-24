@@ -395,6 +395,14 @@ def _split_concept_questions(
 
     q_path = source_dir / "question.md"
     s_path = source_dir / "solution.md"
+    # DocPipeline 内部 ws=workspace/slot_id 会再建一层 slot_id 子目录，逐题产物
+    # （question.md/solution.md）在双层 source_dir/<slot_id>/ 下；单层只有 trigger
+    # 写的 final.md。拆分需逐题原文，故优先读双层。
+    if not q_path.exists():
+        inner_dir = source_dir / source_dir.name
+        if (inner_dir / "question.md").exists():
+            q_path = inner_dir / "question.md"
+            s_path = inner_dir / "solution.md"
     if not q_path.exists():
         return
 
