@@ -1298,7 +1298,8 @@ class DocPipelineOrchestrator:
             c_task = (
                 f"基于以下考点列表出概念题（共 {len(concept_topics)} 道，**每考点一道**）：\n{topics_str}\n\n"
                 f"该 slot 对应题号 {slot_id}，只出 {len(concept_topics)} 道题，不要多出。"
-                "每题题干+选项/空格/答案+解析，锚定 examination_mode 的考察意图。"
+                "**每题严格按其【题型】标注出题，题型不同的题不得互相同化**：判断题=若干陈述逐条判对/错+理由；"
+                "填空题=空格+答案；选择题/辨析型=四选项+答案；简答题=问+答。每题题干+答案+解析，锚定考察意图。"
                 "write question.md（所有题）+ solution.md（每题解析）。"
             )
         else:

@@ -276,7 +276,11 @@ async def trigger_generation(
                     # 概念题：如果有多个概念题 slot，合并 concept_topics 批量出
                     if sb.get("complexity") == "conceptual" and len(concept_slots) > 1:
                         # 收集所有概念题的考点（保留空值占位，确保 index 对齐）
-                        concept_topics = [s.get("primary_target_name", "") for s in concept_slots]
+                        # 每条带题型前缀（examination_mode 提取），让 concept_creator 按各题题型出（判断≠选择≠填空）
+                        concept_topics = [
+                            f"【{(s.get('examination_mode') or '').split('——')[0].strip() or '概念辨析'}】{s.get('primary_target_name', '')}"
+                            for s in concept_slots
+                        ]
                         sb = dict(sb)  # copy to avoid mutating original
                         sb["concept_topics"] = concept_topics
 
