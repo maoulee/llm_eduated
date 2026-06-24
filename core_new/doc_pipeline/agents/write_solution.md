@@ -3,13 +3,10 @@ name: write_solution
 phase: 2
 description: "写解析智能体（第④步）——读gen.py输出整理成solution.md，只整理不重算"
 output_file: solution.md
-required_tools:
-  - write_file
-  - edit_file
-  - read_file
+required_tools: []
 required_sections:
   - 求解过程
-multi_turn: true
+multi_turn: false
 behavior: solution_formatter
 skills: []
 ---
