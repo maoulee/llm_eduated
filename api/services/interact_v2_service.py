@@ -701,7 +701,11 @@ class InteractV2Service:
             logger.warning("[%s] Handoff YAML unreadable: %s", result_path, exc)
             return ["<unreadable_yaml>"]
         slots = data.get("slots") if isinstance(data, dict) else None
+        # 单题交接（slot_blueprint.yaml）无顶层 slots，本身即一个 slot dict；
+        # 与 pipeline_trigger 一致：无 slots 则整体作单 slot 校验。
         if not isinstance(slots, list) or not slots:
+            slots = [data] if isinstance(data, dict) and data else []
+        if not slots:
             return ["slots"]
         missing: list[str] = []
         for slot in slots:
