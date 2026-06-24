@@ -43,6 +43,7 @@ from .exec_python_tool import ExecPythonTool
 from .read_file_tool import ReadFileTool
 from .grep_search_tool import GrepSearchTool
 from .write_file_tool import WriteFileTool
+from .finish_tool import FinishTool
 
 logger = logging.getLogger(__name__)
 
@@ -500,6 +501,7 @@ class DocScheduler:
         pre_copy_source: str | Path | None = None,
         target_file: str | None = None,
         preserve_existing: bool = False,
+        gate_on_file: bool = True,
         enable_thinking: bool | None = None,
         skill_override: str | None = None,
         tools_override: list[str] | None = None,
@@ -627,6 +629,8 @@ class DocScheduler:
         # 3. Build tool registry based on role's required tools
         registry = ToolRegistry()
         registry.register(WriteFileTool(workspace=ws))
+        # 新范式：finish 是通用完成信号工具，所有 agent 都注册（完成由 agent 自声明通知系统）
+        registry.register(FinishTool())
 
         required_tools = tools_override or ROLE_REQUIRED_TOOLS.get(role, ["write_file"])
         if "exec_file" in required_tools:
@@ -642,6 +646,10 @@ class DocScheduler:
 
         # 4. Convert to OpenAI tool schemas and build executor
         tool_list = [registry.get(name) for name in required_tools if registry.get(name) is not None]
+        # finish 通用完成信号：所有 agent 都可用（不依赖 required_tools 声明），完成由 agent 调 finish 自声明
+        _finish_tool = registry.get("finish")
+        if _finish_tool is not None and _finish_tool not in tool_list:
+            tool_list.append(_finish_tool)
         executor = ToolExecutor(tool_list)
         openai_tools = [t.to_openai_tool() for t in tool_list]
         write_tool = registry.get("write_file")
@@ -799,6 +807,8 @@ class DocScheduler:
                 messages.append(assistant_msg)
 
                 wrote_expected_file = False
+                finish_called = False
+                finish_summary = ""
                 grep_limit_hit = False
                 available_names = {t["function"]["name"] for t in openai_tools}
                 for tc in payload:
@@ -815,6 +825,11 @@ class DocScheduler:
                             slot_id, fn_name, type(fn_args).__name__,
                         )
                         fn_args = {}
+
+                    # 新范式：检测 finish 自声明完成（agent 通知系统本轮结束），优先于文件产出 break
+                    if fn_name == "finish":
+                        finish_called = True
+                        finish_summary = str(fn_args.get("summary", "")) if isinstance(fn_args, dict) else ""
 
                     if (
                         skill_override == "design_draft_skill"
@@ -877,7 +892,17 @@ class DocScheduler:
                         and fn_name in ("write_file", "edit_file")
                     )
 
-                if wrote_expected_file:
+                # 新范式：finish 自声明完成优先（完成由 agent 通知系统，不靠文件检测）
+                if finish_called:
+                    logger.info(
+                        "[%s] Agent '%s' attempt %d: finish 自声明完成（%s）",
+                        slot_id, role, attempt + 1, (finish_summary or "(无摘要)")[:120],
+                    )
+                    final_text = finish_summary or (content or "")
+                    break
+                # 文件产出 break 仅 gate_on_file=True 时生效（旧 agent 兜底；write_gen 等多产物
+                # agent 用 gate_on_file=False，完成只认 finish，文件写入不再算完成）
+                if wrote_expected_file and gate_on_file:
                     final_text = expected_path.read_text(encoding="utf-8")
                     break
 
@@ -952,7 +977,7 @@ class DocScheduler:
                     parsed = json.loads(result_str)
                 except json.JSONDecodeError:
                     parsed = {}
-                if parsed.get("ok") and expected_path.exists():
+                if parsed.get("ok") and expected_path.exists() and gate_on_file:
                     logger.info(
                         "[%s] Agent '%s' attempt %d: direct_write %s (%d chars)",
                         slot_id, role, attempt + 1, expected_fn, len(payload),

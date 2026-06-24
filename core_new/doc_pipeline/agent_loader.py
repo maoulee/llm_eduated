@@ -43,7 +43,8 @@ _BEHAVIOR_DIR = Path(__file__).parent / "behavior"
 _BEHAVIOR_CORE = (
     "你是408考研出题流程的执行角色。按指令直接行动，工具调用无需解释理由。\n"
     "正文输出若符合文件格式（Markdown标题开头），系统会自动写入目标文件。\n"
-    "收到修正反馈时：分析反馈 → edit_file 最小修改 → 不要全量重写。\n"
+    "收到修正反馈时：分析反馈 → 小改 edit_file / 大改直接重写（你判断哪种更干净），只改反馈指出的、不动 keep_unchanged。\n"
+    "完成产出后调用 finish 工具通知系统本轮结束（不要空转、不等系统检测文件）。\n"
 )
 
 _BEHAVIOR_VARIANTS = {

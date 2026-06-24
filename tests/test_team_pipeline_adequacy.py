@@ -112,20 +112,21 @@ def test_review_signal_mapping():
     assert _review_signal("needs_fix", "write_gen") == "fix_gen"
     # 通过条件本身定错 → 重定条件 → design_direct
     assert _review_signal("needs_fix", "design_direct") == "fix_design"
-    # 文档忠实问题 → write_solution
-    assert _review_signal("needs_fix", "write_solution") == "fix_solution"
+    # 文档忠实问题 → write_gen（合并后 write_gen 单节点承担 gen.py+solution.md，fix_solution 折叠进 fix_gen）
+    assert _review_signal("needs_fix", "write_solution") == "fix_gen"
     # routing 缺省 → write_gen（建模是最常见回退点）
     assert _review_signal("needs_fix", "") == "fix_gen"
 
 
 def test_team_graph_has_stem_gate_and_merged_review():
-    """build_team_pipeline_graph：审题干 gate + 合并审求解 + 三路回退边就位。"""
+    """build_team_pipeline_graph：审题干 gate + 合并审求解 + 两路回退边就位（write_gen 合并 write_solution 全闭环）。"""
     from core_new.doc_pipeline.pipeline_graph import build_team_pipeline_graph
     g = build_team_pipeline_graph(object(), Path("/tmp/_t"))
     assert g.initial == "design_direct"
     nodes = set(g.nodes)
     assert {"design_direct", "review_stem", "write_gen",
-            "write_solution", "review_solve", "final"} <= nodes
+            "review_solve", "final"} <= nodes
+    assert "write_solution" not in nodes  # 已合并入 write_gen
     assert "dual_review_code" not in nodes  # 旧双节点已合并
     assert "dual_review_doc" not in nodes
     edges = {(e.from_node, e.signal, e.to_node) for e in g.edges}
@@ -133,12 +134,12 @@ def test_team_graph_has_stem_gate_and_merged_review():
     assert ("design_direct", "ok", "review_stem") in edges
     assert ("review_stem", "needs_fix", "design_direct") in edges
     assert ("review_stem", "pass", "write_gen") in edges
-    # 合并审求解 + 三路回退
-    assert ("write_solution", "ok", "review_solve") in edges
+    # 合并审求解 + 两路回退（fix_solution 已折叠进 fix_gen——合并后 write_gen 单节点）
+    assert ("write_gen", "ok", "review_solve") in edges
     assert ("review_solve", "fix_gen", "write_gen") in edges
-    assert ("review_solve", "fix_solution", "write_solution") in edges
     assert ("review_solve", "fix_design", "design_direct") in edges
     assert ("review_solve", "pass", "final") in edges
+    assert not any(e.to_node == "write_solution" for e in g.edges)  # 无 write_solution 边
 
 
 def test_adequacy_review_md_routes_to_fix_gen(tmp_path):

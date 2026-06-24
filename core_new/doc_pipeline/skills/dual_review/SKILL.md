@@ -3,7 +3,7 @@
 你收到一个审核任务。**先读 task 里的阶段标记，只执行标记对应的那一段。** 阶段有两段：
 
 - `审题干`（阶段1，write_gen 之前）→ 只执行【阶段1】
-- `审求解`（阶段2，write_solution 之后）→ 只执行【阶段2】（**合并审核**，一次过）
+- `审求解`（阶段2，write_gen 完成 gen.py+solution.md 之后）→ 只执行【阶段2】（**合并审核**，一次过）
 
 做完判据 → 写 review.md → 完事。不展开无界推演、不代入参数算数值、不重跑 gen.py。
 
@@ -42,7 +42,7 @@
 # 【阶段2】审求解（task 标记"审求解"时执行）
 
 **输入**：question.md + gen.py + solution.md（+ gen.py 的 exec 输出）
-**时机**：write_solution 之后。**合并审核**——建模忠实 + 断言合适 + 充分性 + 设计一致性 + 文档忠实，一次过。
+**时机**：write_gen 完成 gen.py+solution.md 之后。**合并审核**——建模忠实 + 断言合适 + 充分性 + 设计一致性 + 文档忠实，一次过。
 
 判据（任一 fail → needs_fix）：
 
@@ -68,7 +68,7 @@
      - **参数没触发**：通过条件在 hard_constraints 下原则可达（存在已知参数组合能触发，只是当前这组没命中）→ `write_gen`（换参数重算）。
      - **通过条件本身定错/不可达**：条件与考察意图矛盾，或在该题型下无解（如要求 AVL 旋转但序列恒平衡无解）→ `design_direct`（重定条件 / 换考点角度）。
 
-### 维度D 文档忠实（routing=write_solution）
+### 维度D 文档忠实（routing=write_gen）
 12. 形式一致：solution.md 的求解形式/结构是否与 gen.py 一致。
 13. 单步抄写无误：solution 改写的每步数值，是否与 gen.py exec 输出一致（逐步对照，不自己算）。
 14. 无幻觉：solution 里有没有 exec 根本没产出的内容（捏造步骤/数值/操作）。
@@ -115,5 +115,5 @@ none（pass 时）/ stem_conflict（阶段1）/ modeling_error / assertion_defec
 - 不得修改的部分
 
 ## routing
-design_direct / write_gen / write_solution / none（pass 时）
+design_direct / write_gen / none（pass 时）
 ```

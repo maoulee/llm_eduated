@@ -561,7 +561,7 @@ REVIEW_SOLVE_MAX_ROUNDS = 3
 
 # ── team_pipeline 四角色节点（build_team_pipeline_graph 用）──────────
 # 把 team_pipeline.run_question 的手写过程式编排 graph 化：每个角色一个节点，
-# 回退靠 edge（review_solve --fix_gen/fix_solution/fix_design--> 目标节点），feedback 靠
+# 回退靠 edge（review_solve --fix_gen/fix_design--> 目标节点；fix_solution 已折叠进 fix_gen），feedback 靠
 # feedback_buffer（fix_instructions，键=节点名）。黑板/experience 经 self.orch 注入。
 
 
@@ -619,52 +619,69 @@ class TeamGenNode(_OrchestratorNode):
     async def run(self, state: PipelineState) -> AgentResult:
         ws = self.workspace / state.slot_id
         is_choice = state.slot_data.get("question_type") == "single_choice"
-        # 审求解(review_solve) 的 fix_instructions（回退时携带）
+        # 审求解(review_solve) 打回时的 fix_instructions（revisit 携带）
         feedback = state.feedback_buffer.get("review_solve", "")
-        gen_task_extra = (
-            " 写完 gen.py 后，若为选择题，用 exec 输出的正确值派生3个干扰项"
-            "（真实计算错误：常见错误步骤的产物），填入 question.md 的 A/B/C/D（A=正确）。"
-            if is_choice else ""
-        )
+        is_revisit = bool(feedback)
         assert_hint = " 务必把 question.md 声明的「通过条件」翻译成 assert（打到特征、禁弱化为结构判据/禁恒真）。"
-        fix_hint = f"\n\n## 审核反馈需修正\n{feedback}\n按 fix_instructions 修正 gen.py，exec 验证通过。" if feedback else ""
+        # 新范式（合并 write_solution）：write_gen 全闭环——gen.py→exec→核对→(选项)→solution.md→finish
+        steps = [
+            "1. 读 question.md → 写 gen.py（func_model 翻译题干规则 + assert 通过条件）。",
+            "2. exec gen.py → 核对 exec 结果是否满足通过条件/asserts。",
+            "3. 不过 → edit gen.py 重 exec，循环直到通过（exit=0≠正确，看 assert 语义）。",
+        ]
+        if is_choice:
+            steps.append("4.（选择题）用 exec 正确值派生 BCD 干扰项（真实错误路径产物），edit question.md 填 A/B/C/D（A=正确）。")
+            steps.append("5. gen.py 通过后 → write solution.md：把 exec 输出（PARAMS/REASONING/ANSWER）逐字对照 exec stdout 转写，不重算、不凭记忆。")
+            steps.append("6. 都完成且有信心 → 调 finish(status=\"done\", summary=...) 通知系统。")
+        else:
+            steps.append("4. gen.py 通过后 → write solution.md：把 exec 输出逐字对照 exec stdout 转写，不重算。")
+            steps.append("5. 都完成且有信心 → 调 finish(status=\"done\", summary=...) 通知系统。")
+        cycle_hint = (
+            "\n\n## 本轮全闭环（合并 write_solution 后，做完调 finish）\n"
+            + "\n".join(steps)
+            + "\n边界：gen.py 必须 exec 通过且 assert 命中通过条件；solution.md 必须忠实转写 exec 输出。"
+            " 你 finish 了但 gen.py/solution.md 缺或不一致=越界，系统退回让你重写。"
+        )
+        fix_hint = ""
+        if is_revisit:
+            fix_hint = (
+                f"\n\n## 审核反馈（review_solve 打回，按反馈修）\n{feedback}\n"
+                "按 fix_instructions 自己判断改哪个：gen.py 建模/assert/充分性问题 → edit gen.py 重 exec 再更新 solution.md；"
+                "solution.md 不忠实 → edit solution.md（不重算）；question.md 抄写错 → edit question.md。"
+                "小改 edit / 大改重写，你判断。改完调 finish。"
+            )
+        inject = {"question.md": str(ws / "question.md"), "design_card": str(DesignCardNode._ref_path(state))}
         await self.orch.scheduler.run_agent(
             "write_gen",
-            task=f"读 question.md 写 gen.py 并 exec 验证（关思考，按工作规范分步）。{assert_hint}{gen_task_extra}{fix_hint}",
+            task=f"读 question.md 完成出题闭环（gen.py→exec→核对→solution.md）。{assert_hint}{cycle_hint}{fix_hint}",
             slot_id=state.slot_id,
-            inject_files={"question.md": str(ws / "question.md"), "design_card": str(DesignCardNode._ref_path(state))},
-            target_file="gen.py", enable_thinking=True,
+            inject_files=inject,
+            target_file="gen.py",            # 仅 unlink 语义用；完成由 finish 决定
+            gate_on_file=False,              # 新范式：完成只认 finish（多产物，不靠文件闸）
+            preserve_existing=is_revisit,    # revisit 保住已验证的 gen.py/solution.md，做最小 edit
+            continue_session=is_revisit,     # revisit 保留上下文
         )
-        if not (ws / "gen.py").exists():
-            state.result = self.orch._fail_result(state.slot_id, "write_gen 未产出 gen.py")
-            return AgentResult(signal="ok", feedback="write_gen failed: no gen.py")
-        return AgentResult(signal="ok")
-
-
-class TeamSolutionNode(_OrchestratorNode):
-    """write_solution：读 gen.py + exec 输出，整理成 solution.md（忠实转写）。
-
-    逻辑搬自 team_pipeline.run_question:259-265。
-    """
-
-    name = "write_solution"
-
-    async def run(self, state: PipelineState) -> AgentResult:
-        ws = self.workspace / state.slot_id
-        # 审求解(review_solve) 文档忠实维度 fail 的 fix_instructions（回退时携带）
-        feedback = state.feedback_buffer.get("review_solve", "")
-        fix_hint = f"\n\n## 审核反馈需修正\n{feedback}\n按 fix_instructions 修正 solution.md（忠实对照 gen.py exec 输出，不重算）。" if feedback else ""
-        await self.orch.scheduler.run_agent(
-            "write_solution",
-            task=f"读 gen.py + exec 输出，整理成 solution.md（不重算，忠实整理）。{fix_hint}",
-            slot_id=state.slot_id,
-            inject_files={"gen.py": str(ws / "gen.py"), "question.md": str(ws / "question.md")},
-            target_file="solution.md",
+        # 边界核对（越界检测）：finish 了但 gen.py/solution.md 缺 → 退回重写（bounded），仍缺才 fail
+        for _ in range(2):
+            missing = [f for f in ("gen.py", "solution.md") if not (ws / f).exists()]
+            if not missing:
+                return AgentResult(signal="ok")
+            logger.warning("[%s] write_gen finish 但产物缺失 %s，越界退回重写", state.slot_id, missing)
+            await self.orch.scheduler.run_agent(
+                "write_gen",
+                task=(f"你上一轮 finish 了但产物缺失：{missing}。补齐（gen.py 必须 exec 通过；"
+                      "solution.md 忠实转写 exec 输出），再调 finish。"),
+                slot_id=state.slot_id,
+                inject_files=inject,
+                target_file="gen.py", gate_on_file=False, preserve_existing=True, continue_session=True,
+            )
+        state.result = self.orch._fail_result(
+            state.slot_id, "write_gen 越界：finish 后 gen.py/solution.md 经重写仍缺失",
         )
-        if not (ws / "solution.md").exists():
-            state.result = self.orch._fail_result(state.slot_id, "write_solution 未产出 solution.md")
-            return AgentResult(signal="ok", feedback="write_solution failed: no solution.md")
-        return AgentResult(signal="ok")
+        return AgentResult(signal="ok", feedback="write_gen 越界重写仍缺产物")
+
+
+# TeamSolutionNode 已合并入 TeamGenNode（write_gen 全闭环产出 gen.py + solution.md）。
 
 
 def _parse_review(review_path: Path) -> tuple[str, str]:
@@ -679,17 +696,16 @@ def _parse_review(review_path: Path) -> tuple[str, str]:
 def _review_signal(status: str, routing: str) -> str:
     """Map merged 审求解 review (status, routing) → graph signal.
 
-    pass → 'pass'; needs_fix → 'fix_gen'/'fix_solution'/'fix_design' by routing
+    pass → 'pass'; needs_fix → 'fix_gen'/'fix_design' by routing (fix_solution 已折叠进 fix_gen——合并后 write_gen 单节点)
     (default write_gen). Extracted as a pure function so the adequacy/routing
     contract is unit-testable without running the LLM agent.
     """
     if status != "needs_fix":
         return "pass"
     routing = (routing or "").lower()
-    if "solution" in routing:
-        return "fix_solution"
     if "design" in routing:
         return "fix_design"
+    # 合并后 write_gen 单节点承担 gen.py + solution.md，fix_solution 折叠进 fix_gen
     return "fix_gen"
 
 
@@ -721,11 +737,11 @@ class TeamReviewStemNode(_OrchestratorNode):
 
 
 class TeamReviewNode(_OrchestratorNode):
-    """dual_review 阶段2（审求解）：write_solution 之后，合并审核（原 审代码+审文档 合一）。
+    """dual_review 阶段2（审求解）：write_gen 完成 gen.py+solution.md 之后，合并审核（原 审代码+审文档 合一）。
 
     一次审 gen.py+solution.md+exec：建模忠实 + 断言合适（assert 打到通过条件、非弱化、
     非恒真）+ 充分性（exec 满足声明条件=合围，"参数打败考点"的唯一可靠卡口）+ 设计一致性
-    + 文档忠实。按 review.md 的 routing 决定回退目标（write_gen/write_solution/design_direct）。
+    + 文档忠实。按 review.md 的 routing 决定回退目标（write_gen/design_direct）。
     审完搬运 entry 到全卷黑板。
     """
 
@@ -736,7 +752,7 @@ class TeamReviewNode(_OrchestratorNode):
         await self.orch.scheduler.run_agent(
             "dual_review",
             task=(
-                "## 本轮阶段\n本轮审求解（阶段2，write_solution 之后，合并审核）。"
+                "## 本轮阶段\n本轮审求解（阶段2，write_gen 完成 gen.py+solution.md 之后，合并审核）。"
                 "审 gen.py+solution.md：建模忠实 + 断言合适 + 充分性（exec 满足通过条件）"
                 "+ 设计一致性 + 文档忠实。读 gen.py exec 输出比对声明条件，不代入算、不重跑。"
             ),
@@ -819,19 +835,19 @@ def build_split_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph
 
 
 def build_team_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
-    """Declare the team_pipeline four-role graph.
+    """Declare the team_pipeline three-role graph (write_gen 合并 write_solution 全闭环).
 
-    team flow (code-as-truth 四角色常驻团队):
+    team flow (code-as-truth 三角色常驻团队):
       design_direct → 审题干(review_stem)
                         needs_fix → design_direct（带 fix_instructions）
-                        pass → write_gen → write_solution → 审求解(review_solve，合并审核)
-                        fix_gen → write_gen / fix_solution → write_solution / fix_design → design_direct
+                        pass → write_gen（全闭环：gen.py→exec→solution.md，完成调 finish）
+                                   → 审求解(review_solve，合并审核)
+                        fix_gen → write_gen（gen/solution 都回流 write_gen）/ fix_design → design_direct
                         pass → final（产出 final.md 三段式）
 
-    vs split graph：四角色合一（design_direct 一步出题干，write_gen 独立建模，
-    write_solution 独立转写，dual_review 两阶段审核——审题干 + 审求解合并）。
-    审题干是 team_pipeline 原本缺失的 gate；审求解合并原 审代码+审文档（避深度思考的
-    拆分在 §21 思考强度统一后已无必要），并新增断言合适 + 充分性判据堵"参数打败考点"。
+    vs split graph：三角色合一（design_direct 一步出题干，write_gen 全闭环建模+求解，
+    dual_review 两阶段审核——审题干 + 审求解合并）。审题干是 team_pipeline 原本缺失的 gate；
+    审求解合并原 审代码+审文档，新增断言合适 + 充分性判据堵"参数打败考点"。
     黑板（paper_state.md）由 orchestrator 持有，design_direct 经 ``self.orch._board_inject()`` 注入。
 
     复用现有 FinalNode（调 _run_final_review_loop 产 final.md + experience 注入）。
@@ -844,7 +860,6 @@ def build_team_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     g.add_node("design_direct", TeamDesignNode(scheduler, workspace))
     g.add_node("review_stem", TeamReviewStemNode(scheduler, workspace))
     g.add_node("write_gen", TeamGenNode(scheduler, workspace))
-    g.add_node("write_solution", TeamSolutionNode(scheduler, workspace))
     g.add_node("review_solve", TeamReviewNode(scheduler, workspace))
     g.add_node("final", FinalNode(scheduler, workspace))
 
@@ -856,13 +871,10 @@ def build_team_pipeline_graph(scheduler: Any, workspace: Path) -> PipelineGraph:
     g.edge("review_stem", "suggestion", "write_gen")
     # 审题干通过 → write_gen 建模
     g.edge("review_stem", "pass", "write_gen")
-    # write_gen 写 gen.py + exec → write_solution 转写
-    g.edge("write_gen", "ok", "write_solution")
-    # write_solution 写 solution.md → 审求解（合并审核）
-    g.edge("write_solution", "ok", "review_solve")
-    # 审求解按 routing 回退（graph 自动计数防死循环）
+    # write_gen 全闭环（gen.py + solution.md）→ 审求解（合并审核）
+    g.edge("write_gen", "ok", "review_solve")
+    # 审求解按 routing 回退（fix_solution 已折叠进 fix_gen——合并后 write_gen 单节点）
     g.edge("review_solve", "fix_gen", "write_gen")
-    g.edge("review_solve", "fix_solution", "write_solution")
     g.edge("review_solve", "fix_design", "design_direct")
     # 审求解 exhausted（needs_fix 轮数超 REVIEW_SOLVE_MAX_ROUNDS）→ done（显式 fail）
     g.edge("review_solve", "exhausted", "done")

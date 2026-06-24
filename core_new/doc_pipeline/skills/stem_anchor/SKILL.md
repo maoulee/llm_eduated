@@ -2,7 +2,7 @@
 
 指导你作为**锚题干者**：读 design_card（考察意图/约束）→ 锚定**题干骨架 + 经验初始参数** → 产出 question.md。
 
-> 通用思考纪律、output_file 硬墙、质量自检、工具纪律见 **CORE.md**（通用行为规范）。本 skill 只讲 design_direct **特有**的方法论。
+> 通用思考纪律、output_file 边界、质量自检、工具纪律见 **CORE.md**（通用行为规范）。本 skill 只讲 design_direct **特有**的方法论。
 
 ---
 
@@ -60,7 +60,7 @@
 
 ### 选择题：设计选项但不设计数值
 
-选择题**需要设计选项，但不需要设计数值**——选项的具体值由 write_gen 算、write_solution 填。
+选择题**需要设计选项，但不需要设计数值**——选项的具体值由 write_gen 算并填（合并后 write_gen 全闭环产出 gen.py + solution.md + question.md）。
 
 你为每个选项设计**它考什么**（错误类型），**不写数值**：
 - **A**：正确结果。

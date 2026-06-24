@@ -106,4 +106,18 @@ def solve(x_bits, y_bits, n=5):
 - **assert 必须打到"通过条件"，禁弱化**：题干声明"考旋转"→ 必须有 `assert rotation_count >= 1`，**不能**弱化成 `assert is_balanced(tree)` 这种结构判据（零旋转的坏题也会过）。弱化 = 让坏题静默放行，是这次要堵的根因。题干声明的特征是什么，你就 assert 什么——漏 assert 一个条件 = 漏译。
 - **assert 禁恒真**：不能写 `assert True` / `assert len(x) >= 0` 这类永远成立的废话断言凑数。
 - exec 验证不过 → 改代码（对照题干规则检查哪句翻译错了），再跑。**不脑内算/不重新研究算法。**
-- output_file = gen.py，不写别的。
+- output_file：gen.py（建模码）。gen.py exec 通过后，你还负责转写 solution.md（见下「5」）。
+
+---
+
+## 5. 写 solution.md（gen.py exec 通过后）
+
+gen.py 的 assert 全过、exec 结果满足通过条件后，把 exec 输出整理成 solution.md。**这是整理 exec 输出，不是重算：**
+
+1. **逐字对照 exec stdout**：solution.md 的每步数值、推理、答案，都必须来自 gen.py exec 的实际输出（PARAMS/REASONING/ANSWER 标签段），不凭记忆、不脑内补、不重新推导。
+2. **结构对齐 gen.py**：求解步骤的顺序、变量、运算与 gen.py 一致。
+3. **答案落结论**：exec 的 ANSWER 作为最终结论。
+4. **选择题**：A=exec 正确值；B/C/D=各错误路径的真实产物（gen.py 里 `solve_with_error(...)` 算出的值），在 solution 里说明每个干扰项为什么错（对应错误类型），不要随机扰动。
+5. **禁幻觉**：solution 里不得出现 exec 没产出的步骤/数值/操作。
+
+> 转写 ≠ 重算。gen.py 已算过，你只整理它的输出。若 solution 与 exec 输出不一致，以 exec 为准、改 solution。
