@@ -799,6 +799,13 @@
       border: 1px solid #f4dccd;
       border-radius: 12px;
       background: var(--primary-soft);
+      cursor: pointer;
+      transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+    }
+    .mode-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+      box-shadow: 0 1px 0 rgba(58, 47, 30, 0.04);
     }
 
     .mode-card strong {
@@ -950,20 +957,24 @@
 
         <div class="message-stream" id="messageStream">
           <div class="empty-guide" id="emptyGuide">
-            <h3>本系统支持三种出题模式</h3>
+            <h3>本系统支持四种出题模式</h3>
             
             <div class="support-modes mode-cards">
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一套组成原理考研模拟卷，5 道选择题，覆盖数据通路、Cache、指令流水线')">
               <strong>考研模拟题组卷</strong>
               <span>例：组成原理考研模拟卷，5 道选择题</span>
             </div>
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一道 AVL 树旋转的选择题，包含 LR 和 RL 旋转')">
               <strong>知识点转型出题</strong>
               <span>例：AVL 树旋转选择题，包含 LR 和 RL</span>
             </div>
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一套数据结构期末卷，5 道选择题')">
               <strong>自由出题</strong>
               <span>例：数据结构期末卷，5 道选择题</span>
+            </div>
+            <div class="mode-card" onclick="fillPrompt('请参考往年卷（替换为路径，如 workspace/v8_acollege_out/questions/试卷.md）出一套【考点对应】的卷——逐题锚定原卷每道题的知识点，考察角度可换不同切面')">
+              <strong>往年试卷 · 知识点对齐（方案 D）</strong>
+              <span>参考往年卷，逐题同考点、新考法（点选填模板，改路径即可）</span>
             </div>
           </div>
           </div>
@@ -2656,6 +2667,14 @@ ${q.explanation}`).join("\n\n")}
       }
     }
 
+    function fillPrompt(text) {
+      const el = document.getElementById("teacherInput");
+      if (!el) return;
+      el.value = text;
+      el.focus();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
     function resetSession() {
       if (state.pollTimer) clearInterval(state.pollTimer);
       state.stage = "collecting";
@@ -2676,20 +2695,24 @@ ${q.explanation}`).join("\n\n")}
 
       document.getElementById("messageStream").innerHTML = `
         <div class="empty-guide" id="emptyGuide">
-          <h3>本系统支持三种出题模式</h3>
+          <h3>本系统支持四种出题模式</h3>
           
           <div class="support-modes mode-cards">
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一套组成原理考研模拟卷，5 道选择题，覆盖数据通路、Cache、指令流水线')">
               <strong>考研模拟题组卷</strong>
               <span>例：组成原理考研模拟卷，5 道选择题</span>
             </div>
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一道 AVL 树旋转的选择题，包含 LR 和 RL 旋转')">
               <strong>知识点转型出题</strong>
               <span>例：AVL 树旋转选择题，包含 LR 和 RL</span>
             </div>
-            <div class="mode-card">
+            <div class="mode-card" onclick="fillPrompt('出一套数据结构期末卷，5 道选择题')">
               <strong>自由出题</strong>
               <span>例：数据结构期末卷，5 道选择题</span>
+            </div>
+            <div class="mode-card" onclick="fillPrompt('请参考往年卷（替换为路径，如 workspace/v8_acollege_out/questions/试卷.md）出一套【考点对应】的卷——逐题锚定原卷每道题的知识点，考察角度可换不同切面')">
+              <strong>往年试卷 · 知识点对齐（方案 D）</strong>
+              <span>参考往年卷，逐题同考点、新考法（点选填模板，改路径即可）</span>
             </div>
           </div>
         </div>
