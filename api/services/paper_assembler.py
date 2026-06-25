@@ -27,6 +27,9 @@ def _qtype(slot: dict) -> str:
         return str(explicit)
     qt = (slot.get("question_type") or "").lower()
     em = slot.get("examination_mode") or ""
+    # 多选优先于单选（多项选择含"选择"，更具体；408 标准题型）
+    if "多选" in em or "多项选择" in em or qt == "multiple_choice":
+        return "多项选择题"
     if qt == "single_choice" or "单选" in em or "选择题" in em:
         return "单项选择题"
     if "判断" in em:

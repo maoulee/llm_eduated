@@ -12,9 +12,19 @@ import re
 
 
 def _option_markers(text: str) -> set[str]:
-    """提取选项标记 {A,B,C,D}（支持 A. / A、 / A) / A） / - A. / * A. / (A) 等）。"""
-    # 行首或换行后，可选 list marker(-/*)，可选空白，然后 A-D + ./,/)/）/:/：
-    return set(re.findall(r'(?:^|\n)\s*[-*]?\s*\(?([A-D])[\.\.\)）：：]\s', text))
+    """提取选项标记 {A,B,C,D}。
+
+    容忍：A. / A、 / A) / A） / A: / A： 分隔符；- A. / * A. list marker；
+    (A) 包裹；**A.** / **A** 加粗包裹。行首 ^|\\n 锚定保证精度，
+    不误匹配句中 "Fig.A." / "A、B、C、D 都对" 等大写字母+点/顿号。
+
+    顿号/括号是强分隔符，不要求后随空白（中文约定 A、选项 无空格）；
+    点/逗号/冒号为弱分隔，要求后随空白以防误匹配。
+    """
+    # 行首锚定；\s*[-*]? list marker；\*{0,2} 加粗前缀；\(? (A) 包裹；
+    # 弱分隔 [.,:：]+可选加粗+空白  |  强分隔 [、)）]（不要求空白）。
+    return set(re.findall(
+        r'(?:^|\n)\s*[-*]?\s*\*{0,2}\(?([A-D])(?:[.,:：]\*{0,2}\s|[、)）])', text))
 
 
 def _has_blank(text: str) -> bool:
@@ -23,8 +33,12 @@ def _has_blank(text: str) -> bool:
 
 
 def _has_judge(text: str) -> bool:
-    """是否有判断标记（√/×/（对）/（错）/对错/判断）。"""
-    return bool(re.search(r'[√×]|（\s*[对错]\s*）|\(\s*[对错]\s*\)|对错|判断|是否正确', text))
+    """是否有判断标记：√/×/✓/✗/✔/✘/（对）/（错）/对错/判断/是否正确。
+
+    ✓✗✔✘ 与 √× 同义（不同 unicode），GLM 实际产出 ✓(U+2713)/✗(U+2717)，
+    一并纳入以防"判断题无标记"误判。
+    """
+    return bool(re.search(r'[√×✓✗✔✘]|（\s*[对错]\s*）|\(\s*[对错]\s*\)|对错|判断|是否正确', text))
 
 
 def validate_question_structure(text: str | None, qtype: str | None) -> tuple[bool, str]:

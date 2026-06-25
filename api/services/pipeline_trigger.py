@@ -413,9 +413,10 @@ def _split_concept_questions(
     q_text = q_path.read_text(encoding="utf-8")
     s_text = s_path.read_text(encoding="utf-8") if s_path.exists() else ""
 
-    # 按 ## 第 N 题 / ## 题目 N 拆分
-    q_sections = _re.split(r"(?=^##\s+(?:第\s*)?\d+\s*题|^##\s+题目\s*\d+)", q_text, flags=_re.MULTILINE)
-    s_sections = _re.split(r"(?=^##\s+(?:第\s*)?\d+\s*题|^##\s+题目\s*\d+|^##\s+第\s*\d+\s*题\s*解析)", s_text, flags=_re.MULTILINE) if s_text else []
+    # 按 #{2,} 第 N 题 / 题目 N 拆分（容忍 ### / 无空格 等 markdown 漂移；
+    # 仍锚定 第N题/题目N 关键字，避免误拆 body 内其它 ## 段）
+    q_sections = _re.split(r"(?=^#{2,}\s*(?:第\s*)?\d+\s*题|^#{2,}\s*题目\s*\d+)", q_text, flags=_re.MULTILINE)
+    s_sections = _re.split(r"(?=^#{2,}\s*(?:第\s*)?\d+\s*题|^#{2,}\s*题目\s*\d+|^#{2,}\s*第\s*\d+\s*题\s*解析)", s_text, flags=_re.MULTILINE) if s_text else []
 
     # 过滤空段
     q_sections = [s.strip() for s in q_sections if s.strip() and not s.strip().startswith("# ") and "##" in s]

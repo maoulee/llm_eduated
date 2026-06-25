@@ -135,6 +135,12 @@ _STATUS_SYNONYMS_EN = {
     "solved": "pass", "ready": "pass", "error": "question_error",
 }
 
+# CN 否定前缀 + 通过类完成词。子串 map（通过→pass）会吞掉否定前缀，使
+# 不通过/未通过/不合格/参数未通过验证/通过条件未满足 等 → 误判 pass（坏题蒙混过关）。
+# guard 在 map 之前：完成词紧随否定前缀 → fail-safe needs_fix。
+_CN_NEG_PREFIX = "不未没非否"
+_CN_PASS_COMPLETION_KEYS = ("通过", "合格", "满足", "达标")
+
 
 def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None = None) -> str:
     """Normalize a status value and reject anything outside the allowed set."""
@@ -150,6 +156,16 @@ def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None =
         line = re.sub(r"^[\-:：\s✅✔❌]+", "", line.strip())
         if not line:
             continue
+
+        # CN 否定 guard（P0 fail-open 类）：通过/合格/满足/达标 紧随否定前缀
+        # （不/未/没/非/否）= 否定（不通过/未通过/不合格/未满足/参数未通过验证/...）。
+        # 必须先于下面的子串 map——否则 "通过" in "不通过" 会吞掉否定 → 误判 pass。
+        for kw in _CN_PASS_COMPLETION_KEYS:
+            idx = line.find(kw)
+            while idx != -1:
+                if idx > 0 and line[idx - 1] in _CN_NEG_PREFIX:
+                    return "needs_fix" if "needs_fix" in allowed_values else ""
+                idx = line.find(kw, idx + len(kw))
 
         # CN keyword matching (ordered: longer keys first for precision)
         for cn, status in sorted(_STATUS_CN_MAP.items(), key=lambda x: -len(x[0])):

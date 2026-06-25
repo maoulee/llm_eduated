@@ -689,8 +689,12 @@ def _review_signal(status: str, routing: str) -> str:
     """
     if status != "needs_fix":
         return "pass"
-    routing = (routing or "").lower()
-    if "design" in routing:
+    # routing 契约 = 干净目标 token：design_direct / write_gen / none。取首个 token
+    # 匹配，不做子串——子串 'design'/'设计' 会在 routing 释义里 over-fire
+    # （'write_gen（修改 gen.py 的设计参数）' / 'redesign solution.md' 会误路由 fix_design）。
+    routing = (routing or "").lower().strip()
+    target = routing.split()[0].strip("（）()：:，,。.") if routing else ""
+    if target.startswith("design"):
         return "fix_design"
     # 合并后 write_gen 单节点承担 gen.py + solution.md，fix_solution 折叠进 fix_gen
     return "fix_gen"
