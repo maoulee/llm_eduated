@@ -139,6 +139,7 @@ assessment:
 slots:
   - slot_id: Q12
     question_type: single_choice
+    题型: 单项选择题    # 必填：大题层级题型（单项选择题/填空题/判断题/简答题/应用题/设计题/综合题）——供 paper_assembler 分大题排版，缺了会分错大题
     score: 2
     target_subject: "{科目}"
     target_family: "{科目} > {章节} > {知识点}"
