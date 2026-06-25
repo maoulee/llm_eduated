@@ -808,6 +808,24 @@
       box-shadow: 0 1px 0 rgba(58, 47, 30, 0.04);
     }
 
+    /* 每题进度卡（Entry 生成剧场）*/
+    .gen-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .gen-card { padding: 14px; border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius); background: var(--surface); box-shadow: 0 1px 0 rgba(58, 47, 30, 0.04); transition: border-color 220ms ease, box-shadow 220ms ease; }
+    .gen-card[data-status="completed"] { border-left-color: var(--success); }
+    .gen-card[data-status="generating"] { border-left-color: var(--primary); }
+    .gen-card[data-status="failed"] { border-left-color: var(--danger); }
+    .gen-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .gen-card-head strong { font-size: 14px; font-weight: 600; }
+    .gen-steps { display: flex; align-items: center; margin-bottom: 8px; }
+    .gdot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--border); background: var(--surface); flex-shrink: 0; transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease; }
+    .gdot.done { background: var(--success); border-color: var(--success); }
+    .gdot.active { background: var(--primary-soft); border-color: var(--primary); box-shadow: 0 0 0 3px rgba(201, 100, 66, 0.14); }
+    .gline { flex: 1; height: 2px; background: var(--border); margin: 0 4px; transition: background 220ms ease; }
+    .gline.done { background: var(--success); }
+    .gen-stage-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; min-height: 16px; }
+    .gen-bar { height: 4px; border-radius: 999px; background: var(--surface-soft); overflow: hidden; }
+    .gen-fill { height: 100%; background: var(--primary); transition: width 600ms ease; border-radius: inherit; }
+
     .mode-card strong {
       display: block;
       color: var(--primary);
@@ -2132,7 +2150,7 @@
         addMessage("teacher", "草案已确认，请生成正式题目。");
         addMessage("agent", `出题团队正在辛苦施工中，共 ${slotCount} 题，请稍候…`);
         setStage("generating");
-        renderGeneratingProgress(slotCount);
+        renderGeneratingCards(slotCount);
 
         const turn = await api.turn(sessionId, "教师已确认草案选择，请生成交接文档（paper_request.yaml 或 slot_blueprint.yaml）。", "confirm_handoff");
         if (turn.response_text) addMessage("agent", turn.response_text);
@@ -2151,51 +2169,109 @@
     }
 
     function renderGeneratingQuestions() {
-      renderGeneratingProgress(0);
+      renderGeneratingCards(0);
     }
 
-    function renderGeneratingProgress(slotCount) {
-      document.getElementById("workspaceTitle").textContent = "出题团队施工中";
-      document.getElementById("workspaceCaption").textContent = "正在生成与校验题目，请稍候";
+    function renderGeneratingCards() {
+      document.getElementById("workspaceTitle").textContent = "逐题生成中";
+      document.getElementById("workspaceCaption").textContent = "每题独立施工，实时推进";
       document.getElementById("workspaceFooter").style.display = "none";
-
-      const pipelineSteps = [
-        { icon: "📋", name: "大纲生成", desc: "outline" },
-        { icon: "🎯", name: "设计卡", desc: "question_design" },
-        { icon: "✏️", name: "题目生成", desc: "question_sc" },
-        { icon: "🔍", name: "审核", desc: "review" },
-        { icon: "🧮", name: "求解", desc: "solve" },
-        { icon: "✅", name: "终审", desc: "final_review" },
-      ];
-
       document.getElementById("workspaceBody").innerHTML = `
-        <div class="generating-panel">
-          <div>
-            <div class="spinner"></div>
-            <h3>🚧 出题团队正在施工</h3>
-            <p style="color:var(--muted);font-size:14px;line-height:1.7">
-              共 <strong>${slotCount || "?"}</strong> 道题目正在生成中
-            </p>
-            <div id="pipelineSteps" style="margin-top:16px;display:flex;flex-direction:column;gap:6px">
-              ${pipelineSteps.map((s, i) => `
-                <div id="pipelineStep${i}" class="pipeline-step" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--surface-soft);font-size:13px;opacity:0.4">
-                  <span>${s.icon}</span>
-                  <span style="flex:1">${s.name}</span>
-                  <span id="pipelineStepStatus${i}" style="font-size:12px;color:var(--muted)">等待中</span>
-                </div>
-              `).join("")}
-            </div>
-            <div style="margin-top:16px">
-              <div id="genProgressBar" style="height:6px;border-radius:3px;background:var(--border);overflow:hidden">
-                <div id="genProgressFill" style="height:100%;width:0%;background:var(--primary);transition:width 800ms ease"></div>
-              </div>
-              <p id="genProgressLabel" style="color:var(--muted);font-size:13px;margin-top:8px">
-                正在准备出题环境…
-              </p>
-            </div>
-          </div>
+        <div id="genCardsSummary" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;">
+          <span id="genCardsCount" style="color:var(--muted)">正在启动出题流水线…</span>
+          <span id="genCardsPct" style="color:var(--muted);font-variant-numeric:tabular-nums"></span>
         </div>
+        <div style="height:4px;border-radius:999px;background:var(--border);overflow:hidden;margin-bottom:14px">
+          <div id="genOverallFill" style="height:100%;width:0%;background:var(--primary);transition:width 600ms ease"></div>
+        </div>
+        <div id="genCardsGrid" class="gen-cards-grid"></div>
       `;
+    }
+
+    // 每题 stage → 步进序号（0 选项设计 / 1 求解 / 2 审核 / 3 排版 / 5 完成 / -1 排队 / -2 失败）
+    const _GEN_STAGE_STEPS = [
+      { pattern: /选项设计|设计卡|design/i },
+      { pattern: /求解|solve/i },
+      { pattern: /审核|review/i },
+      { pattern: /排版|终审|final/i },
+    ];
+    const _GEN_DONE_RE = /已完成|completed/i;
+    const _GEN_STEP_LABELS = ["选项设计中", "求解中", "审核中", "排版中", "已完成"];
+
+    function _genStageActive(stage, status) {
+      if (status === "completed" || (stage && _GEN_DONE_RE.test(stage))) return 5;
+      if (status === "failed") return -2;
+      if (!stage) return -1;
+      for (let i = 0; i < _GEN_STAGE_STEPS.length; i++) {
+        if (_GEN_STAGE_STEPS[i].pattern.test(stage)) return i;
+      }
+      return -1;
+    }
+
+    function _renderGenCardInner(label, status, stage) {
+      const active = _genStageActive(stage, status);
+      let dots = "";
+      for (let i = 0; i < 5; i++) {
+        let cls = "gdot";
+        if (active === 5 || i < active) cls += " done";
+        else if (i === active) cls += " active";
+        dots += `<span class="${cls}"></span>`;
+        if (i < 4) dots += `<span class="gline${i < active || active === 5 ? " done" : ""}"></span>`;
+      }
+      const stageLabel = active === 5 ? "已完成"
+        : active === -2 ? "失败"
+        : active === -1 ? "排队中"
+        : (_GEN_STEP_LABELS[active] || stage || "排队中");
+      let badge;
+      if (status === "completed") badge = `<span class="badge" style="color:var(--success);background:var(--success-soft)">✓ 完成</span>`;
+      else if (status === "failed") badge = `<span class="badge" style="color:var(--danger);background:var(--danger-soft)">失败</span>`;
+      else if (status === "generating") badge = `<span class="badge" style="color:var(--primary);background:var(--primary-soft)">生成中</span>`;
+      else badge = `<span class="badge" style="color:var(--muted);background:var(--surface-soft)">排队</span>`;
+      const pct = active === 5 ? 100 : active >= 0 ? Math.round((active / 4) * 100) : 0;
+      return `
+        <div class="gen-card-head"><strong>${escapeHtml(label)}</strong>${badge}</div>
+        <div class="gen-steps">${dots}</div>
+        <div class="gen-stage-label">${escapeHtml(stageLabel)}</div>
+        <div class="gen-bar"><div class="gen-fill" style="width:${pct}%"></div></div>
+      `;
+    }
+
+    function updateGeneratingCards(pipeline) {
+      const grid = document.getElementById("genCardsGrid");
+      if (!grid) return;
+      const entries = pipeline && pipeline.slots ? Object.entries(pipeline.slots) : [];
+      const countEl = document.getElementById("genCardsCount");
+      const pctEl = document.getElementById("genCardsPct");
+      const overallFill = document.getElementById("genOverallFill");
+
+      if (entries.length === 0) return; // 等待启动，summary 保持默认文案
+
+      // 以 slot_id 为 key 原地更新（不重挂，保留过渡连续性）
+      const existing = new Map();
+      grid.querySelectorAll(".gen-card").forEach((el) => existing.set(el.dataset.sid, el));
+
+      let completed = 0;
+      for (const [sid, s] of entries) {
+        const status = (s && s.status) || "waiting";
+        const stage = (s && s.stage) || "";
+        const label = (s && s.label) || sid;
+        if (status === "completed") completed++;
+        let card = existing.get(sid);
+        if (!card) {
+          card = document.createElement("div");
+          card.className = "gen-card";
+          card.dataset.sid = sid;
+          grid.appendChild(card);
+        }
+        card.dataset.status = status;
+        card.innerHTML = _renderGenCardInner(label, status, stage);
+        existing.delete(sid);
+      }
+      const total = entries.length;
+      const pct = total ? Math.round((completed / total) * 100) : 0;
+      if (countEl) countEl.textContent = `${completed} / ${total} 题完成`;
+      if (pctEl) pctEl.textContent = pct + "%";
+      if (overallFill) overallFill.style.width = pct + "%";
     }
 
     function updateGeneratingProgress(done, total) {
@@ -2280,26 +2356,11 @@
             api.getPipelineProgress(state.sessionId).catch(() => null),
           ]);
 
-          /* Update progress bar from pipeline data */
-          if (pipeline && pipeline.slots) {
-            const slotEntries = Object.values(pipeline.slots);
-            const completed = slotEntries.filter(s => s.status === "completed").length;
-            updateGeneratingProgress(completed, totalSlots || pipeline.total_slots || 0);
-
-            /* Map stage to pipeline step UI */
-            const generating = slotEntries.filter(s => s.status === "generating");
-            if (generating.length > 0) {
-              const current = generating[0];
-              const stageText = current.stage || "";
-              updatePipelineStepUI(stageText, current.label);
-            }
-          } else if (totalSlots > 0 && result.status === "pending") {
-            /* No pipeline yet — show waiting progress */
-            const fakePct = Math.min(attempts * 3, 85);
-            const fill = document.getElementById("genProgressFill");
-            const label = document.getElementById("genProgressLabel");
-            if (fill) fill.style.width = fakePct + "%";
-            if (label) label.textContent = `正在生成中… (已等待 ${attempts * 3}s)`;
+          /* 每题进度卡：按各 slot 真实 stage 实时推进 */
+          updateGeneratingCards(pipeline);
+          if ((!pipeline || !pipeline.slots || Object.keys(pipeline.slots || {}).length === 0) && result.status === "pending") {
+            const summary = document.getElementById("genCardsCount");
+            if (summary) summary.textContent = `正在启动出题流水线… (已等待 ${attempts * 3}s)`;
           }
 
           if (result.status === "pending") {
@@ -2689,13 +2750,13 @@ ${q.explanation}`).join("\n\n")}
                 setStage("completed");
               }
             } else if (pipeline && pipeline.status === "running") {
-              renderGeneratingProgress(pipeline.total_slots || 1);
+              renderGeneratingCards(pipeline.total_slots || 1);
               startPollingDisplayResult(pipeline.total_slots || 1);
             } else {
-              renderGeneratingProgress(0);
+              renderGeneratingCards(0);
             }
           } catch (_) {
-            renderGeneratingProgress(0);
+            renderGeneratingCards(0);
           }
         } else if (history.state === "reviewing") {
           setStage("reviewing");
