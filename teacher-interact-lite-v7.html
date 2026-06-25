@@ -1582,7 +1582,7 @@
       // 检测是否有方案卡片（Entry D）
       const schemeSections = (draft.sections || []).filter(s => s.scheme_md);
       if (schemeSections.length > 0) {
-        renderPlanCards(draft, schemeSections);
+        renderSchemeFlow(schemeSections);
         return;
       }
 
@@ -1601,57 +1601,102 @@
     }
 
     // ── 方案卡片渲染（Entry D）──
-    function renderPlanCards(draft, schemeSections) {
-      const body = document.getElementById("workspaceBody");
-      const footer = document.getElementById("workspaceFooter");
-
-      body.innerHTML = `
-        <div class="draft-info">点击方案卡片查看详情，选定后进入下一步。</div>
-        ${schemeSections.map((s, i) => {
-          // 从 scheme_label 提取设计理念，从 scheme_md 统计题数
-          const label = s.scheme_label || s.title || '';
-          const topic = label.split('—').slice(1).join('—').trim() || '点击查看';
-          const qCount = (s.scheme_md || '').split('\n').filter(l => l.includes('第') && l.includes('题')).length;
-          return `
-          <div class="plan-card" data-scheme-idx="${i}" onclick="viewScheme(${i})" style="
-            padding:14px; margin-bottom:10px; border:1px solid var(--border);
-            border-radius:var(--radius); background:var(--surface); cursor:pointer;
-            transition: border-color 120ms ease, background 120ms ease;
-          " onmouseover="this.style.borderColor='#f4dccd';this.style.background='var(--primary-soft)'"
-            onmouseout="if(!this.classList.contains('selected-scheme')){this.style.borderColor='var(--border)';this.style.background='var(--surface)'}">
-            <strong style="font-size:14px; display:block; margin-bottom:4px;">${escapeHtml(label.split('—')[0].trim())}</strong>
-            <span style="color:var(--muted); font-size:13px;">${escapeHtml(topic)}${qCount ? ` · ${qCount}题` : ''}</span>
-          </div>
-          `;
-        }).join("")}
+    // ── 方案渲染（Entry D）：方案渲染到【对话区】，每题独立批注区 ──
+    function addRichMessage(label, innerHtml) {
+      const empty = document.getElementById("emptyGuide");
+      if (empty) empty.remove();
+      const stream = document.getElementById("messageStream");
+      const article = document.createElement("article");
+      article.className = "message agent";
+      article.innerHTML = `
+        <div class="message-label">助手 · 方案</div>
+        <h3 style="margin:0 0 12px;font-size:16px;color:var(--fg);">${escapeHtml(label)}</h3>
+        ${innerHtml}
       `;
+      stream.appendChild(article);
+      stream.scrollTop = stream.scrollHeight;
+    }
 
-      // 底部：选定方案按钮
+    function renderSchemeQuestionBlock(q) {
+      return `
+        <div class="slot-card" style="margin-bottom:14px;">
+          <div class="slot-head"><strong>第${q.num}题（${q.meta}）</strong></div>
+          <div class="slot-body">
+            <p style="margin:0 0 8px;font-size:14px;">${escapeHtml(q.knowledge)}</p>
+            ${q.options.map((opt, i) => `
+              <label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:14px;cursor:pointer;">
+                <input type="checkbox" data-q="${q.num}" data-opt="${i}" style="width:18px;height:18px;cursor:pointer;">
+                <span>${escapeHtml(opt)}</span>
+              </label>
+            `).join('')}
+            <div style="margin-top:8px;">
+              <textarea placeholder="教师批注：对本题的修改意见（每题独立批注区）"
+                data-q-annotation="${q.num}"
+                style="width:100%;min-height:48px;font-size:13px;padding:8px;border:1px solid var(--border);border-radius:6px;resize:vertical;"></textarea>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function buildSchemeQuestionsHtml(scheme) {
+      const lines = (scheme.scheme_md || "").split("\n");
+      const htmlParts = [];
+      let currentQuestion = null;
+      for (const line of lines) {
+        const trimmed = line.trim();
+        const qMatch = trimmed.match(/^\*?\*?第(\d+)题[（(]([^）)]+)[）)]\*?\*?[：:]?\s*(.*)/)
+                    || trimmed.match(/^#+\s*第(\d+)题[（(]([^）)]+)[）)]\s*[：:]?\s*(.*)/);
+        if (qMatch) {
+          if (currentQuestion) htmlParts.push(renderSchemeQuestionBlock(currentQuestion));
+          currentQuestion = { num: qMatch[1], meta: qMatch[2], knowledge: qMatch[3] || "", options: [], annotation: "" };
+          continue;
+        }
+        const optMatch = trimmed.match(/^-\s*\[\s*\]\s*(.+)/);
+        if (optMatch && currentQuestion) { currentQuestion.options.push(optMatch[1]); continue; }
+        if (trimmed.startsWith("> 教师批注") || trimmed.startsWith(">教师批注")) { if (currentQuestion) currentQuestion._hasAnnotation = true; continue; }
+        if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("[") || trimmed === "---" || trimmed.startsWith("**设计理念")) continue;
+        if (currentQuestion && currentQuestion.options.length === 0 && !trimmed.startsWith("-")) {
+          if (currentQuestion.knowledge && trimmed.length > 3) currentQuestion.knowledge += " " + trimmed;
+          else if (trimmed.length > 3) currentQuestion.knowledge = trimmed;
+        }
+      }
+      if (currentQuestion) htmlParts.push(renderSchemeQuestionBlock(currentQuestion));
+      return htmlParts.join("") + `<div class="hint-box">每题已配独立批注区：勾选要考的考点、写批注，然后在右侧确认方案。</div>`;
+    }
+
+    function renderSchemeToChat(idx) {
+      state._currentSchemeIdx = idx;
+      const scheme = state.schemeSections[idx];
+      if (!scheme || !scheme.scheme_md) return;
+      addRichMessage(scheme.scheme_label || scheme.title || "方案详情", buildSchemeQuestionsHtml(scheme));
+      const sel = document.getElementById("schemeSelect");
+      if (sel) sel.value = String(idx);
+    }
+
+    function renderSchemeFlow(schemeSections) {
+      state.schemeSections = schemeSections;
+      document.getElementById("workspaceTitle").textContent = "方案 · 知识点对齐";
+      document.getElementById("workspaceCaption").textContent = `${schemeSections.length} 套方案，已渲染到左侧对话区`;
+
+      // 工作区只保留确认动作（方案本体在对话区，便于阅读 + 逐题批注）
+      const body = document.getElementById("workspaceBody");
+      body.innerHTML = `<div class="draft-info">方案已展示在左侧对话区——每题可勾选考点、写独立批注。确认后进入出题。</div>`;
+
+      const footer = document.getElementById("workspaceFooter");
       footer.style.display = "block";
       footer.innerHTML = `
-        <div style="margin-bottom:10px; color:var(--muted); font-size:13px;">
-          点击上方卡片查看方案详情，在聊天区查看完整内容。
-        </div>
-        <select id="schemeSelect" style="
-          width:100%; padding:10px; border:1px solid var(--border);
-          border-radius:8px; font-size:14px; margin-bottom:10px;
-        ">
-          <option value="">— 选择一套方案 —</option>
+        ${schemeSections.length > 1 ? `
+        <select id="schemeSelect" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;margin-bottom:10px;">
           ${schemeSections.map((s, i) => `<option value="${i}">${escapeHtml(s.scheme_label || s.title)}</option>`).join("")}
-        </select>
-        <button class="primary-btn" id="confirmSchemeBtn" style="width:100%" disabled
-          onclick="confirmScheme()">
-          确认选定方案
-        </button>
+        </select>` : ""}
+        <button class="primary-btn" id="confirmSchemeBtn" style="width:100%" onclick="confirmScheme()">确认选定方案</button>
       `;
-
-      // 启用确认按钮
-      const sel = document.getElementById("schemeSelect");
-      const btn = document.getElementById("confirmSchemeBtn");
-      sel.addEventListener("change", () => { btn.disabled = !sel.value; });
-
-      // 存储方案数据供 viewScheme/confirmScheme 使用
-      state.schemeSections = schemeSections;
+      if (schemeSections.length > 1) {
+        document.getElementById("schemeSelect").addEventListener("change", (e) => renderSchemeToChat(parseInt(e.target.value)));
+      }
+      // 默认把第一套方案渲染进对话区
+      renderSchemeToChat(0);
     }
 
     function viewScheme(idx) {
@@ -1773,14 +1818,24 @@
     }
 
     async function confirmScheme() {
-      const sel = document.getElementById("schemeSelect");
-      if (!sel || !sel.value) return;
+      const idx = state._currentSchemeIdx ?? 0;
+      const scheme = state.schemeSections && state.schemeSections[idx];
+      if (!scheme) return;
 
-      const idx = parseInt(sel.value);
-      const scheme = state.schemeSections[idx];
-
-      // 发送确认消息给后端
-      const confirmMsg = `我选择${scheme.scheme_label || scheme.title}。请基于这套方案的知识点排布，生成交接文档进入出题。`;
+      // 收集每题的勾选考点 + 独立批注（从对话区渲染的方案块读取）
+      const notes = [];
+      document.querySelectorAll("[data-q-annotation]").forEach((ta) => {
+        const q = ta.getAttribute("data-q-annotation");
+        const txt = ta.value.trim();
+        const checked = [...document.querySelectorAll(`input[data-q="${q}"]:checked`)]
+          .map((c) => (c.parentElement.textContent || "").trim())
+          .filter(Boolean);
+        if (txt || checked.length) {
+          notes.push(`第${q}题：${checked.length ? "选考 " + checked.join("；") : ""}${txt ? (checked.length ? "；" : "") + "批注 " + txt : ""}`);
+        }
+      });
+      const noteStr = notes.length ? "\n\n教师逐题意见：\n" + notes.join("\n") : "";
+      const confirmMsg = `我选择${scheme.scheme_label || scheme.title}。请基于这套方案逐题锚定原卷知识点，生成交接文档进入出题。${noteStr}`;
       await sendMessageText(confirmMsg);
     }
 
