@@ -98,7 +98,7 @@ def _keep_sections(t: str, keep_kws: list) -> str:
 
 
 def clean_question(t: str) -> str:
-    return _keep_sections(t, ["题干", "题目", "设问", "问题"])
+    return _keep_sections(t, ["题干", "题目", "设问", "问题", "选项"])
 
 
 def clean_solution(t: str) -> str:

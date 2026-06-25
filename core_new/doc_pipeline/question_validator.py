@@ -12,8 +12,9 @@ import re
 
 
 def _option_markers(text: str) -> set[str]:
-    """提取选项标记 {A,B,C,D}（支持 A. / A、 / A) / A） 等）。"""
-    return set(re.findall(r'(?:^|\n)\s*([A-D])[\.、\)）]\s', text))
+    """提取选项标记 {A,B,C,D}（支持 A. / A、 / A) / A） / - A. / * A. / (A) 等）。"""
+    # 行首或换行后，可选 list marker(-/*)，可选空白，然后 A-D + ./,/)/）/:/：
+    return set(re.findall(r'(?:^|\n)\s*[-*]?\s*\(?([A-D])[\.\.\)）：：]\s', text))
 
 
 def _has_blank(text: str) -> bool:
