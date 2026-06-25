@@ -542,7 +542,7 @@ class FormGateNode2(_OrchestratorNode):
         status = "pass"
         feedback = ""
         if review_path.exists():
-            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "needs_fix"
             # W4 fix: match FormGateNode's 4-level fallback for consistency
             feedback = parse_doc_section(str(review_path), "fix_instructions")
             if not feedback.strip() or feedback.strip() == "无":
@@ -675,7 +675,7 @@ def _parse_review(review_path: Path) -> tuple[str, str]:
     """Parse review.md → (status, fix_instructions). status ∈ pass/needs_fix."""
     if not review_path.exists():
         return "pass", ""
-    status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+    status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "needs_fix"
     feedback = parse_doc_section(str(review_path), "fix_instructions")
     return status, feedback
 
@@ -754,7 +754,7 @@ class TeamReviewNode(_OrchestratorNode):
             # review.md 缺失 = agent 异常未产出，按 pass 兜底（routing 此分支不生效）
             status, feedback, routing = "pass", "", "write_gen"
         else:
-            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "pass"
+            status = get_doc_status(str(review_path), allowed=REVIEW_STATUSES) or "needs_fix"
             feedback = parse_doc_section(str(review_path), "fix_instructions")
             routing = (parse_doc_section(str(review_path), "routing") or "write_gen").strip()
         signal = _review_signal(status, routing)

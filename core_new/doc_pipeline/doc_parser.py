@@ -127,6 +127,14 @@ _PASS_QUALIFIERS_CN = re.compile(
     re.IGNORECASE,
 )
 
+# English status synonyms → 归一到 allowed 值（P0: 防解析失败→默认放行）
+_STATUS_SYNONYMS_EN = {
+    "reject": "needs_fix", "fail": "needs_fix", "failed": "needs_fix",
+    "incorrect": "needs_fix", "wrong": "needs_fix", "not_pass": "needs_fix",
+    "approved": "pass", "accept": "pass", "ok": "pass",
+    "solved": "pass", "ready": "pass", "error": "question_error",
+}
+
 
 def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None = None) -> str:
     """Normalize a status value and reject anything outside the allowed set."""
@@ -152,12 +160,12 @@ def normalize_doc_status(value: str, allowed: set[str] | frozenset[str] | None =
                 return status
 
         match = re.search(
-            r"\b(pass|needs_fix|expression_fix|question_error|solution_error|draft|ready|solved|error)\b",
+            r"\b(pass|needs_fix|expression_fix|question_error|solution_error|draft|ready|solved|error|reject|fail|failed|incorrect|wrong|not_pass|approved|accept|ok)\b",
             line,
             flags=re.IGNORECASE,
         )
         if match:
-            status = match.group(1).lower()
+            status = _STATUS_SYNONYMS_EN.get(match.group(1).lower(), match.group(1).lower())
             if status == "pass" and _PASS_QUALIFIERS_EN.search(line):
                 return "needs_fix" if "needs_fix" in allowed_values else ""
             return status if status in allowed_values else ""
