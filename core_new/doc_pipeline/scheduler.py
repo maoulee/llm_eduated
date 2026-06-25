@@ -2173,8 +2173,8 @@ class DocScheduler:
 
         stripped = content.strip()
 
-        # 2. JSON array of tool calls
-        if stripped.startswith("["):
+        # 2. JSON array or single-object tool call
+        if stripped.startswith(("[", "{")):
             extracted = DocScheduler._extract_textual_tool_call(content)
             if extracted:
                 return ("execute_tools", extracted)
@@ -2190,7 +2190,7 @@ class DocScheduler:
         # 4. Valid markdown content — must look like structured target output
         # (not just a random "# 分析" reasoning section)
         if stripped.startswith("#") and len(stripped) > 200:
-            if "## status" in stripped:
+            if re.search(r"^##\s*status\b", stripped, re.IGNORECASE | re.MULTILINE):
                 return ("direct_write", stripped)
             # Has markdown headers but no ## status — likely reasoning, not target
             return ("intermediate_text", stripped)
