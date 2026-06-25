@@ -73,6 +73,12 @@
 13. 单步抄写无误：solution 改写的每步数值，是否与 gen.py exec 输出一致（逐步对照，不自己算）。
 14. 无幻觉：solution 里有没有 exec 根本没产出的内容（捏造步骤/数值/操作）。
 
+### 维度E 题面规范性（routing=write_gen）——L2 结构兜底
+15. **题型一致性**：题面（question.md）实际形式与声明**题型**吻合——单选必有 4 选项(A/B/C/D)；填空必有空格且不是四选一；判断必有 对/错/√/× 陈述。**题型错位**（声明填空却出成选择、声明单选却无选项）→ fail。
+16. **题干完整性**：选项/空格/子问齐全，**无截断**。单选缺选项、填空缺空格、题干半句断掉（如"下列说法正确的是："后无选项）→ fail。
+17. **题意明确性**：无歧义表述（如"最大容量"按可寻址空间还是实际使用容量；条件是否唯一解读）。表述歧义 → fail。
+- 维度E fail → issue_type=`structure_defect`，routing=`write_gen`（修 question.md 题面，使形式符合声明题型）。
+
 - 多维度同时 fail → findings 写多条，issue_type 写多个，routing 取**最上游**修复点（如建模错+文档错 → routing=write_gen，文档会随之重算）。
 
 ---
@@ -100,7 +106,7 @@ pass / needs_fix
 question / solution   （按本次执行的阶段标记）
 
 ## issue_type
-none（pass 时）/ stem_conflict（阶段1）/ modeling_error / assertion_defect / adequacy_fail / doc_unfaithful（阶段2，可多个）
+none（pass 时）/ stem_conflict（阶段1）/ modeling_error / assertion_defect / adequacy_fail / doc_unfaithful / structure_defect（阶段2，可多个）
 （人工诊断字段——下游 graph 只读 status+routing 做路由，不消费 issue_type；写它是为了审计可追溯）
 
 ## findings

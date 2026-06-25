@@ -62,7 +62,7 @@ write_file(path="review.md")。Markdown，按顺序：
 
 - `## status` — pass / needs_fix
 - `## stage` — question / solution（按当前阶段）
-- `## issue_type` — pass 写 none；needs_fix 写：stem_conflict（阶段1）/ modeling_error / assertion_defect / adequacy_fail / doc_unfaithful（阶段2）。多维度同时 fail 写多条。
+- `## issue_type` — pass 写 none；needs_fix 写：stem_conflict（阶段1）/ modeling_error / assertion_defect / adequacy_fail / doc_unfaithful / structure_defect（阶段2）。多维度同时 fail 写多条。
 - `## findings` — 逐条审核发现（哪条判据 fail + 具体问题 + 证据，引用题干原文/gen.py 代码行/exec 输出）
 - `## fix_instructions` — 仅 needs_fix：每个问题含（fail类型/修改对象/修改位置/当前问题/修改目标/最小修改指令）
 - `## keep_unchanged` — 仅 needs_fix：明确标注不得修改的部分
