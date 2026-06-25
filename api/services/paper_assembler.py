@@ -11,7 +11,11 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # project root for core_new import
+
 import yaml
+
+from core_new.doc_pipeline.question_validator import validate_question_structure
 
 CN_NUM = "一二三四五六七八九十"
 
@@ -105,21 +109,29 @@ def assemble_paper(handoff_path, questions_dir: Path, title: str = "期末试卷
     """读 handoff 推导结构 + per-slot 产物 → 写 试卷.md + 答案解析.md。返回统计。"""
     slots = yaml.safe_load(Path(handoff_path).read_text(encoding="utf-8")).get("slots", [])
     sections = derive_sections(slots)
+    sid_qtype = {str(s.get("slot_id", "")): _qtype(s) for s in slots}  # L1 结构校验用
     paper = [f"# {title}\n"]
     ans = [f"# {title} · 答案与解析\n"]
     total_q = 0
+    malformed = []
     for sec_title, sids in sections:
         paper.append(f"\n## {sec_title}\n")
         ans.append(f"\n## {sec_title}\n")
         for i, sid in enumerate(sids, 1):
             total_q += 1
-            paper.append(f"\n### {i}.\n\n{clean_question(_read_slot(questions_dir, sid, 'question'))}\n")
+            q = clean_question(_read_slot(questions_dir, sid, "question"))
+            ok, reason = validate_question_structure(q, sid_qtype.get(sid, ""))
+            if not ok:
+                malformed.append({"slot": sid, "reason": reason})
+                q = f"> ⚠️ **[L1 结构校验未过：{reason}]**\n\n" + q
+            paper.append(f"\n### {i}.\n\n{q}\n")
             ans.append(f"\n### {i}.\n\n{clean_solution(_read_slot(questions_dir, sid, 'solution'))}\n")
     questions_dir = Path(questions_dir)
     (questions_dir / "试卷.md").write_text("\n".join(paper), encoding="utf-8")
     (questions_dir / "答案解析.md").write_text("\n".join(ans), encoding="utf-8")
     missing = "".join(paper).count("_(缺失")
-    return {"小题数": total_q, "缺失": missing, "题面字数": len("".join(paper)), "解析字数": len("".join(ans))}
+    return {"小题数": total_q, "缺失": missing, "题面字数": len("".join(paper)),
+            "解析字数": len("".join(ans)), "结构校验未过": malformed}
 
 
 if __name__ == "__main__":
