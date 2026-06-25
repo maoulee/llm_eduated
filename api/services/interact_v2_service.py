@@ -337,6 +337,26 @@ class InteractV2Service:
 
         logger.info("[%s] Triggering generation from %s", session_id, result_path)
 
+        # Publish per-slot + terminal events to the in-process event_bus so the
+        # SSE /events route can stream real generation progress to the frontend.
+        from api.event_bus import event_bus
+
+        _STATUS_MAP = {  # pipeline status → frontend SlotData status
+            "waiting": "pending", "generating": "generating",
+            "completed": "complete", "failed": "error",
+        }
+
+        def _on_slot(sid: str, status: str) -> None:
+            job = get_job(session_id)
+            slot = job.slot_status.get(sid) if job else {"status": status}
+            event_bus.publish(session_id, {
+                "type": "slot_update",
+                "slot_id": sid,
+                "status": _STATUS_MAP.get(slot.get("status", status), status),
+                "stage": slot.get("stage"),
+                "label": slot.get("label"),
+            })
+
         async def _run() -> None:
             try:
                 await trigger_generation(
@@ -346,10 +366,13 @@ class InteractV2Service:
                     # Use the provider the teacher chose at session creation;
                     # default to glm5.2_anthropic (has reasoning_effort depth control).
                     provider=session.get("provider") or "glm5.2_anthropic",
+                    on_slot_complete=_on_slot,
                 )
+                event_bus.publish(session_id, {"type": "generation_complete"})
             except Exception as exc:
                 logger.exception("[%s] Pipeline generation failed", session_id)
                 mark_job_failed(session_id, str(exc))
+                event_bus.publish(session_id, {"type": "generation_error", "error": str(exc)})
 
         # Fire-and-forget as background task
         try:
