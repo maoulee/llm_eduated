@@ -1625,7 +1625,7 @@
       if (empty) empty.remove();
       const stream = document.getElementById("messageStream");
       const article = document.createElement("article");
-      article.className = "message agent";
+      article.className = "message agent scheme-msg";
       article.innerHTML = `
         <div class="message-label">助手 · 方案</div>
         <h3 style="margin:0 0 12px;font-size:16px;color:var(--fg);">${escapeHtml(label)}</h3>
@@ -1687,6 +1687,9 @@
       state._currentSchemeIdx = idx;
       const scheme = state.schemeSections[idx];
       if (!scheme || !scheme.scheme_md) return;
+      // 替换而非堆叠：切方案时移除上一个方案消息（避免多方案批注串题）
+      const stream = document.getElementById("messageStream");
+      stream.querySelectorAll(".scheme-msg").forEach((el) => el.remove());
       addRichMessage(scheme.scheme_label || scheme.title || "方案详情", buildSchemeQuestionsHtml(scheme));
       const sel = document.getElementById("schemeSelect");
       if (sel) sel.value = String(idx);
@@ -1840,12 +1843,13 @@
       const scheme = state.schemeSections && state.schemeSections[idx];
       if (!scheme) return;
 
-      // 收集每题的勾选考点 + 独立批注（从对话区渲染的方案块读取）
+      // 收集每题的勾选考点 + 独立批注（限定当前方案块，避免多方案串题）
+      const scope = document.querySelector(".scheme-msg") || document;
       const notes = [];
-      document.querySelectorAll("[data-q-annotation]").forEach((ta) => {
+      scope.querySelectorAll("[data-q-annotation]").forEach((ta) => {
         const q = ta.getAttribute("data-q-annotation");
         const txt = ta.value.trim();
-        const checked = [...document.querySelectorAll(`input[data-q="${q}"]:checked`)]
+        const checked = [...scope.querySelectorAll(`input[data-q="${q}"]:checked`)]
           .map((c) => (c.parentElement.textContent || "").trim())
           .filter(Boolean);
         if (txt || checked.length) {
@@ -2267,6 +2271,8 @@
         card.innerHTML = _renderGenCardInner(label, status, stage);
         existing.delete(sid);
       }
+      // 防御：移除已从 pipeline 消失的 slot 卡（正常不会发生，但避免孤儿卡残留）
+      existing.forEach((el) => el.remove());
       const total = entries.length;
       const pct = total ? Math.round((completed / total) * 100) : 0;
       if (countEl) countEl.textContent = `${completed} / ${total} 题完成`;
@@ -2363,8 +2369,11 @@
             if (summary) summary.textContent = `正在启动出题流水线… (已等待 ${attempts * 3}s)`;
           }
 
-          if (result.status === "pending") {
-            if (attempts >= 120) {
+          if (result.status === "pending" || result.status === "partial") {
+            // 生成中：保持每题进度卡（partial 时部分卡已 ✓），不切到结果列表——
+            // 让用户看到每题独立推进到完成，剧场不被提前打断
+            state.results = result;
+            if (result.status === "pending" && attempts >= 120) {
               addMessage("agent", result.message || "题目仍在生成，请稍后刷新结果。");
               clearInterval(state.pollTimer);
               done = true;
@@ -2372,22 +2381,19 @@
             return;
           }
 
-          /* partial or completed — show result cards and keep polling if needed */
-          state.results = result;
-          renderResultList();
-
           if (result.status === "completed") {
+            state.results = result;
             clearInterval(state.pollTimer);
             done = true;
-            updateGeneratingProgress(totalSlots, totalSlots);
+            updateGeneratingCards(pipeline); // 最后刷一次（全部 ✓）
             addMessage("agent", result.message || "题目已生成完成。你可以在右侧查看题目或预览整卷 Markdown。");
             setStage("completed");
+            renderResultList(); // 全完成 → 切最终结果列表
           } else if (result.status === "failed") {
             clearInterval(state.pollTimer);
             done = true;
             addMessage("agent", result.message || "题目生成失败。");
           }
-          /* status === "partial" → keep polling, result cards already rendered */
         } catch (error) {
           clearInterval(state.pollTimer);
           done = true;
