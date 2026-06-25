@@ -1276,6 +1276,9 @@ class DocScheduler:
             import json as _json
             event.setdefault("agent", role)
             event.setdefault("session_id", session_id)
+            # Defensive: ensure the trace dir exists at write time (robust to any
+            # mid-turn workspace cleanup; trace is audit-only, must never crash the turn).
+            _trace_path.parent.mkdir(parents=True, exist_ok=True)
             with open(_trace_path, "a", encoding="utf-8") as _tf:
                 _tf.write(_json.dumps(event, ensure_ascii=False) + "\n")
 
