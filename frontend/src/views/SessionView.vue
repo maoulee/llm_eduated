@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useSession } from '../composables/useSession';
-import { api } from '../api/client';
+import { api, SLOT_STATUS_MAP } from '../api/client';
 import ChatLog from '../components/ChatLog.vue';
 import Composer from '../components/Composer.vue';
 import StateBadge from '../components/StateBadge.vue';
@@ -28,58 +28,50 @@ const {
   deleteThisSession,
   subscribeToEvents,
   unsubscribe,
-  setSlots,
 } = useSession(props.id);
 
-const runId = ref<string | null>(null);
 const showOutlineEditor = ref(false);
-
-// ── slot progress simulation (backend does not emit slot_update today) ──
-let simTimer: ReturnType<typeof setInterval> | null = null;
 const slotsLoading = ref(false);
 
-function parseSlotIds(md: string): string[] {
-  const matches = [...md.matchAll(/第\s*(\d+)\s*题/g)];
-  const nums = [...new Set(matches.map((m) => Number(m[1])))].sort((a, b) => a - b);
-  return nums.length ? nums.map((n) => `Q${n}`) : [];
+// ── real progress via polling /pipeline-progress (V2 exposes full per-slot state) ──
+let pollTimer: ReturnType<typeof setInterval> | null = null;
+
+async function pollProgress() {
+  const p = await api.getPipelineProgress(props.id);
+  if (!p || !p.slots) return;
+  const next: Record<string, { slot_id: string; status: 'pending' | 'generating' | 'review' | 'complete' | 'error'; error_message?: string }> = {};
+  for (const [sid, s] of Object.entries(p.slots)) {
+    const status = (SLOT_STATUS_MAP as Record<string, 'pending' | 'generating' | 'review' | 'complete' | 'error'>)[s?.status || ''] || 'pending';
+    next[sid] = { slot_id: sid, status, error_message: s?.status === 'failed' ? s?.stage : undefined };
+  }
+  slots.value = next;
+  slotsLoading.value = false;
 }
 
-function stopSlotSim() {
-  if (simTimer) { clearInterval(simTimer); simTimer = null; }
+function startPolling() {
+  stopPolling();
+  slotsLoading.value = true;
+  pollProgress();
+  pollTimer = setInterval(pollProgress, 1500);
 }
 
-function startSlotSim(ids: string[]) {
-  stopSlotSim();
-  setSlots(ids);
-  simTimer = setInterval(() => {
-    const arr = Object.values(slots.value);
-    const pending = arr.find((s) => s.status === 'pending');
-    if (pending) {
-      slots.value[pending.slot_id] = { ...slots.value[pending.slot_id], status: 'generating' };
-      return;
-    }
-    const inFlight = arr.find((s) => s.status === 'generating' || s.status === 'review');
-    if (inFlight) {
-      const next = inFlight.status === 'generating' ? 'review' : 'complete';
-      slots.value[inFlight.slot_id] = { ...slots.value[inFlight.slot_id], status: next };
-    }
-  }, 1100);
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
 
-// ── artifact viewer (final only; review/solution unsupported by backend) ──
+// ── artifact viewer (V2: per-session display-result) ──
 const viewer = ref<{ slotId: string; content: string; loading: boolean } | null>(null);
 async function handleView(slotId: string, _outputFile: string) {
   viewer.value = { slotId, content: '', loading: true };
   try {
-    const rid = runId.value || session.value?.blueprint_id || '';
-    const content = await api.getArtifact(rid, 'final', slotId);
+    const content = await api.getArtifact(props.id, 'final', slotId);
     viewer.value = { slotId, content, loading: false };
   } catch {
     viewer.value = { slotId, content: '加载失败（该题型可能暂不支持预览）', loading: false };
   }
 }
 
-// retry has no backend endpoint — documented no-op
+// retry has no backend endpoint yet — documented no-op
 const retryNotice = ref('');
 function handleRetry(slotId: string) {
   retryNotice.value = `${slotId} 重试功能即将上线`;
@@ -92,7 +84,6 @@ const title = computed(() => session.value?.title || `${modeLabel.value}会话`)
 async function handleSend(message: string) {
   try {
     const response = await sendMessage(message);
-    if (response.blueprint_id) runId.value = response.blueprint_id;
     if (response.state === 'blueprint_ready') showOutlineEditor.value = true;
   } catch (err) {
     console.error('Failed to send message:', err);
@@ -103,7 +94,7 @@ async function handleOutlineSaved(_outline: string) {
   messages.value.push({
     id: `msg-${Date.now()}`,
     role: 'assistant',
-    content: '大纲已保存。可继续修改或确认出题。',
+    content: '已记录。可继续对话修改，或确认出题。',
     timestamp: new Date(),
   });
   showOutlineEditor.value = false;
@@ -131,26 +122,10 @@ async function handleDeleteSession() {
   }
 }
 
-// Drive the slot sim from the session state machine.
-watch(
-  state,
-  async (s) => {
-    if (s === 'generating') {
-      slotsLoading.value = true;
-      try {
-        const o = await api.getOutline(props.id);
-        const ids = parseSlotIds(o.outline_md);
-        if (ids.length) startSlotSim(ids);
-      } catch {
-        /* outline unavailable — kanban shows empty state */
-      } finally {
-        slotsLoading.value = false;
-      }
-    } else if (s === 'complete' || s === 'error') {
-      stopSlotSim();
-    }
-  }
-);
+watch(state, (s) => {
+  if (s === 'generating') startPolling();
+  else stopPolling();
+});
 
 onMounted(async () => {
   await loadSession();
@@ -158,7 +133,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  stopSlotSim();
+  stopPolling();
   unsubscribe();
 });
 </script>
