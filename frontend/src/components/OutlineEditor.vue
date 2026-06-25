@@ -57,38 +57,74 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="outline-editor">
+  <div class="card outline-editor fade-in">
+    <!-- Two-pane editor: preview | edit -->
     <div v-if="isEditing" class="editor-mode">
-      <div class="editor-container">
-        <div class="preview-pane">
-          <h3>预览</h3>
-          <div class="markdown-body" v-html="renderedMarkdown"></div>
-        </div>
-        <div class="editor-pane">
-          <h3>编辑</h3>
+      <div class="editor-grid">
+        <section class="pane preview-pane">
+          <h3 class="pane-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            预览
+          </h3>
+          <div class="pane-scroll markdown-body" v-html="renderedMarkdown"></div>
+        </section>
+        <section class="pane editor-pane">
+          <h3 class="pane-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+            </svg>
+            编辑
+          </h3>
           <textarea
             v-model="outlineMd"
             class="outline-textarea"
             spellcheck="false"
+            placeholder="# 大纲标题&#10;## 一、知识点&#10;- …"
           />
-        </div>
+        </section>
       </div>
-      <div class="editor-actions">
-        <button class="btn btn-secondary" @click="$emit('cancel')">
+      <div class="actions-row">
+        <button class="btn btn-ghost" @click="$emit('cancel')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
           取消
         </button>
         <button class="btn btn-primary" :disabled="isSaving" @click="save">
-          {{ isSaving ? '保存中...' : '保存' }}
+          <svg v-if="isSaving" class="spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" opacity="0.35" />
+            <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          {{ isSaving ? '保存中…' : '保存' }}
         </button>
       </div>
     </div>
+
+    <!-- Read-only view -->
     <div v-else class="view-mode">
-      <div class="markdown-body" v-html="renderedMarkdown"></div>
-      <div class="view-actions">
-        <button class="btn btn-secondary" @click="handleEdit">
+      <div class="view-scroll markdown-body" v-html="renderedMarkdown"></div>
+      <div class="actions-row">
+        <button class="btn btn-ghost" @click="handleEdit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+          </svg>
           修改意见
         </button>
         <button class="btn btn-primary" @click="handleConfirm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
           确认出题
         </button>
       </div>
@@ -100,90 +136,56 @@ onMounted(() => {
 .outline-editor {
   margin: var(--space-md) 0;
   padding: var(--space-lg);
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
 }
 
-.editor-mode h3,
-.view-mode h3 {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-bottom: var(--space-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.editor-container {
+/* ── Two-pane grid: preview | edit ── */
+.editor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-lg);
-  margin-bottom: var(--space-lg);
   min-height: 400px;
 }
 
-.preview-pane,
-.editor-pane {
+.pane {
   display: flex;
   flex-direction: column;
+  min-width: 0; /* prevent grid blowout */
 }
 
-.markdown-body {
-  font-size: 14.5px;
-  line-height: 1.6;
-  color: var(--text);
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  margin-top: var(--space-md);
-  margin-bottom: var(--space-sm);
+/* Section subheads: small, uppercase, muted */
+.pane-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
   font-weight: 500;
-  color: var(--text-strong);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--space-3);
+}
+.pane-title svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
-.markdown-body :deep(h1) {
-  font-size: 1.5em;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: var(--space-sm);
-}
-
-.markdown-body :deep(h2) {
-  font-size: 1.25em;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 1.1em;
-}
-
-.markdown-body :deep(p) {
-  margin-bottom: var(--space-sm);
-}
-
-.markdown-body :deep(code) {
-  padding: 2px 6px;
-  background: var(--bg-subtle);
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 0.9em;
-}
-
-.markdown-body :deep(pre) {
+/* Scroll regions for the markdown panes */
+.pane-scroll,
+.view-scroll {
+  flex: 1;
+  overflow: auto;
   padding: var(--space-md);
-  margin: var(--space-md) 0;
-  background: var(--bg-subtle);
+  background: var(--bg-app);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow-x: auto;
+  min-height: 0;
+}
+.view-scroll {
+  min-height: 360px;
 }
 
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: var(--space-lg);
-  margin-bottom: var(--space-sm);
-}
-
+/* ── Edit textarea ── */
 .outline-textarea {
   flex: 1;
   width: 100%;
@@ -192,56 +194,51 @@ onMounted(() => {
   background: var(--bg-app);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  font-family: var(--mono);
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
   line-height: 1.5;
+  color: var(--text);
   resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
 }
-
+.outline-textarea::placeholder {
+  color: var(--text-faint);
+}
 .outline-textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-tint);
+  box-shadow: var(--ring-accent);
 }
 
-.editor-actions,
-.view-actions {
+/* ── Actions row: right-aligned, gap sm ── */
+.actions-row {
   display: flex;
-  gap: var(--space-sm);
+  align-items: center;
   justify-content: flex-end;
-  margin-top: var(--space-md);
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
 }
 
-.btn {
-  height: 36px;
-  padding: 0 var(--space-md);
-  font-size: 14px;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: background 140ms var(--ease-out), opacity 140ms var(--ease-out);
+/* Reuse the global spinner sizing for inline use */
+.btn-primary .spinner {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Buttons reuse global .btn / .btn-primary / .btn-ghost — svg sizing */
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
-.btn-primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: var(--bg-subtle);
-  color: var(--text);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-muted);
+@media (max-width: 720px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -21,19 +21,19 @@ const stateConfig = computed(() => {
 </script>
 
 <template>
-  <span class="state-badge" :style="{ color: stateConfig.color, background: stateConfig.bg }">
+  <span class="badge state-badge fade-in" :style="{ color: stateConfig.color, background: stateConfig.bg }">
     {{ stateConfig.label }}
   </span>
 </template>
 
 <style scoped>
+/* Reuses the global .badge primitive (pill + leading dot via ::before).
+   Per-state color/background applied inline so the ::before dot (currentColor)
+   matches the label text. Only layout/structural overrides live here. */
 .state-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 500;
-  border-radius: var(--radius-pill);
-  white-space: nowrap;
+  line-height: 1;
+  vertical-align: middle;
 }
 </style>

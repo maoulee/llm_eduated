@@ -33,7 +33,8 @@ export interface SlotStatus {
 }
 
 export interface SSEEvent {
-  type: 'state_change' | 'slot_update' | 'generation_complete' | 'error';
+  // 'generation_error' is what the backend actually emits on failure; 'error' is a defensive alias.
+  type: 'state_change' | 'slot_update' | 'generation_complete' | 'generation_error' | 'error';
   data: Record<string, unknown>;
 }
 
@@ -91,7 +92,14 @@ class APIClient {
   }
 
   async getOutline(sessionId: string): Promise<Outline> {
-    return this.request<Outline>(`/sessions/${sessionId}/outline`);
+    // Backend returns the outline as a PlainTextResponse (raw markdown), not JSON.
+    const url = `${this.baseUrl}/sessions/${sessionId}/outline`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const err = await response.text();
+      throw new Error(err || `HTTP ${response.status}`);
+    }
+    return { outline_md: await response.text() };
   }
 
   async saveOutline(sessionId: string, outlineMd: string): Promise<void> {
