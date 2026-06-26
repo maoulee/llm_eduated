@@ -949,6 +949,28 @@ class DocScheduler:
                     })
                     continue
 
+                # Intervention tier 0 (review roles): model over-reads a long
+                # gen.py (paginating via offset/limit) without ever writing
+                # review.md → nudge it to write the verdict NOW, before the trim
+                # tiers (which only trim+re-read → loop). Fixes the review_solve
+                #死循环 (Q14 stuck 56min on dual_review reading 170-line gen.py).
+                if expected_fn == "review.md" and no_file_streak >= 2:
+                    messages.append({
+                        "role": "user",
+                        "content": (
+                            "你已经读了足够的代码与输出，立即调用 "
+                            "write_file(path=\"review.md\", content=\"完整审核结论\") 给出判定，"
+                            "不要再 read_file、不要分页通读 gen.py。格式按硬规则："
+                            "## status(pass/needs_fix) → ## stage → ## issue_type → "
+                            "## findings → ## fix_instructions → ## routing。以已读内容直接判定。"
+                        ),
+                    })
+                    logger.info(
+                        "[%s] %s: nudge write review.md (no_file_streak=%d)",
+                        slot_id, role, no_file_streak,
+                    )
+                    continue
+
                 # Intervention tier 1: no files written at all for 4+ rounds
                 # (model keeps calling exec/read without producing artifacts)
                 if no_file_streak >= 4:
