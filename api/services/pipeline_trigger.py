@@ -276,9 +276,17 @@ async def trigger_generation(
                     # 概念题：如果有多个概念题 slot，合并 concept_topics 批量出
                     if sb.get("complexity") == "conceptual" and len(concept_slots) > 1:
                         # 收集所有概念题的考点（保留空值占位，确保 index 对齐）
-                        # 每条带题型前缀（examination_mode 提取），让 concept_creator 按各题题型出（判断≠选择≠填空）
+                        # 每条带【题型】前缀，让 concept_creator 按各题声明的题型出（判断≠选择≠填空≠简答）。
+                        # 必须用 题型 字段（判断题/单项选择题/填空题/简答题），不能用 examination_mode
+                        # （后者是"概念辨析型"等考察角度，会让 concept_creator 误判成默认选择题）。
+                        def _qtype_label(slot):
+                            qt = slot.get("题型") or slot.get("question_type")
+                            if qt:
+                                return str(qt)
+                            # 兜底：无显式题型时退化到 examination_mode 首段
+                            return (slot.get("examination_mode") or "").split("——")[0].strip() or "概念辨析"
                         concept_topics = [
-                            f"【{(s.get('examination_mode') or '').split('——')[0].strip() or '概念辨析'}】{s.get('primary_target_name', '')}"
+                            f"【{_qtype_label(s)}】{s.get('primary_target_name', '')}"
                             for s in concept_slots
                         ]
                         sb = dict(sb)  # copy to avoid mutating original
