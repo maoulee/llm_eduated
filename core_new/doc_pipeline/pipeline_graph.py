@@ -23,9 +23,31 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
+from .assert_scanner import render_md as _render_assert_scan
+from .assert_scanner import scan_asserts as _scan_asserts
 from .doc_parser import REVIEW_STATUSES, get_doc_status, parse_doc_section
 
 logger = logging.getLogger(__name__)
+
+
+def _write_assert_scan(ws: Path) -> None:
+    """gen.py 写完后扫 assert 假 todo（恒真/答案配方），写 assert_scan.md 供审求解读。
+
+    确定性、无 LLM。异常不阻塞流水线——只是少一份自检报告。
+    """
+    gen = ws / "gen.py"
+    if not gen.exists():
+        found = list(ws.rglob("gen.py"))
+        if not found:
+            return
+        gen = found[0]
+    try:
+        findings = _scan_asserts(gen.read_text(encoding="utf-8"))
+        (gen.parent / "assert_scan.md").write_text(
+            _render_assert_scan(findings, gen.name), encoding="utf-8"
+        )
+    except Exception as exc:  # noqa: BLE001 — 自检不阻塞主流程
+        logger.warning("assert_scan failed for %s: %s", ws, exc)
 
 
 # ── Core data structures ─────────────────────────────────────────
@@ -350,6 +372,7 @@ class SolveNode(_OrchestratorNode):
                 feedback=exec_result.get("stderr", "")[:200],
                 params={"exec_result": exec_result},
             )
+        _write_assert_scan(ws)  # gen.py 自检：扫假 todo 写 assert_scan.md，供 FinalNode 审求解读
         return AgentResult(
             signal="success", params={"exec_result": exec_result}
         )
@@ -721,7 +744,7 @@ class TeamReviewStemNode(_OrchestratorNode):
             slot_id=state.slot_id,
             inject_files={"question.md": str(ws / "question.md"),
                           "design_card": str(DesignCardNode._ref_path(state))},
-            target_file="review.md", enable_thinking=True,
+            target_file="review.md",
         )
         status, feedback = _parse_review(ws / "review.md")
         return AgentResult(signal=status, feedback=feedback)
@@ -751,7 +774,7 @@ class TeamReviewNode(_OrchestratorNode):
             inject_files={"question.md": str(ws / "question.md"),
                           "gen.py": str(ws / "gen.py"),
                           "solution.md": str(ws / "solution.md")},
-            target_file="review.md", enable_thinking=True,
+            target_file="review.md",
         )
         review_path = ws / "review.md"
         if not review_path.exists():

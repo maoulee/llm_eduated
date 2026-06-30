@@ -28,8 +28,16 @@ def _option_markers(text: str) -> set[str]:
 
 
 def _has_blank(text: str) -> bool:
-    """是否有空格标记（___/＿/（  ）/(  ) 连续空格占位）。"""
-    return bool(re.search(r'_{2,}|＿|（\s{3,}）|\(\s{3,}\)|【\s*】', text))
+    """是否有空格标记（___/＿/（  ）/(  ) 连续空格占位）或显式填空指令。
+
+    计算型填空常无字面下划线，而用"（填写一个正整数）/（结果保留两位小数）"
+    指示作答位——这类也算有效空格标记，避免误判"填空题无空格"。
+    """
+    return bool(re.search(
+        r'_{2,}|＿|（\s{3,}）|\(\s{3,}\)|【\s*】|'
+        r'[（(]\s*(?:填写|填入|结果|答案)\s*[^）)]*[）)]',
+        text,
+    ))
 
 
 def _has_judge(text: str) -> bool:
@@ -39,6 +47,27 @@ def _has_judge(text: str) -> bool:
     一并纳入以防"判断题无标记"误判。
     """
     return bool(re.search(r'[√×✓✗✔✘]|（\s*[对错]\s*）|\(\s*[对错]\s*\)|对错|判断|是否正确', text))
+
+
+def _has_answer_mark(text: str) -> bool:
+    """Exam-facing question text must not contain answer markers.
+
+    判断标记 √/×/✓/✗ 用上下文锚定：夹在字母数字之间（如芯片规格 "32K×8位"、
+    "4K×4位"、算式 "2^n × m"）的 × 是乘号，不算答案标记；仅孤立的 √/× 才算。
+    """
+    return bool(re.search(
+        r"(?:\*\*)?\s*(?:答案|正确答案|参考答案|解析|理由)\s*(?:\*\*)?\s*[：:]|"
+        r"(?<![A-Za-z0-9])[√✓✗✔✘](?![A-Za-z0-9])|[（(]\s*×\s*[)）]",
+        text,
+    ))
+
+
+def _has_explicit_prompt(text: str) -> bool:
+    """Whether a subjective/computational stem contains an actionable ask."""
+    return bool(re.search(
+        r"(?:请|要求|回答|计算(?:出|该|并|结果|数值|时间|容量|位数)|求出?|写出|说明|判断|分析|给出|证明|填入|完成|指出|比较|设计|画出|列出|转换|推导|问|问题|小问|第\s*[（(]?\d+[）)]?\s*(?:问|题))",
+        text,
+    ))
 
 
 def validate_question_structure(text: str | None, qtype: str | None) -> tuple[bool, str]:
@@ -61,7 +90,10 @@ def validate_question_structure(text: str | None, qtype: str | None) -> tuple[bo
 
     opts = _option_markers(text)
     has_blank = _has_blank(text)
-    has_judge = _has_judge(text)
+    has_answer_mark = _has_answer_mark(text)
+
+    if has_answer_mark:
+        return False, "题面包含答案/解析/√/× 等泄漏标记"
 
     if is_choice:
         if len(opts) < 4:
@@ -73,7 +105,11 @@ def validate_question_structure(text: str | None, qtype: str | None) -> tuple[bo
         if not has_blank:
             return False, "填空题无空格标记（___/（  ））"
     elif is_judge:
-        if not has_judge:
-            return False, "判断题无对/错/√/× 标记"
-    # 综合/简答/应用/设计：非空即过（上面已查空）
+        # 判断题：一句可判断的陈述即可（标准单陈述判断题就是一句断言，无 "判断/对错/①②③④" 标记）。
+        # 旧捆绑式才有那些标记；非空检查已在顶部完成，此处不再强制标记。
+        pass
+    else:
+        is_prompt_required = any(k in q for k in ("综合", "应用", "计算", "设计"))
+        if is_prompt_required and not _has_explicit_prompt(text):
+            return False, "题面缺少明确设问/作答要求，疑似生成截断"
     return True, ""

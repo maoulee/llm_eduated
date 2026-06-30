@@ -2,7 +2,7 @@
 
 你收到一个审核任务。**先读 task 里的阶段标记，只执行标记对应的那一段。** 阶段有两段：
 
-- `审题干`（阶段1，write_gen 之前）→ 只执行【阶段1】（**对抗两 pass，单 agent 跑两次**）
+- `审题干`（阶段1，write_gen 之前）→ 只执行【阶段1】（**对抗三 pass：A 符号合规 / B 歧义多解 / C 对抗批判**，三次独立判定、互不参考）
 - `审求解`（阶段2，write_gen 完成 gen.py+solution.md 之后）→ 只执行【阶段2】（**看数据流审核**，一次过）
 
 做完判据 → 写 review.md → 完事。不展开无界推演。
@@ -73,7 +73,33 @@
 
 ---
 
-## 阶段1 通用补充判据（Pass-A / Pass-B 之外的题干层）
+## Pass-C 对抗批判（换读法 / 查漏位，题就崩）
+
+Pass-A/B 是**正向验证**（能否推出唯一解）。Pass-C 是**对抗性批判**：换一种标准读法、或查一个漏位，题是否还成立？专抓正向验证的盲区——内容/答案可能"对"，但题干不鲁棒。
+
+判据（任一 fail → needs_fix）：
+
+### C1 前提相干（配置可达 / 前提不打架 / 公式忠实机制）
+- 声称的配置 / 各级条数在所述机制下是否**真的可达**？前提之间是否互相打架？
+- 建模/求解公式是否**忠实机制**（而非把某部分当独立空间、绕开机制约束）？
+- 反例（扩展操作码）：题干"三地址指令**已占满**操作码编码空间" + "二地址 200 条"——扩展操作码是**链式前缀预留**机制（上级留前缀→下级扩展），上级占满则下级无前缀可用；且公式把"二地址 opcode"当成独立 L-2a 位空间（256）是误用，实际空间 = 上级预留前缀 × 2^a。→ **fail**（前提不可行 + 公式不忠实机制）。
+
+### C2 术语精度（换标准读法题是否仍成立）
+- 关键术语（n 位 / 补码 / 编址方式 / 容量口径 / 寻址方式）是否有歧义？换"标准读法"是否仍得同一答案？
+- 反例（变形补码）：题干"A、B 均在 **n 位补码**可表示范围内"，n=3。标准"n 位补码" = 共 n 位（3 位范围 [-4,+3]，-5/-6 装不下）；出题意图是"n 位数值位的变形补码"。两读、其一失效 → **fail**（消歧，改"n 位数值位的变形补码"）。
+
+### C3 设计完备（未使用位 / 镜像 / 使能覆盖）
+- 片选 / 译码 / 地址分配类：未使用的地址位如何处理？是否存在地址镜像（重叠）？使能逻辑是否覆盖全部相关高位？
+- 反例（74LS138 片选）：使能只接 A15、A14 未参与 → 12KB 存储区在 4000H~6FFFH 镜像；题干却谎称"保证仅当 A15=0 即地址落在存储区"（A15=0 实为 32KB 半区）。→ **fail**（要么诚实声明部分译码 + 让学生算镜像，要么把 A14 纳入使能做全译码）。
+
+### 门槛（与三档审核一致——核心是拦"真会导致误解/错解"，不是拦一切）
+- **error**（前提不可行 / 答案错 / 设计坏，如 C1 扩展操作码、C3 谎称覆盖）→ needs_fix，issue_type=`question_error`，routing=`design_direct`（重设计）。
+- **ambiguity**（术语两读会改答案，如 C2）→ needs_fix，issue_type=`question_spec_error`，routing=`design_direct`（消歧）。
+- **expression_only**（纯文字润色、不影响求解、无歧义）→ **不拦**，仅在 findings 注明 cosmetic（交由后续 wording_fix 处理，不回退重生成）。
+
+---
+
+## 阶段1 通用补充判据（Pass-A / Pass-B / Pass-C 之外的题干层）
 
 10. **场景规则合格**（核心判据）——场景规则文件（或题干内声明）是否满足：
     - **是参数约束，不是答案配方**：场景规则描述的是"给定参数间必须成立的约束/关系"（如"按字节编址 → 容量_bytes == 2**地址线数"、"商×除数+余数 == 被除数"），**禁止**写成 answer-recipe（如"答案=2MB"/"物理地址=0x4C3F4"/"必须同时用地址线+数据线"）。写成答案配方 → **fail**。
@@ -89,7 +115,7 @@
 
 # 【阶段2】审求解（task 标记"审求解"时执行）
 
-**输入**：question.md + gen.py + solution.md + **gen.py 底部打印的数据流** + 场景规则文件（+ gen.py 的 exec 输出）
+**输入**：question.md + gen.py + solution.md + **gen.py 底部打印的数据流** + 场景规则文件 + **assert_scan.md**（gen.py 写完后的自动自检报告，write_gen 阶段产出）（+ gen.py 的 exec 输出）
 **时机**：write_gen 完成 gen.py+solution.md 之后。**看数据流审核**——读 gen.py 底部打印的数据流 + 场景规则，验"模型忠实场景"（触发满不满足、定律成不成立，统一看数据流）。
 
 判据（任一 fail → needs_fix）：
@@ -103,7 +129,11 @@
 ### 维度B 断言合适（routing=write_gen）
 5. **场景规则被 assert 覆盖**：场景规则文件里的每条参数约束，gen.py 是否都有对应 assert？漏一条 = 漏译 → fail。
 6. **assert 没弱化**：有没有把"考旋转"弱化成 `assert is_balanced(tree)` 这类结构判据（零旋转也过）？弱化 = 让坏题静默放行 → fail。
-7. **assert 非恒真**：有没有 `assert True` / `assert len(x) >= 0` 这类永远成立的废话断言凑数？→ fail。
+7. **assert 非恒真 + 非答案配方**（先读 assert_scan.md）：gen.py 写完后已自动扫过假 todo——
+   - **恒真**（不可证伪）：`assert True` / `assert x == x` / `assert len(x) >= 0` 这类永远成立的废话断言。
+   - **答案配方**（不可推广）：`assert answer == 2097152` / `assert result == "0x4C3F4"` 这类把答案字面量写死的断言（换参数即失效，等于橡皮图章）。
+   - assert_scan.md 标 `[tautology/high]` 或 `[answer_recipe/high]` 的 → **直接 fail**（issue_type=`assertion_defect`，routing=`write_gen`，fix=改成参数约束或删掉）。`med/low` 需你复核定夺。
+   - 注：assert_scan 是**语法层初筛**——语义层假 todo（如 `n_int != D` 只对当前参数成立、变量算后未用）仍需你读 gen.py 判断，扫描器不覆盖。
 8. **选择题专属**：选项约束在数据流中可验——`assert len({A,B,C,D})==4`（互异）+ 数据流底部打印每选项 {正确值, 实际值, 改错方式}（A=正确值=答案；B/C/D=各自正确值+按设计改错）。不再 `assert A==correct_value`（answer-recipe，已禁）。漏打印/撞值 → fail。
 
 ### 维度C 充分性 + 设计一致性（routing=write_gen 或 design_direct）
@@ -163,9 +193,10 @@ none（pass 时）
 阶段2：modeling_error / assertion_defect / adequacy_fail / doc_unfaithful / structure_defect / solution_error（题干自洽唯一但答案错）
 （可多个；下游 graph 只读 status+routing 做路由，issue_type 供审计可追溯）
 
-## pass_log（阶段1 专用，记录两 pass 各自结论）
+## pass_log（阶段1 专用，记录三 pass 各自结论）
 Pass-A 符号合规: pass / fail（简注）
 Pass-B 歧义多解: pass / fail（简注）
+Pass-C 对抗批判: pass / fail（简注；若 needs_fix 注明 error/ambiguity/expression_only）
 （阶段2 不写此区）
 
 ## findings
