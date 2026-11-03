@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q10",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- question_spec_error + question_error / 修改对象：question.md 的\"## 选项\"区（第22–31行） / 修改位置：A/B/C/D 四个选项的正文内容 / 当前问题：选项写成寻址方式描述标签且A标签直接写\"正确结果\"，既泄露答案又缺少可选择的数值 / 修改目标：将四个选项改为具体的十六进制有效地址值（无任何寻址方式名称标注，不泄露哪个正确），学生"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

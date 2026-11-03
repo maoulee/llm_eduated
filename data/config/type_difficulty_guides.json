@@ -1,0 +1,295 @@
+{
+  "total": 9,
+  "guides": {
+    "CO_knowledge_pattern_level2_single_choice": {
+      "guide_id": "CO_knowledge_pattern_level2_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "knowledge 或 pattern",
+      "difficulty": 2,
+      "paper_role": "foundation_check 或 calculation_stability",
+      "expected_shape": {
+        "reasoning_steps": 2,
+        "stem_length": "short",
+        "condition_count": 2,
+        "calculation_load": 2,
+        "trap_strength": 3,
+        "option_style": "数字结果 或 概念判断"
+      },
+      "suitable_targets": [
+        "计算机性能指标计算(CPI, 执行时间, MIPS, MFLOPS)",
+        "计算机系统层次与语言处理",
+        "机器字长与部件宽度",
+        "冯诺依曼体系结构特点"
+      ],
+      "distractor_style": [
+        "单位换算陷阱(如ms, us, GHz, 数量级)",
+        "相似概念混淆(如存储字长与机器字长, 编译与汇编)",
+        "公式逆用或漏乘系数"
+      ],
+      "bad_examples": [
+        "涉及流水线或复杂总线交互的机制题",
+        "需要画图或大量推导的综合题",
+        "考查过于偏僻的历史性常识"
+      ]
+    },
+    "CO_DataRep_knowledge_mechanism_level2_single_choice": {
+      "guide_id": "CO_DataRep_knowledge_mechanism_level2_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "knowledge",
+      "difficulty": 2,
+      "paper_role": "foundation_check",
+      "expected_shape": {
+        "reasoning_steps": 3,
+        "stem_length": "short",
+        "condition_count": 2,
+        "calculation_load": 2,
+        "trap_strength": 2,
+        "option_style": "数字结果"
+      },
+      "suitable_targets": [
+        "补码与真值的相互转换",
+        "IEEE 754浮点数格式解析",
+        "补码整数的表示范围",
+        "C语言中的类型转换(有符号/无符号)",
+        "浮点数加减运算过程"
+      ],
+      "distractor_style": [
+        "未考虑隐藏位",
+        "零扩展与符号扩展混淆",
+        "中间计算结果作为选项",
+        "偏置值(128/127)混淆",
+        "取反加一计算错误"
+      ],
+      "bad_examples": [
+        "需要编写代码判断",
+        "考察微机原理特定的芯片指令",
+        "无具体数据的纯概念背诵"
+      ]
+    },
+    "CO_mechanism_level3_single_choice": {
+      "guide_id": "CO_mechanism_level3_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "mechanism",
+      "difficulty": 3,
+      "paper_role": "mechanism_trigger",
+      "expected_shape": {
+        "reasoning_steps": 3,
+        "stem_length": "medium",
+        "condition_count": 4,
+        "calculation_load": 2,
+        "trap_strength": 3,
+        "option_style": "数字结果"
+      },
+      "suitable_targets": [
+        "Cache映射机制与硬件实现",
+        "指令扩展操作码设计",
+        "指令执行过程与访存分析",
+        "ALU标志位生成逻辑与运算电路"
+      ],
+      "distractor_style": [
+        "忽略隐含的机制步骤（如PC自增、对齐规则）",
+        "混淆相似机制的作用与目的（如直写与写回、全相联与组相联）",
+        "计算过程少算附加位（如脏位、有效位）"
+      ],
+      "bad_examples": [
+        "需要极其庞杂的状态机模拟",
+        "纯粹考察记忆而无任何推导",
+        "包含大量无关背景信息的冗长题干"
+      ]
+    },
+    "CO_mechanism_knowledge_level2_single_choice": {
+      "guide_id": "CO_mechanism_knowledge_level2_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "knowledge, mechanism",
+      "difficulty": 2,
+      "paper_role": "foundation_check, trap_diagnosis",
+      "expected_shape": {
+        "reasoning_steps": 2,
+        "stem_length": "medium",
+        "condition_count": 2,
+        "calculation_load": 1,
+        "trap_strength": 3,
+        "option_style": "概念判断"
+      },
+      "suitable_targets": [
+        "RISC/CISC特性对比",
+        "寄存器可见性与透明性",
+        "各类CPU的CPI特征",
+        "寻址方式原理判定",
+        "DRAM/Cache/TLB层次关系"
+      ],
+      "distractor_style": [
+        "张冠李戴",
+        "层次越界",
+        "机制反转",
+        "执行顺序颠倒"
+      ],
+      "bad_examples": [
+        "复杂的网表/电路图分析",
+        "超过3行的长代码分析",
+        "大容量的Cache轨迹追踪模拟"
+      ]
+    },
+    "CO_knowledge_level2_single_choice": {
+      "guide_id": "CO_knowledge_level2_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "knowledge",
+      "difficulty": 2,
+      "paper_role": "foundation_check",
+      "expected_shape": {
+        "reasoning_steps": 2,
+        "stem_length": "short",
+        "condition_count": 0,
+        "calculation_load": 1,
+        "trap_strength": 2,
+        "option_style": "概念判断"
+      },
+      "suitable_targets": [
+        "总线分类与性能指标",
+        "系统总线标准特性",
+        "I/O接口与设备区分",
+        "中断与异常的分类",
+        "RAID基本特性",
+        "指令执行步骤"
+      ],
+      "distractor_style": [
+        "功能/分类反义(如串行写成并行)",
+        "实体与接口混淆(如设备与控制器)",
+        "包含非同类的专业术语干扰(如总线题混入显示器缩写)"
+      ],
+      "bad_examples": [
+        "大量冷门缩写的纯死记硬背",
+        "无背景知识的纯文字游戏",
+        "跨多个科目的生硬拼凑"
+      ]
+    },
+    "CO_pattern_level3_calculation_single_choice": {
+      "guide_id": "CO_pattern_level3_calculation_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "pattern",
+      "difficulty": 3,
+      "paper_role": "calculation_stability",
+      "expected_shape": {
+        "reasoning_steps": 3,
+        "stem_length": "medium",
+        "condition_count": 3,
+        "calculation_load": 3,
+        "trap_strength": 2,
+        "option_style": "数字结果"
+      },
+      "suitable_targets": [
+        "总线带宽与传输时间计算",
+        "突发/复用总线事务分析",
+        "扩展操作码指令条数推算",
+        "标志寄存器(CF/OF)底层逻辑计算"
+      ],
+      "distractor_style": [
+        "倍率因子遗漏(如DDR双沿、全双工)",
+        "进制或单位换算错误(如bit与Byte)",
+        "层级空间扣减遗漏"
+      ],
+      "bad_examples": [
+        "需要死记硬背的具体型号参数",
+        "纯文字叙述无计算推演",
+        "选项差异极小导致沦为纯粹算数而非机制理解"
+      ]
+    },
+    "CO_mechanism_level2_single_choice": {
+      "guide_id": "CO_mechanism_level2_single_choice",
+      "subject": "计算机组成原理",
+      "target_depth": "mechanism",
+      "difficulty": 2,
+      "paper_role": "foundation_check",
+      "expected_shape": {
+        "reasoning_steps": 2,
+        "stem_length": "medium",
+        "condition_count": 1,
+        "calculation_load": 1,
+        "trap_strength": 2,
+        "option_style": "concept judgment"
+      },
+      "suitable_targets": [
+        "中断响应优先级与处理优先级",
+        "单级与多重中断流程",
+        "I/O接口数据线与控制线功能",
+        "DMA与中断方式的数据流向",
+        "异常与中断的检测时机"
+      ],
+      "distractor_style": [
+        "特征反转：将开中断与关中断时机颠倒",
+        "张冠李戴：将DMA的主存地址映射强加给中断方式",
+        "行为捏造：虚构不存在的硬件信号",
+        "跨越层级：跳过I/O端口直接将CPU与设备物理连接"
+      ],
+      "bad_examples": [
+        "需要多步浮点数计算",
+        "涉及大量代码的汇编分析",
+        "考察冷门历史设备的记忆",
+        "纯物理电路底层的电气特性计算"
+      ]
+    },
+    "CO_mechanism_level4_comprehensive": {
+      "guide_id": "CO_mechanism_level4_comprehensive",
+      "subject": "计算机组成原理",
+      "target_depth": "mechanism",
+      "difficulty": 4,
+      "paper_role": "mechanism_trigger",
+      "expected_shape": {
+        "reasoning_steps": 4,
+        "stem_length": "medium",
+        "condition_count": 5,
+        "calculation_load": 4,
+        "trap_strength": 3,
+        "option_style": "数字结果"
+      },
+      "suitable_targets": [
+        "Cache组相联映射与性能计算",
+        "TLB虚实地址转换机制",
+        "中断与DMA时间开销计算",
+        "磁盘寻址与访问时间",
+        "指令流水线与访存异常"
+      ],
+      "distractor_style": [
+        "边界条件溢出(如全相联误算为直接映射)",
+        "时间重叠部分的漏算或重复计算",
+        "大小端存储模式反转",
+        "按行/列优先遍历数组的Cache命中率混淆"
+      ],
+      "bad_examples": [
+        "单纯默写DMA的特点",
+        "不提供具体参数的Cache概念题",
+        "无具体地址结构的纯OS页面置换算法模拟",
+        "无需计算过程的选择题"
+      ]
+    },
+    "OS_CO_mechanism_level4_comprehensive": {
+      "guide_id": "OS_CO_mechanism_level4_comprehensive",
+      "subject": "操作系统与计算机组成原理",
+      "target_depth": "mechanism",
+      "difficulty": 4,
+      "paper_role": "cross_topic_integration",
+      "expected_shape": {
+        "reasoning_steps": 4,
+        "stem_length": "long",
+        "condition_count": 5,
+        "calculation_load": 3,
+        "trap_strength": 2,
+        "option_style": "concept_judgment"
+      },
+      "suitable_targets": [
+        "虚拟内存映射",
+        "Cache与TLB协同工作",
+        "内存分配与地址计算",
+        "页面置换机制"
+      ],
+      "distractor_style": [
+        "跨层参数计算错位",
+        "机制应用场景混淆"
+      ],
+      "bad_examples": [
+        "无需推导直接背写的纯概念题",
+        "无实际场景的单步简单计算"
+      ]
+    }
+  }
+}

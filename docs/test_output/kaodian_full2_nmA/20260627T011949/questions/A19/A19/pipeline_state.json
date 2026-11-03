@@ -1,0 +1,48 @@
+{
+  "slot_id": "A19",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- adequacy_fail / 修改对象：question.md 参数表 + gen.py 参数 + solution.md 第3问 / 修改位置：question.md L18-21（CPI 表）/ 当前问题：M1 与 M2 的 CPI 优劣和频率优劣同向（M2 既有更低 CPI 又有更高频率），导致\"单比 CPI\"与\"MIPS 综合\"得出相同结论，设计声明的主暗坑（K4=4）完全未触发 /"
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

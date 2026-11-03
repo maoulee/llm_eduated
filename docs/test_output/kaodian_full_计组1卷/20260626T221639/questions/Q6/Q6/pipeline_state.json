@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q6",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型：question_spec_error（选项不完整，缺具体数值）\n- 修改对象：question.md 选项区（第 19-25 行）\n- 当前问题：A、D 选项只有描述文字，没有给出具体的十进制数值；B、C 有值但格式不统一。四个选项应全部以\"具体十进制数值\"为主体呈现（可附加简短说明）。\n- 修改目标：四个选项均显示具体数值，使学生可以直接选择数字。\n- 最小修改指令：\n  "
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

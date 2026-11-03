@@ -1,0 +1,48 @@
+{
+  "slot_id": "A12",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- **assertion_defect + adequacy_fail / 修改对象=gen.py 参数 + question.md 参数 / 修改位置=gen.py 第 272–273 行 (X_hex, Y_hex) 及 question.md 中 X、Y 的值 / 当前问题=阶码差仅为 2，shift_count=2，小阶尾数仅移出 2 位，标准 IEEE754 GRS 定义下 Stick"
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

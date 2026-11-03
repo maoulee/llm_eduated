@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q14",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- question_spec_error / question.md Q1 第 11 行 / 当前问题：Q1(c) 问\"需保留多少个一地址操作码编码前缀\"但 R2 不唯一 / 修改目标：使 R2 唯一确定为 1（即最少保留前缀数），从而让 Q1(c) 和 Q2 都有唯一答案 / 最小修改指令：将 Q1(c) 改为\"为支持零地址指令扩展，**至少**需保留多少个一地址操作码编码前缀？\"——\"至少\""
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

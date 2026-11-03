@@ -1,0 +1,3152 @@
+{
+  "metadata": {
+    "source": "question_experiences",
+    "total_experiences": 682,
+    "total_slots": 47,
+    "subjects": [
+      "操作系统",
+      "计算机网络",
+      "计算机组成原理",
+      "数据结构"
+    ]
+  },
+  "templates": {
+    "Q1": {
+      "slot_id": "Q1",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 1.0,
+        "mechanism": 0.0
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          3
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 2,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "推理型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K5联动型（K1基础认知与K5跨域联动较高，其余维度极低，呈现明显的概念应用特征）",
+      "reasoning_shape_mode": "推理型 / 概念型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.4,
+        "概念型": 0.33,
+        "综合型": 0.2,
+        "陷阱型": 0.07
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q10": {
+      "slot_id": "Q10",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.62,
+        "mechanism": 0.38
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "推理型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1/K3高位型（概念辨析与逻辑推演主导），K2极低。",
+      "reasoning_shape_mode": "推理型 / 概念型 / 计算推导型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.5,
+        "计算型": 0.25,
+        "陷阱型": 0.19,
+        "综合型": 0.06
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于16道真题分析"
+    },
+    "Q11": {
+      "slot_id": "Q11",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 0.9285714285714286,
+        "计算机组成原理": 0.07142857142857142
+      },
+      "target_family_distribution": {
+        "数据结构": 0.9285714285714286,
+        "计算机组成原理": 0.07142857142857142
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.71,
+        "mechanism": 0.29
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型。K4显著高于其他维度，表明本题的核心难度不在于知识广度或计算复杂度，而在于对概念本质的深刻理解和避开思维定势。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.5,
+        "陷阱型": 0.29,
+        "概念型": 0.14,
+        "综合型": 0.07
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q12": {
+      "slot_id": "Q12",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.56,
+        "mechanism": 0.44
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 2,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型",
+      "reasoning_shape_mode": "计算型 / 组合判断型 / 概念辨析型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.5,
+        "计算型": 0.39,
+        "陷阱型": 0.11
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q13": {
+      "slot_id": "Q13",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.44,
+        "mechanism": 0.56
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 3,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K3/K4 复合推演陷阱型",
+      "reasoning_shape_mode": "计算型 / 概念型 / 概念辨析型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.44,
+        "计算型": 0.33,
+        "概念型": 0.22
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q14": {
+      "slot_id": "Q14",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.5,
+        "mechanism": 0.5
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          5
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念型",
+      "reasoning_shape_mode": "计算型 / 概念辨析型 / 组合判断型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.44,
+        "概念型": 0.22,
+        "计算型": 0.22,
+        "综合型": 0.11
+      },
+      "pattern_count": "7",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q15": {
+      "slot_id": "Q15",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.59,
+        "mechanism": 0.41
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型",
+      "reasoning_shape_mode": "计算型 / 代码数据分析型 / 综合型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.41,
+        "概念型": 0.24,
+        "计算型": 0.24,
+        "综合型": 0.12
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q16": {
+      "slot_id": "Q16",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.39,
+        "mechanism": 0.61
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型",
+      "reasoning_shape_mode": "计算型 / 概念型 / 概念辨析型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.39,
+        "概念型": 0.39,
+        "计算型": 0.17,
+        "综合型": 0.06
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q17": {
+      "slot_id": "Q17",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.56,
+        "mechanism": 0.44
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          5
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念辨析型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念记忆型",
+      "reasoning_shape_mode": "概念辨析型 / 计算型 / 组合判断型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.61,
+        "综合型": 0.17,
+        "陷阱型": 0.17,
+        "计算型": 0.06
+      },
+      "pattern_count": "7",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q18": {
+      "slot_id": "Q18",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.41,
+        "mechanism": 0.59
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念型",
+      "reasoning_shape_mode": "计算型 / 概念辨析型 / 组合判断型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.53,
+        "陷阱型": 0.24,
+        "计算型": 0.18,
+        "综合型": 0.06
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q19": {
+      "slot_id": "Q19",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.41,
+        "mechanism": 0.59
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念辨析型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念型",
+      "reasoning_shape_mode": "概念辨析型 / 计算型 / 推理型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.47,
+        "概念型": 0.35,
+        "计算型": 0.12,
+        "综合型": 0.06
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q2": {
+      "slot_id": "Q2",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.88,
+        "mechanism": 0.12
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          2,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "推理型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K3推演主导型（K3高，K1中等，K2低，K4中等，K5中等）。",
+      "reasoning_shape_mode": "推理型 / 概念型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "综合型": 0.29,
+        "陷阱型": 0.29,
+        "计算型": 0.29,
+        "概念型": 0.06,
+        "联动型": 0.06
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q20": {
+      "slot_id": "Q20",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.41,
+        "mechanism": 0.59
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念辨析型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K2计算型",
+      "reasoning_shape_mode": "概念辨析型 / 计算型 / 组合判断型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.65,
+        "计算型": 0.29,
+        "陷阱型": 0.06
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q21": {
+      "slot_id": "Q21",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.56,
+        "mechanism": 0.44
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念辨析型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型",
+      "reasoning_shape_mode": "概念辨析型 / 计算型 / 组合判断型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.56,
+        "概念型": 0.28,
+        "计算型": 0.17
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q22": {
+      "slot_id": "Q22",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.28,
+        "mechanism": 0.72
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 4,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念辨析型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1概念型",
+      "reasoning_shape_mode": "概念辨析型 / 计算型 / 概念型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.61,
+        "计算型": 0.22,
+        "陷阱型": 0.17
+      },
+      "pattern_count": "7",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q23": {
+      "slot_id": "Q23",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.61,
+        "mechanism": 0.39
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          2
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型（K4显著高于其他维度，K2/K3极低）",
+      "reasoning_shape_mode": "概念型 / 分析论证型 / 概念型 + 条件推理型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.56,
+        "计算型": 0.33,
+        "陷阱型": 0.11
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q24": {
+      "slot_id": "Q24",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.71,
+        "mechanism": 0.29
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（概念记忆型）。K1处于标准水平，其余维度极低，呈现明显的“概念识别”特征。",
+      "reasoning_shape_mode": "概念型 / 分析论证型 / 计算型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.59,
+        "计算型": 0.24,
+        "陷阱型": 0.18
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q25": {
+      "slot_id": "Q25",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.72,
+        "mechanism": 0.28
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型（K4显著高于其他维度，表明题目难度主要来源于对临界条件的逻辑辨析而非复杂计算）",
+      "reasoning_shape_mode": "概念型 / 推理型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.5,
+        "概念型": 0.28,
+        "陷阱型": 0.17,
+        "综合型": 0.06
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q26": {
+      "slot_id": "Q26",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.81,
+        "mechanism": 0.19
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          5
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（基础概念型）。雷达图在K1维度突出，其他维度均处于低位，呈现典型的“记忆检索”特征。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 推理型（侧重过程模拟）",
+      "reasoning_shape_distribution": {
+        "计算型": 0.38,
+        "概念型": 0.31,
+        "综合型": 0.25,
+        "陷阱型": 0.06
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于16道真题分析"
+    },
+    "Q27": {
+      "slot_id": "Q27",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.87,
+        "mechanism": 0.13
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导的基础概念型，K2极低，整体呈现扁平化，属于典型的送分题或基础概念检测题。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 计算型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.47,
+        "计算型": 0.27,
+        "综合型": 0.2,
+        "陷阱型": 0.07
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q28": {
+      "slot_id": "Q28",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.87,
+        "mechanism": 0.13
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 2,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导的概念辨析型（K1高，K2/K5极低，K3/K4中等）",
+      "reasoning_shape_mode": "概念型 / 综合型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.47,
+        "计算型": 0.33,
+        "陷阱型": 0.13,
+        "联动型": 0.07
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q29": {
+      "slot_id": "Q29",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.87,
+        "mechanism": 0.13
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4 陷阱型（K1/K3 标准，K4 略高，K2/K5 低）。整体难度适中，主要难点在于对算法规则细节的严格遵循，而非计算复杂度。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.53,
+        "概念型": 0.27,
+        "陷阱型": 0.2
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q3": {
+      "slot_id": "Q3",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.92,
+        "mechanism": 0.08
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4 陷阱型（K4 极高，K1 较高，其余较低）",
+      "reasoning_shape_mode": "概念型 / 推理型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.42,
+        "陷阱型": 0.25,
+        "概念型": 0.25,
+        "综合型": 0.08
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于12道真题分析"
+    },
+    "Q30": {
+      "slot_id": "Q30",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.67,
+        "mechanism": 0.33
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（基础概念型）。雷达图在K1维度突出，其余维度极低，呈现典型的“记忆检索”特征。",
+      "reasoning_shape_mode": "概念型 / 计算型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.61,
+        "计算型": 0.22,
+        "陷阱型": 0.17
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q31": {
+      "slot_id": "Q31",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.76,
+        "mechanism": 0.24
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型（K1和K4较高，K2和K5较低，K3中等）",
+      "reasoning_shape_mode": "概念型 / 推理型 / 综合型（计算+推理）",
+      "reasoning_shape_distribution": {
+        "概念型": 0.65,
+        "陷阱型": 0.18,
+        "计算型": 0.12,
+        "联动型": 0.06
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于17道真题分析"
+    },
+    "Q32": {
+      "slot_id": "Q32",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.67,
+        "mechanism": 0.33
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（基础概念型）。雷达图在K1维度突出，其他维度极低，呈现典型的“记忆/定义”特征。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 分析论证型（概念辨析）",
+      "reasoning_shape_distribution": {
+        "概念型": 0.56,
+        "计算型": 0.22,
+        "陷阱型": 0.17,
+        "综合型": 0.06
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q33": {
+      "slot_id": "Q33",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.93,
+        "mechanism": 0.07
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          1
+        ],
+        "K4_mode": 2,
+        "K4_range": [
+          1,
+          3
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（概念辨析型）。K1处于中等水平，K4有一定陷阱属性，其余维度极低，呈现典型的“基础概念+易混点辨析”特征。",
+      "reasoning_shape_mode": "概念型 / 分析论证型 / 计算型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.64,
+        "计算型": 0.21,
+        "综合型": 0.07,
+        "陷阱型": 0.07
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q34": {
+      "slot_id": "Q34",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.92,
+        "mechanism": 0.08
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          2
+        ],
+        "K4_mode": 2,
+        "K4_range": [
+          1,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          1
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K2计算型（K1、K2、K3均衡偏低，K4、K5极低，整体呈现低难度、重基础概念应用的特征）",
+      "reasoning_shape_mode": "计算型 / 概念型 / 综合型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.62,
+        "概念型": 0.23,
+        "陷阱型": 0.15
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q35": {
+      "slot_id": "Q35",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.67,
+        "mechanism": 0.33
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型。K4维度显著高于其他维度，表明本题主要考察对协议隐含规则的理解和陷阱规避能力，而非计算或复杂推演。",
+      "reasoning_shape_mode": "概念型 / 计算型 / 推理型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.47,
+        "概念型": 0.27,
+        "陷阱型": 0.13,
+        "综合型": 0.13
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q36": {
+      "slot_id": "Q36",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.8,
+        "mechanism": 0.2
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          3
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导型（概念记忆型）。K1分数中等，其余维度极低，呈现典型的“基础概念考察”特征。",
+      "reasoning_shape_mode": "计算型 / 概念型 / 综合型（计算+推理）",
+      "reasoning_shape_distribution": {
+        "计算型": 0.47,
+        "陷阱型": 0.33,
+        "概念型": 0.2
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q37": {
+      "slot_id": "Q37",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.75,
+        "mechanism": 0.25
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型。K1和K2处于中等水平，但K4（条件路由/陷阱识别）评分较高，表明本题主要考察对公式中变量变化方向及系数（2倍往返）的敏感度，而非复杂的计算或深层机制推演。",
+      "reasoning_shape_mode": "计算型 / 概念型 / 推理型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.42,
+        "陷阱型": 0.42,
+        "概念型": 0.17
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于12道真题分析"
+    },
+    "Q38": {
+      "slot_id": "Q38",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.71,
+        "mechanism": 0.29
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          1,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "推理型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导的基础概念型，K2/K3极低，整体呈现扁平状，侧重对核心定义的直接应用。",
+      "reasoning_shape_mode": "推理型 / 概念型 / 计算型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.43,
+        "计算型": 0.36,
+        "陷阱型": 0.21
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q39": {
+      "slot_id": "Q39",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.89,
+        "mechanism": 0.11
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "计算型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K3/K4 双高型（机制推演与条件路由主导，计算简单，概念基础）",
+      "reasoning_shape_mode": "计算型 / 概念型 / 推理型",
+      "reasoning_shape_distribution": {
+        "陷阱型": 0.44,
+        "计算型": 0.28,
+        "概念型": 0.22,
+        "综合型": 0.06
+      },
+      "pattern_count": "8",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于18道真题分析"
+    },
+    "Q4": {
+      "slot_id": "Q4",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 1.0,
+        "mechanism": 0.0
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          3
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K2/K3 低分型（基础概念直接应用型）。整体难度较低，主要考察对特定性质的记忆和简单代入。",
+      "reasoning_shape_mode": "概念型 / 推理型 / 综合型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.38,
+        "陷阱型": 0.38,
+        "概念型": 0.12,
+        "综合型": 0.12
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于8道真题分析"
+    },
+    "Q40": {
+      "slot_id": "Q40",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "计算机网络",
+      "subject_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_family_distribution": {
+        "计算机网络": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.73,
+        "mechanism": 0.27
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 1,
+        "K3_range": [
+          1,
+          5
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          5
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1 主导型（基础概念记忆型），K4 略有凸起（概念辨析）。整体呈现低计算、低推演、重记忆的特征。",
+      "reasoning_shape_mode": "概念型 / 综合型 / 推理型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.47,
+        "概念型": 0.27,
+        "陷阱型": 0.27
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于15道真题分析"
+    },
+    "Q41": {
+      "slot_id": "Q41",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 1.0,
+        "mechanism": 0.0
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          3
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          2,
+          3
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          2,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          3,
+          4
+        ],
+        "K5_mode": 2,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "算法设计型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "偏向右侧（K3、K4较高），呈现“推演与陷阱”主导的特征，基础认知（K1）和单步计算（K2）处于中等水平，跨域联动（K5）较低。",
+      "reasoning_shape_mode": "算法设计型 / 计算推导型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.56,
+        "综合型": 0.44
+      },
+      "pattern_count": "2",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于9道真题分析"
+    },
+    "Q42": {
+      "slot_id": "Q42",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.9,
+        "mechanism": 0.1
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          3,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          3,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "算法设计型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "呈现“中间高、两头低”的橄榄型或菱形。K1和K2较低，K5最低，K3和K4较高，表明本题重在逻辑实现和边界处理，而非基础记忆或跨学科知识。",
+      "reasoning_shape_mode": "算法设计型 / 计算推导型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "综合型": 0.4,
+        "计算型": 0.4,
+        "陷阱型": 0.2
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于10道真题分析"
+    },
+    "Q43": {
+      "slot_id": "Q43",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 0.9166666666666666,
+        "操作系统": 0.08333333333333333
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 0.9166666666666666,
+        "操作系统": 0.08333333333333333
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.58,
+        "mechanism": 0.42
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 3,
+        "K2_range": [
+          1,
+          4
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          2,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 3,
+        "K5_range": [
+          2,
+          5
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "算法设计型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "条件路由型 (Condition-Router)",
+      "reasoning_shape_mode": "算法设计型 / 综合型",
+      "reasoning_shape_distribution": {
+        "综合型": 0.42,
+        "联动型": 0.25,
+        "计算型": 0.25,
+        "陷阱型": 0.08
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于12道真题分析"
+    },
+    "Q44": {
+      "slot_id": "Q44",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "计算机组成原理",
+      "subject_distribution": {
+        "计算机组成原理": 0.8888888888888888,
+        "操作系统": 0.1111111111111111
+      },
+      "target_family_distribution": {
+        "计算机组成原理": 0.8888888888888888,
+        "操作系统": 0.1111111111111111
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.56,
+        "mechanism": 0.44
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          5
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          2,
+          4
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          2,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          3,
+          4
+        ],
+        "K5_mode": 3,
+        "K5_range": [
+          2,
+          5
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "分析论证型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "机制陷阱型（K4主导，辅以K3推演）",
+      "reasoning_shape_mode": "分析论证型 / 计算推导型",
+      "reasoning_shape_distribution": {
+        "综合型": 0.44,
+        "陷阱型": 0.22,
+        "计算型": 0.22,
+        "联动型": 0.11
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于9道真题分析"
+    },
+    "Q45": {
+      "slot_id": "Q45",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 0.7857142857142857,
+        "计算机组成原理": 0.21428571428571427
+      },
+      "target_family_distribution": {
+        "操作系统": 0.7857142857142857,
+        "计算机组成原理": 0.21428571428571427
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 1.0,
+        "mechanism": 0.0
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          3
+        ],
+        "K2_mode": 2,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          2,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 4,
+        "K5_range": [
+          1,
+          5
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "综合型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "呈现“双峰”形态，K3（机制推演）和K4（条件路由）较高，K1（基础认知）中等，K2（计算）极低。整体偏向逻辑设计与陷阱规避。",
+      "reasoning_shape_mode": "综合型 / 算法设计型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.57,
+        "综合型": 0.21,
+        "联动型": 0.14,
+        "陷阱型": 0.07
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    },
+    "Q46": {
+      "slot_id": "Q46",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 0.9230769230769231,
+        "计算机组成原理": 0.07692307692307693
+      },
+      "target_family_distribution": {
+        "操作系统": 0.9230769230769231,
+        "计算机组成原理": 0.07692307692307693
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.77,
+        "mechanism": 0.23
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 3,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 3,
+        "K3_range": [
+          2,
+          5
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 2,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "分析论证型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "呈现明显的“高推演、高条件、高联动”特征，K3、K4、K5均处于高位，K1较高，K2中等。整体偏向复杂综合应用。",
+      "reasoning_shape_mode": "分析论证型 / 计算推导型 / 综合型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.85,
+        "联动型": 0.08,
+        "概念型": 0.08
+      },
+      "pattern_count": "3",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于13道真题分析"
+    },
+    "Q47": {
+      "slot_id": "Q47",
+      "section": "综合应用题",
+      "question_type": "comprehensive",
+      "typical_score": 10,
+      "subject_stability": "操作系统",
+      "subject_distribution": {
+        "操作系统": 1.0
+      },
+      "target_family_distribution": {
+        "操作系统": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 1.0,
+        "mechanism": 0.0
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          3
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          1
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          4,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          4,
+          4
+        ],
+        "K5_mode": 3,
+        "K5_range": [
+          3,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "算法设计型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "偏向 K3 和 K4 的不对称形状，K2 极低，K1 中等。",
+      "reasoning_shape_mode": "算法设计型",
+      "reasoning_shape_distribution": {
+        "综合型": 1.0
+      },
+      "pattern_count": "1",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于1道真题分析"
+    },
+    "Q5": {
+      "slot_id": "Q5",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.91,
+        "mechanism": 0.09
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 4,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          1
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "推理型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型。K4得分较高，表明本题的关键难点不在于计算或基础概念记忆，而在于对题目隐含条件的逻辑挖掘和排除干扰。",
+      "reasoning_shape_mode": "推理型 / 概念型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.64,
+        "概念型": 0.18,
+        "陷阱型": 0.09,
+        "综合型": 0.09
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于11道真题分析"
+    },
+    "Q6": {
+      "slot_id": "Q6",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.6,
+        "mechanism": 0.4
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          2,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          4
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型（概念辨析为主，无明显计算压力，主要考察对定义边界的清晰认知）",
+      "reasoning_shape_mode": "概念型 / 推理型 / 分析论证型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.6,
+        "概念型": 0.3,
+        "陷阱型": 0.1
+      },
+      "pattern_count": "4",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于10道真题分析"
+    },
+    "Q7": {
+      "slot_id": "Q7",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.88,
+        "mechanism": 0.12
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          2
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          3
+        ]
+      },
+      "style_mode": {
+        "option_style": "概念判断",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导的概念辨析型，K4有一定陷阱特征，整体偏向基础理论考察。",
+      "reasoning_shape_mode": "概念型 / 推理型",
+      "reasoning_shape_distribution": {
+        "概念型": 0.38,
+        "计算型": 0.38,
+        "陷阱型": 0.25
+      },
+      "pattern_count": "2",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于8道真题分析"
+    },
+    "Q8": {
+      "slot_id": "Q8",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.75,
+        "mechanism": 0.25
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 4,
+        "K4_range": [
+          2,
+          4
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          1
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K1主导的概念辨析型（K1高，其余低）",
+      "reasoning_shape_mode": "概念型 / 计算型 / 综合型（偏向推理与概念应用）",
+      "reasoning_shape_distribution": {
+        "计算型": 0.58,
+        "概念型": 0.17,
+        "陷阱型": 0.17,
+        "综合型": 0.08
+      },
+      "pattern_count": "6",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于12道真题分析"
+    },
+    "Q9": {
+      "slot_id": "Q9",
+      "section": "选择题",
+      "question_type": "single_choice",
+      "typical_score": 2,
+      "subject_stability": "数据结构",
+      "subject_distribution": {
+        "数据结构": 1.0
+      },
+      "target_family_distribution": {
+        "数据结构": 1.0
+      },
+      "target_depth_distribution": {
+        "knowledge": 0.0,
+        "pattern": 0.79,
+        "mechanism": 0.21
+      },
+      "paper_role_distribution": {
+        "foundation_check": 0.4,
+        "trap_diagnosis": 0.3,
+        "calculation_stability": 0.3
+      },
+      "difficulty_anchor": {
+        "K1_mode": 3,
+        "K1_range": [
+          3,
+          4
+        ],
+        "K2_mode": 1,
+        "K2_range": [
+          1,
+          3
+        ],
+        "K3_mode": 2,
+        "K3_range": [
+          1,
+          4
+        ],
+        "K4_mode": 3,
+        "K4_range": [
+          2,
+          5
+        ],
+        "K5_mode": 1,
+        "K5_range": [
+          1,
+          2
+        ]
+      },
+      "style_mode": {
+        "option_style": "数字结果",
+        "reasoning_shape": "概念型",
+        "stem_length": "medium"
+      },
+      "radar_shape": "K4陷阱型（K1、K2、K3较低，K4中等偏高，主要考察对概念边界的清晰认知）",
+      "reasoning_shape_mode": "概念型 / 推理型 / 计算型",
+      "reasoning_shape_distribution": {
+        "计算型": 0.43,
+        "陷阱型": 0.29,
+        "概念型": 0.21,
+        "综合型": 0.07
+      },
+      "pattern_count": "5",
+      "should_be": "",
+      "should_not_be": "",
+      "stability_assessment": "基于14道真题分析"
+    }
+  }
+}

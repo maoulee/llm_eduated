@@ -1,0 +1,58 @@
+{
+  "slot_id": "A01",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 3,
+    "review_stem": 3,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型: question_spec_error（歧义多解——选项文字暴露正误）\n- 修改对象: question.md 选项 A、B、C、D 的文字描述\n- 修改位置: question.md 第 13、15、17、19 行\n- 当前问题: 选项 A 写\"正确结果\"、选项 D 写\"与正确答案……不同\"，在措辞层面直接标注正误身份，考生读文字即可判别，无须计算。\n- 修改目标: 选项文"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- question_spec_error / 修改对象：题干选项文字 / 修改位置：题干第12-15行（A-D四个选项） / 当前问题：选项均为计算方法的文字描述，未给出具体数值；学生无法据此选出唯一答案；选项D的\"某一位多算或漏算\"可产生多值 / 修改目标：每个选项必须是一个具体的真值数值（带正负号的十进制数），使学生在计算出补码真值后能直接对应选择 / 最小修改指令：将A-D改为具体的十进制"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

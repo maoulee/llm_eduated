@@ -1,0 +1,36 @@
+schema_version: paper_request_v1
+source: {intake_type: interact_agent, scenario: D_past_paper}
+assessment: {type: course_final, subjects: ["计算机组成原理"], total_score: 100, duration_minutes: 120}
+knowledge_scope:
+  primary_chapters: ["计算机组成原理 > 数据的表示和运算", "计算机组成原理 > 存储系统", "计算机组成原理 > 指令系统", "计算机组成原理 > 中央处理器", "计算机组成原理 > 总线", "计算机组成原理 > 输入输出系统"]
+  coverage_strategy: balanced
+teacher_preferences: {require: ["考察密度高", "带图题替换为纯文字推导"], avoid: ["照搬原卷", "要求作图"]}
+slots:
+  # ===== 一、简答题 4×5=20（概念为主）=====
+  - {slot_id: W01, question_type: comprehensive, complexity: conceptual, score: 5, target_subject: "计算机组成原理", target_family: "中央处理器 > 体系结构", primary_target_name: "冯·诺依曼体系结构特点与CPU组成", target_difficulty: 2, k_dominant: "K1", examination_mode: "简答题——说明冯·诺依曼体系结构的特点及CPU两大组成", 题型: 简答题}
+  - {slot_id: W02, question_type: comprehensive, complexity: conceptual, score: 5, target_subject: "计算机组成原理", target_family: "存储系统 > SRAM/DRAM", primary_target_name: "SRAM 与 DRAM 的区别（存储原理/刷新/速度/用途）", target_difficulty: 2, k_dominant: "K1", examination_mode: "简答题——对比 SRAM 与 DRAM 的存储原理、是否刷新、速度与用途", 题型: 简答题}
+  - {slot_id: W03, question_type: comprehensive, complexity: conceptual, score: 5, target_subject: "计算机组成原理", target_family: "输入输出 > 中断", primary_target_name: "中断响应过程与中断处理流程", target_difficulty: 2, k_dominant: "K1", examination_mode: "简答题——简述 CPU 响应中断的条件与中断处理的基本过程", 题型: 简答题}
+  - {slot_id: W04, question_type: comprehensive, complexity: conceptual, score: 5, target_subject: "计算机组成原理", target_family: "输入输出 > DMA", primary_target_name: "DMA 方式的工作原理与周期挪用", target_difficulty: 2, k_dominant: "K1", examination_mode: "简答题——说明 DMA 方式的工作原理及周期挪用概念", 题型: 简答题}
+  # ===== 二、计算题 4×10=40（standard→team图）=====
+  - {slot_id: W05, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "数据表示与运算 > 补码", primary_target_name: "变形补码加减运算与溢出判断", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算题——给定两个定点小数，用变形补码计算 x+y 和 x-y 并判断溢出", 题型: 计算题}
+  - {slot_id: W06, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "数据表示与运算 > IEEE754", primary_target_name: "IEEE754 浮点加减运算（对阶/规格化/舍入）", target_difficulty: 4, k_dominant: "K3", examination_mode: "计算题——给定两个 IEEE754 单精度数相加，写出对阶、尾数求和、规格化、舍入过程与结果", 题型: 计算题}
+  - {slot_id: W07, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "存储系统 > Cache", primary_target_name: "Cache 命中率与平均访问时间计算", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算题——给定 Cache 命中率/缺失代价/主存周期，求平均访问时间与效率", 题型: 计算题}
+  - {slot_id: W08, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "指令系统 > 扩展操作码", primary_target_name: "扩展操作码编码下零地址指令最大条数", target_difficulty: 3, k_dominant: "K2", examination_mode: "计算题——给定指令字长/地址码位数/各地址指令条数，计算零地址指令最大条数", 题型: 计算题}
+  # ===== 三、分析题 2×10=20（standard）=====
+  - {slot_id: W09, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "中央处理器 > 流水线", primary_target_name: "指令流水线性能分析（吞吐率/加速比/效率）", target_difficulty: 4, k_dominant: "K4", examination_mode: "分析题——给定流水线段数/各段时间/指令数，分析吞吐率、加速比与效率", 题型: 分析题}
+  - {slot_id: W10, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "总线 > 控制方式/带宽", primary_target_name: "总线控制方式与带宽分析", target_difficulty: 3, k_dominant: "K3", examination_mode: "分析题——分析集中式总线三种控制方式的特点，并计算给定总线的带宽", 题型: 分析题}
+  # ===== 四、设计题 2×10=20（standard，1处带图→文字）=====
+  - {slot_id: W11, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "中央处理器 > 微程序控制器", primary_target_name: "水平型微指令格式设计与控存容量", target_difficulty: 4, k_dominant: "K4", examination_mode: "设计题——给定微命令互斥类，设计水平型编码微指令格式并算控存最大容量", 题型: 设计题}
+  - slot_id: W12
+    question_type: comprehensive
+    complexity: standard
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "存储系统 > 存储器扩展"
+    primary_target_name: "DRAM 芯片扩展设计（芯片数/地址分配/片选/刷新）"
+    target_difficulty: 4
+    k_dominant: "K4"
+    examination_mode: "设计题——用小容量 DRAM 芯片设计大容量存储器：推导芯片数量、地址分配、片选逻辑（文字描述），并算异步刷新周期"
+    hard_constraints: ["本题考察形式为纯文字推导与计算（芯片数/地址分配/片选逻辑/刷新周期），非作图类考法——题目内容本身不涉及任何作图"]
+    teacher_annotation: "原卷画存储器框图，已替换为纯文字推导。"
+    题型: 设计题

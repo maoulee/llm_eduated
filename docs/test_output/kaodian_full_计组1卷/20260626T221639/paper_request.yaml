@@ -1,0 +1,674 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+  teacher_note: 考点对应模式——每题知识点与原卷1-to-1对应，考察角度换不同切面，题干全新产出
+assessment:
+  type: course_final
+  subjects:
+  - 计算机组成原理
+  total_score: 100
+  exam_info:
+    school: 合肥师范学院
+    course: 计算机组成原理
+    exam_type: 期末考试
+    duration: 120分钟
+    reference_paper: data/计算机组成原理1卷_题干与表格.md
+slots:
+- slot_id: Q1
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-1 > 计算机系统结构 > 冯诺依曼结构
+  primary_target_name: 冯诺依曼结构-存储程序思想
+  target_difficulty: 1
+  examination_mode: 概念辨析型——判断冯诺依曼体系核心特点
+  expected_form: ''
+  examination_focus: 冯诺依曼体系核心特点辨析——判断关于存储程序和以存储器为中心的描述的正误
+  reference_questions:
+  - data/question_experiences/simulation_00013.md
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析选择，期末基础题，记忆为主
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：冯诺依曼核心特点辨析
+  题型: 单项选择题
+- slot_id: Q2
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-1 > 计算机系统结构 > 计算机系统层次结构
+  primary_target_name: 计算机系统层次结构/翻译程序
+  target_difficulty: 1
+  examination_mode: 概念辨析型——编译与解释对比
+  expected_form: ''
+  examination_focus: 编译程序与解释程序的区别——给出若干特征判断属于编译还是解释
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，编译vs解释的基础区分
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：编译与解释程序区别辨析
+  题型: 单项选择题
+- slot_id: Q3
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 定点数的表示 > 原码表示
+  primary_target_name: 原码表示
+  target_difficulty: 2
+  examination_mode: 计算型——原码转换
+  expected_form: ''
+  examination_focus: 给定十进制真值（含负数）求原码二进制表示
+  reference_questions:
+  - data/question_experiences/simulation_00013.md
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需一步转换计算，含负数原码处理
+  complexity: standard
+  teacher_annotation: 第一个考察角度：给定真值求原码（反向考法）
+  题型: 单项选择题
+- slot_id: Q4
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 定点数的表示 > 补码表示
+  primary_target_name: 补码表示范围
+  target_difficulty: 1
+  examination_mode: 概念辨析型——补码表示范围
+  expected_form: ''
+  examination_focus: n位补码可表示的最小负数辨析，判断-2^(n-1)的来源
+  reference_questions:
+  - data/question_experiences/simulation_00013.md
+  k_radar:
+    K1: 3
+    K2: 2
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 补码范围的基础概念辨析
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：n位补码最小负数辨析
+  题型: 单项选择题
+- slot_id: Q5
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 定点数的运算 > 补码加减运算 > 溢出判断
+  primary_target_name: 溢出判断
+  target_difficulty: 2
+  examination_mode: 分析型——双符号位溢出判定
+  expected_form: ''
+  examination_focus: 双符号位法溢出判定——给定运算后的双符号位判断是否溢出及溢出类型
+  reference_questions:
+  - data/question_experiences/simulation_00083.md
+  k_radar:
+    K1: 2
+    K2: 2
+    K3: 3
+    K4: 3
+    K5: 1
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需分析双符号位判定溢出，涉及正负溢出区分
+  complexity: standard
+  teacher_annotation: 第一个考察角度：双符号位法溢出判定
+  题型: 单项选择题
+- slot_id: Q6
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 定点数的运算 > 强制类型转换
+  primary_target_name: 强制类型转换
+  target_difficulty: 2
+  examination_mode: 计算型——有符号到无符号转换
+  expected_form: ''
+  examination_focus: short到unsigned short的转换结果——补码理解下的位模式重新解读
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 2
+    K4: 3
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需理解补码位模式在无符号解读下的值
+  complexity: standard
+  teacher_annotation: 第一个考察角度：short到unsigned short转换
+  题型: 单项选择题
+- slot_id: Q7
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 存储器层次结构
+  primary_target_name: 存储器层次结构
+  target_difficulty: 1
+  examination_mode: 概念辨析型——存储层次特性
+  expected_form: ''
+  examination_focus: Cache-主存层次的特性——判断局部性原理、透明性等表述的正误
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 存储层次基础概念辨析
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：Cache-主存层次特性辨析
+  题型: 单项选择题
+- slot_id: Q8
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 主存储器和CPU的连接
+  primary_target_name: 存储器地址线/数据线计算
+  target_difficulty: 2
+  examination_mode: 计算型——存储容量推导
+  expected_form: ''
+  examination_focus: 给定地址线和数据线数量反推存储容量
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需一步推导，地址线→寻址空间×数据位宽
+  complexity: standard
+  teacher_annotation: 第一个考察角度：给定线数反推存储容量
+  题型: 单项选择题
+- slot_id: Q9
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 半导体随机存储器 > DRAM
+  primary_target_name: DRAM刷新
+  target_difficulty: 1
+  examination_mode: 概念辨析型——刷新方式对比
+  expected_form: ''
+  examination_focus: DRAM三种刷新方式（集中/分散/异步）的特点辨析
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 三种刷新方式的概念对比辨析
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：DRAM三种刷新方式对比
+  题型: 单项选择题
+- slot_id: Q10
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-4 > 指令系统 > 指令寻址方式 > 数据寻址
+  primary_target_name: 寻址方式
+  target_difficulty: 2
+  examination_mode: 计算型——有效地址计算
+  expected_form: ''
+  examination_focus: 各种寻址方式的有效地址计算——给定寻址方式和参数判断EA
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 3
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需根据寻址方式定义计算有效地址
+  complexity: standard
+  teacher_annotation: 第一个考察角度：各种寻址方式EA计算
+  题型: 单项选择题
+- slot_id: Q11
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > CPU的功能和基本结构
+  primary_target_name: CPU寄存器
+  target_difficulty: 1
+  examination_mode: 概念辨析型——寄存器功能
+  expected_form: ''
+  examination_focus: IR（指令寄存器）的功能辨析
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 寄存器功能基础概念辨析
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：IR功能辨析
+  题型: 单项选择题
+- slot_id: Q12
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > 指令执行过程 > 指令周期
+  primary_target_name: 指令周期/时间单位
+  target_difficulty: 1
+  examination_mode: 概念辨析型——时间单位层级
+  expected_form: ''
+  examination_focus: 指令周期、机器周期、时钟周期的层级关系和包含关系
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 三种时间周期的层级关系概念辨析
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：时间单位层级关系辨析
+  题型: 单项选择题
+- slot_id: Q13
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-6 > 总线 > 总线仲裁 > 集中仲裁方式
+  primary_target_name: 总线仲裁
+  target_difficulty: 2
+  examination_mode: 概念辨析型——仲裁方式对比
+  expected_form: ''
+  examination_focus: 三种集中仲裁方式（链式/计数器/独立请求）的多特性对比辨析
+  reference_questions:
+  - data/question_experiences/simulation_00020.md
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 2
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 三种仲裁方式的多特性综合对比
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：三种集中仲裁方式多特性对比
+  题型: 单项选择题
+- slot_id: Q14
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-7 > 输入输出系统 > I/O方式 > DMA方式
+  primary_target_name: DMA方式
+  target_difficulty: 2
+  examination_mode: 概念辨析型——DMA传送方式对比
+  expected_form: ''
+  examination_focus: DMA三种传送方式（周期挪用/停止CPU访存/交替访存）的特点辨析
+  reference_questions:
+  - data/question_experiences/simulation_00042.md
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 2
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: DMA三种传送方式的概念对比
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：DMA三种传送方式对比
+  题型: 单项选择题
+- slot_id: Q15
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-7 > 输入输出系统 > I/O方式 > 中断方式
+  primary_target_name: 中断
+  target_difficulty: 2
+  examination_mode: 概念辨析型——中断处理流程
+  expected_form: ''
+  examination_focus: 中断处理过程中PC的保护与恢复——判断中断响应时谁负责保存PC
+  reference_questions:
+  - data/question_experiences/simulation_00148.md
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 2
+    K4: 3
+    K5: 2
+  k_dominant: K4
+  k_source: heuristic
+  difficulty_rationale: 中断处理流程细节，涉及隐指令机制理解
+  complexity: standard
+  teacher_annotation: 第一个考察角度：中断处理中PC的保护与恢复
+  题型: 单项选择题
+- slot_id: Q16
+  question_type: fill_blank
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > CPU的功能和基本结构
+  primary_target_name: CPU组成
+  target_difficulty: 1
+  examination_mode: 概念记忆型——CPU功能
+  expected_form: ''
+  examination_focus: CPU的核心功能（指令控制、操作控制等）填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: CPU功能的记忆填空
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：CPU五大功能填空
+  题型: 填空题
+- slot_id: Q17
+  question_type: fill_blank
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 半导体随机存储器
+  primary_target_name: SRAM/DRAM存储原理
+  target_difficulty: 1
+  examination_mode: 概念记忆型——存储器对比
+  expected_form: ''
+  examination_focus: SRAM与DRAM的速度/集成度/成本对比及各自典型应用场景填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: SRAM/DRAM特性对比记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：SRAM/DRAM性能对比+应用场景
+  题型: 填空题
+- slot_id: Q18
+  question_type: fill_blank
+  score: 3
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数
+  primary_target_name: IEEE754浮点数格式
+  target_difficulty: 2
+  examination_mode: 概念记忆型——浮点数格式
+  expected_form: ''
+  examination_focus: IEEE754单精度格式各字段位数、偏置值、隐藏位的含义填空
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 2
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: IEEE754格式的字段位数和偏置值记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：IEEE754偏置值+字段位数+隐藏位
+  题型: 填空题
+- slot_id: Q19
+  question_type: fill_blank
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-4 > 指令系统 > 指令格式 > 操作码编码
+  primary_target_name: 扩展操作码
+  target_difficulty: 2
+  examination_mode: 计算型——扩展操作码计算
+  expected_form: ''
+  examination_focus: 给定指令长度和各地址码指令条数，求零地址指令最大条数
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 3
+    K4: 2
+    K5: 1
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需多步推导扩展操作码的预留编码逻辑
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换参数求零地址指令最大条数
+  题型: 填空题
+- slot_id: Q20
+  question_type: fill_blank
+  score: 1
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > 控制器的功能和工作原理
+  primary_target_name: 控制器类型
+  target_difficulty: 1
+  examination_mode: 概念记忆型——控制器对比
+  expected_form: ''
+  examination_focus: 硬布线与微程序控制器的速度对比及RISC常用控制器类型填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 控制器类型的基础对比记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：硬布线vs微程序速度+RISC适用
+  题型: 填空题
+- slot_id: Q21
+  question_type: subjective
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: CO-1 > 计算机系统概述 > 计算机性能指标 > CPU性能指标
+  primary_target_name: CPU性能指标(CPI/MIPS)
+  target_difficulty: 3
+  examination_mode: 计算型——CPI与执行时间
+  expected_form: 题干给指令类型/CPI/比例表格，子问围绕平均CPI和执行时间展开
+  examination_focus: 给定新指令比例和CPI值，计算平均CPI和程序执行时间
+  reference_questions:
+  - data/question_experiences/simulation_00139.md
+  k_radar:
+    K1: 2
+    K2: 4
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需代入公式计算加权平均CPI和执行时间
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换参数求平均CPI和执行时间
+  题型: 简答题
+- slot_id: Q22
+  question_type: subjective
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: CO-4 > 指令系统 > 指令寻址方式 > 数据寻址
+  primary_target_name: 数据寻址方式/有效地址计算
+  target_difficulty: 3
+  examination_mode: 计算型——有效地址计算
+  expected_form: 题干给寄存器值和指令格式，要求逐一计算各寻址方式EA
+  examination_focus: 给定寄存器初始值，计算各寻址方式的有效地址
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 3
+    K4: 3
+    K5: 1
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需根据多种寻址方式定义逐一计算EA
+  complexity: standard
+  teacher_annotation: 第一个考察角度：给定具体寄存器值计算各寻址方式EA
+  题型: 简答题
+- slot_id: Q23
+  question_type: subjective
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 算术逻辑单元ALU > 加法器
+  primary_target_name: 先行进位加法器
+  target_difficulty: 3
+  examination_mode: 推导型——先行进位原理
+  expected_form: 题干以文字描述四位先行进位加法器的输入输出，要求推导进位表达式
+  examination_focus: 先行进位CLA中Gi和Pi的定义，推导C1~C4表达式并解释并行进位原理（纯文字推导，替代原卷电路图填空）
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 2
+    K3: 4
+    K4: 2
+    K5: 2
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需推导先行进位公式并解释原理，多步推导
+  complexity: standard
+  teacher_annotation: 第一个考察角度：先行进位Gi/Pi推导+表达式（替代电路图）
+  题型: 简答题
+- slot_id: Q24
+  question_type: subjective
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: CO-6 > 总线 > 总线概述 > 总线性能指标
+  primary_target_name: 总线带宽
+  target_difficulty: 2
+  examination_mode: 计算型——总线带宽
+  expected_form: 题干给总线参数，要求计算带宽（MB/s）
+  examination_focus: 给定新时钟频率、总线宽度和总线周期数，计算总线带宽
+  reference_questions:
+  - data/question_experiences/simulation_00188.md
+  k_radar:
+    K1: 2
+    K2: 4
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需代入总线带宽公式计算，含单位换算
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换参数求总线带宽
+  题型: 简答题
+- slot_id: Q25
+  question_type: subjective
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 定点数的运算 > 补码加减运算
+  primary_target_name: 补码加减运算
+  target_difficulty: 3
+  examination_mode: 计算型——补码运算与溢出判断
+  expected_form: 题干给两个补码值，要求计算加减结果并判断溢出
+  examination_focus: 给定两个具体补码（十六进制），计算[A+B]补和[A-B]补并判断溢出
+  reference_questions:
+  - data/question_experiences/simulation_00083.md
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 4
+    K4: 3
+    K5: 2
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需实际计算补码加减并判断溢出，多步运算
+  complexity: standard
+  teacher_annotation: 第一个考察角度：给定具体补码计算加减并判断溢出
+  题型: 简答题
+- slot_id: Q26
+  question_type: subjective
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 高速缓冲存储器Cache > Cache地址映射
+  primary_target_name: Cache地址映射
+  target_difficulty: 3
+  examination_mode: 分析计算型——Cache地址划分
+  expected_form: 题干给主存/Cache容量和块大小参数，要求以表格形式写出地址各字段位数并描述映射
+  examination_focus: 给定新参数，计算直接映射和组相联映射下各地址字段位数，用文字表格列出地址划分并描述映射过程（替代原卷画图）
+  reference_questions:
+  - data/question_experiences/simulation_00296.md
+  - data/question_experiences/simulation_00312.md
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 4
+    K4: 3
+    K5: 2
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需计算两种映射方式的地址字段并分析，多步推导
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换参数计算地址字段+表格描述（替代画图）
+  题型: 应用题
+- slot_id: Q27
+  question_type: subjective
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > 控制器的功能和工作原理 > 微程序控制器
+  primary_target_name: 微指令格式设计/控制存储器
+  target_difficulty: 4
+  examination_mode: 设计型——微指令格式设计
+  expected_form: 题干给微命令分组和互斥类参数，要求设计微指令格式并计算控存容量
+  examination_focus: 给定新微命令数量和互斥类参数，设计微指令格式并计算控制存储器最大容量
+  reference_questions:
+  - data/question_experiences/simulation_00273.md
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 4
+    K4: 3
+    K5: 3
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需综合设计微指令编码格式并计算控存容量
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换参数设计微指令格式+控存容量
+  题型: 设计题
+- slot_id: Q28
+  question_type: subjective
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 主存储器和CPU的连接 > 主存容量扩展
+  primary_target_name: 存储器扩展
+  target_difficulty: 4
+  examination_mode: 设计型——存储器扩展方案
+  expected_form: 题干给芯片规格和目标容量，要求以文字推导方式计算芯片组数、地址线分配、片选逻辑
+  examination_focus: 给定新芯片规格，计算所需芯片数量、地址分配方案和片选逻辑，用文字推导表达（替代原卷画框图）
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 4
+    K4: 3
+    K5: 3
+  k_dominant: K3
+  k_source: heuristic
+  difficulty_rationale: 需综合设计存储器扩展方案，含地址分配和片选逻辑
+  complexity: standard
+  teacher_annotation: 第一个考察角度：换芯片规格计算扩展方案+片选逻辑（替代画框图）
+  题型: 设计题

@@ -1,0 +1,48 @@
+{
+  "slot_id": "A02",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型: question_spec_error（歧义多解） / 修改对象: 选项 C 的文字描述 + 场景规则 6 / 修改位置: question.md 第15行（选项C描述）+ 第56行（场景规则6） / 当前问题: 选项C给出\"阶码仍按原值或错误值\"两条路径，C的值不唯一 / 修改目标: 收敛到单一明确的错误路径，使C有唯一确定值 / 最小修改指令: 将选项C的阶码处理确定为唯"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

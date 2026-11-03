@@ -1,0 +1,306 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+assessment:
+  type: course_final
+  subjects:
+  - 计算机组成原理
+  total_score: 100
+  duration_minutes: 120
+knowledge_scope:
+  primary_chapters:
+  - 计算机组成原理 > 数据的表示和运算
+  - 计算机组成原理 > 存储系统
+  - 计算机组成原理 > 指令系统
+  - 计算机组成原理 > 中央处理器
+  - 计算机组成原理 > 总线
+  - 计算机组成原理 > 输入输出系统
+  coverage_strategy: balanced
+teacher_preferences:
+  require:
+  - 考察密度高
+  - 干扰项对应真实错误
+  - 带图题替换为纯文字推导
+  avoid:
+  - 照搬原卷
+  - 要求作图
+slots:
+- slot_id: Q01
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > 补码
+  primary_target_name: 补码真值与范围
+  target_difficulty: 2
+  k_dominant: K2
+  examination_mode: 计算型——给定补码求真值/判断范围
+  题型: 单项选择题
+- slot_id: Q02
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > IEEE754
+  primary_target_name: IEEE754 浮点表示与运算
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 计算型——IEEE754 浮点加减结果判断
+  题型: 单项选择题
+- slot_id: Q03
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > 溢出
+  primary_target_name: 定点加减溢出判断
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——溢出判断电路/双符号位意义
+  题型: 单项选择题
+- slot_id: Q04
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 存储系统 > 存储器编址
+  primary_target_name: 存储器地址线/数据线计算
+  target_difficulty: 2
+  k_dominant: K2
+  examination_mode: 计算型——存储芯片地址线与数据线位数
+  题型: 单项选择题
+- slot_id: Q05
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 存储系统 > SRAM/DRAM
+  primary_target_name: SRAM 与 DRAM 特性辨析
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——SRAM/DRAM 刷新/速度/用途
+  题型: 单项选择题
+- slot_id: Q06
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 存储系统 > Cache
+  primary_target_name: Cache 命中率与映射方式
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——Cache 映射方式/命中率影响因素
+  题型: 单项选择题
+- slot_id: Q07
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 指令系统 > 扩展操作码
+  primary_target_name: 扩展操作码编码计算
+  target_difficulty: 3
+  k_dominant: K2
+  examination_mode: 计算型——扩展操作码下某级指令最大条数
+  题型: 单项选择题
+- slot_id: Q08
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 指令系统 > 寻址
+  primary_target_name: 寻址方式有效地址
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——寻址方式有效地址公式
+  题型: 单项选择题
+- slot_id: Q09
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 中央处理器 > 寄存器
+  primary_target_name: PC/IR/寄存器功能
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——程序计数器/指令寄存器内容
+  题型: 单项选择题
+- slot_id: Q10
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 中央处理器 > 流水线
+  primary_target_name: 指令流水线吞吐/加速比
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 计算型——流水线吞吐率/执行时间
+  题型: 单项选择题
+- slot_id: Q11
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 总线 > 控制方式
+  primary_target_name: 集中式总线控制方式
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——链式查询/计数器查询/独立请求比较
+  题型: 单项选择题
+- slot_id: Q12
+  question_type: single_choice
+  complexity: standard
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 总线 > 带宽
+  primary_target_name: 总线带宽计算
+  target_difficulty: 2
+  k_dominant: K2
+  examination_mode: 计算型——总线带宽=宽度×频率
+  题型: 单项选择题
+- slot_id: Q13
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 输入输出 > 中断
+  primary_target_name: 中断响应过程与时机
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——CPU 响应中断的时机/中断向量
+  题型: 单项选择题
+- slot_id: Q14
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 输入输出 > DMA
+  primary_target_name: DMA 数据通路与周期挪用
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——DMA 数据传输通路/周期挪用
+  题型: 单项选择题
+- slot_id: Q15
+  question_type: single_choice
+  complexity: conceptual
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: 输入输出 > 接口
+  primary_target_name: I/O 编址方式
+  target_difficulty: 2
+  k_dominant: K1
+  examination_mode: 概念辨析型——统一编址/独立编址
+  题型: 单项选择题
+- slot_id: Q16
+  question_type: comprehensive
+  complexity: standard
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > IEEE754 / 补码
+  primary_target_name: IEEE754 浮点加减运算步骤填空（对阶/规格化/舍入多空）
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 填空题——给定两个 IEEE754 单精度数相加，补全对阶、尾数求和、规格化、就近偶数舍入步骤中的关键空（约8-10空，每空1分）
+  hard_constraints:
+  - 纯文字步骤填空，禁止要求作图
+  - 结果必须是具体数值/表达式
+  teacher_annotation: 填空题，gen.py 算出每步确切值，空格处填具体数。
+  题型: 填空题
+- slot_id: Q17
+  question_type: comprehensive
+  complexity: standard
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: 中央处理器 > 性能
+  primary_target_name: CPI 与 MIPS 计算
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 综合题——给指令CPI/比例表+主频，求CPI和MIPS
+  题型: 简答题
+- slot_id: Q18
+  question_type: comprehensive
+  complexity: standard
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: 指令系统 > 寻址
+  primary_target_name: 寻址方式有效地址推导（填表文字）
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 综合题——给指令格式(I/X/D)，推导各寻址方式有效地址表达式（文字表格，不画图）
+  题型: 简答题
+- slot_id: Q19
+  question_type: comprehensive
+  complexity: standard
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: 总线 > 带宽
+  primary_name: 同步总线带宽计算
+  primary_target_name: 同步总线带宽计算
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 综合题——给总线时钟频率/宽度，求带宽MB/s
+  题型: 简答题
+- slot_id: Q20
+  question_type: comprehensive
+  complexity: standard
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > 补码
+  primary_target_name: 变形补码加减与溢出判断
+  target_difficulty: 3
+  k_dominant: K3
+  examination_mode: 综合题——给两个小数，用变形补码算x+y和x-y并判溢出
+  题型: 简答题
+- slot_id: Q21
+  question_type: comprehensive
+  complexity: standard
+  score: 6
+  target_subject: 计算机组成原理
+  target_family: 数据表示与运算 > 加法器
+  primary_target_name: 先行进位加法器进位表达式文字推导
+  target_difficulty: 4
+  k_dominant: K3
+  examination_mode: 综合题——写出先行进位加法器各级进位生成/传递函数与进位表达式（文字推导，不画电路图）
+  hard_constraints:
+  - 纯文字推导进位表达式，禁止要求画电路图/框图
+  teacher_annotation: 原卷是画四位快速加法器电路填名称，已替换为先行进位各级表达式文字推导（系统无成图能力）。
+  题型: 简答题
+- slot_id: Q22
+  question_type: comprehensive
+  complexity: standard
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: 存储系统 > Cache 映射
+  primary_target_name: Cache 直接相联/组相联映射地址字段位数推导
+  target_difficulty: 4
+  k_dominant: K3
+  examination_mode: 综合题——给主存/Cache容量与块大小，推导直接相联与组相联映射下主存地址各字段位数（Tag/Set/Offset 文字列出，不画图）
+  hard_constraints:
+  - 纯文字推导各字段位数，禁止要求画地址划分图/框图
+  teacher_annotation: 原卷是画地址划分图，已替换为文字推导位数（系统无成图能力）。
+  题型: 应用题
+- slot_id: Q23
+  question_type: comprehensive
+  complexity: standard
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: 中央处理器 > 微程序控制器
+  primary_target_name: 水平型微指令格式设计与控存容量
+  target_difficulty: 4
+  k_dominant: K4
+  examination_mode: 设计题——给微命令互斥类，设计水平型编码微指令格式（字段+位数）并算控存最大容量
+  题型: 设计题
+- slot_id: Q24
+  question_type: comprehensive
+  complexity: standard
+  score: 10
+  target_subject: 计算机组成原理
+  target_family: 存储系统 > 存储器扩展
+  primary_target_name: DRAM 芯片扩展设计（芯片数/地址分配/片选/刷新）
+  target_difficulty: 4
+  k_dominant: K4
+  examination_mode: 设计题——用小容量 DRAM 芯片设计大容量存储器：推导芯片数量、地址分配、片选逻辑（文字描述），并算异步刷新周期
+  hard_constraints:
+  - 纯文字推导芯片数/地址分配/片选逻辑，禁止要求画存储器框图/连接图
+  teacher_annotation: 原卷是画存储器结构及CPU连接框图，已替换为文字推导芯片数/地址分配/片选（系统无成图能力）。
+  题型: 设计题

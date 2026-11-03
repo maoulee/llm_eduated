@@ -1,0 +1,58 @@
+{
+  "slot_id": "Q17",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- **question_spec_error / question.md Q3.1 / 题干第 53 行 / 当前问题：未规定地址块粒度，导致 CBA 连线和 Y0~Y7 地址范围表不唯一 / 修改目标：消除 CBA 连接的多解性 / 最小修改：在 Q3.1 题干中增加一句约束，如\"以 2KB 为一个地址块（即 CBA 连接 A13、A12、A11），使每个译码器输出端对应一个连续的 2KB 地"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- fail 类型 / assertion_defect（R7 断言弱化为恒真）\n- 修改对象 / gen.py 第107-109行 + 第142-143行\n- 当前问题 / `enable_works = True`、`mreq_active = True` 均为硬编码常量，`assert work_condition` 恒真，没有建模\"非存储区地址（A15=1）时译码器应被禁止\"的条件。\n- "
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

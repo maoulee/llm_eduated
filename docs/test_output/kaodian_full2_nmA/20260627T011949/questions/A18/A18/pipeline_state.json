@@ -1,0 +1,48 @@
+{
+  "slot_id": "A18",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型 / question_spec_error / 修改对象: question.md 数据通路部件表 + 控制信号清单 / 修改位置: 部件表 ALU 行；控制信号段落 / 当前问题: ALU 两输入端均连总线但未声明暂存机制，导致双源操作数指令（ADD R2,R3）执行周期微操作序列不唯一（有无锁存器两种解法） / 修改目标: 使数据通路描述能唯一支撑所有设问的微操作推导 / "
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

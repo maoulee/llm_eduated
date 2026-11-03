@@ -1,0 +1,407 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["组成原理"]
+  total_score: 100
+
+slots:
+  # ===== 选择题 5×2=10分 =====
+  - slot_id: Q1
+    question_type: single_choice
+    题型: 单项选择题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-1 计算机系统概述 > 计算机性能指标 > 存储容量"
+    primary_target_name: "存储单位与容量表示"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——存储单位换算"
+    expected_form: ""
+    examination_focus: "判断给定存储容量与地址线位数的对应关系是否正确（如2KB存储器需要多少根地址线）"
+    reference_questions:
+      - "data/question_experiences/2009_Q22.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "纯概念记忆辨析，期末卷基础难度"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q2
+    question_type: single_choice
+    题型: 单项选择题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-6 总线 > 总线性能指标 > 总线带宽"
+    primary_target_name: "异步串行传输与数据传输率"
+    target_difficulty: 2
+    examination_mode: "计算型——串行传输率公式计算"
+    expected_form: ""
+    examination_focus: "已知波特率和帧格式（起始位+数据位+校验位+停止位），计算有效数据传输率（bps）"
+    reference_questions: []
+    k_radar: {K1: 1, K2: 4, K3: 1, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "单步公式代入计算，需理解帧格式与传输率关系"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: single_choice
+    题型: 单项选择题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-7 输入输出系统 > I/O方式 > 中断方式"
+    primary_target_name: "中断类型辨析（外部中断）"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——外部中断事件判断"
+    expected_form: ""
+    examination_focus: "给定多个事件（如键盘输入、除数为零、缺页、电源故障），区分外部中断与内部中断（异常）的边界"
+    reference_questions:
+      - "data/question_experiences/2009_Q22.md"
+      - "data/question_experiences/2018_Q22.md"
+      - "data/question_experiences/2020_Q21.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，需区分内外中断边界"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: single_choice
+    题型: 单项选择题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-3 存储系统 > 存储器层次结构"
+    primary_target_name: "存储层次与访问速度"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——存储层次速度排序"
+    expected_form: ""
+    examination_focus: "寄存器、Cache、主存、辅存的访问速度排序判断"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "基础记忆排序，期末卷概念题"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: single_choice
+    题型: 单项选择题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-4 指令系统 > 指令寻址方式 > 数据寻址"
+    primary_target_name: "寻址方式与取操作数速度"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——寻址方式访存次数比较"
+    expected_form: ""
+    examination_focus: "比较不同寻址方式（立即/直接/寄存器/间接）取操作数所需的访存次数"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，比较各寻址方式的访存开销"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  # ===== 判断题 5×2=10分 =====
+  - slot_id: Q6
+    question_type: 判断题
+    题型: 判断题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-1 计算机系统概述 > 计算机系统结构 > 计算机硬件系统组成"
+    primary_target_name: "计算机系统组成"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——计算机系统组成辨析"
+    expected_form: ""
+    examination_focus: "冯诺依曼结构特征辨析（如'以运算器为中心'是否正确描述现代计算机）"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，考察冯诺依曼与现代结构差异"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q7
+    question_type: 判断题
+    题型: 判断题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-6 总线 > 总线操作和定时 > 异步定时方式"
+    primary_target_name: "异步通信应答方式"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——异步通信应答方式辨析"
+    expected_form: ""
+    examination_focus: "三种应答方式（不互锁/半互锁/全互锁）的可靠性比较判断"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，考察异步通信三种互锁方式特征"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q8
+    question_type: 判断题
+    题型: 判断题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-3 存储系统 > 存储器层次结构"
+    primary_target_name: "存储系统层次结构"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——存储层次结构辨析"
+    expected_form: ""
+    examination_focus: "局部性原理辨析（如'程序访问局部性是Cache工作的基础'是否正确）"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，考察局部性原理与存储层次关系"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q9
+    question_type: 判断题
+    题型: 判断题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-5 中央处理器 > 控制器的功能和工作原理 > 微程序控制器"
+    primary_target_name: "微指令格式（水平型vs垂直型）"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——微指令格式特征辨析"
+    expected_form: ""
+    examination_focus: "微指令格式特征辨析（如'水平型微指令的微指令字较长但微程序较短'是否正确）"
+    reference_questions:
+      - "data/question_experiences/simulation_00273.md"
+      - "data/question_experiences/2012_Q18.md"
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，考察水平型与垂直型微指令格式差异"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q10
+    question_type: 判断题
+    题型: 判断题
+    score: 2
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-5 中央处理器 > 指令执行过程 > 指令周期"
+    primary_target_name: "指令周期"
+    target_difficulty: 1
+    examination_mode: "概念辨析型——指令周期概念辨析"
+    expected_form: ""
+    examination_focus: "机器周期与时钟周期关系的判断（如'一个机器周期包含若干时钟周期'是否正确）"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析，考察指令周期与机器周期/时钟周期关系"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  # ===== 计算题 6题=40分 =====
+  - slot_id: Q11
+    question_type: 主观题
+    题型: 应用题
+    score: 6
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-2 数据的表示和运算 > 定点数的运算 > 补码加减运算"
+    primary_target_name: "补码加减运算"
+    target_difficulty: 2
+    examination_mode: "计算型——补码加减运算与溢出判断"
+    expected_form: "给出两个定点数（小数或整数），要求用补码运算规则计算加减并判断溢出"
+    examination_focus: "给定两个定点整数，用双符号位补码加减法计算并判断溢出类型"
+    reference_questions: []
+    k_radar: {K2: 3, K3: 2, K4: 2, K1: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "补码运算需符号扩展和溢出判断，期末中档计算题"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q12
+    question_type: 主观题
+    题型: 应用题
+    score: 6
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-2 数据的表示和运算 > 数制与编码 > 校验码 > 海明码"
+    primary_target_name: "海明码纠错定位"
+    target_difficulty: 3
+    examination_mode: "计算型——海明码纠错定位"
+    expected_form: "给出接收到的海明码（含错误），要求进行纠错并还原原始信息"
+    examination_focus: "给定接收到的海明码（含错误），利用校验位进行纠错定位并还原原始信息"
+    reference_questions: []
+    k_radar: {K1: 3, K2: 2, K3: 4, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需多步校验位计算和错误定位推导"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q13
+    question_type: 主观题
+    题型: 应用题
+    score: 6
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-3 存储系统 > 主存储器和CPU的连接 > 主存容量扩展"
+    primary_target_name: "存储器扩展（字位同时扩展）"
+    target_difficulty: 2
+    examination_mode: "计算型——存储器扩展芯片数量"
+    expected_form: "给出存储器容量和不同规格芯片，要求计算地址线/数据线总和及所需芯片数量"
+    examination_focus: "给定芯片规格和扩展方式（字位同时扩展），计算芯片组数和总芯片数"
+    reference_questions: []
+    k_radar: {K1: 3, K2: 3, K3: 3, K4: 2, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "需理解字位同时扩展原理并做芯片分组计算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q14
+    question_type: 主观题
+    题型: 应用题
+    score: 6
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-4 指令系统 > 指令格式 > 操作码编码 > 扩展操作码"
+    primary_target_name: "扩展操作码"
+    target_difficulty: 3
+    examination_mode: "计算型——扩展操作码数量计算"
+    expected_form: "给出指令字长和地址码位数，已知某类指令数量，要求计算可扩展的另一类指令数量"
+    examination_focus: "给定扩展操作码编码方案，判断最多可定义多少条各类指令"
+    reference_questions:
+      - "data/question_experiences/2022_Q19.md"
+    k_radar: {K1: 3, K2: 3, K3: 2, K4: 4, K5: 1}
+    k_dominant: "K4"
+    k_source: "experience_card"
+    difficulty_rationale: "扩展操作码需理解编码空间分配，有陷阱"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q15
+    question_type: 主观题
+    题型: 应用题
+    score: 8
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-7 输入输出系统 > I/O方式 > 中断方式 > 中断屏蔽"
+    primary_target_name: "中断屏蔽字设计"
+    target_difficulty: 3
+    examination_mode: "推演型——中断屏蔽字设计"
+    expected_form: "给出多个中断源和新的处理优先级要求，要求写出每个中断源的屏蔽字"
+    examination_focus: "给定五个中断源和新的处理优先级要求，写出每个中断源的屏蔽字"
+    reference_questions:
+      - "data/question_experiences/2017_Q22.md"
+    k_radar: {K1: 3, K2: 2, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需根据处理优先级逐行推导屏蔽字，多步推演"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q16
+    question_type: 主观题
+    题型: 应用题
+    score: 8
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-2 数据的表示和运算 > 定点数的运算"
+    primary_target_name: "Booth算法（补码一位乘）"
+    target_difficulty: 3
+    examination_mode: "推演型——Booth算法逐步计算"
+    expected_form: "给出两个补码小数，要求用Booth算法逐步计算乘积（列表推演部分积、乘数、附加位变化）"
+    examination_focus: "给定x和y值，用Booth算法逐趟计算并列表推演，最后给出乘积结果"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 4, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需多趟迭代推演部分积变化，期末核心算法题"
+    complexity: standard
+    teacher_annotation: ""
+
+  # ===== 原作图题替换为文本推导题 =====
+  - slot_id: Q17
+    question_type: 主观题
+    题型: 应用题
+    score: 12
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-3 存储系统 > 主存储器和CPU的连接 > 存储芯片地址分配与片选"
+    primary_target_name: "存储器与CPU连接（地址分配与片选逻辑推导）"
+    target_difficulty: 3
+    examination_mode: "推演型——存储器地址分配与片选逻辑"
+    expected_form: "给出主存地址空间分配（ROM/RAM区域），要求推导各区域地址范围、所需芯片数量、片选逻辑（文字推导，不画图）"
+    examination_focus: "给定主存地址空间分配（ROM/RAM区域），推导各区域地址范围、所需芯片数量、用74LS138译码器的片选逻辑（文字推导）"
+    reference_questions: []
+    k_radar: {K1: 3, K2: 3, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需推导地址空间、芯片选型、译码逻辑，多步综合"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q18
+    question_type: 主观题
+    题型: 应用题
+    score: 8
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-3 存储系统 > 高速缓冲存储器Cache > Cache地址映射"
+    primary_target_name: "Cache地址映射格式设计"
+    target_difficulty: 3
+    examination_mode: "推演型——Cache地址映射格式设计"
+    expected_form: "给出主存和Cache容量及块长，要求设计直接映射/组相联/全相联三种主存地址格式"
+    examination_focus: "给定主存和Cache容量及块长，设计直接映射/四路组相联/全相联三种主存地址格式（给出各字段位数）"
+    reference_questions:
+      - "data/question_experiences/2022_Q16.md"
+      - "data/question_experiences/2009_Q14.md"
+    k_radar: {K1: 3, K2: 3, K3: 4, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需分别推导三种映射方式的地址字段划分"
+    complexity: standard
+    teacher_annotation: ""
+
+  # ===== 综合题 2题=20分 =====
+  - slot_id: Q19
+    question_type: 主观题
+    题型: 综合题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-4 指令系统 > 指令寻址方式 > 数据寻址 > 有效地址计算"
+    primary_target_name: "多种寻址方式有效地址计算"
+    target_difficulty: 3
+    examination_mode: "综合型——多种寻址方式有效地址计算"
+    expected_form: "给出双字长指令和存储器内容表，要求计算多种寻址方式下的有效地址和操作数"
+    examination_focus: "给定双字长指令和存储器内容表，计算直接/间接/相对/变址/基址寻址方式下的有效地址和最终操作数"
+    reference_questions: []
+    k_radar: {K1: 3, K2: 3, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "五种寻址方式需分别推导有效地址并访存取数，综合分析"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q20
+    question_type: 主观题
+    题型: 综合题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > CO-5 中央处理器 > 指令流水线"
+    primary_target_name: "指令流水线性能与冒险分析"
+    target_difficulty: 3
+    examination_mode: "综合型——指令流水线性能与冒险分析"
+    expected_form: "给出多级流水线和各段时间，要求计算操作周期、加速比和吞吐率，分析数据冒险及改进方案"
+    examination_focus: "给出4级流水线参数，计算操作周期和加速比，分析特定指令序列的数据冒险类型，计算无转发和有转发情况下的停顿周期"
+    reference_questions:
+      - "data/question_experiences/2016_Q19.md"
+      - "data/question_experiences/2026_Q20.md"
+    k_radar: {K1: 3, K2: 3, K3: 4, K4: 4, K5: 2}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需性能计算+冒险识别+转发改进分析，综合考查"
+    complexity: standard
+    teacher_annotation: ""

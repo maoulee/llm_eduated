@@ -1,0 +1,109 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+  teacher_note: 考点对应模式——每题知识点与原卷1-to-1对应，考察角度换不同切面，题干全新产出
+assessment:
+  type: course_final
+  subjects:
+  - 计算机组成原理
+  total_score: 100
+  exam_info:
+    school: 合肥师范学院
+    course: 计算机组成原理
+    exam_type: 期末考试
+    duration: 120分钟
+    reference_paper: data/计算机组成原理1卷_题干与表格.md
+slots:
+- slot_id: Q16
+  question_type: fill_blank
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > CPU的功能和基本结构
+  primary_target_name: CPU组成
+  target_difficulty: 1
+  examination_mode: 概念记忆型——CPU功能
+  expected_form: ''
+  examination_focus: CPU的核心功能（指令控制、操作控制等）填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: CPU功能的记忆填空
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：CPU五大功能填空
+  题型: 填空题
+- slot_id: Q17
+  question_type: fill_blank
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 半导体随机存储器
+  primary_target_name: SRAM/DRAM存储原理
+  target_difficulty: 1
+  examination_mode: 概念记忆型——存储器对比
+  expected_form: ''
+  examination_focus: SRAM与DRAM的速度/集成度/成本对比及各自典型应用场景填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 2
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: SRAM/DRAM特性对比记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：SRAM/DRAM性能对比+应用场景
+  题型: 填空题
+- slot_id: Q18
+  question_type: fill_blank
+  score: 3
+  target_subject: 计算机组成原理
+  target_family: CO-2 > 数据的表示和运算 > 浮点数的表示和运算 > IEEE 754浮点数
+  primary_target_name: IEEE754浮点数格式
+  target_difficulty: 2
+  examination_mode: 概念记忆型——浮点数格式
+  expected_form: ''
+  examination_focus: IEEE754单精度格式各字段位数、偏置值、隐藏位的含义填空
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 2
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: IEEE754格式的字段位数和偏置值记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：IEEE754偏置值+字段位数+隐藏位
+  题型: 填空题
+- slot_id: Q20
+  question_type: fill_blank
+  score: 1
+  target_subject: 计算机组成原理
+  target_family: CO-5 > 中央处理器 > 控制器的功能和工作原理
+  primary_target_name: 控制器类型
+  target_difficulty: 1
+  examination_mode: 概念记忆型——控制器对比
+  expected_form: ''
+  examination_focus: 硬布线与微程序控制器的速度对比及RISC常用控制器类型填空
+  reference_questions: []
+  k_radar:
+    K1: 3
+    K2: 1
+    K3: 1
+    K4: 1
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 控制器类型的基础对比记忆
+  complexity: conceptual
+  teacher_annotation: 第一个考察角度：硬布线vs微程序速度+RISC适用
+  题型: 填空题

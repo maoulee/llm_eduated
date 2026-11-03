@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q16",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- **assertion_defect / gen.py / RULE_CHECK段（行228-251）/ 当前问题：全部8条场景规则仅用 print 输出布尔值，无任何 assert 语句 / 修改目标：每条场景规则翻译为 assert，使参数退化时 gen.py 报错退出（非 exit=0）而非静默放行 / 最小修改指令：**\n  在 RULE_CHECK 段中，将每条 print 的布尔表"
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

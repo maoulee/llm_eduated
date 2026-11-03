@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q4",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型 / 修改对象 / 修改位置 / 当前问题 / 修改目标 / 最小修改指令：\n  - **stem_conflict / question.md / 选项区 A-D / 选项 A 写为\"正确结果\"是占位符，非可选择的数值；B/C/D 也仅有文字描述而无具体数值，选择题形式不成立 / 每个选项应给出具体的数值或可判别的表达式，使考生能据此选择 / 将 A 项改为 next[6] 的"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

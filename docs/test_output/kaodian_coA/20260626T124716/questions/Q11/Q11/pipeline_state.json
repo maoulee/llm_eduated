@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q11",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- fail 类型：stem_conflict（通过条件中数据位计数与范围/阈值错误）\n- 修改对象：question.md 通过条件第 1 条\n- 修改位置：第 29 行\n- 当前问题：\"7 位字长双符号位下数据位 5 位，表示范围 [-32, 31]\"及阈值 $2^{n-2}=32$ 均错误\n- 修改目标：数据位 6 位（7 位字长含 1 符号位 → 6 数据位 → 扩展为 8 位双符号位后仍"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

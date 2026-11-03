@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q8",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 2,
+    "review_stem": 2,
+    "write_gen": 1,
+    "review_solve": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "needs_fix",
+      "feedback": "- question_spec_error / question.md 第 7–13 行（选项 A/B/C/D 文本）/ 当前问题：四个选项均为错误类型描述，无具体数值；选项 A 标\"正确结果\"泄露答案 / 修改目标：四个选项必须改为**具体数值+单位**的备选答案（如\"A. 64 KB\"\"B. 512 KB\"\"C. 512 B\"\"D. 32 B\"，实际数值由 gen.py 产出后填入），不标注哪"
+    },
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

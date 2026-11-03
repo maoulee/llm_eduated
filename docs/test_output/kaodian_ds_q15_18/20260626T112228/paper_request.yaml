@@ -1,0 +1,101 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+assessment:
+  type: course_final
+  subjects:
+  - 数据结构
+  total_score: 100
+slots:
+- slot_id: Q15
+  question_type: comprehensive
+  score: 5
+  target_subject: 数据结构
+  target_family: 数据结构 > 栈队列和数组 > 循环队列
+  primary_target_name: 循环队列入队/出队操作代码填空
+  target_difficulty: 3
+  examination_mode: 代码补全型——循环队列操作实现
+  expected_form: 题干给循环队列的入队或出队函数框架，部分语句用空格代替，要求填写正确语句使函数功能完整
+  examination_focus: 循环队列入队/出队操作的代码补全（判满、rear更新、判空、front更新等）
+  reference_questions:
+  - data/question_experiences/2011_Q3.md
+  - data/question_experiences/2014_Q3.md
+  k_radar:
+    K2: 3
+    K3: 2
+    K1: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 代码补全题，需理解循环队列操作逻辑填入正确语句，轻量启发式估算
+  complexity: standard
+  teacher_annotation: ''
+- slot_id: Q16
+  question_type: comprehensive
+  score: 5
+  target_subject: 数据结构
+  target_family: 数据结构 > 线性表 > 单链表
+  primary_target_name: 单链表逆序输出函数填空并说明功能
+  target_difficulty: 3
+  examination_mode: 代码阅读型——链表递归函数分析
+  expected_form: 题干给一段操作单链表的递归函数代码（含空格），要求填写空白语句并简述函数功能
+  examination_focus: 分析单链表递归逆序输出函数，填补关键语句并说明功能
+  reference_questions: []
+  k_radar:
+    K2: 3
+    K3: 2
+    K1: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 代码阅读题，需理解递归函数逻辑填空并描述功能，轻量启发式估算
+  complexity: standard
+  teacher_annotation: ''
+- slot_id: Q17
+  question_type: comprehensive
+  score: 14
+  target_subject: 数据结构
+  target_family: 数据结构 > 线性表 > 单链表
+  primary_target_name: 删除单链表中所有值为x的结点
+  target_difficulty: 4
+  examination_mode: 算法设计型——链表操作算法设计
+  expected_form: 题干给带头结点的单链表，要求设计算法删除链表中所有data域值为x的结点。要求：定义结点类型、描述算法思想、写出C/C++代码并给出注释
+  examination_focus: 设计删除单链表中所有值为x的结点的算法，包括结点定义、设计思想、代码实现
+  reference_questions: []
+  k_radar:
+    K5: 4
+    K3: 2
+    K1: 1
+    K2: 2
+    K4: 3
+  k_dominant: K5
+  k_source: heuristic
+  difficulty_rationale: 算法设计题，需自行设计完整算法（定义+思想+实现），综合设计为主，轻量启发式估算
+  complexity: standard
+  teacher_annotation: ''
+- slot_id: Q18
+  question_type: comprehensive
+  score: 16
+  target_subject: 数据结构
+  target_family: 数据结构 > 树与二叉树 > 二叉树遍历
+  primary_target_name: 求二叉树中所有叶子结点到根的路径
+  target_difficulty: 4
+  examination_mode: 算法设计型——二叉树遍历与路径算法设计
+  expected_form: 题干给二叉链表存储的二叉树，要求设计算法输出所有叶子结点到根结点的路径。要求：定义结点类型、描述算法思想、写出C/C++代码并给出注释
+  examination_focus: 设计求二叉树所有叶子结点到根路径的算法，包括结点定义、设计思想、代码实现
+  reference_questions:
+  - data/question_experiences/2014_Q41.md
+  k_radar:
+    K5: 4
+    K3: 2
+    K1: 1
+    K2: 2
+    K4: 3
+  k_dominant: K5
+  k_source: heuristic
+  difficulty_rationale: 算法设计题，需结合遍历与路径保存设计完整算法，综合设计为主，轻量启发式估算
+  complexity: standard
+  teacher_annotation: ''

@@ -1,0 +1,127 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+assessment:
+  type: course_final
+  subjects:
+  - 组成原理
+  total_score: 100
+slots:
+- slot_id: Q6
+  question_type: 判断题
+  题型: 判断题
+  score: 2
+  target_subject: 组成原理
+  target_family: 组成原理 > CO-1 计算机系统概述 > 计算机系统结构 > 计算机硬件系统组成
+  primary_target_name: 计算机系统组成
+  target_difficulty: 1
+  examination_mode: 概念辨析型——计算机系统组成辨析
+  expected_form: ''
+  examination_focus: 冯诺依曼结构特征辨析（如'以运算器为中心'是否正确描述现代计算机）
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，考察冯诺依曼与现代结构差异
+  complexity: conceptual
+  teacher_annotation: ''
+- slot_id: Q7
+  question_type: 判断题
+  题型: 判断题
+  score: 2
+  target_subject: 组成原理
+  target_family: 组成原理 > CO-6 总线 > 总线操作和定时 > 异步定时方式
+  primary_target_name: 异步通信应答方式
+  target_difficulty: 1
+  examination_mode: 概念辨析型——异步通信应答方式辨析
+  expected_form: ''
+  examination_focus: 三种应答方式（不互锁/半互锁/全互锁）的可靠性比较判断
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，考察异步通信三种互锁方式特征
+  complexity: conceptual
+  teacher_annotation: ''
+- slot_id: Q8
+  question_type: 判断题
+  题型: 判断题
+  score: 2
+  target_subject: 组成原理
+  target_family: 组成原理 > CO-3 存储系统 > 存储器层次结构
+  primary_target_name: 存储系统层次结构
+  target_difficulty: 1
+  examination_mode: 概念辨析型——存储层次结构辨析
+  expected_form: ''
+  examination_focus: 局部性原理辨析（如'程序访问局部性是Cache工作的基础'是否正确）
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，考察局部性原理与存储层次关系
+  complexity: conceptual
+  teacher_annotation: ''
+- slot_id: Q9
+  question_type: 判断题
+  题型: 判断题
+  score: 2
+  target_subject: 组成原理
+  target_family: 组成原理 > CO-5 中央处理器 > 控制器的功能和工作原理 > 微程序控制器
+  primary_target_name: 微指令格式（水平型vs垂直型）
+  target_difficulty: 2
+  examination_mode: 概念辨析型——微指令格式特征辨析
+  expected_form: ''
+  examination_focus: 微指令格式特征辨析（如'水平型微指令的微指令字较长但微程序较短'是否正确）
+  reference_questions:
+  - data/question_experiences/simulation_00273.md
+  - data/question_experiences/2012_Q18.md
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，考察水平型与垂直型微指令格式差异
+  complexity: conceptual
+  teacher_annotation: ''
+- slot_id: Q10
+  question_type: 判断题
+  题型: 判断题
+  score: 2
+  target_subject: 组成原理
+  target_family: 组成原理 > CO-5 中央处理器 > 指令执行过程 > 指令周期
+  primary_target_name: 指令周期
+  target_difficulty: 1
+  examination_mode: 概念辨析型——指令周期概念辨析
+  expected_form: ''
+  examination_focus: 机器周期与时钟周期关系的判断（如'一个机器周期包含若干时钟周期'是否正确）
+  reference_questions: []
+  k_radar:
+    K1: 4
+    K2: 1
+    K3: 1
+    K4: 3
+    K5: 1
+  k_dominant: K1
+  k_source: heuristic
+  difficulty_rationale: 概念辨析，考察指令周期与机器周期/时钟周期关系
+  complexity: conceptual
+  teacher_annotation: ''

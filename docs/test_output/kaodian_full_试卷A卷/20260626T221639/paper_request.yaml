@@ -1,0 +1,243 @@
+schema_version: paper_request_v1
+
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["计算机组成原理"]
+  total_score: 100
+
+slots:
+  # ===== 第一大题 简答题 4×5=20 =====
+  - slot_id: Q1
+    question_type: 简答题
+    题型: 简答题
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-2 数据的表示和运算 > 浮点数的表示"
+    primary_target_name: "浮点数表示范围与精度"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——定义论述"
+    expected_form: "简答题，文字论述浮点数阶码位数与尾数位数对表示范围和精度的影响"
+    examination_focus: "浮点数阶码位数决定表示范围、尾数位数决定精度，论述二者之间的权衡关系"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 2, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题考查概念记忆，K1主导"
+    complexity: conceptual
+    teacher_annotation: "逐题锚定原卷Q1：浮点数表示范围与精度"
+
+  - slot_id: Q2
+    question_type: 简答题
+    题型: 简答题
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-6 总线 > 总线概述"
+    primary_target_name: "总线分类与总线复用"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——名词解释"
+    expected_form: "简答题，解释系统总线、地址总线、数据总线、控制总线的功能及总线复用含义"
+    examination_focus: "各类总线功能定义及总线复用概念"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 2, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题考查概念记忆，K1主导"
+    complexity: conceptual
+    teacher_annotation: "逐题锚定原卷Q2：总线概述"
+
+  - slot_id: Q3
+    question_type: 简答题
+    题型: 简答题
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-5 中央处理器 > CPU的功能和基本结构"
+    primary_target_name: "CPU内部寄存器与程序员可见性"
+    target_difficulty: 3
+    examination_mode: "概念辨析型——分类说明"
+    expected_form: "简答题，列出CPU主要寄存器并分类说明哪些程序员可见、哪些透明"
+    examination_focus: "PC、IR、MAR、MDR、ACC、通用寄存器、PSW等寄存器的程序员可见性判断"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 3, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题考查寄存器分类记忆，含可见性辨析"
+    complexity: conceptual
+    teacher_annotation: "逐题锚定原卷Q3：CPU内部寄存器"
+
+  - slot_id: Q4
+    question_type: 简答题
+    题型: 简答题
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-4 指令系统 > 指令格式"
+    primary_target_name: "指令字长、机器字长、存储字长"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——术语辨析"
+    expected_form: "简答题，解释三种字长的含义并说明三者关系"
+    examination_focus: "指令字长、机器字长、存储字长的定义及相互关系"
+    reference_questions: []
+    k_radar: {K1: 4, K2: 1, K3: 1, K4: 2, K5: 1}
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题考查术语辨析记忆"
+    complexity: conceptual
+    teacher_annotation: "逐题锚定原卷Q4：指令字长/机器字长/存储字长"
+
+  # ===== 第二大题 计算题 4×10=40 =====
+  - slot_id: Q5
+    question_type: 计算题
+    题型: 计算题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-1 计算机系统概述 > 计算机性能指标"
+    primary_target_name: "CPU性能指标（MIPS/CPI）"
+    target_difficulty: 3
+    examination_mode: "计算型——公式应用与多步计算"
+    expected_form: "计算题，给定两类机器不同时钟频率和各类指令CPI表，要求计算各自MIPS并比较性能"
+    examination_focus: "平均CPI计算、MIPS公式应用、性能比较"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 4, K3: 2, K4: 2, K5: 1}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需多步公式代入（加权CPI→MIPS），K2主导"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷计算Q1：MIPS/CPI计算"
+
+  - slot_id: Q6
+    question_type: 计算题
+    题型: 计算题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-2 数据的表示和运算 > 定点数的运算"
+    primary_target_name: "补码加减运算与溢出判断"
+    target_difficulty: 3
+    examination_mode: "计算型——补码运算与溢出判断"
+    expected_form: "计算题，给定两个定点小数，用变形补码（双符号位补码）计算x+y并判断是否溢出"
+    examination_focus: "补码转换、双符号位加法运算、溢出判断"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 3, K4: 2, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需多步推演（求补→加法→判溢出），K3主导"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷计算Q2：补码加减与溢出判断"
+
+  - slot_id: Q7
+    question_type: 计算题
+    题型: 计算题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-2 数据的表示和运算 > 浮点数的表示和运算"
+    primary_target_name: "IEEE 754单精度浮点数表示"
+    target_difficulty: 3
+    examination_mode: "计算型——浮点数编码转换"
+    expected_form: "计算题，给定一个带分数十进制数，用IEEE754 32位单精度标准表示并用十六进制写出结果"
+    examination_focus: "十进制转IEEE754单精度：符号位、阶码计算（偏置值127）、尾数规格化、十六进制输出"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，多步推演（转二进制→规格化→算阶码→拼格式→转十六进制），K3主导"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷计算Q3：IEEE754浮点数表示"
+
+  - slot_id: Q8
+    question_type: 计算题
+    题型: 计算题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-3 存储系统 > 虚拟存储器"
+    primary_target_name: "页式虚拟存储器地址转换"
+    target_difficulty: 3
+    examination_mode: "计算型——地址转换与页表查询"
+    expected_form: "计算题，给定页式虚拟存储器页表，判断哪些页失效，并将若干虚地址转换为实地址（十六进制）"
+    examination_focus: "虚页号分解、装入位查询、实页号拼接、实地址计算"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，多步推演（拆地址→查页表→判装入位→拼实地址），K3主导"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷计算Q4：页式虚拟存储器地址转换"
+
+  # ===== 第三大题 分析题 2×10=20 =====
+  - slot_id: Q9
+    question_type: 分析题
+    题型: 分析题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-3 存储系统 > 高速缓冲存储器 Cache"
+    primary_target_name: "Cache全相联映射分析"
+    target_difficulty: 3
+    examination_mode: "分析型——Cache地址映射与数据装入"
+    expected_form: "分析题，给定Cache容量、主存容量和地址数据表，用全相联映射方式分析Cache各行标志和数据内容"
+    examination_focus: "全相联映射规则、主存块地址分解、Cache行标志Tag计算、数据装入分析"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 4, K4: 3, K5: 1}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，需理解映射机制并逐步推演各地址映射结果，K3主导"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷分析Q1：Cache全相联映射"
+
+  - slot_id: Q10
+    question_type: 分析题
+    题型: 分析题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-7 输入输出系统 > I/O方式"
+    primary_target_name: "中断I/O方式可行性分析"
+    target_difficulty: 3
+    examination_mode: "分析型——I/O方式性能计算与判断"
+    expected_form: "分析题，给定CPU主频、外设数据传输率和中断服务程序执行时间，计算分析设备能否采用中断I/O方式（含两种传输率对比）"
+    examination_focus: "中断服务时间与数据到达间隔的比较、中断I/O可行性判断"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 4, K3: 3, K4: 3, K5: 2}
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，核心是公式计算（时钟周期→中断耗时→比较传输率），K2/K3并重"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷分析Q2：中断I/O可行性分析"
+
+  # ===== 第四大题 设计题 2×10=20 =====
+  - slot_id: Q11
+    question_type: 设计题
+    题型: 设计题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-3 存储系统 > 主存储器和CPU的连接"
+    primary_target_name: "主存储器扩展与片选逻辑"
+    target_difficulty: 4
+    examination_mode: "设计型——存储器容量扩展与地址译码（文字推导，不作图）"
+    expected_form: "设计题，给定字长、主存容量和ROM/RAM地址范围分配，推导所需芯片数量、地址线根数，用文字写出各芯片组片选逻辑与地址范围"
+    examination_focus: "字位同时扩展方案设计、芯片数量计算、地址范围划分、片选译码逻辑推导"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 3, K3: 4, K4: 4, K5: 3}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需综合容量计算、地址划分、片选逻辑推导，K3/K4并重"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷设计Q1：主存储器扩展片选（原卷作图→替换为文字推导）"
+
+  - slot_id: Q12
+    question_type: 设计题
+    题型: 设计题
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > CO-5 中央处理器 > 数据通路的功能和基本结构"
+    primary_target_name: "数据通路与指令执行微操作序列"
+    target_difficulty: 4
+    examination_mode: "设计型——指令执行微操作与控制信号（文字+表格，不附图）"
+    expected_form: "设计题，用文字给定控制信号定义表和寄存器连接关系，要求用表格写出减法指令执行阶段各节拍的功能和有效控制信号"
+    examination_focus: "指令执行流程分析、寄存器传送微操作设计、控制信号对应关系、总线冲突判断"
+    reference_questions: []
+    k_radar: {K1: 2, K2: 2, K3: 4, K4: 4, K5: 3}
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需理解数据通路并逐步推导微操作与控制信号，K3/K4并重"
+    complexity: standard
+    teacher_annotation: "逐题锚定原卷设计Q2：数据通路微操作（原卷附图→替换为文字表格）"

@@ -1,0 +1,40 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+  teacher_note: 考点对应模式——每题知识点与原卷1-to-1对应，考察角度换不同切面，题干全新产出
+assessment:
+  type: course_final
+  subjects:
+  - 计算机组成原理
+  total_score: 100
+  exam_info:
+    school: 合肥师范学院
+    course: 计算机组成原理
+    exam_type: 期末考试
+    duration: 120分钟
+    reference_paper: data/计算机组成原理1卷_题干与表格.md
+slots:
+- slot_id: Q8
+  question_type: single_choice
+  score: 2
+  target_subject: 计算机组成原理
+  target_family: CO-3 > 存储系统 > 主存储器和CPU的连接
+  primary_target_name: 存储器地址线/数据线计算
+  target_difficulty: 2
+  examination_mode: 计算型——存储容量推导
+  expected_form: ''
+  examination_focus: 给定地址线和数据线数量反推存储容量
+  reference_questions: []
+  k_radar:
+    K1: 2
+    K2: 3
+    K3: 2
+    K4: 2
+    K5: 1
+  k_dominant: K2
+  k_source: heuristic
+  difficulty_rationale: 需一步推导，地址线→寻址空间×数据位宽
+  complexity: standard
+  teacher_annotation: 第一个考察角度：给定线数反推存储容量
+  题型: 单项选择题

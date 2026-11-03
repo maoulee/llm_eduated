@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q25",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- fail 类型：doc_unfaithful / 修改对象：solution.md / 修改位置：第(1)题\"双符号位法\"小节（约第39–49行）/ 当前问题：竖式加法结果 `11_0111_0100` 未截断到 9 位双符号位域，且标注双符号位为 \"01\"（与 gen.py 数据流 `(s_hi,s_lo)=(1,0)`=\"10\" 不符）/ 修改目标：与 gen.py 数据流 `trunc="
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

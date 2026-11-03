@@ -1,0 +1,47 @@
+{
+  "slot_id": "Q14",
+  "current_node": "write_gen",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 3,
+    "review_solve": 2
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- fail类型：assertion_defect（恒真断言） / 修改对象：gen.py / 修改位置：第174行 / 当前问题：`assert ins_num_passes != bub_num_passes or True` 因 `or True` 恒为真，无法校验条件7 / 修改目标：使条件7的断言能真正检出\"趟数相等导致 Q3 退化为'等于'\"的情况 / 最小修改指令：将第174行改为 "
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- **fail 类型**：doc_unfaithful（文档不忠实——元素指代与 gen.py 执行矛盾）\n- **修改对象**：solution.md\n- **修改位置**：第 55 行（冒泡第1趟摘要描述）\n- **当前问题**：摘要写 `78>58 交换 → (… 58, 78, …)，78>45 交换 → (… 45, 78, …)`，将冒泡过程中的后移元素误标为 78。实际 gen.p"
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+schema_version: paper_request_v1
+source: {intake_type: interact_agent, scenario: D_past_paper}
+assessment: {type: course_final, subjects: ["计算机组成原理"], total_score: 100, duration_minutes: 120}
+knowledge_scope:
+  primary_chapters: ["计算机组成原理 > 数据的表示和运算", "计算机组成原理 > 存储系统", "计算机组成原理 > 指令系统", "计算机组成原理 > 中央处理器", "计算机组成原理 > 总线", "计算机组成原理 > 输入输出系统"]
+  coverage_strategy: balanced
+teacher_preferences: {require: ["考察密度高", "作图题替换为纯文字推导"], avoid: ["照搬原卷", "要求作图"]}
+slots:
+  # ===== 一、单项选择题 5×2=10 =====
+  - {slot_id: A01, question_type: single_choice, complexity: standard, score: 2, target_subject: "计算机组成原理", target_family: "数据表示与运算 > 补码", primary_target_name: "补码真值与范围", target_difficulty: 2, k_dominant: "K2", examination_mode: "计算型——补码真值/范围判断", 题型: 单项选择题}
+  - {slot_id: A02, question_type: single_choice, complexity: standard, score: 2, target_subject: "计算机组成原理", target_family: "数据表示与运算 > IEEE754", primary_target_name: "IEEE754 浮点表示", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算型——IEEE754 浮点数表示/运算判断", 题型: 单项选择题}
+  - {slot_id: A03, question_type: single_choice, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "存储系统 > Cache", primary_target_name: "Cache 映射方式", target_difficulty: 2, k_dominant: "K1", examination_mode: "概念辨析型——Cache 映射方式/命中", 题型: 单项选择题}
+  - {slot_id: A04, question_type: single_choice, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "指令系统 > 寻址", primary_target_name: "寻址方式", target_difficulty: 2, k_dominant: "K1", examination_mode: "概念辨析型——寻址方式有效地址", 题型: 单项选择题}
+  - {slot_id: A05, question_type: single_choice, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "输入输出 > 中断", primary_target_name: "中断响应", target_difficulty: 2, k_dominant: "K1", examination_mode: "概念辨析型——CPU 响应中断时机", 题型: 单项选择题}
+  # ===== 二、判断题 5×2=10（conceptual）=====
+  - {slot_id: A06, question_type: comprehensive, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "存储系统 > SRAM/DRAM", primary_target_name: "SRAM/DRAM 刷新特性辨析", target_difficulty: 2, k_dominant: "K1", examination_mode: "判断题——关于 SRAM/DRAM 是否刷新/速度的陈述判对错", 题型: 判断题}
+  - {slot_id: A07, question_type: comprehensive, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "存储系统 > 虚拟存储器", primary_target_name: "虚拟存储器编址空间辨析", target_difficulty: 2, k_dominant: "K1", examination_mode: "判断题——关于虚拟存储器可编址空间的陈述判对错", 题型: 判断题}
+  - {slot_id: A08, question_type: comprehensive, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "总线 > 控制方式", primary_target_name: "总线控制方式辨析", target_difficulty: 2, k_dominant: "K1", examination_mode: "判断题——关于集中式总线控制方式的陈述判对错", 题型: 判断题}
+  - {slot_id: A09, question_type: comprehensive, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "输入输出 > DMA", primary_target_name: "DMA 数据通路辨析", target_difficulty: 2, k_dominant: "K1", examination_mode: "判断题——关于 DMA 数据传输通路的陈述判对错", 题型: 判断题}
+  - {slot_id: A10, question_type: comprehensive, complexity: conceptual, score: 2, target_subject: "计算机组成原理", target_family: "中央处理器 > 流水线", primary_target_name: "指令流水线辨析", target_difficulty: 2, k_dominant: "K1", examination_mode: "判断题——关于指令流水线/数据旁路的陈述判对错", 题型: 判断题}
+  # ===== 三、计算题 6 小题=40（standard→team图）=====
+  - {slot_id: A11, question_type: comprehensive, complexity: standard, score: 6, target_subject: "计算机组成原理", target_family: "数据表示与运算 > 补码", primary_target_name: "变形补码加减与溢出", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算题——变形补码算 x+y/x-y 并判溢出", 题型: 计算题}
+  - {slot_id: A12, question_type: comprehensive, complexity: standard, score: 6, target_subject: "计算机组成原理", target_family: "数据表示与运算 > IEEE754", primary_target_name: "IEEE754 浮点加减", target_difficulty: 4, k_dominant: "K3", examination_mode: "计算题——IEEE754 单精度加法（对阶/规格化/舍入）", 题型: 计算题}
+  - {slot_id: A13, question_type: comprehensive, complexity: standard, score: 7, target_subject: "计算机组成原理", target_family: "存储系统 > Cache", primary_target_name: "Cache 命中率与平均访问时间", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算题——Cache 命中率/平均访问时间/效率", 题型: 计算题}
+  - {slot_id: A14, question_type: comprehensive, complexity: standard, score: 7, target_subject: "计算机组成原理", target_family: "指令系统 > 扩展操作码", primary_target_name: "扩展操作码零地址最大条数", target_difficulty: 3, k_dominant: "K2", examination_mode: "计算题——扩展操作码各级指令最大条数", 题型: 计算题}
+  - {slot_id: A15, question_type: comprehensive, complexity: standard, score: 7, target_subject: "计算机组成原理", target_family: "中央处理器 > 流水线", primary_target_name: "流水线吞吐率与加速比", target_difficulty: 3, k_dominant: "K3", examination_mode: "计算题——指令流水线吞吐率/执行时间", 题型: 计算题}
+  - {slot_id: A16, question_type: comprehensive, complexity: standard, score: 7, target_subject: "计算机组成原理", target_family: "总线 > 带宽", primary_target_name: "总线带宽计算", target_difficulty: 2, k_dominant: "K2", examination_mode: "计算题——同步总线带宽=宽度×频率", 题型: 计算题}
+  # ===== 四、作图题 2×10=20（→纯文字推导，题型=综合题）=====
+  - slot_id: A17
+    question_type: comprehensive
+    complexity: standard
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "存储系统 > 存储器扩展"
+    primary_target_name: "DRAM 芯片扩展设计（文字推导芯片数/地址/片选/刷新）"
+    target_difficulty: 4
+    k_dominant: "K4"
+    examination_mode: "综合题——用小容量 DRAM 芯片设计大容量存储器，推导芯片数量、地址分配、片选逻辑（文字描述），并算异步刷新周期"
+    hard_constraints: ["本题考察形式为纯文字推导与计算，非作图类考法——题目内容本身不涉及任何作图"]
+    teacher_annotation: "原作图题（存储器框图）已替换为纯文字推导。"
+    题型: 综合题
+  - slot_id: A18
+    question_type: comprehensive
+    complexity: standard
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "中央处理器 > 数据通路"
+    primary_target_name: "指令执行微操作序列与控制信号（文字推导）"
+    target_difficulty: 4
+    k_dominant: "K4"
+    examination_mode: "综合题——写出某指令在 CPU 各执行周期的微操作序列与所需控制信号表（文字列表，不画数据通路图）"
+    hard_constraints: ["本题考察形式为纯文字推导（微操作序列+控制信号表），非作图类考法——题目内容本身不涉及任何作图"]
+    teacher_annotation: "原作图题（数据通路图）已替换为微操作序列文字推导。"
+    题型: 综合题
+  # ===== 五、综合题 2×10=20 =====
+  - {slot_id: A19, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "中央处理器 > 综合", primary_target_name: "CPU 性能综合（CPI/MIPS/流水线）", target_difficulty: 4, k_dominant: "K4", examination_mode: "综合题——给多机CPI/频率/指令分布，综合分析性能（CPI/MIPS/加速比）", 题型: 综合题}
+  - {slot_id: A20, question_type: comprehensive, complexity: standard, score: 10, target_subject: "计算机组成原理", target_family: "输入输出 > 综合", primary_target_name: "I/O 系统综合（中断/DMA 对比与时间计算）", target_difficulty: 4, k_dominant: "K4", examination_mode: "综合题——对比中断与 DMA 方式，计算给定场景下的数据传送时间", 题型: 综合题}

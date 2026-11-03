@@ -1,0 +1,48 @@
+{
+  "slot_id": "Q23",
+  "current_node": "final",
+  "visit_counts": {
+    "design_direct": 1,
+    "review_stem": 1,
+    "write_gen": 2,
+    "review_solve": 2,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_direct",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_stem",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "fix_gen",
+      "feedback": "- fail类型: assertion_defect（场景规则6约束未被assert覆盖）\n- 修改对象: gen.py\n- 修改位置: solve() 函数末尾（return之前），或在调用 solve() 后、打印数据流之前\n- 当前问题: gen.py 无任何 assert 语句；场景规则6（相容微命令分属不同字段）的验证结果 compat_check 仅打印未断言\n- 修改目标: 为场景规"
+    },
+    {
+      "node": "write_gen",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "review_solve",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}
