@@ -639,6 +639,32 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* === 动效系统（Refined Warm motion）=== */
+    @keyframes enter-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes enter-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes blink-cursor { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+    @keyframes pulse-dot { 0%, 100% { box-shadow: 0 0 0 0 rgba(201,100,66,0.32); } 50% { box-shadow: 0 0 0 5px rgba(201,100,66,0); } }
+    @keyframes bar-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+    /* 入场：消息/卡片淡入上移（one-shot，fill both）*/
+    .message { animation: enter-up 280ms ease-out both; }
+    .slot-card { animation: enter-up 320ms ease-out both; }
+    .result-card { animation: enter-up 260ms ease-out both; }
+    .mode-card { animation: enter-up 280ms ease-out both; transition: transform 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out; }
+    .mode-card:hover { transform: translateY(-2px); border-color: var(--primary); background: var(--surface); box-shadow: 0 4px 14px rgba(58,47,30,0.06); }
+    .mode-card:active { transform: translateY(0) scale(0.99); }
+
+    /* 生成中圆点：脉冲呼吸 */
+    .gdot.active { animation: pulse-dot 1.4s ease-out infinite; }
+
+    /* 进度条流光叠加（给 .bar 加 .shine 即流光）*/
+    .shine { position: relative; overflow: hidden; }
+    .shine::after { content: ""; position: absolute; inset: 0; background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); background-size: 200% 100%; animation: shimmer 1.6s linear infinite; }
+
+    /* 流式光标（打字机/流式时附在文末）*/
+    .stream-cursor { display: inline-block; width: 7px; height: 1.05em; vertical-align: text-bottom; background: var(--primary); margin-left: 1px; border-radius: 1px; animation: blink-cursor 1.1s steps(1) infinite; }
+
     .result-card {
       padding: 12px;
       margin-bottom: 10px;
@@ -1017,7 +1043,7 @@
         <div class="workspace-body" id="workspaceBody">
           <div class="empty-panel">
             <div>
-              <div class="icon">📋</div>
+              <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5V3a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 3v1.5"/><path d="M9 11h6M9 14.5h4"/></svg></div>
               <div>输入需求后，右侧会展示对应草案。</div>
             </div>
           </div>
@@ -2845,7 +2871,7 @@ ${q.explanation}`).join("\n\n")}
       document.getElementById("workspaceBody").innerHTML = `
         <div class="empty-panel">
           <div>
-            <div class="icon">📋</div>
+            <div class="icon"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4.5" width="14" height="17" rx="2"/><path d="M9 4.5V3a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 3v1.5"/><path d="M9 11h6M9 14.5h4"/></svg></div>
             <div>输入需求后，右侧会展示对应草案。</div>
           </div>
         </div>

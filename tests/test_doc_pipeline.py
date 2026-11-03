@@ -1439,6 +1439,30 @@ class TestGatewayStreamChat:
         assert result["content"] == "ok"
         assert len(provider.client.calls) == 2
 
+    def test_reasoning_effort_overrides_provider_default(self):
+        provider = SimpleNamespace(
+            model_name="glm-test",
+            sampling_params={},
+            thinking_control_method="reasoning_effort",
+            _extra_body_for_thinking=lambda enabled: {
+                "chat_template_kwargs": {
+                    "reasoning_effort": "provider-default" if enabled else "none"
+                }
+            },
+        )
+        gateway = LLMGateway.from_provider(provider, name="glm5.2_anthropic")
+
+        params = gateway._build_chat_params(
+            provider,
+            [{"role": "user", "content": "hello"}],
+            max_tokens=100,
+            enable_thinking=True,
+            thinking_budget=None,
+            reasoning_effort="low",
+        )
+
+        assert params["extra_body"]["chat_template_kwargs"]["reasoning_effort"] == "low"
+
 
 class TestGatewayGenerateWithTools:
     def test_generate_with_tools_retries_retryable_chat_error(self):

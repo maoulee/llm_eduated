@@ -596,6 +596,13 @@ class LLMGateway:
             extra_body = provider._extra_body_for_thinking(enable_thinking)
             if extra_body:
                 params.setdefault("extra_body", {}).update(extra_body)
+        if (
+            reasoning_effort is not None
+            and getattr(provider, "thinking_control_method", "") == "reasoning_effort"
+        ):
+            params.setdefault("extra_body", {})
+            params["extra_body"].setdefault("chat_template_kwargs", {})
+            params["extra_body"]["chat_template_kwargs"]["reasoning_effort"] = reasoning_effort
 
         # reasoning_effort: GLM-5.2 Anthropic depth control (high/max/low/none).
         # Stashed in params so _read_anthropic_stream can pick it up (per-request
@@ -782,13 +789,13 @@ class LLMGateway:
             # heavy tasks). thinking.type=enabled ALONE gives bounded visible thinking
             # (~12-19K) + content. Empirically verified 2026-06-24.
         }
-        if enable_thinking:
+        if enable_thinking and effort != "none":
             # adaptive + output_config = bounded visible thinking (~4-6K) + content.
             # Verified on GLM 2026-06-24: adaptive alone → intermittent 43K blowup;
             # adding output_config stabilizes it. context_management NOT needed (GLM ignores it).
             # Retry-on-runaway (below) catches the rare intermittent blowup.
             payload["thinking"] = {"type": "adaptive"}
-            payload["output_config"] = {"effort": "high"}
+            payload["output_config"] = {"effort": effort}
         if system_text:
             payload["system"] = system_text
         if anthropic_tools:

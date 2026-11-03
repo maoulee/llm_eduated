@@ -246,7 +246,7 @@ class TeamPipeline:
             task=f"读 question.md 写 gen.py 并 exec 验证（关思考，按工作规范分步）。{gen_task_extra}",
             slot_id=slot_id,
             inject_files={"question.md": slot_ws / "question.md", "design_card": card_path},
-            target_file="gen.py", enable_thinking=True,
+            target_file="gen.py",
         )
         timings[f"{label}·gen"] = time.monotonic() - t0
         genok = (slot_ws / "gen.py").exists()
@@ -286,7 +286,7 @@ class TeamPipeline:
                     ),
                     slot_id=slot_id,
                     inject_files={"question.md": slot_ws / "question.md", "gen.py": slot_ws / "gen.py"},
-                    target_file="review.md", enable_thinking=True,
+                    target_file="review.md",
                 )
                 review_path = slot_ws / "review.md"
                 sa = status_of(ra, review_path=review_path)
@@ -329,7 +329,7 @@ class TeamPipeline:
                         "review.md": review_path,
                         "question.md": slot_ws / "question.md",
                     },
-                    target_file="gen.py", enable_thinking=True,
+                    target_file="gen.py",
                     preserve_existing=True,
                 )
                 timings[f"{label}·gen_fix"] = time.monotonic() - t0
