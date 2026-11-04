@@ -82,6 +82,8 @@ class InteractV2Service:
         self._drafts: dict[str, DraftData] = {}  # session_id -> latest draft
         self._annotations: dict[str, AnnotationSubmission] = {}  # session_id -> latest draft annotation
         self._scheduler_cache: dict[str, object] = {}  # cache_key -> DocScheduler
+        # Restore old sessions from disk so they survive server restarts.
+        self._restore_sessions_from_disk()
 
     def _restore_sessions_from_disk(self) -> None:
         """Delegate to SessionManager for backward compat with tests.

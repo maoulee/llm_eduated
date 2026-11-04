@@ -1021,6 +1021,10 @@
         ? (localStorage.getItem("teacherInteractApiBase") || "http://127.0.0.1:8010")
         : "");
 
+    const providerParam = params.get("provider");
+    if (providerParam) localStorage.setItem("teacherInteractProvider", providerParam);
+    // 默认线上 glm5.2（本地 vLLM 挂时）；切回本地：URL 加 ?provider=api_vllm
+    const PROVIDER = providerParam || localStorage.getItem("teacherInteractProvider") || "glm5.2_anthropic";
     const userParam = params.get("user") || params.get("uid") || params.get("teacher");
     if (userParam) localStorage.setItem("teacherInteractUserId", userParam);
     const USER_ID = sanitizeUserId(
@@ -1412,7 +1416,7 @@
           localStorage.removeItem(sessionStorageKey());
         }
       }
-      const session = await api.createSession();
+      const session = await api.createSession(PROVIDER);
       state.sessionId = session.session_id;
       localStorage.setItem(sessionStorageKey(), state.sessionId);
       return state.sessionId;

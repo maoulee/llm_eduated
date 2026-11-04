@@ -14,6 +14,13 @@ if project_root not in sys.path:
 os.environ.setdefault("VLLM_MODEL", "/zhaoshu/llm/Qwen3.6-27B-FP8")
 os.environ.setdefault("VLLM_API_BASE", "http://127.0.0.1:8000/v1")
 
+# Load operational env (GLM key for glm5.2_anthropic etc.) — sibling repo shares it.
+# Must run before uvicorn imports api.app (which imports config.py → reads GLM_* env).
+from dotenv import load_dotenv
+for _env in ("/zhaoshu/llm_eduated/.env", os.path.join(project_root, ".env")):
+    if os.path.exists(_env):
+        load_dotenv(_env)
+
 if __name__ == "__main__":
     host = os.getenv("API_HOST", "0.0.0.0")
     port = int(os.getenv("API_PORT", "3001"))

@@ -126,16 +126,16 @@ async def main():
         "slot_id": args.slot,
         "question_type": "comprehensive",
         "score": 13,
-        "primary_target_name": "平衡二叉树 AVL 的插入与旋转",
-        "target_family": "DS-5 > 树与二叉树",
+        "primary_target_name": "单链表判断是否有环",
+        "target_family": "DS-2 > 线性表 > 单链表",
         "target_difficulty": 4,
-        "examination_mode": "结构操作与状态维护模拟",
-        "difficulty_rationale": "需多步串行推演树的形态变化",
+        "examination_mode": "算法设计与分析",
+        "difficulty_rationale": "需设计算法+分析时空复杂度",
         "reference_questions": ["exercise_00272.md", "exercise_00261.md", "simulation_00030.md"],
-        "expected_form": "题干给一组插入/删除关键字序列，要求逐次画出 AVL 树形态变化并标注旋转类型",
+        "expected_form": "题干给单链表场景，要求用 C 或 C++ 语言：①定义链表结点数据类型 ②描述算法基本设计思想 ③编写算法（关键处给注释）",
     }
     doc = assemble_slot_experience_doc(
-        slot_id=args.slot, examination_mode="结构操作与状态维护模拟",
+        slot_id=args.slot, examination_mode="算法设计与分析",
         slot_md_path="", experience_card_path="", outline_entry=outline_entry,
     )
     assembled_path.write_text(doc, encoding="utf-8")
@@ -159,8 +159,8 @@ async def main():
         "slot_id": args.slot,
         "subject": "数据结构",
         "knowledge_tag": "DS-5 > 树与二叉树 > 平衡二叉树AVL",
-        "primary_target_name": "平衡二叉树 AVL 的插入与旋转",
-        "examination_mode": "结构操作与状态维护模拟",
+        "primary_target_name": "单链表判断是否有环",
+        "examination_mode": "算法设计与分析",
         "target_difficulty": 4,
         "difficulty": "hard",
         "question_type": "comprehensive",

@@ -165,12 +165,15 @@ async def get_session(session_id: str):
 
 @router.get("/sessions/{session_id}/history")
 async def get_session_history(session_id: str):
-    """Get reconstructed chat history from workspace files."""
+    """Get reconstructed chat history from workspace files.
+
+    Returns empty history (200) if session/workspace doesn't exist — graceful
+    degradation so the frontend doesn't break on stale/deleted sessions.
+    """
     try:
-        history = _service.get_session_history(session_id)
-    except ValueError as e:
-        raise HTTPException(status_code=_status_for_value_error(e), detail=str(e))
-    return history
+        return _service.get_session_history(session_id)
+    except (ValueError, FileNotFoundError, KeyError):
+        return {"session_id": session_id, "messages": [], "turns": []}
 
 
 @router.delete("/sessions/{session_id}")

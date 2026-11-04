@@ -58,14 +58,14 @@ def _resilient_transport(api_base_url: Optional[str] = None) -> httpx.AsyncHTTPT
     ⚠️ 仅用于**本地 vLLM**(127.0.0.1)。线上/远程端点返回 None（让 httpx 用默认 transport），
     原因有二：(1) retries=3 + SO_KEEPALIVE/TCP_KEEP* 经实测打挂线上 bigmodel 端点
     （请求挂起至超时、4×timeout 重试风暴）；(2) 任何显式 transport 都会覆盖 httpx 代理
-    自动挂载（本机经 127.0.0.1:6666 代理出网），直连 open.bigmodel.cn → ConnectTimeout。
+    自动挂载（本机经 127.0.0.1:7777 代理出网），直连 open.bigmodel.cn → ConnectTimeout。
     线上重试交给 gateway 的 max_attempts 应用层重试。
 
     - retries=3（仅本地）：connect 失败/连接被 reset 时由 httpx 透明重试，不惊动上层。
     - SO_KEEPALIVE(+保守间隔，仅本地)：保活空闲连接、防 NAT/代理回收。
     """
     # 线上/远程端点：任何显式 transport 都会覆盖 httpx 的代理自动挂载（本机经
-    # 127.0.0.1:6666 代理出网），导致直连 open.bigmodel.cn → ConnectTimeout；
+    # 127.0.0.1:7777 代理出网），导致直连 open.bigmodel.cn → ConnectTimeout；
     # 且 socket_options/retries 实测会打挂线上。返回 None 让 httpx 用默认 transport
     # （trust_env=True → 自动挂代理），重试交给 gateway 的 max_attempts 应用层重试。
     if api_base_url and not _is_local_endpoint(api_base_url):
