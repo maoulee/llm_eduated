@@ -1,0 +1,20 @@
+schema_version: interact_status_v1
+
+interact_status: reviewing
+
+scenario: D_past_paper
+scenario_confidence: high
+
+task_type: paper
+
+teacher_annotations:
+  total_slots: 18
+  selected: 0
+  excluded: 0
+  has_annotations: false
+
+context:
+  subjects: ["数据结构"]
+  has_experience_cards: false
+  has_kg: true
+  knowledge_points_confirmed: []

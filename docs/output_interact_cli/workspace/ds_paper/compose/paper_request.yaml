@@ -1,0 +1,441 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["数据结构"]
+  total_score: 100
+
+slots:
+  # ========== 一、选择题（10×2分 = 20分） ==========
+
+  - slot_id: Q1
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 2. 线性表 > 2.2 顺序表 / 2.3 链表的链式表示"
+    primary_target_name: "顺序表与链表的插入删除复杂度对比"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——操作场景与复杂度对应"
+    expected_form: ""
+    examination_focus: "给定操作场景（有序/无序、头部/中部/尾部），判断顺序表与链表各自的时间复杂度"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "基础概念辨析，需记忆顺序表与链表在各操作上的时间复杂度"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q2
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 3. 栈、队列和数组 > 3.1 栈 / 3.2 队列"
+    primary_target_name: "栈与队列的操作特性与应用场景辨析"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——数据结构特性与应用场景匹配"
+    expected_form: ""
+    examination_focus: "栈和队列在插入删除位置、适用场景上的对比"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "基础概念辨析，需记忆栈LIFO和队列FIFO的特性及典型应用"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 3. 栈、队列和数组 > 3.1 栈 > 栈的应用"
+    primary_target_name: "栈的应用——表达式求值中的栈操作"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——栈在表达式求值中的角色"
+    expected_form: ""
+    examination_focus: "中缀表达式转后缀表达式过程中栈的变化"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 2
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "栈应用的经典场景，需理解中缀转后缀的栈操作规则"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 4. 串 > 4.2 串的模式匹配 > KMP 模式匹配"
+    primary_target_name: "KMP模式匹配——next数组计算"
+    target_difficulty: 3
+    examination_mode: "计算型——next数组逐步推算"
+    expected_form: ""
+    examination_focus: "给定模式串，计算next数组或nextval数组的值"
+    reference_questions:
+      - "data/question_experiences/simulation_00137.md"
+      - "data/question_experiences/2019_Q9.md"
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 3
+      K4: 4
+      K5: 1
+    k_dominant: "K4"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需多步推算next数组，涉及前缀后缀匹配的逻辑判断"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 5. 树与二叉树 > 5.2 二叉树的概念 > 完全二叉树"
+    primary_target_name: "完全二叉树——结点编号与性质计算"
+    target_difficulty: 3
+    examination_mode: "计算型——完全二叉树性质公式应用"
+    expected_form: ""
+    examination_focus: "给定完全二叉树结点数，计算叶结点个数/高度/某层结点数"
+    reference_questions:
+      - "data/question_experiences/2011_Q4.md"
+      - "data/question_experiences/simulation_00047.md"
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需应用完全二叉树性质公式进行计算"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q6
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 5. 树与二叉树 > 5.5 树与二叉树的应用 > 哈夫曼树"
+    primary_target_name: "哈夫曼树——性质辨析"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——哈夫曼树性质判断"
+    expected_form: ""
+    examination_focus: "哈夫曼树的性质判断（无度1结点、WPL最小、叶子分布等）"
+    reference_questions:
+      - "data/question_experiences/simulation_00262.md"
+    k_radar:
+      K1: 4
+      K2: 1
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需辨析哈夫曼树的多个性质，涉及易混概念"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q7
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 6. 图 > 6.4 图的应用 > 最小生成树"
+    primary_target_name: "最小生成树——Prim/Kruskal算法结果判断"
+    target_difficulty: 3
+    examination_mode: "推演型——最小生成树边集逐步选择"
+    expected_form: ""
+    examination_focus: "给定图的边权集合，判断最小生成树的边集或总权值"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需模拟Prim或Kruskal算法的多步边选择过程"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q8
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 6. 图 > 6.4 图的应用 > 最短路径"
+    primary_target_name: "最短路径算法——Dijkstra/BFS适用场景辨析"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——算法适用条件判断"
+    expected_form: ""
+    examination_focus: "带权/无权图中单源最短路径算法的选择"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "需辨析Dijkstra（带权）与BFS（无权）的适用场景"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q9
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 7. 查找 > 7.4 散列表"
+    primary_target_name: "哈希表——线性探测冲突处理与ASL计算"
+    target_difficulty: 3
+    examination_mode: "计算型——哈希表构造与ASL推算"
+    expected_form: ""
+    examination_focus: "给定关键字序列和哈希函数，模拟线性探测过程并计算查找失败ASL"
+    reference_questions:
+      - "data/question_experiences/2019_Q8.md"
+      - "data/question_experiences/2023_Q9.md"
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 4
+      K4: 4
+      K5: 1
+    k_dominant: "K3"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需模拟线性探测的多步冲突处理过程并计算ASL"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q10
+    question_type: 选择题
+    score: 2
+    target_subject: "数据结构"
+    target_family: "数据结构 > 8. 排序 > 8.3 交换排序 > 快速排序"
+    primary_target_name: "快速排序——第一趟划分结果判断"
+    target_difficulty: 3
+    examination_mode: "推演型——partition过程模拟"
+    expected_form: ""
+    examination_focus: "给定关键字序列，判断快速排序第一趟划分后的序列"
+    reference_questions:
+      - "data/question_experiences/2023_Q11.md"
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K4"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需模拟partition过程，理解枢轴左右分区的规则"
+    complexity: standard
+    teacher_annotation: ""
+
+  # ========== 二、应用题（4×10分 = 40分） ==========
+
+  - slot_id: Q11
+    question_type: 主观题
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 5. 树与二叉树 > 5.3 二叉树遍历和线索二叉树 > 遍历序列应用"
+    primary_target_name: "二叉树遍历序列还原"
+    target_difficulty: 3
+    examination_mode: "推演型——遍历序列还原二叉树结构"
+    expected_form: "题干给先序和中序遍历序列，要求还原二叉树结构（文字描述各结点位置关系）并写出后序和层序遍历序列"
+    examination_focus: "给定先序+中序遍历序列，还原二叉树结构（文字描述各结点位置关系），写出后序和层序遍历序列"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 1
+      K3: 4
+      K4: 3
+      K5: 2
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需多步推演从遍历序列还原二叉树，再推导其他遍历序列"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q12
+    question_type: 主观题
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 6. 图 > 6.3 图的遍历"
+    primary_target_name: "图的遍历——DFS/BFS序列与生成树"
+    target_difficulty: 3
+    examination_mode: "推演型——图遍历过程模拟与生成树描述"
+    expected_form: "题干给图的邻接矩阵或邻接表，要求写出从指定顶点开始的DFS和BFS遍历序列，并描述生成树的边集"
+    examination_focus: "给定图的邻接矩阵/邻接表，写出从指定顶点开始的DFS和BFS遍历序列，并描述生成树的边集"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 1
+      K3: 4
+      K4: 3
+      K5: 2
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需模拟DFS/BFS遍历过程，理解生成树的构建规则"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q13
+    question_type: 主观题
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 7. 查找 > 7.2 顺序查找和折半查找 > 折半查找"
+    primary_target_name: "折半查找——判定树与ASL计算"
+    target_difficulty: 3
+    examination_mode: "计算型——折半查找判定树构建与ASL计算"
+    expected_form: "题干给有序表，要求写出折半查找判定树的文字描述（各层结点分布），计算查找成功和查找失败的ASL"
+    examination_focus: "给定有序表，写出折半查找判定树的文字描述（各层结点），计算查找成功/失败的ASL"
+    reference_questions:
+      - "data/question_experiences/simulation_00009.md"
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "question_aggregate"
+    difficulty_rationale: "需构建判定树并计算ASL，涉及多步推导"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q14
+    question_type: 主观题
+    score: 10
+    target_subject: "数据结构"
+    target_family: "数据结构 > 8. 排序 > 8.4 选择排序 > 堆排序 / 8.5 归并排序和基数排序 > 归并排序"
+    primary_target_name: "排序算法——堆排序与归并排序过程推演"
+    target_difficulty: 3
+    examination_mode: "推演型——排序算法逐趟过程模拟"
+    expected_form: "题干给关键字序列，要求写出堆排序建堆过程和每一趟排序结果，以及归并排序每一趟结果，并对比两种排序的时间/空间复杂度"
+    examination_focus: "给定关键字序列，写出堆排序建堆过程和每一趟排序结果，以及归并排序每一趟结果"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 2
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "需模拟堆排序建堆和归并排序的多趟过程，并对比复杂度"
+    complexity: standard
+    teacher_annotation: ""
+
+  # ========== 三、算法分析题（2×5分 = 10分） ==========
+
+  - slot_id: Q15
+    question_type: 主观题
+    score: 5
+    target_subject: "数据结构"
+    target_family: "数据结构 > 2. 线性表 > 2.3 链表的链式表示 > 单链表"
+    primary_target_name: "链表操作——代码填空"
+    target_difficulty: 2
+    examination_mode: "代码分析型——链表操作指针修改顺序"
+    expected_form: "题干给一段单链表插入/删除操作的代码片段，要求按正确顺序填入语句或补全关键代码"
+    examination_focus: "单链表插入/删除操作的指针修改顺序填空"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "需理解链表指针修改的正确顺序，避免断链"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q16
+    question_type: 主观题
+    score: 5
+    target_subject: "数据结构"
+    target_family: "数据结构 > 5. 树与二叉树 > 5.3 二叉树遍历和线索二叉树"
+    primary_target_name: "二叉树递归算法——功能分析"
+    target_difficulty: 2
+    examination_mode: "代码分析型——递归算法功能识别"
+    expected_form: "题干给一段二叉树递归算法代码（遍历/求深度/结点计数），要求填空并简述函数功能"
+    examination_focus: "二叉树遍历/求深度/结点计数的递归算法填空并简述功能"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "需理解二叉树递归算法的结构和终止条件"
+    complexity: standard
+    teacher_annotation: ""
+
+  # ========== 四、算法设计题（14+16分 = 30分） ==========
+
+  - slot_id: Q17
+    question_type: 主观题
+    score: 14
+    target_subject: "数据结构"
+    target_family: "数据结构 > 2. 线性表 > 2.3 链表的链式表示 > 单链表"
+    primary_target_name: "链表——双指针法查找倒数第k个结点"
+    target_difficulty: 3
+    examination_mode: "设计型——链表双指针算法设计"
+    expected_form: "题干给带头结点单链表的存储结构定义，要求设计算法查找倒数第k个结点，包含数据类型定义、设计思想描述和完整代码"
+    examination_focus: "带头结点单链表，不改变链表结构，设计算法查找倒数第k个结点（双指针法）"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 1
+      K3: 3
+      K4: 3
+      K5: 3
+    k_dominant: "K5"
+    k_source: "heuristic"
+    difficulty_rationale: "需设计双指针法，理解快慢指针的距离维护"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q18
+    question_type: 主观题
+    score: 16
+    target_subject: "数据结构"
+    target_family: "数据结构 > 5. 树与二叉树 > 5.5 树与二叉树的应用 > 哈夫曼树"
+    primary_target_name: "二叉树——WPL计算算法设计"
+    target_difficulty: 4
+    examination_mode: "设计型——二叉树递归算法综合设计"
+    expected_form: "题干给二叉链表存储的二叉树类型定义（含权值字段），要求设计递归算法计算带权路径长度WPL，包含数据类型定义、设计思想描述和完整代码"
+    examination_focus: "二叉链表存储的二叉树，设计递归算法计算带权路径长度WPL"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 1
+      K3: 3
+      K4: 3
+      K5: 4
+    k_dominant: "K5"
+    k_source: "heuristic"
+    difficulty_rationale: "需设计递归算法计算WPL，理解路径长度累加的递归逻辑"
+    complexity: standard
+    teacher_annotation: ""

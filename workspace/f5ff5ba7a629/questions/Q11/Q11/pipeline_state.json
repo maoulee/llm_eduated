@@ -1,0 +1,32 @@
+{
+  "slot_id": "Q11",
+  "current_node": "form_gate",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题干质量审核通过，设计卡设定的考察目标被完整覆盖。\n\n**① 设问形式**：两问结构与设计卡完全一致——第1问\"画出该二叉树\"考察后序+中序完整递归还原（K3=4 核心负荷），第2问\"写出先序遍历序列\"考察在还原树上的先序遍历执行（K2+K4）。设问方式恰当，未退化为单问，未泄露先序序列，未偏移到线索树/哈夫曼树/完全二叉树性质推断等排除考点。\n\n**② 难度定性**：解题需完成\"从后序末尾定位根"
+    }
+  ]
+}

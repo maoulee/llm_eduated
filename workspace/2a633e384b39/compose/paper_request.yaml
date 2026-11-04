@@ -1,0 +1,299 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["组成原理"]
+  total_score: 100
+
+slots:
+  - slot_id: Q1
+    question_type: 主观题
+    score: 5
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 校验码"
+    primary_target_name: "校验码"
+    target_difficulty: 2
+    examination_mode: "概念辨析——校验码类型与检错能力对比"
+    expected_form: ""
+    examination_focus: "海明码校验位数计算与编码；CRC循环冗余校验；奇偶校验的检错能力分析"
+    reference_questions: []
+    k_radar:
+      K1: 4
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查校验码基本概念与检错能力对比，无需复杂计算"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q2
+    question_type: 主观题
+    score: 5
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 半导体随机存储器"
+    primary_target_name: "存储器分类与特性"
+    target_difficulty: 2
+    examination_mode: "概念辨析——存储器类型与性能对比"
+    expected_form: ""
+    examination_focus: "SRAM vs DRAM的结构与性能对比；ROM类型对比；存储器分类维度"
+    reference_questions:
+      - "data/question_experiences/2020_Q15.md"
+    k_radar:
+      K1: 4
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查存储器分类与SRAM/DRAM/ROM特性对比"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: 主观题
+    score: 5
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 虚拟存储器和 Cache 异同"
+    primary_target_name: "Cache与虚拟存储器异同"
+    target_difficulty: 3
+    examination_mode: "概念辨析——存储层次对比分析"
+    expected_form: ""
+    examination_focus: "Cache-主存层次 vs 主存-辅存层次的对比；Cache缺失 vs 缺页的区别；TLB的作用与Cache的关系"
+    reference_questions:
+      - "data/question_experiences/2020_Q15.md"
+    k_radar:
+      K1: 4
+      K2: 1
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，需对比Cache与虚拟存储器的异同，涉及局部性/透明性/命中率等概念"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: 主观题
+    score: 5
+    target_subject: "组成原理"
+    target_family: "组成原理 > 总线 > 总线概述"
+    primary_target_name: "总线标准与I/O接口"
+    target_difficulty: 2
+    examination_mode: "概念辨析——总线与I/O接口基本概念"
+    expected_form: ""
+    examination_focus: "系统总线标准对比；I/O接口基本结构；I/O编址方式"
+    reference_questions: []
+    k_radar:
+      K1: 4
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "概念辨析题，考查总线标准与I/O接口基本概念"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 校验码"
+    primary_target_name: "海明码与CRC计算"
+    target_difficulty: 3
+    examination_mode: "计算型——校验码编码与检错计算"
+    expected_form: "题干给数据位数或数据多项式，要求计算校验位分布、编码结果或校验码"
+    examination_focus: "海明码完整编码与纠错定位；CRC校验码生成与检错；海明距离与检错/纠错能力的关系计算"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 3
+      K3: 2
+      K4: 2
+      K5: 1
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需代入海明码/CRC公式进行编码计算，涉及多步但逻辑清晰"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q6
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 数据的表示和运算 > 浮点数的表示和运算"
+    primary_target_name: "浮点数表示与运算"
+    target_difficulty: 3
+    examination_mode: "计算型——浮点数格式转换与运算"
+    expected_form: "题干给十进制数或浮点机器数，要求完成IEEE754格式转换或浮点加减运算"
+    examination_focus: "IEEE754单精度浮点数的十进制↔机器数转换；浮点数加减运算全流程；浮点数表示范围与精度计算"
+    reference_questions:
+      - "data/question_experiences/2025_Q13.md"
+      - "data/question_experiences/2026_Q14.md"
+    k_radar:
+      K1: 2
+      K2: 3
+      K3: 3
+      K4: 2
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需完成浮点数多步运算（对阶→尾数运算→规格化→舍入），参考2025_Q13和2026_Q14"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q7
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 高速缓冲存储器 Cache"
+    primary_target_name: "Cache平均访问时间计算"
+    target_difficulty: 3
+    examination_mode: "计算型——Cache性能指标计算"
+    expected_form: "题干给Cache参数（容量/路数/块大小/命中率/命中时间/缺失损失），要求计算平均访问时间或地址字段划分"
+    examination_focus: "给定Cache参数计算平均访问时间；TLB+Cache两级命中的有效访问时间计算；不同映射方式的地址字段划分对比"
+    reference_questions:
+      - "data/question_experiences/2026_Q18.md"
+      - "data/question_experiences/2025_Q43.md"
+    k_radar:
+      K1: 2
+      K2: 3
+      K3: 2
+      K4: 2
+      K5: 1
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需代入Cache平均访问时间公式，参考2026_Q18和2025_Q43"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q8
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 虚拟存储器"
+    primary_target_name: "虚拟存储器地址转换"
+    target_difficulty: 3
+    examination_mode: "计算型——虚地址到实地址转换"
+    expected_form: "题干给页表和虚地址，要求计算实地址或判断缺页"
+    examination_focus: "页式虚拟存储的虚地址→实地址转换；段式虚拟存储的地址转换与段长检查；段页式虚拟存储的两级地址转换"
+    reference_questions:
+      - "data/question_experiences/2019_Q14.md"
+      - "data/question_experiences/2026_Q19.md"
+    k_radar:
+      K1: 2
+      K2: 2
+      K3: 3
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需查页表完成地址转换，参考2019_Q14和2026_Q19"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q9
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 高速缓冲存储器 Cache"
+    primary_target_name: "Cache替换算法模拟"
+    target_difficulty: 4
+    examination_mode: "分析型——Cache替换过程模拟与命中率分析"
+    expected_form: "题干给Cache参数和访问序列，要求模拟替换过程并计算命中率"
+    examination_focus: "给定访问序列模拟LRU替换过程并计算命中率；不同块大小对Cache性能的影响分析；容量缺失/冲突缺失/强制性缺失的识别与分析"
+    reference_questions:
+      - "data/question_experiences/2025_Q43.md"
+      - "data/question_experiences/2014_Q45.md"
+    k_radar:
+      K1: 2
+      K2: 2
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，需模拟Cache替换算法的长程推演过程，参考2025_Q43和2014_Q45"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q10
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 输入输出系统 > 外部设备"
+    primary_target_name: "磁盘性能与RAID分析"
+    target_difficulty: 3
+    examination_mode: "分析型——磁盘性能计算与RAID对比"
+    expected_form: "题干给磁盘参数（转速/道数/扇区数等），要求计算平均存取时间或分析RAID配置"
+    examination_focus: "磁盘平均存取时间计算；RAID 0/1/5/10的容量/可靠性/性能对比分析；磁盘调度算法分析"
+    reference_questions:
+      - "data/question_experiences/2019_Q20.md"
+    k_radar:
+      K1: 2
+      K2: 3
+      K3: 2
+      K4: 3
+      K5: 1
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，需计算磁盘存取时间并对比RAID配置，参考2019_Q20"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q11
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 存储系统 > 主存储器和 CPU 的连接"
+    primary_target_name: "主存与CPU连接设计"
+    target_difficulty: 4
+    examination_mode: "设计型——存储器扩展与地址分配"
+    expected_form: "题干给CPU字长、主存容量和芯片规格，要求设计存储器扩展方案并画出连接框图"
+    examination_focus: "给定CPU字长和主存容量设计存储器扩展方案；地址范围分配与全译码设计；存储器读写控制信号连接设计"
+    reference_questions: []
+    k_radar:
+      K1: 2
+      K2: 2
+      K3: 3
+      K4: 4
+      K5: 2
+    k_dominant: "K4"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需综合芯片选型、片选译码、地址分配和信号连接，涉及多条件路由"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q12
+    question_type: 主观题
+    score: 10
+    target_subject: "组成原理"
+    target_family: "组成原理 > 中央处理器 > 数据通路的功能和基本结构"
+    primary_target_name: "数据通路微操作设计"
+    target_difficulty: 4
+    examination_mode: "设计型——指令执行微操作序列设计"
+    expected_form: "题干给数据通路图和取指阶段微操作，要求补全执行阶段的微操作序列和控制信号"
+    examination_focus: "算术指令的微操作序列设计；访存指令的微操作序列设计；转移指令的微操作序列设计"
+    reference_questions:
+      - "data/question_experiences/2025_Q19.md"
+      - "data/question_experiences/2026_Q20.md"
+    k_radar:
+      K1: 2
+      K2: 2
+      K3: 4
+      K4: 3
+      K5: 2
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需根据数据通路图设计多步微操作序列，参考2025_Q19和2026_Q20"
+    complexity: standard
+    teacher_annotation: ""

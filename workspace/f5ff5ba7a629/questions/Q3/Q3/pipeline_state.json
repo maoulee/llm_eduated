@@ -1,0 +1,50 @@
+{
+  "slot_id": "Q3",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "design_solve": 1,
+    "form_gate2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题干设计质量良好，与设计卡完全对齐。\n\n**① 设问形式**：题干以标准句式给出\"二维数组按列优先方式存储 + 求指定元素存储地址\"，完全符合 expected_form 要求（给出行数、列数、存储方式、基地址、元素大小、下标起始约定，4选项单选）。四个显式条件（m、n、BASE、s）均以占位符形式呈现，下标起始 k_start 显式声明为 0 或 1，满足 must_test 中的下标起始约定考"
+    },
+    {
+      "node": "design_solve",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate2",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

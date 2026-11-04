@@ -1,0 +1,50 @@
+{
+  "slot_id": "Q10",
+  "current_node": "final",
+  "visit_counts": {
+    "design_card": 1,
+    "exam_form": 1,
+    "design": 1,
+    "form_gate": 1,
+    "design_solve": 1,
+    "form_gate2": 1,
+    "final": 1
+  },
+  "history": [
+    {
+      "node": "design_card",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "exam_form",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "design",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate",
+      "signal": "pass",
+      "feedback": "题干质量审核通过，三项定性评估结论如下：\n\n**① 设问形式**：题干完整覆盖了设计卡 must_test 的三个考点——（1）一趟 Partition 的完整过程（枢轴选取、双向扫描、交换、枢轴归位）在题干中逐一说明；（2）两趟连续模拟，题干明确要求\"前两趟\"并指定递归顺序（优先处理左子表）；（3）\"一趟\"的概念辨析，题干显式定义\"一趟 = 对单个待排序子表执行一次完整的 Partition\"，"
+    },
+    {
+      "node": "design_solve",
+      "signal": "ok",
+      "feedback": ""
+    },
+    {
+      "node": "form_gate2",
+      "signal": "pass",
+      "feedback": ""
+    },
+    {
+      "node": "final",
+      "signal": "pass",
+      "feedback": ""
+    }
+  ]
+}

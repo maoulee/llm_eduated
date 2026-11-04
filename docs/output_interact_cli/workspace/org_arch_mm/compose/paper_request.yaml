@@ -1,0 +1,282 @@
+schema_version: paper_request_v1
+source:
+  intake_type: interact_agent
+  scenario: D_past_paper
+
+assessment:
+  type: course_final
+  subjects: ["计算机组成原理"]
+  total_score: 100
+
+slots:
+  - slot_id: Q1
+    question_type: subjective
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 数据表示 > 浮点数表示"
+    primary_target_name: "IEEE 754 单精度浮点数格式解析"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——浮点数格式字段解析与规则说明"
+    expected_form: ""
+    examination_focus: "IEEE 754 单精度浮点数格式解析（给定十六进制机器码，写出符号/阶码/尾数各字段值）"
+    reference_questions:
+      - "data/question_experiences/simulation_00098.md"
+      - "data/question_experiences/simulation_00013.md"
+      - "data/question_experiences/simulation_00141.md"
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题，概念记忆与格式解析为主，需理解IEEE 754各字段含义"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q2
+    question_type: subjective
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 数据表示 > 定点数表示"
+    primary_target_name: "定点数表示与溢出判断"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——定点数编码规则与溢出检测方法比较"
+    expected_form: ""
+    examination_focus: "原码/补码/反码/移码的相互转换规则及补码加减运算溢出判断方法"
+    reference_questions:
+      - "data/question_experiences/simulation_00140.md"
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题，概念记忆与规则说明为主"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q3
+    question_type: subjective
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 总线系统 > 总线结构与仲裁"
+    primary_target_name: "总线分类与仲裁方式"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——总线分类功能与仲裁方式比较"
+    expected_form: ""
+    examination_focus: "总线分类（数据总线/地址总线/控制总线）及其功能，总线仲裁方式比较"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题，概念记忆与比较为主"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q4
+    question_type: subjective
+    score: 5
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 存储系统 > 存储层次结构"
+    primary_target_name: "存储层次结构与局部性原理"
+    target_difficulty: 2
+    examination_mode: "概念辨析型——存储层次概念与局部性原理说明"
+    expected_form: ""
+    examination_focus: "存储层次（Cache-主存-辅存）的局部性原理与Cache透明性概念"
+    reference_questions:
+      - "data/question_experiences/simulation_00016.md"
+    k_radar:
+      K1: 3
+      K2: 1
+      K3: 1
+      K4: 2
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "简答题，概念记忆为主"
+    complexity: conceptual
+    teacher_annotation: ""
+
+  - slot_id: Q5
+    question_type: subjective
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 数据表示 > 浮点数运算"
+    primary_target_name: "IEEE 754 浮点数加减运算"
+    target_difficulty: 3
+    examination_mode: "计算型——浮点数对阶、尾数运算、规格化、舍入全过程计算"
+    expected_form: "题干给两个十进制小数，要求按IEEE 754单精度格式完成对阶→尾数运算→规格化→舍入全过程，写出每步中间结果"
+    examination_focus: "给定两个十进制小数，按 IEEE 754 单精度格式完成对阶→尾数运算→规格化→舍入全过程"
+    reference_questions:
+      - "data/question_experiences/simulation_00125.md"
+    k_radar:
+      K1: 3
+      K2: 4
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需多步浮点运算推演，涉及对阶、尾数加减、规格化、舍入"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q6
+    question_type: subjective
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 数据表示 > 定点数运算"
+    primary_target_name: "补码不恢复余数法除法运算"
+    target_difficulty: 3
+    examination_mode: "计算型——补码加减交替法除法逐步计算"
+    expected_form: "题干给两个定点小数（被除数和除数），要求用补码不恢复余数法计算商和余数，写出每步操作过程"
+    examination_focus: "用补码不恢复余数法（加减交替法）计算定点除法，写出逐步过程"
+    reference_questions: []
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需多步除法推演，每步涉及符号判断、加减操作、移位"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q7
+    question_type: subjective
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 存储系统 > TLB与地址映射"
+    primary_target_name: "TLB 地址映射字段计算"
+    target_difficulty: 3
+    examination_mode: "计算型——TLB标记/索引/偏移字段位数计算与地址翻译分析"
+    expected_form: "题干给虚拟地址位数、页面大小、TLB路数与容量，要求计算TLB各字段位数并分析命中/未命中时的地址翻译过程"
+    examination_focus: "给定虚拟地址位数、页面大小、TLB路数与容量，计算 TLB 的标记字段/索引字段/页内偏移字段位数"
+    reference_questions:
+      - "data/question_experiences/simulation_00296.md"
+      - "data/question_experiences/simulation_00312.md"
+      - "data/question_experiences/exercise_00566.md"
+    k_radar:
+      K1: 4
+      K2: 3
+      K3: 3
+      K4: 3
+      K5: 1
+    k_dominant: "K1"
+    k_source: "heuristic"
+    difficulty_rationale: "计算题，需理解TLB组相联映射规则，计算各字段位数"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q8
+    question_type: subjective
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 指令流水线 > 流水线性能分析"
+    primary_target_name: "流水线性能计算与冒险分析"
+    target_difficulty: 3
+    examination_mode: "分析计算型——流水线执行时间、加速比、效率计算与冒险识别"
+    expected_form: "题干给多级流水线各阶段延迟和指令序列，要求计算处理N个数据项的总时间、加速比与效率，并识别数据冒险类型"
+    examination_focus: "给定多级流水线各阶段延迟，计算处理 N 个数据项的总时间、加速比与效率，识别流水线冒险类型"
+    reference_questions:
+      - "data/question_experiences/simulation_00187.md"
+      - "data/question_experiences/exercise_00820.md"
+      - "data/question_experiences/exercise_00815.md"
+    k_radar:
+      K1: 3
+      K2: 4
+      K3: 3
+      K4: 3
+      K5: 1
+    k_dominant: "K2"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，需计算流水线性能指标并分析冒险类型"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q9
+    question_type: subjective
+    score: 10
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > I/O系统 > 中断系统"
+    primary_target_name: "中断优先级与屏蔽字分析"
+    target_difficulty: 3
+    examination_mode: "分析型——中断屏蔽字配置分析与嵌套执行过程推理"
+    expected_form: "题干给多级中断的屏蔽字配置，要求分析实际响应优先级顺序并描述中断嵌套执行过程"
+    examination_focus: "给定多级中断的屏蔽字配置，分析实际响应优先级顺序与中断嵌套执行过程"
+    reference_questions:
+      - "data/question_experiences/simulation_00105.md"
+      - "data/question_experiences/simulation_00276.md"
+    k_radar:
+      K1: 4
+      K2: 2
+      K3: 4
+      K4: 3
+      K5: 1
+    k_dominant: "K3"
+    k_source: "heuristic"
+    difficulty_rationale: "分析题，需理解中断屏蔽字机制并推理优先级顺序"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q10
+    question_type: subjective
+    score: 15
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 控制器 > 数据通路与指令执行"
+    primary_target_name: "ALU 数据通路与指令执行微操作序列"
+    target_difficulty: 4
+    examination_mode: "设计型——数据通路描述与多指令微操作序列设计"
+    expected_form: "题干给简单CPU数据通路组件和指令集，要求文字描述组件连接关系，写出各指令取指→译码→执行→写回微操作序列，并给出控制信号表"
+    examination_focus: "描述简单ALU数据通路组件连接关系，给定5条指令写出各阶段微操作序列与控制信号表"
+    reference_questions:
+      - "data/question_experiences/simulation_00315.md"
+      - "data/question_experiences/simulation_00018.md"
+    k_radar:
+      K1: 3
+      K2: 2
+      K3: 4
+      K4: 4
+      K5: 4
+    k_dominant: "K4"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需综合理解数据通路结构并设计多指令执行流程"
+    complexity: standard
+    teacher_annotation: ""
+
+  - slot_id: Q11
+    question_type: subjective
+    score: 15
+    target_subject: "计算机组成原理"
+    target_family: "计算机组成原理 > 控制器 > 微程序控制器"
+    primary_target_name: "微程序控制器设计与微指令格式"
+    target_difficulty: 4
+    examination_mode: "设计型——微程序控制器结构描述、微指令格式设计与微程序流程编写"
+    expected_form: "题干给微程序控制器设计要求，要求文字描述组件构成与数据流，设计微指令格式，写出ADD指令微程序流程并给出微地址分配表"
+    examination_focus: "描述微程序控制器组件构成，设计微指令格式，写出ADD指令微程序流程与微地址分配表"
+    reference_questions:
+      - "data/question_experiences/simulation_00273.md"
+      - "data/question_experiences/exercise_00061.md"
+      - "data/question_experiences/simulation_00019.md"
+    k_radar:
+      K1: 3
+      K2: 3
+      K3: 3
+      K4: 4
+      K5: 3
+    k_dominant: "K4"
+    k_source: "heuristic"
+    difficulty_rationale: "设计题，需综合设计微程序控制器结构与微指令格式"
+    complexity: standard
+    teacher_annotation: ""
