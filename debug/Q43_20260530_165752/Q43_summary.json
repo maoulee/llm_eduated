@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-30T17:04:12",
+  "total_time_s": 364.93,
+  "rounds": 2,
+  "final_stem": "某计算机系统的系统总线采用突发传送（Burst Transfer）模式进行数据传输。已知总线位宽为 64 位，总线工作时钟频率为 200 MHz。在该突发传送模式下，每次传输一个数据块（Block）前，必须先占用 1 个总线周期发送地址和控制信息，随后每个总线周期可连续传输 1 个字（Word）的数据。假设该总线用于为 CPU 的 L1 Cache 填充缺失的数据块，每次填充一个 Cache 行，其大小为 64 字节。在本题涉及的计算中，遵循计算机存储与通信领域的通用惯例：数据容量单位中 $1 \\text{ MB} = 2^{20} \\text{ B}$，而带宽速率单位中 $1 \\text{ GB/s} = 10^9 \\text{ B/s}$（注意：$1 \\text{ GB} = 10^9 \\text{ B}$）。",
+  "solver_execs": 1,
+  "review_status": "needs_fix",
+  "review_quality": "2",
+  "review_raw_text_length": 1434
+}

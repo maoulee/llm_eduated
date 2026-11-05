@@ -1,0 +1,43 @@
+{
+  "slot_id": "Q43",
+  "step": "gate",
+  "round": 1,
+  "timestamp": "2026-06-01T18:31:04",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "severity": "critical",
+    "next_action": "revise_stem",
+    "fix_target": "stem",
+    "checks": {
+      "knowledge_correct": "pass",
+      "object_clear": "warn",
+      "attribute_complete": "fail",
+      "condition_compatible": "pass",
+      "scope_clear": "warn",
+      "question_supported": "fail",
+      "answer_domain_clear": "fail",
+      "no_graceful_completion": "fail",
+      "numerical_consistent": "pass",
+      "must_include_covered": "fail",
+      "must_avoid_clean": "pass",
+      "sub_question_count_match": "fail",
+      "difficulty_in_range": "pass",
+      "placeholder_clean": "pass",
+      "option_format_correct": "n/a",
+      "option_mutually_exclusive": "n/a",
+      "sub_question_progression": "n/a",
+      "actual_K1": "3",
+      "actual_K2": "3",
+      "actual_K3": "4",
+      "actual_K4": "3",
+      "actual_K5": "3",
+      "radar_match": "pass"
+    },
+    "evidence": "### 维度1：知识正确性 — pass\n题干考察的\"Cache与主存地址映射机制\"与蓝图 `primary_target_name` 一致。涉及的知识点包括：物理地址字段划分、4路组相联映射、Cache命中率和平均访问时间——均与蓝图 `must_include` 吻合。支撑知识点（分页虚拟存储、页表）属于\"存储系统与总线性能\"知识族，领域一致。\n\n### 维度2：条件闭合性 — fail（多项）\n1. **对象明确** — warn：已给出Cache、页表等核心对象，但缺少具体的访问地址序列对象。\n2. **属性完整** — fail：题干以\"部分页表项如下\"结尾，**实际页表项内容未给出**（虚拟页号→物理页框号的映射表缺失）。缺少具体的访存地址序列、Cache命中/缺失时间参数、主存访问时间。\n3. **条件兼容** — pass：已给出的参数（32KB/4路/32B行/4KB页）数学关系自洽，无冲突。\n4. **作用域清楚** — warn：没有明确说明TLB是否存在、是否需要考生考虑TLB访问时间。\n5. **问题-题干支撑** — fail：没有4个子问题的具体题目文本。缺少计算命中率和平均访问时间所需的全部输入数据。\n6. **答案域明确** — fail：子问题未给出，无法判断答案域。\n7. **无需善意补全** — fail：考生无法自行补全页表映射关系和访问序列。\n\n### 维度3：数值自洽 — pass\n已给出的数值参数经过 Python 验证完全自洽：\n- Cache总容量 = 4路 × 256组 × 32B = 32768B = 32KB ✓\n- 物理地址 = tag(19位) + index(8位) + offset(5位) = 32位 ✓\n- 页面4KB包含128个Cache行（4KB / 32B），整除 ✓\n- 重要设计细节：Cache index 的8位 = 页内偏移高7位 + pfn最低1位，这意味着不同物理页框会影响Cache组映射，这是一个可利用的考点。\n\n### 维度4：蓝图合规 — fail\n- **must_include 覆盖**：4项必考要素（物理地址字段划分、组相联映射判断、Cache命中率计算、平均访问时间计算）在设计方向上吻合，但题干**不完整**无法实际覆盖后两项。\n- **must_avoid**：未出现超纲的替换算法常数推导，未涉及虚拟地址转换（TLB部分），✓\n- **子问数量**：题干未给出任何子问题，与蓝图要求的4个子问**不匹配**。\n- **难度**：已给参数组合合理，潜在难度4可接受。\n- **功能角色**：mechanism_trigger 合理。\n\n### 维度5：占位符检测 — pass\n已给出的文本中无模糊占位符。题干表述精确（如\"32位虚拟地址\"\"4路组相联\"\"32B\"等）。\n\n### 维度6：选项格式 — n/a（综合题）\n\n### 维度7：子问递进 — n/a（子问题未给出，无法评估递进关系，标记为不匹配）\n\n### 维度8：K1-K5 认知雷达 — pass\n基于已有条件预估实际K值：K1=3（标准术语记忆）、K2=3（公式计算）、K3=4（多步地址变换+Cache映射推演）、K4=3（pfn最低位影响Cache组的隐含考点）、K5=3（虚拟存储→物理地址→Cache的单向传递）。与目标设计方案偏差均在±1内，radar_match = pass。",
+    "code_verification": "1. **Cache参数验证**：`4 × 256 × 32 = 32768B = 32KB`，与题干一致 ✓\n2. **地址位数验证**：`tag(19) + index(8) + offset(5) = 32位`，与物理地址位数一致 ✓\n3. **关键结构发现**：Cache index 8位 = page_offset[11:5]（7位）+ pfn[0]（1位），意味着物理页框号最低位参与Cache组索引，数值设计有深度 ✓",
+    "fix_detail": "题干严重不完整，以\"部分页表项如下\"结尾但后续内容缺失。需补全以下内容：",
+    "comment": "### 维度1：知识正确性 — pass\n题干考察的\"Cache与主存地址映射机制\"与蓝图 `primary_target_name` 一致。涉及的知识点包括：物理地址字段划分、4路组相联映射、Cache命中率和平均访问时间——均与蓝图 `must_include` 吻合。支撑知识点（分页虚拟存储、页表）属于\"存储系统与总线性能\"知识族，领域一致。\n\n### 维度2：条件闭合性 — fail（多项）\n1. **对象明确** — warn：已给出Cache、页表等核心对象，但缺少具体的访问地址序列对象。\n2. **属性完整** — fail：题干以\"部分页表项如下\"结尾，**实际页表项内容未给出",
+    "_raw_text": "## verdict\n- **status**: needs_fix\n- **severity**: critical\n- **next_action**: revise_stem\n- **fix_target**: stem\n\n## checks\n- **knowledge_correct**: pass\n- **object_clear**: warn\n- **attribute_complete**: fail\n- **condition_compatible**: pass\n- **scope_clear**: warn\n- **question_supported**: fail\n- **answer_domain_clear**: fail\n- **no_graceful_completion**: fail\n- **numerical_consistent**: pass\n- **must_include_covered**: fail\n- **must_avoid_clean**: pass\n- **sub_question_count_match**: fail\n- **difficulty_in_range**: pass\n- **placeholder_clean**: pass\n- **option_format_correct**: n/a\n- **option_mutually_exclusive**: n/a\n- **sub_question_progression**: n/a\n- **actual_K1**: 3\n- **actual_K2**: 3\n- **actual_K3**: 4\n- **actual_K4**: 3\n- **actual_K5**: 3\n- **radar_match**: pass\n\n## evidence\n\n### 维度1：知识正确性 — pass\n题干考察的\"Cache与主存地址映射机制\"与蓝图 `primary_target_name` 一致。涉及的知识点包括：物理地址字段划分、4路组相联映射、Cache命中率和平均访问时间——均与蓝图 `must_include` 吻合。支撑知识点（分页虚拟存储、页表）属于\"存储系统与总线性能\"知识族，领域一致。\n\n### 维度2：条件闭合性 — fail（多项）\n1. **对象明确** — warn：已给出Cache、页表等核心对象，但缺少具体的访问地址序列对象。\n2. **属性完整** — fail：题干以\"部分页表项如下\"结尾，**实际页表项内容未给出**（虚拟页号→物理页框号的映射表缺失）。缺少具体的访存地址序列、Cache命中/缺失时间参数、主存访问时间。\n3. **条件兼容** — pass：已给出的参数（32KB/4路/32B行/4KB页）数学关系自洽，无冲突。\n4. **作用域清楚** — warn：没有明确说明TLB是否存在、是否需要考生考虑TLB访问时间。\n5. **问题-题干支撑** — fail：没有4个子问题的具体题目文本。缺少计算命中率和平均访问时间所需的全部输入数据。\n6. **答案域明确** — fail：子问题未给出，无法判断答案域。\n7. **无需善意补全** — fail：考生无法自行补全页表映射关系和访问序列。\n\n### 维度3：数值自洽 — pass\n已给出的数值参数经过 Python 验证完全自洽：\n- Cache总容量 = 4路 × 256组 × 32B = 32768B = 32KB ✓\n- 物理地址 = tag(19位) + index(8位) + offset(5位) = 32位 ✓\n- 页面4KB包含128个Cache行（4KB / 32B），整除 ✓\n- 重要设计细节：Cache index 的8位 = 页内偏移高7位 + pfn最低1位，这意味着不同物理页框会影响Cache组映射，这是一个可利用的考点。\n\n### 维度4：蓝图合规 — fail\n- **must_include 覆盖**：4项必考要素（物理地址字段划分、组相联映射判断、Cache命中率计算、平均访问时间计算）在设计方向上吻合，但题干**不完整**无法实际覆盖后两项。\n- **must_avoid**：未出现超纲的替换算法常数推导，未涉及虚拟地址转换（TLB部分），✓\n- **子问数量**：题干未给出任何子问题，与蓝图要求的4个子问**不匹配**。\n- **难度**：已给参数组合合理，潜在难度4可接受。\n- **功能角色**：mechanism_trigger 合理。\n\n### 维度5：占位符检测 — pass\n已给出的文本中无模糊占位符。题干表述精确（如\"32位虚拟地址\"\"4路组相联\"\"32B\"等）。\n\n### 维度6：选项格式 — n/a（综合题）\n\n### 维度7：子问递进 — n/a（子问题未给出，无法评估递进关系，标记为不匹配）\n\n### 维度8：K1-K5 认知雷达 — pass\n基于已有条件预估实际K值：K1=3（标准术语记忆）、K2=3（公式计算）、K3=4（多步地址变换+Cache映射推演）、K4=3（pfn最低位影响Cache组的隐含考点）、K5=3（虚拟存储→物理地址→Cache的单向传递）。与目标设计方案偏差均在±1内，radar_match = pass。\n\n## code_verification\n1. **Cache参数验证**：`4 × 256 × 32 = 32768B = 32KB`，与题干一致 ✓\n2. **地址位数验证**：`tag(19) + index(8) + offset(5) = 32位`，与物理地址位数一致 ✓\n3. **关键结构发现**：Cache index 8位 = page_offset[11:5]（7位）+ pfn[0]（1位），意味着物理页框号最低位参与Cache组索引，数值设计有深度 ✓\n\n## fix_instruction\n- **fix_detail**: 题干严重不完整，以\"部分页表项如下\"结尾但后续内容缺失。需补全以下内容：\n  1. **页表项表格**：提供若干虚拟页号到物理页框号的映射（建议4-6项，使用十六进制，其中精心安排pfn最低位的不同取值以利用Cache index跨组的考点）；\n  2. **访存地址序列**：给出5-10个具体的虚拟地址（十六进制），用于命中率计算；\n  3. **时间参数**：给出Cache命中时间（如1个时钟周期）、主存访问时间/Cache缺失惩罚（如100个时钟周期），用于平均访问时间计算；\n  4. **4个子问题**：按蓝图 must_include 设计递进子问——(1)物理地址各字段位数划分 (2)给定虚拟地址映射到的Cache组号和标记 (3)计算访问序列的Cache命中率 (4)计算平均访问时间。"
+  }
+}

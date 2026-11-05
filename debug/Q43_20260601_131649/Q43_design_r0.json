@@ -1,0 +1,28 @@
+{
+  "slot_id": "Q43",
+  "step": "design",
+  "round": 0,
+  "timestamp": "2026-06-01T13:19:01",
+  "timing_s": null,
+  "output": {
+    "stem": "某嵌入式系统采用哈佛架构（Harvard Architecture），指令与数据物理隔离，分别拥有独立的地址总线和数据总线。\n\n**指令存储器（Instruction Memory）**：\n- 容量为 64KB，按字（Word，32位）编址。\n- 采用全相联映射（Fully Associative）的指令 Cache，容量为 2KB，块大小（Block Size）为 64 字节。\n- Cache 行状态包括 Valid 位，无 Dirty 位。\n\n**数据存储器（Data Memory）**：\n- 容量为 128KB，按字节（Byte）编址。\n- 采用 2 路组相联映射（2-way Set-Associative）的数据 Cache，容量为 4KB，块大小为 64 字节。\n- 采用 LRU（Least Recently Used）替换策略，写命中采用回写（Write-back）策略，写不命中采用分配法（Allocate on Write Miss）。\n- Cache 行包含 Valid 位、Dirty 位及 LRU 位。\n\n**访存操作序列**：\n系统复位后，Cache 初始为空（所有 Valid 位为 0）。处理器执行以下操作序列（假设所有访问均为有效地址，且忽略总线仲裁延迟）：\n1. `LOAD R1, [0x1000]`：从数据存储器地址 `0x1000` 读取 4 字节数据存入寄存器 R1。\n2. `ADD R1, R1, #10`：寄存器运算。\n3. `STORE [0x1000], R1`：将寄存器 R1 的内容写入数据存储器地址 `0x1000`。\n4. `LOAD R2, [0x1800]`：从数据存储器地址 `0x1800` 读取 4 字节数据存入寄存器 R2。\n5. `STORE [0x1000], R2`：将寄存器 R2 的内容写入数据存储器地址 `0x1000`。\n6. `LOAD R3, [0x1000]`：从数据存储器地址 `0x1000` 读取 4 字节数据存入寄存器 R3。\n\n注意：数据地址 `0x1000` 和 `0x1800` 位于数据 Cache 的同一个组中。本题仅考察数据 Cache 的行为，指令 Cache 状态可忽略。\n",
+    "sub_questions": "[\n\"(1) 计算数据 Cache 的组数（Number of Sets），并指出数据地址中用于索引组号（Index）的位数及用于标签（Tag）的位数。\",\n\"(2) 追踪上述 6 步操作中数据 Cache 的命中/未命中情况（Hit/Miss），并说明第 5 步操作（STORE [0x1000], R2）执行完毕后，地址 0x1000 所在 Cache 行的 Dirty 位状态。\",\n\"(3) 假设在第 6 步操作前，系统发生了一次全局 Cache 失效检查。若采用写回策略，此时有多少个 Dirty 块需要写回主存？请结合操作序列分析原因。\"\n]",
+    "given_conditions": "[\n\"哈佛架构，指令与数据物理隔离\",\n\"指令 Cache: 全相联, 2KB, 块大小 64B\",\n\"数据 Cache: 2路组相联, 4KB, 块大小 64B, LRU替换, 写回策略, 写未命中分配\",\n\"数据存储器按字节编址\",\n\"Cache 初始为空\",\n\"操作序列: LOAD 0x1000, STORE 0x1000, LOAD 0x1800, STORE 0x1000, LOAD 0x1000\",\n\"0x1000 和 0x1800 在同一组\"\n]",
+    "difficulty_self_assessment": "3",
+    "knowledge_points": "哈佛架构, 组相联映射, Cache地址结构, LRU替换策略, 写回策略, 写分配策略",
+    "parameter_notes": "\n- 数据 Cache 容量 4KB，块大小 64B，故块数 = 4096/64 = 64 块。\n- 2 路组相联，组数 = 64/2 = 32 组。\n- 数据存储器 128KB = 2^17 字节，地址 17 位。\n- Offset = log2(64) = 6 位。\n- Index = log2(32) = 5 位。\n- Tag = 17 - 6 - 5 = 6 位。\n- 验证地址映射：\n- 0x1000 (4096): Block 64. Index = 64 % 32 = 0. Tag = 64 // 32 = 2.\n- 0x1800 (6144): Block 96. Index = 96 % 32 = 0. Tag = 96 // 32 = 3.\n- 两者 Index 均为 0，确在同一组（Set 0），且 Tag 不同，构成冲突场景。\n",
+    "reasoning_form": "multi_step",
+    "reasoning_rationale": "题目需要学生分步骤计算 Cache 结构参数，然后逐步模拟每个访存操作对 Cache 状态的影响，最后根据最终状态回答统计问题。每一步的状态依赖于上一步的结果，具有明显的串行依赖性。",
+    "condition_utilization": "\n- \"哈佛架构\"：确保学生明白指令和数据 Cache 独立，无需考虑指令对数据 Cache 的干扰。\n- \"2 路组相联\"：决定了冲突未命中的可能性，限定了组内只有两行，便于推演 LRU。\n- \"LRU 替换\"：决定了在冲突时淘汰哪一行。\n- \"写回策略\"：决定了写命中时不立即写主存，但需置 Dirty 位；写未命中时（若分配）需加载块并置 Dirty 位。\n- \"写未命中分配\"：决定了 STORE 未命中时，先加载块到 Cache，再写入，因此该块变为有效且 Dirty。\n- \"初始为空\"：确保前几次访问必然是 Miss。\n- \"0x1000 和 0x1800 在同一组\"：这是触发 LRU 替换和冲突未命中的关键条件。\n",
+    "sub_q1_intent": "考察 Cache 地址结构的计算能力。学生需根据容量、块大小、相联度计算组数，进而推导 Index 和 Tag 的位数。\n预期路径：Cache 块数 = 4KB/64B = 64。组数 = 64/2 = 32。Index = log2(32) = 5 位。Offset = log2(64) = 6 位。Tag = 17 - 5 - 6 = 6 位。\n",
+    "sub_q2_intent": "考察 Cache 访存行为的动态推演，特别是写未命中分配和 LRU 替换的交互。\n预期路径：\n1. `LOAD 0x1000`: Miss (Cold)。Set 0 加载块 Tag=2。Row A: Valid=1, Dirty=0, LRU=Recent。\n2. `STORE 0x1000`: Hit。Set 0 行 Tag=2 存在。写回策略，Hit 时更新数据，Dirty=1。LRU 更新为 Recent。\n3. `LOAD 0x1800`: Miss (Conflict)。Set 0 已有 Tag=2。需替换。LRU 选中 Tag=2 淘汰。\n- 淘汰 Tag=2：Dirty=1，触发写回主存（逻辑上）。\n- 加载 Tag=3 (0x1800)：Set 0 加载块 Tag=3。Valid=1, Dirty=0。LRU=Recent。\n4. `STORE 0x1000`: Miss (Conflict)。Set 0 现在只有 Tag=3。需替换 Tag=3。\n- 淘汰 Tag=3：Dirty=0，无需写回。\n- 加载 Tag=2 (0x1000)：Write Miss Allocate。加载块 Tag=2。Valid=1。因为是 Write Miss 且 Allocate，数据写入后，该块变为 Dirty=1。\n5. `LOAD 0x1000`: Hit。Set 0 行 Tag=2 存在。Dirty 位保持 1。\n\n第 5 步操作后（即 `STORE [0x1000], R2` 执行完毕后），地址 0x1000 所在行 Dirty=1。\n",
+    "sub_q3_intent": "考察写回策略下的脏块管理概念，以及对“全局检查”时刻状态的理解。\n预期路径：在第 6 步 `LOAD R3, [0x1000]` 之前。此时 Cache 中 Set 0 包含块 Tag=2 (0x1000)，Dirty=1。其他行均为空或无效（假设其他地址未被访问）。因此只有 1 个 Dirty 块需要写回。\n陷阱：学生可能误以为第 3 步淘汰 0x1000 时已经写回，所以最终不 dirty。但第 4 步又加载了 0x1000 并写入，导致其再次 dirty。学生需追踪整个序列的 Dirty 位变化。\n",
+    "trap_design": "\n1. **写未命中分配策略**：学生容易忽略 `STORE` 未命中时会先 `LOAD` 块到 Cache 再写，从而将块标记为 Dirty。如果误以为 `STORE` Miss 直接写主存，则第 4 步后 0x1000 不在 Cache 中，第 5 步 LOAD 会 Miss，且 Cache 中无 0x1000 行，导致结论错误。\n2. **LRU 替换时机**：学生需正确判断每次 Miss 时淘汰哪一行，特别是第 3 步淘汰 Dirty 块和第 4 步淘汰 Clean 块的区别。\n3. **Dirty 位翻转**：淘汰时写回会清除 Dirty（在主存层面同步），但重新加载并写入会再次置位。\n",
+    "sub_question_logic": "递进关系。第 1 问是基础参数，支撑第 2 问的地址解析。第 2 问是核心过程模拟，得出最终状态。第 3 问基于第 2 问的最终状态进行静态分析。\n",
+    "parameter_consistency": "PASS — 4KB Cache, 64B Block, 2-way。块数 64，组数 32。地址 17 位（128KB）。Index 5, Tag 6, Offset 6。0x1000 (Block 64, Set 0) 和 0x1800 (Block 96, Set 0) 确在同一组。参数自洽。",
+    "no_contradiction": "PASS — 哈佛架构隔离了指令和数据，题干明确只考察数据 Cache，无逻辑冲突。",
+    "unique_solution": "PASS — 给定 LRU 和 Write-Back/Allocate 策略，状态转移路径唯一。",
+    "reasoning_path_complete": "PASS — 从参数计算到状态模拟再到结论，路径完整。",
+    "all_conditions_used": "PASS —\n- 哈佛架构：排除指令干扰。\n- 2路组相联：制造冲突。\n- LRU：决定替换对象。\n- 写回：决定 Dirty 位含义。\n- 写分配：决定 Store Miss 时加载块。\n- 初始为空：确定起点。\n- 地址序列：驱动状态变化。\n- 0x1000 和 0x1800 同组：触发冲突。"
+  }
+}

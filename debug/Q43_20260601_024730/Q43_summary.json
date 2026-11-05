@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T03:06:49",
+  "total_time_s": 551.86,
+  "rounds": 2,
+  "final_stem": "某计算机系统配置如下：CPU主频为500 MHz；系统总线频率为100 MHz，总线宽度为64位，采用突发传送模式，每次突发事务包含1个地址/控制周期和多个数据周期；Cache块大小为64字节，命中时间为1个CPU时钟周期；主存采用低位交叉编址技术，共4个存储模块，每个模块的存储周期为200 ns。程序中处理的数据为IEEE 754单精度浮点数（每个数据元素占4个字节）。已知该程序的Cache命中率为90%，基础CPI（不包含访存等待时间）为1.0，访存指令占总指令数的36%，程序指令条数为10^6条。假设Cache缺失惩罚等于总线传输一个Cache块所需的时间。",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": "2\n",
+  "review_raw_text_length": 5128
+}

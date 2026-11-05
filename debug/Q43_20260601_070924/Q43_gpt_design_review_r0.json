@@ -1,0 +1,10 @@
+{
+  "slot_id": "Q43",
+  "step": "gpt_design_review",
+  "round": 0,
+  "timestamp": "2026-06-01T07:12:31",
+  "timing_s": null,
+  "output": {
+    "_raw": "{\n  \"status\": \"pass\",\n  \"quality\":。\"\n}"
+  }
+}

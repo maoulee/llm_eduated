@@ -1,0 +1,32 @@
+{
+  "slot_id": "Q12",
+  "step": "merged_design",
+  "round": 0,
+  "timestamp": "2026-06-04T02:31:31",
+  "timing_s": null,
+  "output": {
+    "stem": "某计算机的主频为 500MHz。执行某程序时，该程序包含的指令条数为 $2 \\times 10^9$ 条，且该程序的平均 CPI（Clock cycles Per Instruction）为 4。请问该程序的执行时间是（ ）。",
+    "given_conditions": [
+      "主频 f = 500MHz",
+      "指令条数 I = 2 * 10^9",
+      "平均 CPI = 4"
+    ],
+    "difficulty_self_assessment": "2",
+    "knowledge_points": "计算机性能指标, CPU执行时间\n",
+    "option_A": "4 s",
+    "option_B": "8 s",
+    "option_C": "16 ms",
+    "option_D": "16 s",
+    "correct_answer": "D",
+    "option_style_used": "数字结果\n",
+    "distractor_intent_A": "正确选项",
+    "distractor_intent_B": "干扰项。误选原因是忽略了 CPI 的存在，仅计算了指令条数与主频的比例（或者试图将频率与 CPI 相乘），没有将完整的时钟周期数计算在内。",
+    "distractor_intent_C": "干扰项。误选原因是未进行单位换算（忽略了 MHz 到 Hz 的 $10^6$ 量级与指令条数的 $10^9$ 量级之间的 $10^3$ 换算关系），仅简单将数字代入 $2 \\times 4 / 500 = 0.016$ 秒，并错误地将其转换为 16 ms。",
+    "distractor_intent_D": "干扰项。误选原因是直接用指令条数除以主频（忽略了 CPI），即 $2 \\times 10^9 / (500 \\times 10^6) = 4$ s，属于对执行时间公式记忆不全。\n",
+    "blueprint_compliance": "PASS — 考点精准匹配“计算机性能指标”，涵盖了必考要素“主频、CPI、执行时间”，未涉及流水线及Amdahl定律。",
+    "difficulty_alignment": "PASS — 目标难度为 2（基础检验），题目仅需调用基础公式并处理一步单位换算，数字设计友好，符合计算量 1 的要求。",
+    "option_uniqueness": "PASS — 正确答案唯一，根据公式 $T = I \\times CPI / f$ 计算得出结果为 16s，无歧义。",
+    "no_contradiction": "PASS — 给定的主频、指令条数和 CPI 三个条件逻辑自洽，均用于最终计算，无废弃条件。",
+    "reasoning_hint": "预期解题路径为提取公式 $T = I \\times CPI / f$，代入数值 $(2 \\times 10^9 \\times 4) / (500 \\times 10^6) = 16$ 秒。"
+  }
+}

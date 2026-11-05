@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T13:48:37",
+  "total_time_s": 827.34,
+  "rounds": 1,
+  "final_stem": "\n某计算机系统采用两级存储层次结构，由高速Cache和主存组成。Cache容量为64KB，采用直接映射方式，数据块（Block）大小为128B。主存通过系统总线与Cache连接。该系统的Cache控制策略如下：当Cache发生缺失（Miss）时，从主存读取数据块装入Cache，该过程占用CPU时间；命中（Hit）时，直接从Cache读取，耗时为一个CPU时钟周期。\n\n已知参数如下：\n1. **CPU与时钟**：CPU主频为 2 GHz。\n2. **Cache访问**：Cache命中时间 $T_{hit} = 1$ 个时钟周期。\n3. **主存与总线**：主存模块内部采用低位交叉编址，共4个模块。总线宽度为64位（8B）。\n- **突发传输机制**：当Cache缺失时，启动一次总线突发传输（Burst Transfer）。\n- 总线事务启动开销（地址+握手）：$T_{setup} = 100 \\text{ ns}$。\n- 总线数据传输阶段：每个总线周期传输1个字（8B）。总线周期时间 $T_{bus\\_cycle} = 5 \\text{ ns}$。\n- 由于主存是4模块交叉编址，且总线宽",
+  "solver_execs": 0,
+  "review_status": "pass",
+  "review_quality": "9\n",
+  "review_raw_text_length": 2643
+}

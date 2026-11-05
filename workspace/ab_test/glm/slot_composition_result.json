@@ -1,0 +1,165 @@
+{
+  "user_requirements": "出一套标准难度的408模拟卷（计算机组成原理选择题部分），难度分布均匀，覆盖主要知识点。指定题位：Q43(综合应用题)。",
+  "paper_blueprint": {
+    "paper_type": "408模拟卷",
+    "total_questions": "1",
+    "difficulty_target": "4",
+    "difficulty_distribution": {
+      "level_1": 0,
+      "level_2": 0,
+      "level_3": 0,
+      "level_4": 1,
+      "level_5": 0
+    },
+    "primary_role_distribution": {
+      "foundation_check": 0,
+      "mechanism_trigger": 0,
+      "pattern_execution": 0,
+      "trap_diagnosis": 0,
+      "calculation_stability": 0,
+      "cross_topic_integration": 0,
+      "difficulty_separator": 1
+    },
+    "composition_rationale": "本试卷针对Q43综合应用题位进行规划，侧重于计算机组成原理的核心跨领域综合计算。选取存储系统与指令流水线结合的经典模型，通过多步骤的数值推导检验学生对硬件底层运行机制的理解与计算稳定性。\n",
+    "calculation_load_distribution": {
+      "load_0": 0,
+      "load_1": 0,
+      "load_2": 0,
+      "load_3": 0,
+      "load_4": 1,
+      "load_5": 0
+    },
+    "reasoning_steps_distribution": {
+      "steps_1": 0,
+      "steps_2": 0,
+      "steps_3": 0,
+      "steps_4": 0,
+      "steps_5": 1
+    },
+    "difficulty_curve_strategy": "单题独立结构，通过四个递进式子问题实现从基础机制到综合计算的难度爬升。\n",
+    "slots": [
+      {
+        "target_subject": "计算机组成原理",
+        "target_family": "存储系统与总线性能",
+        "primary_target_name": "带有Cache访问的指令流水线执行时间计算",
+        "target_depth": "mechanism",
+        "primary_paper_role": "difficulty_separator",
+        "secondary_paper_roles": "calculation_stability, mechanism_trigger",
+        "target_difficulty": "4",
+        "difficulty_profile": {
+          "knowledge_depth": 4,
+          "reasoning_steps": 5,
+          "calculation_load": 4
+        },
+        "option_style": "none",
+        "reasoning_shape": "none",
+        "sub_questions": "4",
+        "answer_format": "解答过程+最终结果",
+        "must_include": "主存与Cache地址格式字段划分, Cache缺失损失计算, 平均访问时间AMAT公式应用, 指令流水线阻塞时钟周期数累加计算",
+        "must_avoid": "虚拟存储器与TLB机制交叉, 复杂的除法/开方运算导致结果非整数",
+        "reference_experience": "2015, 2019, 2023",
+        "has_deviation": "yes",
+        "deviation_level": "minor",
+        "deviation_reason": "偏好约束中建议option_style=数字结果和reasoning_shape=multi_step，但依据硬约束要求，综合应用题的此两项字段必须严格输出为none，已按硬约束执行覆盖。",
+        "slot_id": "Q43",
+        "question_type": "comprehensive"
+      }
+    ]
+  },
+  "blueprint_review": {
+    "status": "pass",
+    "hard_violation_count": "0",
+    "major_deviation_count": "0",
+    "minor_deviation_count": "1",
+    "comment": "蓝图整体结构清晰，参数分布总和与总题数完全一致。题目设计精准命中了408计算机组成原理的核心重难点（Cache与流水线），难度与计算量设定合理，并且严格遵守了综合应用题的硬性约束，对相关字段的偏离原因说明充分且合规。\n",
+    "slot_reviews": [
+      {
+        "status": "pass",
+        "hard_violation": "no",
+        "soft_deviation": "minor",
+        "deviation_fields": "option_style, reasoning_shape",
+        "issue": "偏离了偏好约束中建议的`option_style=数字结果`和`reasoning_shape=multi_step`，但符合硬约束中针对综合题必须为`none`的强制规定，且已在`deviation_reason`中给出了合理的解释。",
+        "revision_instruction": "无\n",
+        "slot_id": "Q43"
+      }
+    ],
+    "global_issues": {}
+  },
+  "skeleton_violations": [],
+  "knowledge_gate_result": null,
+  "initial_questions": [
+    {
+      "slot_id": "Q43",
+      "pipeline_type": "doc_4layer",
+      "generation_time_s": 1152.6,
+      "ok": true,
+      "_blueprint": {
+        "target_subject": "计算机组成原理",
+        "target_family": "存储系统与总线性能",
+        "primary_target_name": "带有Cache访问的指令流水线执行时间计算",
+        "target_depth": "mechanism",
+        "primary_paper_role": "difficulty_separator",
+        "secondary_paper_roles": "calculation_stability, mechanism_trigger",
+        "target_difficulty": "4",
+        "difficulty_profile": {
+          "knowledge_depth": 4,
+          "reasoning_steps": 5,
+          "calculation_load": 4
+        },
+        "option_style": "none",
+        "reasoning_shape": "none",
+        "sub_questions": "4",
+        "answer_format": "解答过程+最终结果",
+        "must_include": "主存与Cache地址格式字段划分, Cache缺失损失计算, 平均访问时间AMAT公式应用, 指令流水线阻塞时钟周期数累加计算",
+        "must_avoid": "虚拟存储器与TLB机制交叉, 复杂的除法/开方运算导致结果非整数",
+        "reference_experience": "2015, 2019, 2023",
+        "has_deviation": "yes",
+        "deviation_level": "minor",
+        "deviation_reason": "偏好约束中建议option_style=数字结果和reasoning_shape=multi_step，但依据硬约束要求，综合应用题的此两项字段必须严格输出为none，已按硬约束执行覆盖。",
+        "slot_id": "Q43",
+        "question_type": "comprehensive"
+      },
+      "_experience_card": "# 经验卡 — Q43\n\n## 题位模板摘要\n- 题位: Q43\n- 科目: 跨领域\n- 题型: comprehensive\n- 分值: 10分\n\n## 认知雷达锚点\n- K1: 众数=4 [3, 4]\n- K2: 众数=3 [2, 3]\n- K3: 众数=4 [4, 5]\n- K4: 众数=4 [4, 5]\n- K5: 众数=4 [3, 5]\n\n## 知识领域分布\n- 数据表示与运算: 30%\n- I/O系统性能计算: 20%\n- 存储系统与总线性能: 10%\n- 总线与Cache性能: 10%\n- 算法设计与分析: 10%\n- 指令系统设计: 10%\n- 存储系统层次结构: 10%\n\n## 功能角色分布\n- mechanism_trigger: 30%\n- difficulty_separator: 30%\n- calculation_stability: 20%\n- cross_topic_integration: 20%\n\n## 出题指导\n- should_be: \n- should_not_be: \n- generation_style: \n",
+      "final_md": "## 题目\n某计算机采用经典的5段流水线（IF / ID / EX / MEM / WB），处理器时钟周期为 2 ns。主存容量为 256 MB，按字节编址。处理器采用哈佛结构，设有独立的 L1 指令 Cache（L1I）和 L1 数据 Cache（L1D），两者结构参数相同，具体如下：\n\n- Cache 总容量：64 KB\n- 块大小（行大小）：64 B\n- 映射方式：4 路组相联\n- Cache 命中时间：1 个时钟周期\n\n处理器与主存之间通过系统总线连接，总线宽度为 8 B，采用突发传输（Burst Transfer）方式传送数据：从 Cache 发出缺失请求到主存返回第一个 8 B 数据需要 **30 个时钟周期**（该延迟包含总线仲裁、主存寻址等全部开销）；此后每继续传输一个 8 B 数据块需要 **1 个时钟周期**。一次 Cache 缺失时，整个缺失块一次性调入 Cache。\n\n通过对某程序运行期间的统计，得到如下数据：\n\n- 指令 Cache 命中率：95%\n- 数据 Cache 命中率：90%\n- 该程序执行的总指令数为 20,000 条\n- 其中 load / store 指令占总指令数的 25%（其余指令均不访问数据 Cache）\n- 在理想情况下（无任何 Cache 缺失），该处理器的基准 CPI = 1\n\n**假设：** 流水线在发生 Cache 缺失时暂停（stall），直到所需数据调入 Cache 后才继续执行。指令 Cache 缺失发生在 IF 段，数据 Cache 缺失发生在 MEM 段，两类缺失引起的阻塞周期数均等于各自的缺失损失（Miss Penalty）。\n\n---\n\n\n## 选项\n（本题无选项，为综合应用解答题）\n\n---\n\n\n## 解题过程\n======================================================================\nQ43 — Cache与流水线性能综合分析\n======================================================================\n\n======================================================================\n基本参数\n======================================================================\n主存容量: 256 MB = 268435456 B = 2^28 B\n主存地址位数: 28 位\n\nCache总容量: 64 KB = 65536 B = 2^16 B\n块大小: 64 B = 2^6 B\n映射方式: 4路组相联\nCache命中时间: 1 个时钟周期\n\n总线宽度: 8 B\n首次突发传输延迟: 30 个时钟周期\n后续突发传输延迟: 1 个时钟周期/次\n\n指令Cache命中率: 95.0%\n数据Cache命中率: 90.0%\n总指令数: 20000\nload/store指令占比: 25.0%\n基准CPI: 1\n\n======================================================================\n子问题 (1): Cache 主存地址格式推导\n======================================================================\n\n【推导 Offset 位数】\n  块大小 = 64 B = 2^6 B\n  → Offset = 6 位\n  说明: 块内寻址需要 6 位来定位每个字节\n\n【推导 Index 位数】\n  每组大小 = 块大小 × 相联度 = 64 B × 4 = 256 B = 2^8 B\n  组数 = Cache总容量 / 每组大小 = 65536 / 256 = 256 = 2^8\n  → Index = 8 位\n\n【推导 Tag 位数】\n  主存地址位数 = log₂(268435456) = 28 位\n  Tag = 地址位数 - Index - Offset = 28 - 8 - 6 = 14 位\n\n【验证】\n  Tag(14) + Index(8) + Offset(6) = 28 位\n  28 = 28 ✓ 验证通过!\n\n  地址格式:\n  ┌──────────────┬──────────┬──────────┐\n  │ Tag(14位)  │Index(8位)│Offset(6位)│\n  └──────────────┴──────────┴──────────┘\n\n======================================================================\n子问题 (2): 缺失损失 (Miss Penalty) 计算\n======================================================================\n\n【计算突发传输次数】\n  Cache块大小 = 64 B\n  总线宽度 = 8 B\n  突发传输次数 = ⌈64 / 8⌉ = 8 次\n\n【计算缺失损失】\n  缺失损失 = 首次传输延迟 + (突发传输次数 - 1) × 后续传输延迟\n  缺失损失 = 30 + (8 - 1) × 1\n  缺失损失 = 30 + 7 × 1\n  缺失损失 = 30 + 7\n  缺失损失 = 37 个时钟周期\n\n======================================================================\n子问题 (3): AMAT 计算 (平均访问时间)\n======================================================================\n\n  AMAT 公式: AMAT = 命中时间 + 缺失率 × 缺失损失\n\n【指令 Cache AMAT (AMAT_I)】\n  指令Cache命中率 = 0.95 = 95%\n  指令Cache缺失率 = 1 - 0.95 = 0.050000000000000044 = 5%\n  AMAT_I = 1 + 0.050000000000000044 × 37\n  AMAT_I = 1 + 1.8500000000000016\n  AMAT_I = 2.8500000000000014 个时钟周期\n\n【数据 Cache AMAT (AMAT_D)】\n  数据Cache命中率 = 0.9 = 90%\n  数据Cache缺失率 = 1 - 0.9 = 0.09999999999999998 = 9%\n  AMAT_D = 1 + 0.09999999999999998 × 37\n  AMAT_D = 1 + 3.6999999999999993\n  AMAT_D = 4.699999999999999 个时钟周期\n\n======================================================================\n子问题 (4): 总执行时间计算\n======================================================================\n\n【① 指令Cache缺失引起的总阻塞周期数】\n  每条指令都需要一次指令Cache访问（在IF段）\n  指令总数 = 20000\n  指令Cache缺失率 = 0.050000000000000044 = 1/20\n  指令Cache缺失次数 = 20000 × 0.050000000000000044 = 1000\n  N_I_stall = 缺失次数 × 缺失损失 = 1000 × 37 = 37000 个周期\n\n【② 数据Cache缺失引起的总阻塞周期数】\n  仅load/store指令（占25.0%）会访问数据Cache（在MEM段）\n  load/store指令数 = 20000 × 0.25 = 5000\n  数据Cache缺失率 = 0.09999999999999998 = 1/10\n  数据Cache缺失次数 = 5000 × 0.09999999999999998 = 499\n  N_D_stall = 缺失次数 × 缺失损失 = 499 × 37 = 18463 个周期\n\n【③ 程序执行的总时钟周期数】\n  基准周期数 = 指令总数 × 基准CPI = 20000 × 1 = 20000\n  N_total = 基准周期 + I-stall + D-stall\n  N_total = 20000 + 37000 + 18463\n  N_total = 75463 个时钟周期\n\n【④ 总执行时间】\n  T = N_total × T_clk = 75463 × 2 ns = 150926 ns\n  T = 150926 ns = 150.926 μs\n\n======================================================================\n最终结果汇总\n======================================================================\n\n  (1) 地址格式: Tag(14位) | Index(8位) | Offset(6位)  共28位\n  (2) 缺失损失 (Miss Penalty) = 37 个时钟周期\n  (3) AMAT_I = 2.8500000000000014 个时钟周期\n      AMAT_D = 4.699999999999999 个时钟周期\n  (4) 总执行时间 = 150.926 μs\n          = 150926 ns\n          = 75463 个时钟周期\n\n\n## 答案\n\n\n\n## 审核总结\n题干设计精良、答案正确且自洽，但求解代码在子问题(4)中存在**浮点精度Bug**，导致数据Cache缺失次数从500错算为499，级联传播使总阻塞周期、总时钟周期数和总执行时间全部偏离正确答案。需修正求解代码中的浮点运算逻辑（应使用分数/整数运算替代浮点乘法取整）。"
+    }
+  ],
+  "revision_rounds": [],
+  "final_questions": [
+    {
+      "slot_id": "Q43",
+      "pipeline_type": "doc_4layer",
+      "generation_time_s": 1152.6,
+      "ok": true,
+      "_blueprint": {
+        "target_subject": "计算机组成原理",
+        "target_family": "存储系统与总线性能",
+        "primary_target_name": "带有Cache访问的指令流水线执行时间计算",
+        "target_depth": "mechanism",
+        "primary_paper_role": "difficulty_separator",
+        "secondary_paper_roles": "calculation_stability, mechanism_trigger",
+        "target_difficulty": "4",
+        "difficulty_profile": {
+          "knowledge_depth": 4,
+          "reasoning_steps": 5,
+          "calculation_load": 4
+        },
+        "option_style": "none",
+        "reasoning_shape": "none",
+        "sub_questions": "4",
+        "answer_format": "解答过程+最终结果",
+        "must_include": "主存与Cache地址格式字段划分, Cache缺失损失计算, 平均访问时间AMAT公式应用, 指令流水线阻塞时钟周期数累加计算",
+        "must_avoid": "虚拟存储器与TLB机制交叉, 复杂的除法/开方运算导致结果非整数",
+        "reference_experience": "2015, 2019, 2023",
+        "has_deviation": "yes",
+        "deviation_level": "minor",
+        "deviation_reason": "偏好约束中建议option_style=数字结果和reasoning_shape=multi_step，但依据硬约束要求，综合应用题的此两项字段必须严格输出为none，已按硬约束执行覆盖。",
+        "slot_id": "Q43",
+        "question_type": "comprehensive"
+      },
+      "_experience_card": "# 经验卡 — Q43\n\n## 题位模板摘要\n- 题位: Q43\n- 科目: 跨领域\n- 题型: comprehensive\n- 分值: 10分\n\n## 认知雷达锚点\n- K1: 众数=4 [3, 4]\n- K2: 众数=3 [2, 3]\n- K3: 众数=4 [4, 5]\n- K4: 众数=4 [4, 5]\n- K5: 众数=4 [3, 5]\n\n## 知识领域分布\n- 数据表示与运算: 30%\n- I/O系统性能计算: 20%\n- 存储系统与总线性能: 10%\n- 总线与Cache性能: 10%\n- 算法设计与分析: 10%\n- 指令系统设计: 10%\n- 存储系统层次结构: 10%\n\n## 功能角色分布\n- mechanism_trigger: 30%\n- difficulty_separator: 30%\n- calculation_stability: 20%\n- cross_topic_integration: 20%\n\n## 出题指导\n- should_be: \n- should_not_be: \n- generation_style: \n",
+      "final_md": "## 题目\n某计算机采用经典的5段流水线（IF / ID / EX / MEM / WB），处理器时钟周期为 2 ns。主存容量为 256 MB，按字节编址。处理器采用哈佛结构，设有独立的 L1 指令 Cache（L1I）和 L1 数据 Cache（L1D），两者结构参数相同，具体如下：\n\n- Cache 总容量：64 KB\n- 块大小（行大小）：64 B\n- 映射方式：4 路组相联\n- Cache 命中时间：1 个时钟周期\n\n处理器与主存之间通过系统总线连接，总线宽度为 8 B，采用突发传输（Burst Transfer）方式传送数据：从 Cache 发出缺失请求到主存返回第一个 8 B 数据需要 **30 个时钟周期**（该延迟包含总线仲裁、主存寻址等全部开销）；此后每继续传输一个 8 B 数据块需要 **1 个时钟周期**。一次 Cache 缺失时，整个缺失块一次性调入 Cache。\n\n通过对某程序运行期间的统计，得到如下数据：\n\n- 指令 Cache 命中率：95%\n- 数据 Cache 命中率：90%\n- 该程序执行的总指令数为 20,000 条\n- 其中 load / store 指令占总指令数的 25%（其余指令均不访问数据 Cache）\n- 在理想情况下（无任何 Cache 缺失），该处理器的基准 CPI = 1\n\n**假设：** 流水线在发生 Cache 缺失时暂停（stall），直到所需数据调入 Cache 后才继续执行。指令 Cache 缺失发生在 IF 段，数据 Cache 缺失发生在 MEM 段，两类缺失引起的阻塞周期数均等于各自的缺失损失（Miss Penalty）。\n\n---\n\n\n## 选项\n（本题无选项，为综合应用解答题）\n\n---\n\n\n## 解题过程\n======================================================================\nQ43 — Cache与流水线性能综合分析\n======================================================================\n\n======================================================================\n基本参数\n======================================================================\n主存容量: 256 MB = 268435456 B = 2^28 B\n主存地址位数: 28 位\n\nCache总容量: 64 KB = 65536 B = 2^16 B\n块大小: 64 B = 2^6 B\n映射方式: 4路组相联\nCache命中时间: 1 个时钟周期\n\n总线宽度: 8 B\n首次突发传输延迟: 30 个时钟周期\n后续突发传输延迟: 1 个时钟周期/次\n\n指令Cache命中率: 95.0%\n数据Cache命中率: 90.0%\n总指令数: 20000\nload/store指令占比: 25.0%\n基准CPI: 1\n\n======================================================================\n子问题 (1): Cache 主存地址格式推导\n======================================================================\n\n【推导 Offset 位数】\n  块大小 = 64 B = 2^6 B\n  → Offset = 6 位\n  说明: 块内寻址需要 6 位来定位每个字节\n\n【推导 Index 位数】\n  每组大小 = 块大小 × 相联度 = 64 B × 4 = 256 B = 2^8 B\n  组数 = Cache总容量 / 每组大小 = 65536 / 256 = 256 = 2^8\n  → Index = 8 位\n\n【推导 Tag 位数】\n  主存地址位数 = log₂(268435456) = 28 位\n  Tag = 地址位数 - Index - Offset = 28 - 8 - 6 = 14 位\n\n【验证】\n  Tag(14) + Index(8) + Offset(6) = 28 位\n  28 = 28 ✓ 验证通过!\n\n  地址格式:\n  ┌──────────────┬──────────┬──────────┐\n  │ Tag(14位)  │Index(8位)│Offset(6位)│\n  └──────────────┴──────────┴──────────┘\n\n======================================================================\n子问题 (2): 缺失损失 (Miss Penalty) 计算\n======================================================================\n\n【计算突发传输次数】\n  Cache块大小 = 64 B\n  总线宽度 = 8 B\n  突发传输次数 = ⌈64 / 8⌉ = 8 次\n\n【计算缺失损失】\n  缺失损失 = 首次传输延迟 + (突发传输次数 - 1) × 后续传输延迟\n  缺失损失 = 30 + (8 - 1) × 1\n  缺失损失 = 30 + 7 × 1\n  缺失损失 = 30 + 7\n  缺失损失 = 37 个时钟周期\n\n======================================================================\n子问题 (3): AMAT 计算 (平均访问时间)\n======================================================================\n\n  AMAT 公式: AMAT = 命中时间 + 缺失率 × 缺失损失\n\n【指令 Cache AMAT (AMAT_I)】\n  指令Cache命中率 = 0.95 = 95%\n  指令Cache缺失率 = 1 - 0.95 = 0.050000000000000044 = 5%\n  AMAT_I = 1 + 0.050000000000000044 × 37\n  AMAT_I = 1 + 1.8500000000000016\n  AMAT_I = 2.8500000000000014 个时钟周期\n\n【数据 Cache AMAT (AMAT_D)】\n  数据Cache命中率 = 0.9 = 90%\n  数据Cache缺失率 = 1 - 0.9 = 0.09999999999999998 = 9%\n  AMAT_D = 1 + 0.09999999999999998 × 37\n  AMAT_D = 1 + 3.6999999999999993\n  AMAT_D = 4.699999999999999 个时钟周期\n\n======================================================================\n子问题 (4): 总执行时间计算\n======================================================================\n\n【① 指令Cache缺失引起的总阻塞周期数】\n  每条指令都需要一次指令Cache访问（在IF段）\n  指令总数 = 20000\n  指令Cache缺失率 = 0.050000000000000044 = 1/20\n  指令Cache缺失次数 = 20000 × 0.050000000000000044 = 1000\n  N_I_stall = 缺失次数 × 缺失损失 = 1000 × 37 = 37000 个周期\n\n【② 数据Cache缺失引起的总阻塞周期数】\n  仅load/store指令（占25.0%）会访问数据Cache（在MEM段）\n  load/store指令数 = 20000 × 0.25 = 5000\n  数据Cache缺失率 = 0.09999999999999998 = 1/10\n  数据Cache缺失次数 = 5000 × 0.09999999999999998 = 499\n  N_D_stall = 缺失次数 × 缺失损失 = 499 × 37 = 18463 个周期\n\n【③ 程序执行的总时钟周期数】\n  基准周期数 = 指令总数 × 基准CPI = 20000 × 1 = 20000\n  N_total = 基准周期 + I-stall + D-stall\n  N_total = 20000 + 37000 + 18463\n  N_total = 75463 个时钟周期\n\n【④ 总执行时间】\n  T = N_total × T_clk = 75463 × 2 ns = 150926 ns\n  T = 150926 ns = 150.926 μs\n\n======================================================================\n最终结果汇总\n======================================================================\n\n  (1) 地址格式: Tag(14位) | Index(8位) | Offset(6位)  共28位\n  (2) 缺失损失 (Miss Penalty) = 37 个时钟周期\n  (3) AMAT_I = 2.8500000000000014 个时钟周期\n      AMAT_D = 4.699999999999999 个时钟周期\n  (4) 总执行时间 = 150.926 μs\n          = 150926 ns\n          = 75463 个时钟周期\n\n\n## 答案\n\n\n\n## 审核总结\n题干设计精良、答案正确且自洽，但求解代码在子问题(4)中存在**浮点精度Bug**，导致数据Cache缺失次数从500错算为499，级联传播使总阻塞周期、总时钟周期数和总执行时间全部偏离正确答案。需修正求解代码中的浮点运算逻辑（应使用分数/整数运算替代浮点乘法取整）。"
+    }
+  ],
+  "final_review": {},
+  "total_time_s": 1294.6
+}

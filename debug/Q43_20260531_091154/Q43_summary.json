@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T09:20:11",
+  "total_time_s": 481.38,
+  "rounds": 2,
+  "final_stem": "某多核处理器系统采用两级存储层次结构：一级Cache（L1）和主存（DRAM）。L1 Cache参数如下：容量为64KB，行大小为64字节，直接映射（Direct Mapped），缺失替换策略为LRU。主存采用低位交叉编址的多模块结构，共有4个存储模块，每个模块独立工作。总线支持突发传输（Burst Transfer），每次缺失时，从主存加载一个完整的Cache行到L1。\n\n已知系统运行时执行一条程序 $P$，其指令和数据访问特征如下：\n1. CPU流水线时钟周期为 $T_c = 0.5 \\text{ ns}$。\n2. 理想情况下（无缺失），每条指令的平均执行时间 $CPI_{ideal} = 2.0$。\n3. 程序 $P$ 的总指令数为 $N = 10^8$ 条。\n4. 指令Cache缺失率为 $5\\%$，数据Cache缺失率为 $8\\%$。假设指令和数据访问各占总访问的一半（即50%指令访问，50%数据访问）。\n5. L1 Cache缺失时，通过总线从主存获取数据。总线突发传输机制如下：传输第一个Cache行中的第一个字（4字节）需要200个时钟周期（含地址发送、准备阶段等固定开销",
+  "solver_execs": 0,
+  "review_status": "pass",
+  "review_quality": 8,
+  "review_raw_text_length": 0
+}

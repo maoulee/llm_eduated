@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T13:24:37",
+  "total_time_s": 444.29,
+  "rounds": 2,
+  "final_stem": "某计算机系统的存储器层次结构参数如下：\n**数据 Cache**：容量为 4KB，块大小（Block Size）为 64 字节，采用 2 路组相联映射（2-way Set-Associative），替换策略为 LRU，写策略为写回法（Write-back），写不命中采用分配法（Allocate on Write Miss）。Cache 访问时间为 $T_c = 2 \\text{ns}$。\n**主存**：访问时间为 $T_m = 100 \\text{ns}$（从发送请求到数据就绪的总耗时）。假设数据传输速率极高，加载整个 Cache 块（64 字节）至 Cache 的额外传输耗时可忽略不计，即填充一个块的总耗时等于 $T_m$。\n\n系统复位后 Cache 初始为空。处理器执行一段包含 1000 次访存操作的程序，统计结果如下：\n- **读操作**：共 800 次，其中 780 次命中（Hit），20 次未命中（Miss）。\n- **写操作**：共 200 次，其中 190 次命中，10 次未命中。\n- **写回开销**：在程序执行过程中，因 Cache 块替换（Eviction）导致的写",
+  "solver_execs": 2,
+  "review_status": "needs_fix",
+  "review_quality": "6",
+  "review_raw_text_length": 2558
+}

@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "step": "design",
+  "round": 1,
+  "timestamp": "2026-05-31T06:15:28",
+  "timing_s": null,
+  "output": {
+    "structural_errors": [
+      "sub_question[0] is not a dict"
+    ]
+  }
+}

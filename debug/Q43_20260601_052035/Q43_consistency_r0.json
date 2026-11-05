@@ -1,0 +1,69 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-06-01T05:27:45",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "conflicts": [
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "80",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "90",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "0.576",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "0.65",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "1",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "2.226",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "2",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      },
+      {
+        "field_a": "rubric",
+        "field_b": "final_question.answer",
+        "value_a": "2226",
+        "value_b": "no match in ['2.194', '2194.000']",
+        "severity": "warning"
+      }
+    ],
+    "summary": "8 conflicts found"
+  }
+}

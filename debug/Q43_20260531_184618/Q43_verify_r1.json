@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "verify",
+  "round": 1,
+  "timestamp": "2026-05-31T18:52:37",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "trusted": "false",
+    "fix_target": "solver",
+    "overall_quality": 2,
+    "note": "verify_missing_input"
+  }
+}

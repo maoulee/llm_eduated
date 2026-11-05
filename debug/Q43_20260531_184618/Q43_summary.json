@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T18:54:47",
+  "total_time_s": 469.4,
+  "rounds": 2,
+  "final_stem": "某计算机系统的Cache采用4路组相联映射（4-Way Set-Associative Mapping）策略，参数如下：Cache总容量为256B，块大小（Block Size）为16B，组数（Number of Sets）为4。该系统主存访问时间为100ns，Cache访问时间为2ns。现有一段程序执行过程中产生了如下10次访存操作（十六进制表示的物理地址）：`0x000020`, `0x000060`, `0x000010`, `0x000020`, `0x0000A0`, `0x000010`, `0x0000E0`, `0x000120`, `0x000020`, `0x000060`。假设Cache初始为空，且组内替换策略采用LRU（最近最少使用），请结合上述信息完成以下分析。",
+  "solver_execs": 0,
+  "review_status": "needs_fix",
+  "review_quality": 2,
+  "review_raw_text_length": 0
+}

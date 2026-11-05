@@ -1,0 +1,25 @@
+# retrieval_query schema — intake layer output for question retrieval tasks
+# Does NOT enter generation pipeline
+
+schema_version: retrieval_query_v1
+task_type: retrieval
+
+query:
+  keywords: []  # required
+  knowledge_tags: []
+  subject: ""
+  assessment_type: ""
+  question_type: ""
+  difficulty: ""
+
+policy:
+  max_scan: 2000
+  top_k: 10
+  search_fields:
+    knowledge: 5
+    title: 3
+    body: 1
+
+routing:
+  can_route: true
+  next_action: retrieve

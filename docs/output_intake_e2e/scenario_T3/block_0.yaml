@@ -1,0 +1,52 @@
+assessment:
+  duration_minutes: null
+  subjects:
+  - 操作系统
+  total_score: 50
+  type: course_final
+confidence:
+  contradictions:
+  - 题目分值加总(5×2+10+20=40分)与声明的总分(50分)不一致，缺口10分
+  level: blocked
+  missing_fields:
+  - difficulty.target
+  notes: 分数计算矛盾需教师确认，难度未指定可用默认中等
+  unverified_scope: false
+difficulty:
+  distribution: null
+  target: null
+intake_status: needs_user_choice
+keywords: null
+knowledge_scope:
+  coverage_strategy: focus_heavy
+  excluded_points:
+  - PV操作
+  focus_points:
+  - 银行家算法
+  - 页面置换算法
+  primary_chapters:
+  - 进程管理
+  - 内存管理
+primary_target_name: null
+question_config:
+  types:
+  - count: 5
+    score_per: 2
+    type: single_choice
+  - count: 2
+    scores:
+    - 10
+    - 20
+    type: comprehensive
+routing:
+  can_route: false
+  next_action: ask_user
+  next_input: null
+  reason: 题目分数加总40分与总分50分矛盾，需要教师选择处理方式
+schema_version: intake_result_v1
+source:
+  intake_type: human_input
+  raw_input: 组一套操作系统期末卷，只考进程管理和内存管理这两章，必须包含银行家算法和页面置换算法，不能出现PV操作相关题目，总分50分，5道选择题每题2分，2道综合题分别10分20分
+target_subject: null
+task_confidence: high
+task_type: paper

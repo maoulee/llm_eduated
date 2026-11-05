@@ -1,0 +1,18 @@
+{
+  "slot_id": "Q43",
+  "step": "solve",
+  "round": 1,
+  "timestamp": "2026-05-31T01:47:10",
+  "timing_s": null,
+  "output": {
+    "slot_id": "Q43",
+    "code_files": [],
+    "outputs": [],
+    "computed_results": {
+      "raw_text": "我来分析这道408计算机组成原理的综合题，编写Python求解脚本。\n\n**题目分析：**\n1. Cache直接映射，4行，每行8字节，物理地址32位\n2. 需要计算Tag/Index/Offset的位数划分\n3. 三条LOAD指令依次执行，需要跟踪Cache状态变化\n4. 最后执行ADD运算，需要判断OF和CF标志\n\n让我编写完整的求解脚本：\n\n```json\n{\"tool\": \"code_exec_408\", \"arguments\": {\"code\": \"\\\"\\\"\\\"\\n408 Cache与运算综合题求解\\n\\\"\\\"\\\"\\n\\nprint(\\\"=\\\"*60)\\nprint(\\\"子问(1): Cache地址划分与第1条指令分析\\\")\\nprint(\\\"=\\\"*60)\\n\\n# 基础参数\\nnum_lines = 4  # Cache行数\\nblock_size = 8  # 每行块大小（字节）\\nphysical_addr_bits = 32  # 物理地址位数\\n\\n# 计算Offset位数\\nimport math\\noffset_bits = int(math.log2(block_size))\\nprint(f\\\"\\\\nOffset位数 = log2(块大小) = log2({block_size}) = {offset_bits} 位\\\")\\n\\n# 计算Index位数\\nindex_bits = int(math.log2(num_lines))\\nprint(f\\\"Index位数 = log2(Cache行数) = log2({num_lines}) = {index_bits} 位\\\")\\n\\n# 计算Tag位数\\ntag_bits = physical_addr_bits - index_bits - offset_bits\\nprint(f\\\"Tag位数 = 物理地址位数 - Index位数 - Offset位数 = {physical_addr_bits} - {index_bits} - {offset_bits} = {tag_bits} 位\\\")\\n\\nprint(f\\\"\\\\n地址划分: Tag({tag_bits}位) | Index({index_bits}位) | Offset({offset_bits}位)\\\")\\n\\n# 地址 0x00000014 的Tag和Index计算\\naddr1 = 0x00000014\\nprint(f\\\"\\\\n地址1: {hex(addr1)}\\\")\\nprint(f\\\"地址1二进制: {addr1:032b}\\\")\\n\\n# Offset占用最低3位, Index占用接下来2位, Tag为剩余高位\\noffset1 = addr1 & ((1 << offset_bits) - 1)\\nindex1 = (addr1 >> offset_bits) & ((1 << index_bits) - 1)\\ntag1 = addr1 >> (offset_bits + index_bits)\\n\\nprint(f\\\"Offset1 = 地址 & ((1<<{offset_bits})-1) = {addr1} & {((1<<offset_bits)-1):08X} = {hex(offset1)} = {offset1:03b} 二进制\\\")\\nprint(f\\\"Index1 = (地址 >> {offset_bits}) & ((1<<{index_bits})-1) = ({addr1} >> {offset_bits}) & {((1<<index_bits)-1):01b} = {hex(index1)} = {index1:02b} 二进制\\\")\\nprint(f\\\"Tag1 = 地址 >> ({offset_bits}+{index_bits}) = {addr1} >> {offset_bits+index_bits} = {hex(tag1)}\\\")\\n\\nprint(f\\\"\\\\n地址 {hex(addr1)} 对应的 Tag = {hex(tag1)}, Index = {hex(index1)}\\\")\\n\\n# Cache初始状态（4行，每行有Tag和Valid）\\nprint(f\\\"\\\\nCache初始状态: 所有行Valid=0\\\")\\ncache = []\\nfor i in range(num_lines):\\n    cache.append({\\\"tag\\\": None, \\\"valid\\\": 0, \\\"data\\\": None})\\n    print(f\\\"  Line {i}: Tag=None, Valid=0\\\")\\n\\n# 执行第1条指令 LOAD R1, [0x00000014]\\ndata1 = 0xF5  # 该地址处的8位补码数据\\nprint(f\\\"\\\\n--- 执行 LOAD R1, [{hex(addr1)}] ---\\\")\\nprint(f\\\"Cache Miss (初始状态所有Valid=0)\\\")\\nprint(f\\\"填充 Line {index1}, Tag = {hex(tag1)}, Valid = 1\\\")\\ncache[index1] = {\\\"tag\\\": tag1, \\\"valid\\\": 1, \\\"data\\\": data1}\\nprint(f\\\"Cache状态:\\\")\\nfor i in range(num_lines):\\n    if cache[i][\\\"tag\\\"] is not None:\\n        print(f\\\"  Line {i}: Tag={hex(cache[i]['tag'])}, Valid={cache[i]['valid']}, Data={hex(cache[i]['data'])}\\\")\\n    else:\\n        print(f\\\"  Line {i}: Tag=None, Valid={cache[i]['valid']}\\\")\\n\\nprint(f\\\"\\\\n子问(1)答案:\\\")\\nprint(f\\\"  Tag位数={tag_bits}, Index位数={index_bits}, Offset位数={offset_bits}\\\")\\nprint(f\\\"  地址0x00000014的Tag={hex(tag1)}, Index={hex(index1)}\\\")\\nprint(f\\\"  第1条指令后，Line {index1}被填充，Tag={hex(tag1)}, Valid=1\\\")\\n\\nprint(\\\"\\\\n\\\" + \\\"=\\\"*60)\\nprint(\\\"子问(2): 第2、3条指令后Cache状态与寄存器值\\\")\\nprint(\\\"=\\\"*60)\\n\\n# 执行第2条指令 LOAD R2, [0x00000034]\\naddr2 = 0x00000034\\ndata2 = 0x10\\nprint(f\\\"\\\\n--- 执行 LOAD R2, [{hex(addr2)}] ---"
+    },
+    "python_exec_count": 0,
+    "total_time_s": 47.4,
+    "error": ""
+  }
+}

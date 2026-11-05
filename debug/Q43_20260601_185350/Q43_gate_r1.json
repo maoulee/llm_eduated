@@ -1,0 +1,43 @@
+{
+  "slot_id": "Q43",
+  "step": "gate",
+  "round": 1,
+  "timestamp": "2026-06-01T19:05:51",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "severity": "critical",
+    "next_action": "revise_stem",
+    "fix_target": "stem",
+    "checks": {
+      "knowledge_correct": "pass",
+      "object_clear": "pass",
+      "attribute_complete": "pass",
+      "condition_compatible": "pass",
+      "scope_clear": "pass",
+      "question_supported": "fail",
+      "answer_domain_clear": "fail",
+      "no_graceful_completion": "fail",
+      "numerical_consistent": "pass",
+      "must_include_covered": "fail",
+      "must_avoid_clean": "pass",
+      "sub_question_count_match": "fail",
+      "difficulty_in_range": "pass",
+      "placeholder_clean": "pass",
+      "option_format_correct": "n/a",
+      "option_mutually_exclusive": "n/a",
+      "sub_question_progression": "fail",
+      "actual_K1": "3",
+      "actual_K2": "3",
+      "actual_K3": "4",
+      "actual_K4": "3",
+      "actual_K5": "1",
+      "radar_match": "pass"
+    },
+    "evidence": "### 维度1：知识正确性 — pass\n题干考察 IEEE 754 单精度浮点数加法运算，与蓝图 `primary_target_name` 一致。知识表述标准（1位符号位、8位阶码、移码偏置值127、23位尾数），不会误导解题者。支撑知识点（对阶、尾数相加、规格化、舍入、保护位、就近舍入到偶数）均属于\"数据表示与运算\"知识族。\n\n### 维度2：条件闭合性 — 3项fail\n1. **对象明确** — pass。对象为两个 IEEE 754 单精度浮点数 x、y，十六进制表示明确给出。\n2. **属性完整** — pass。格式（1+8+23）、偏置值（127）、加法四步骤、3位保护位、舍入策略均已给出。\n3. **条件兼容** — pass。所有条件相互兼容，无冲突。\n4. **作用域清楚** — pass。\n5. **问题-题干支撑** — **fail（Critical）**。题干末尾写\"请回答下列问题：\"，但**没有任何子问题**。考生无法知道被要求回答什么。\n6. **答案域明确** — **fail**。无子问题，无法确定输出类型。\n7. **无需善意补全** — **fail**。缺少子问题是结构性缺陷，非考生可善意补全。\n\n### 维度3：数值自洽 — pass\n经 Python 验证：\n- `x = 44800001H`：符号=0，阶码=10001001B=137（真实阶=10），尾数=00000000000000000000001，真值 ≈ 1024 + 2⁻¹³\n- `y = 39000000H`：符号=0，阶码=01110010B=114（真实阶=-13），尾数=全0，真值 = 2⁻¹³\n- **阶差 = 23**，y尾数右移23位，隐含的1正好落入保护位区域，这使得舍入判断非平凡（精确一半情况→就近舍入到偶数）\n- x + y 精确结果 = 1024.000244140625 = **44800002H**，数值完全自洽\n- 三个保护位设计合理，恰好覆盖了对阶后的有效信息位\n\n### 维度4：蓝图合规 — 2项fail\n- **must_include 覆盖** — **fail**。蓝图要求覆盖\"IEEE 754单精度格式转换、对阶操作、尾数相加、规格化与舍入、溢出判断\"5个要素，但因缺少子问题，无法判断是否全部覆盖。\n- **must_avoid** — pass。未涉及双精度浮点数，非纯文字默写。\n- **子问数量** — **fail（Critical）**。蓝图要求4个子问，实际**0个**子问。\n- **难度** — pass。数值设计（阶差23、保护位边界舍入）匹配目标难度3。\n- **功能角色** — pass。计算稳定性角色合理实现。\n\n### 维度5：占位符检测 — pass\n题干无模糊占位符。十六进制数值具体明确，条件表述无歧义。\n\n### 维度6：选项格式 — n/a\n综合应用题，跳过。\n\n### 维度7：子问递进 — fail\n**无任何子问题存在**，无法评估递进关系。这是结构性的 Critical 缺陷。\n\n### 维度8：K1-K5 认知雷达 — pass\n基于题干条件可推断的实际认知需求：\n- K1=3（需记忆IEEE 754格式标准细节）\n- K2=3（标准公式计算：阶码转换、尾数移位）\n- K3=4（长程4步推演：对阶→相加→规格化→舍入，完整流水线）\n- K4=3（\"就近舍入到偶数\"在精确一半情况下的判断是隐含陷阱）\n- K5=1（单一系统内部运算）\n\n与设计方案（知识深度=3，推理步数=4）匹配，无偏差≥2的情况。",
+    "code_verification": "```python\n# 验证1：解析两个十六进制浮点数\nx_hex = 0x44800001 → x_float = 1024.0001220703125\ny_hex = 0x39000000 → y_float = 0.0001220703125\n\n# 验证2：手动解析\nx: sign=0, exponent_biased=137, true_exponent=10, mantissa=...001\ny: sign=0, exponent_biased=114, true_exponent=-13, mantissa=...000\n\n# 验证3：阶差计算\n阶差 = 10 - (-13) = 23 ✓\n\n# 验证4：最终结果\nx + y = 1024.000244140625\n结果机器码 = 0x44800002 == 44800002H ✓（数值自洽确认）\n```",
+    "fix_detail": "**Critical 问题：题干缺少全部4个子问题。** 题干以\"请回答下列问题：\"结尾，但后续无任何子问内容。蓝图要求4个子问，且需覆盖5个必考要素。建议补充如下子问设计（已基于数值验证确认合理性）：",
+    "comment": "### 维度1：知识正确性 — pass\n题干考察 IEEE 754 单精度浮点数加法运算，与蓝图 `primary_target_name` 一致。知识表述标准（1位符号位、8位阶码、移码偏置值127、23位尾数），不会误导解题者。支撑知识点（对阶、尾数相加、规格化、舍入、保护位、就近舍入到偶数）均属于\"数据表示与运算\"知识族。\n\n### 维度2：条件闭合性 — 3项fail\n1. **对象明确** — pass。对象为两个 IEEE 754 单精度浮点数 x、y，十六进制表示明确给出。\n2. **属性完整** — pass。格式（1+8+23）、偏置值（127）、加法四步骤、3位保护位、舍",
+    "_raw_text": "## verdict\n- **status**: needs_fix\n- **severity**: critical\n- **next_action**: revise_stem\n- **fix_target**: stem\n\n## checks\n- **knowledge_correct**: pass\n- **object_clear**: pass\n- **attribute_complete**: pass\n- **condition_compatible**: pass\n- **scope_clear**: pass\n- **question_supported**: fail\n- **answer_domain_clear**: fail\n- **no_graceful_completion**: fail\n- **numerical_consistent**: pass\n- **must_include_covered**: fail\n- **must_avoid_clean**: pass\n- **sub_question_count_match**: fail\n- **difficulty_in_range**: pass\n- **placeholder_clean**: pass\n- **option_format_correct**: n/a\n- **option_mutually_exclusive**: n/a\n- **sub_question_progression**: fail\n- **actual_K1**: 3\n- **actual_K2**: 3\n- **actual_K3**: 4\n- **actual_K4**: 3\n- **actual_K5**: 1\n- **radar_match**: pass\n\n## evidence\n\n### 维度1：知识正确性 — pass\n题干考察 IEEE 754 单精度浮点数加法运算，与蓝图 `primary_target_name` 一致。知识表述标准（1位符号位、8位阶码、移码偏置值127、23位尾数），不会误导解题者。支撑知识点（对阶、尾数相加、规格化、舍入、保护位、就近舍入到偶数）均属于\"数据表示与运算\"知识族。\n\n### 维度2：条件闭合性 — 3项fail\n1. **对象明确** — pass。对象为两个 IEEE 754 单精度浮点数 x、y，十六进制表示明确给出。\n2. **属性完整** — pass。格式（1+8+23）、偏置值（127）、加法四步骤、3位保护位、舍入策略均已给出。\n3. **条件兼容** — pass。所有条件相互兼容，无冲突。\n4. **作用域清楚** — pass。\n5. **问题-题干支撑** — **fail（Critical）**。题干末尾写\"请回答下列问题：\"，但**没有任何子问题**。考生无法知道被要求回答什么。\n6. **答案域明确** — **fail**。无子问题，无法确定输出类型。\n7. **无需善意补全** — **fail**。缺少子问题是结构性缺陷，非考生可善意补全。\n\n### 维度3：数值自洽 — pass\n经 Python 验证：\n- `x = 44800001H`：符号=0，阶码=10001001B=137（真实阶=10），尾数=00000000000000000000001，真值 ≈ 1024 + 2⁻¹³\n- `y = 39000000H`：符号=0，阶码=01110010B=114（真实阶=-13），尾数=全0，真值 = 2⁻¹³\n- **阶差 = 23**，y尾数右移23位，隐含的1正好落入保护位区域，这使得舍入判断非平凡（精确一半情况→就近舍入到偶数）\n- x + y 精确结果 = 1024.000244140625 = **44800002H**，数值完全自洽\n- 三个保护位设计合理，恰好覆盖了对阶后的有效信息位\n\n### 维度4：蓝图合规 — 2项fail\n- **must_include 覆盖** — **fail**。蓝图要求覆盖\"IEEE 754单精度格式转换、对阶操作、尾数相加、规格化与舍入、溢出判断\"5个要素，但因缺少子问题，无法判断是否全部覆盖。\n- **must_avoid** — pass。未涉及双精度浮点数，非纯文字默写。\n- **子问数量** — **fail（Critical）**。蓝图要求4个子问，实际**0个**子问。\n- **难度** — pass。数值设计（阶差23、保护位边界舍入）匹配目标难度3。\n- **功能角色** — pass。计算稳定性角色合理实现。\n\n### 维度5：占位符检测 — pass\n题干无模糊占位符。十六进制数值具体明确，条件表述无歧义。\n\n### 维度6：选项格式 — n/a\n综合应用题，跳过。\n\n### 维度7：子问递进 — fail\n**无任何子问题存在**，无法评估递进关系。这是结构性的 Critical 缺陷。\n\n### 维度8：K1-K5 认知雷达 — pass\n基于题干条件可推断的实际认知需求：\n- K1=3（需记忆IEEE 754格式标准细节）\n- K2=3（标准公式计算：阶码转换、尾数移位）\n- K3=4（长程4步推演：对阶→相加→规格化→舍入，完整流水线）\n- K4=3（\"就近舍入到偶数\"在精确一半情况下的判断是隐含陷阱）\n- K5=1（单一系统内部运算）\n\n与设计方案（知识深度=3，推理步数=4）匹配，无偏差≥2的情况。\n\n## code_verification\n```python\n# 验证1：解析两个十六进制浮点数\nx_hex = 0x44800001 → x_float = 1024.0001220703125\ny_hex = 0x39000000 → y_float = 0.0001220703125\n\n# 验证2：手动解析\nx: sign=0, exponent_biased=137, true_exponent=10, mantissa=...001\ny: sign=0, exponent_biased=114, true_exponent=-13, mantissa=...000\n\n# 验证3：阶差计算\n阶差 = 10 - (-13) = 23 ✓\n\n# 验证4：最终结果\nx + y = 1024.000244140625\n结果机器码 = 0x44800002 == 44800002H ✓（数值自洽确认）\n```\n\n## fix_instruction\n- **fix_detail**: **Critical 问题：题干缺少全部4个子问题。** 题干以\"请回答下列问题：\"结尾，但后续无任何子问内容。蓝图要求4个子问，且需覆盖5个必考要素。建议补充如下子问设计（已基于数值验证确认合理性）：\n\n  **(1)** 将 x 和 y 的机器数分别转换为二进制表示，并写出各自对应的真值。（覆盖：IEEE 754单精度格式转换）\n\n  **(2)** 执行对阶操作，指出对阶后的阶码值，并写出对阶后 x 和 y 的尾数（含隐含位和3位保护位）。（覆盖：对阶操作）\n\n  **(3)** 完成尾数相加，写出相加后的尾数结果（含保护位）。（覆盖：尾数相加）\n\n  **(4)** 对尾数相加结果进行规格化与舍入，写出最终加法结果的 IEEE 754 机器数（十六进制），并判断运算是否发生溢出。（覆盖：规格化与舍入、溢出判断）\n\n  此递进结构（格式转换→对阶→相加→规格化舍入/溢出）与加法器四步骤自然对应，难度梯度合理，且全部5个 must_include 要素均被覆盖。"
+  }
+}

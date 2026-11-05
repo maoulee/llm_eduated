@@ -1,0 +1,19 @@
+# config/agents_llm.yaml
+# agent name -> provider + thinking config. provider must exist in config.py.
+default: &default
+  provider: glm5.2
+  thinking:
+    enabled: true
+    effort: high        # "keep basic thinking, not deep" (observed ~173 tokens)
+
+agents:
+  design_direct:
+    <<: *default        # high — sets the stem/structure
+  write_gen:
+    provider: glm5.2
+    thinking:
+      enabled: false    # writing complex algorithm code; verify via exec, no thinking
+  write_solution:
+    <<: *default        # high — tidy the output
+  dual_review:
+    <<: *default        # high — auditing

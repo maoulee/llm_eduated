@@ -1,0 +1,39 @@
+{
+  "slot_id": "Q43",
+  "step": "verify",
+  "round": 1,
+  "timestamp": "2026-05-30T17:03:37",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "next_action": "revise_stem",
+    "fix_target": "stem",
+    "checks": {
+      "code_executed": "pass",
+      "variables_from_stem": "pass",
+      "formula_correct": "fail",
+      "answer_unique": "fail",
+      "intent_match": "mismatch",
+      "blueprint_match": "fail",
+      "single_correct_option": "n/a",
+      "distractor_quality": "n/a",
+      "option_stem_coupled": "n/a",
+      "sub_answer_consistent": "n/a",
+      "rubric_coverage": "fail",
+      "actual_K1": "n/a",
+      "actual_K2": "n/a",
+      "actual_K3": "n/a",
+      "actual_K4": "n/a",
+      "actual_K5": "n/a",
+      "radar_match": "fail",
+      "overall_quality": "2"
+    },
+    "trusted": "false",
+    "computed_answer": "题干缺失提问",
+    "evidence": "题干本身存在严重缺陷。题干仅提供了一段关于计算机系统总线参数、突发传送模式及单位换算约定的背景信息，**完全没有提出任何具体的待解问题**（例如“请计算：1... 2...”）。由于缺乏明确的提问引导，导致以下问题：\n1. 求解器自行“脑补”了两个子问，这属于无根据的猜测。\n2. 即便针对求解器脑补的第二个问题（传输 1 MB 数据的理论最短时间），其计算逻辑也是错误的。题干明确说明了“每次填充一个 Cache 行（大小为 64 字节）”，这意味着突发传送是受限于 Cache 行大小的，不能无限长连续突发。每次传送完 64B（8 个数据周期）后，必须重新占用 1 个总线周期发送地址。\n3. 因此，有效带宽并非理想的 $200\\text{MHz} \\times 8\\text{B} = 1.6\\text{GB/s}$，而是需要乘以效率系数 $8/9$。正确的 1MB 数据传输应包含 $1\\text{MB} / 64\\text{B} = 16384$ 次突发传送，总时间应为 $16384 \\times 45\\text{ns} = 737.28\\text{ }\\mu\\text{s}$。\n综上，首要原因是题干残缺导致求解器行为失控，且求解器对突发传送机制的物理限制理解有误，必须先修复题干。\n",
+    "fix_detail": "题干缺少提问部分。需要在背景信息末尾补充明确的具体问题，例如：“请回答以下问题：(1) 计算采用突发传送模式填充一个 Cache 行所需的总总线周期数和时间。(2) 若系统连续进行 Cache 行填充，计算使用该总线传输 1 MB 数据所需的理论最短时间（结果可用 $\\mu s$ 表示）。”。题干修复后，求解器计算第二问时需修正带宽模型，将地址开销分摊到有效带宽中。",
+    "comment": "题干本身存在严重缺陷。题干仅提供了一段关于计算机系统总线参数、突发传送模式及单位换算约定的背景信息，**完全没有提出任何具体的待解问题**（例如“请计算：1... 2...”）。由于缺乏明确的提问引导，导致以下问题：\n1. 求解器自行“脑补”了两个子问，这属于无根据的猜测。\n2. 即便针对求解器脑补的第二个问题（传输 1 MB 数据的理论最短时间），其计算逻辑也是错误的。题干明确说明了“每次填充一个 Cache 行（大小为 64 字节）”，这意味着突发传送是受限于 Cache 行大小的，不能无限长连续突发。每次传送完 64B（8 个数据周期）后，必须重新占用 1 个总线周期发送地址。\n3. 因",
+    "_raw_text": "## verdict\n- **status**: needs_fix\n- **next_action**: revise_stem\n- **fix_target**: stem\n\n## checks\n- **code_executed**: pass\n- **variables_from_stem**: pass\n- **formula_correct**: fail\n- **answer_unique**: fail\n- **intent_match**: mismatch\n- **blueprint_match**: fail\n- **single_correct_option**: n/a\n- **distractor_quality**: n/a\n- **option_stem_coupled**: n/a\n- **sub_answer_consistent**: n/a\n- **rubric_coverage**: fail\n- **actual_K1**: n/a\n- **actual_K2**: n/a\n- **actual_K3**: n/a\n- **actual_K4**: n/a\n- **actual_K5**: n/a\n- **radar_match**: fail\n- **overall_quality**: 2\n\n## verified_result\n- **trusted**: false\n- **computed_answer**: 题干缺失提问\n\n## evidence\n题干本身存在严重缺陷。题干仅提供了一段关于计算机系统总线参数、突发传送模式及单位换算约定的背景信息，**完全没有提出任何具体的待解问题**（例如“请计算：1... 2...”）。由于缺乏明确的提问引导，导致以下问题：\n1. 求解器自行“脑补”了两个子问，这属于无根据的猜测。\n2. 即便针对求解器脑补的第二个问题（传输 1 MB 数据的理论最短时间），其计算逻辑也是错误的。题干明确说明了“每次填充一个 Cache 行（大小为 64 字节）”，这意味着突发传送是受限于 Cache 行大小的，不能无限长连续突发。每次传送完 64B（8 个数据周期）后，必须重新占用 1 个总线周期发送地址。\n3. 因此，有效带宽并非理想的 $200\\text{MHz} \\times 8\\text{B} = 1.6\\text{GB/s}$，而是需要乘以效率系数 $8/9$。正确的 1MB 数据传输应包含 $1\\text{MB} / 64\\text{B} = 16384$ 次突发传送，总时间应为 $16384 \\times 45\\text{ns} = 737.28\\text{ }\\mu\\text{s}$。\n\n综上，首要原因是题干残缺导致求解器行为失控，且求解器对突发传送机制的物理限制理解有误，必须先修复题干。\n\n## fix_instruction\n- **fix_detail**: 题干缺少提问部分。需要在背景信息末尾补充明确的具体问题，例如：“请回答以下问题：(1) 计算采用突发传送模式填充一个 Cache 行所需的总总线周期数和时间。(2) 若系统连续进行 Cache 行填充，计算使用该总线传输 1 MB 数据所需的理论最短时间（结果可用 $\\mu s$ 表示）。”。题干修复后，求解器计算第二问时需修正带宽模型，将地址开销分摊到有效带宽中。",
+    "overall_quality": "2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "slot_id": "Q12",
+  "step": "review_fix",
+  "round": 0,
+  "timestamp": "2026-06-04T02:32:27",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "overall_quality": "8",
+    "issues": "无（求解器因语法错误未能完成计算，但题目本身无问题）",
+    "verified_answer": "D\n",
+    "fix_target": "none",
+    "fixed_stem": "某计算机的主频为 500MHz。执行某程序时，该程序包含的指令条数为 $2 \\times 10^9$ 条，且该程序的平均 CPI（Clock cycles Per Instruction）为 4。请问该程序的执行时间是（ ）。",
+    "fixed_options": {},
+    "fixed_answer": "D\n",
+    "correct_answer": "D",
+    "explanation": "选 D。程序的执行时间 $T = \\dfrac{\\text{指令条数} \\times \\text{CPI}}{\\text{主频}}$。代入数据：$T = \\dfrac{2 \\times 10^9 \\times 4}{500 \\times 10^6} = \\dfrac{8 \\times 10^9}{5 \\times 10^8} = 16\\text{ s}$。选项 A（4 s）是忽略了 CPI 的影响（误将 CPI 当作 1）；选项 B（8 s）是将 CPI 误算为 2；选项 C（16 ms）则是量纲混淆，将秒误写为毫秒。",
+    "key_steps": "计算总时钟周期数 $= 2 \\times 10^9 \\times 4 = 8 \\times 10^9$; 计算每个时钟周期时间 $= 1 / 500\\text{MHz} = 2\\text{ ns}$; 执行时间 $= 8 \\times 10^9 \\times 2\\text{ ns} = 16\\text{ s}$",
+    "difficulty_self_assessment": "2",
+    "key_steps_list": [
+      "计算总时钟周期数 $= 2 \\times 10^9 \\times 4 = 8 \\times 10^9$",
+      "计算每个时钟周期时间 $= 1 / 500\\text{MHz} = 2\\text{ ns}$",
+      "执行时间 $= 8 \\times 10^9 \\times 2\\text{ ns} = 16\\text{ s}$"
+    ]
+  }
+}

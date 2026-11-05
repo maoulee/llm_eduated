@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-02T04:40:43",
+  "total_time_s": 653.78,
+  "rounds": 2,
+  "final_stem": "某计算机系统的存储系统参数如下：主存地址空间为 32 位，采用字节编址；Cache 容量为 256 行，每行（Block）大小为 16 字节，采用 4 路组相联映射（4-way set associative）；替换策略采用 LRU（Least Recently Used）；写策略采用写回法（Write Back），并设有一字位 Dirty Bit。假设 Cache 初始为空，且所有访问均为数据读取操作（Hit Time = 1 cycle，Miss Penalty = 100 cycles）。\n\n程序执行过程中产生的连续 6 次内存访问地址序列（十六进制）为：\n0x00000000, 0x00000010, 0x00000800, 0x00000810, 0x00000000, 0x00000800\n\n请根据上述参数和访问序列完成以下分析。\n",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

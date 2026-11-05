@@ -1,0 +1,23 @@
+{
+  "slot_id": "Q43",
+  "step": "final_fixer",
+  "round": 0,
+  "timestamp": "2026-06-01T13:01:11",
+  "timing_s": null,
+  "input": {
+    "review": {
+      "status": "needs_fix",
+      "overall_quality": 4,
+      "issues": "1. **缺少问题陈述**：题干描述了系统架构和参数，但未提出具体问题（如\"计算DMA传输效率\"、\"计算CPU利用率\"等）\n2. **缺少答案/解析**：未提供参考解答，无法验证条件利用率和数值一致性\n3. **缺少题目类型标识**：未说明是选择题还是综合题",
+      "fix_instruction": {
+        "fix_target": "stem",
+        "fix_detail": "题干末尾需补充具体问题（如：\"请计算在一次DMA传输256字节数据的过程中，CPU的有效利用率是多少？\"），并补充完整的答案和解析内容，以便进行全面的条件利用率和数值一致性审查。"
+      },
+      "_raw_text": "## review\n- **status**: needs_fix\n- **overall_quality**: 4\n- **condition_utilization**: fail + 仅提供题干，缺少问题和答案，无法验证条件利用率\n- **numerical_consistency**: fail + 缺少答案，无法验证数值一致性\n- **logic_chain**: fail + 缺少问题和解析，推理链不完整\n- **sub_question_logic**: fail + 未提供子问题\n- **option_quality**: fail + 未提供选项\n- **expression_quality**: pass + 题干表述基本规范，专业术语使用准确\n\n## issues\n1. **缺少问题陈述**：题干描述了系统架构和参数，但未提出具体问题（如\"计算DMA传输效率\"、\"计算CPU利用率\"等）\n2. **缺少答案/解析**：未提供参考解答，无法验证条件利用率和数值一致性\n3. **缺少题目类型标识**：未说明是选择题还是综合题\n\n## fix_instruction\n- **fix_target**: stem\n- **fix_detail**: 题干末尾需补充具体问题（如：\"请计算在一次DMA传输256字节数据的过程中，CPU的有效利用率是多少？\"），并补充完整的答案和解析内容，以便进行全面的条件利用率和数值一致性审查。"
+    }
+  },
+  "output": {
+    "status": "failed",
+    "fix_applied": "empty output"
+  }
+}

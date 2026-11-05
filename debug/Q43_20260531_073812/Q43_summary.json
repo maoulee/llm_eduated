@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T07:45:50",
+  "total_time_s": 418.05,
+  "rounds": 2,
+  "final_stem": "某计算机系统包含一个IEEE 754单精度浮点运算器和一个DMA控制器。系统参数如下：\n\n**浮点运算器参数**：\n- 阶码采用8位，偏移量为127；尾数采用23位，隐含前导1。\n- 舍入模式采用“向偶数舍入”（Round to Nearest, Ties to Even）。\n\n**DMA控制器参数**：\n- 总线宽度为32位（4字节）。\n- 每次DMA传输一个数据块（Block），每块包含16个字（Words）。\n- DMA初始化开销（Setup Time）为 100 CPU时钟周期。\n- DMA结束开销（Teardown Time）为 50 CPU时钟周期。\n- 数据传输期间，CPU不占用总线，但每传输完一个字，DMA控制器需要请求总线仲裁，仲裁开销为 2 CPU时钟周期（包含在传输时间中，即每字传输耗时 = 总线传输1字时间 + 仲裁时间）。假设总线传输1个字需要 2 CPU时钟周期。\n- CPU主频为 1 GHz。\n\n**场景描述**：\n1. 浮点运算：执行单精度浮点数加法 $A + B$，其中 $A = 1.5 \\times 10^{-38}$，$B = 0.5 \\times",
+  "solver_execs": 0,
+  "review_status": "pass",
+  "review_quality": 8,
+  "review_raw_text_length": 0
+}

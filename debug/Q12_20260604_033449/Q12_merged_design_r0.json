@@ -1,0 +1,32 @@
+{
+  "slot_id": "Q12",
+  "step": "merged_design",
+  "round": 0,
+  "timestamp": "2026-06-04T03:50:49",
+  "timing_s": null,
+  "output": {
+    "stem": "假定某处理器的主频为 1.5 GHz，运行某程序时共执行了 $3 \\times 10^9$ 条指令，该程序在运行过程中的平均 CPI（Clock cycles Per Instruction）为 2。则该程序的执行时间是？",
+    "given_conditions": [
+      "主频 f = 1.5 GHz",
+      "指令条数 N = 3 * 10^9",
+      "平均 CPI = 2"
+    ],
+    "difficulty_self_assessment": "2",
+    "knowledge_points": "CPU执行时间, 主频, CPI\n",
+    "option_A": "1 秒",
+    "option_B": "2 秒",
+    "option_C": "4 秒",
+    "option_D": "6 秒",
+    "correct_answer": "C",
+    "option_style_used": "数字结果\n",
+    "distractor_intent_A": "错误选项。干扰将主频与 CPI 直接相乘或公式记忆完全错乱的学生。",
+    "distractor_intent_B": "错误选项。干扰在计算时遗漏 CPI 这一核心变量，直接使用 $N / f$ 计算的学生（$3 \\times 10^9 / 1.5 \\times 10^9 = 2$）。",
+    "distractor_intent_C": "正确选项。依据公式 $T = N \\times CPI / f$ 进行计算：$(3 \\times 10^9 \\times 2) / (1.5 \\times 10^9) = 4$ 秒。",
+    "distractor_intent_D": "错误选项。干扰将主频误认作时钟周期（或将除法做成乘法），使用 $N \\times CPI \\times f$ 计算的学生。\n",
+    "blueprint_compliance": "PASS — 考点完美匹配核心要求（主频、CPI、指令条数的计算），未涉及禁止的流水线或Amdahl定律。",
+    "difficulty_alignment": "PASS — 难度设定为2，只需直接调用公式并代入简单的数据，属于 calculation_stability 定位。",
+    "option_uniqueness": "PASS — 正确答案计算结果为 4，与其他干扰项数值互异，答案唯一。",
+    "no_contradiction": "PASS — 主频、指令数和CPI三个条件相互独立且符合常规逻辑，无矛盾。",
+    "reasoning_hint": "直接代入 CPU 执行时间公式 $T = N \\times CPI / f$，并将主频单位 GHz 转换为 $10^9$ Hz 进行一步除法求解。"
+  }
+}

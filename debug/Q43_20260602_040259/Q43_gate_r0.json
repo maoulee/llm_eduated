@@ -1,0 +1,19 @@
+{
+  "slot_id": "Q43",
+  "step": "gate",
+  "round": 0,
+  "timestamp": "2026-06-02T04:13:18",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "severity": "none",
+    "next_action": "continue",
+    "fix_target": "none",
+    "checks": {},
+    "evidence": "",
+    "code_verification": "",
+    "fix_detail": "",
+    "comment": "",
+    "_raw_text": "## fix_instruction\n- **fix_detail**: \n  1. **彻底重写题干**：必须将考点从“操作系统进程调度”改为“计算机组成原理-多级存储系统”。\n  2. **引入存储参数**：题干需包含Cache行大小、组数、标记位、访问周期（Tc, Tm）、命中率（Hit Rate）或访问序列。\n  3. **引入写策略**：明确写出策略（如Write-through），并给出写命中率或读写比例。\n  4. **设计两个子问**：\n     - 子问1：根据给定的内存访问序列，计算Cache的命中率（或推演命中/缺失过程）。\n     - 子问2：结合读写比例和缺失惩罚，计算平均访问时间（AMAT）。\n  5. **确保数值可计算**：所有参数需能支撑AMAT公式 $T_{avg} = T_c + P_m \\times T_p$ 或更复杂的读写加权计算。"
+  }
+}

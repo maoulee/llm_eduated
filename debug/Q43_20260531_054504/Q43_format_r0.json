@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 0,
+  "timestamp": "2026-05-31T05:48:15",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "1380 ns",
+      "sub_q2": "浮点真值: -6.0; 补码整数真值: -1064924672"
+    },
+    "total_score": "10\n"
+  }
+}

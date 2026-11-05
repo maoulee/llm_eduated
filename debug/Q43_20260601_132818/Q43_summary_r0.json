@@ -1,0 +1,16 @@
+{
+  "slot_id": "Q43",
+  "step": "summary",
+  "round": 0,
+  "timestamp": "2026-06-01T13:34:58",
+  "timing_s": null,
+  "output": {
+    "final_stem": "[缺失]",
+    "final_explanation": "[缺失]",
+    "final_solution_steps": "[缺失]; [缺失]; [缺失]",
+    "correct_answer": "[缺失]",
+    "knowledge_tags": "未知, 未知, 未知",
+    "difficulty_summary": "无法评估",
+    "quality_notes": "题目信息严重缺失：题干、解析及求解过程均为空，无法进行有效整理与解答。建议补充完整题目内容。"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "slot_id": "Q43",
+  "step": "summary",
+  "round": 0,
+  "timestamp": "2026-06-01T13:01:12",
+  "timing_s": null,
+  "output": {
+    "final_stem": "（题干缺失）",
+    "final_explanation": "（解析缺失）",
+    "final_solution_steps": "（步骤缺失）",
+    "correct_answer": "（答案缺失）",
+    "knowledge_tags": "（标签缺失）",
+    "difficulty_summary": "（难度评价缺失）",
+    "quality_notes": "题目信息不完整，题干、解析及求解过程均缺失，技术审核标记为 needs_fix，无法生成有效整理内容。"
+  }
+}

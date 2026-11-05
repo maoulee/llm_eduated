@@ -1,0 +1,19 @@
+{
+  "slot_id": "Q43",
+  "step": "gate",
+  "round": 1,
+  "timestamp": "2026-06-01T12:58:53",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "severity": "none",
+    "next_action": "continue",
+    "fix_target": "none",
+    "checks": {},
+    "evidence": "",
+    "code_verification": "",
+    "fix_detail": "",
+    "comment": "",
+    "_raw_text": "## fix_instruction\n- **fix_detail**: \n  1. **补充子问**：必须添加两个具体的子问。建议：\n     - 子问1：计算DMA控制器的最大数据传输率（MB/s）。\n     - 子问2：计算在该DMA传输模式下，CPU的有效利用率（或系统总线被DMA占用时的CPU效率损失）。\n  2. **明确单位定义**：建议在题干或子问中明确“MB/s”是指 $10^6$ Bytes/s 还是 $2^{20}$ Bytes/s，以消除歧义（符合must_avoid中“避免数据量单位陷阱”的要求，虽然蓝图说避免陷阱，但最佳实践是明确定义）。\n  3. **确保覆盖必考要素**：确保子问能引导考生计算Cycle Stealing对系统性能的影响，符合蓝图“计算有效数据传输率”的要求。"
+  }
+}

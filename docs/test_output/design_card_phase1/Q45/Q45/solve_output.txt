@@ -1,0 +1,22 @@
+子问题(1):
+  A (VPN) = 26位
+  B (页内偏移) = 6位
+  C (Tag) = 11位
+  D (Index) = 7位
+  E (Block Offset) = 6位
+  F (Tag) = 11位
+  G (Index) = 7位
+  TLB标记字段存放：虚拟页号(VPN)
+
+子问题(2):
+  虚拟地址: 0x123456
+  物理页号: 0x3a5
+  页内偏移: 0x16
+  物理地址: 0xe956
+  Cache组号: 37 (0x25)
+  Cache Tag: 7 (0x7)
+
+ANSWER:
+  (1) A=26位, B=6位, C=11位, D=7位, E=6位, F=11位, G=7位; TLB标记存放虚拟页号(VPN)
+  (2) Cache组号=37, Cache Tag=0x7
+  (3) 可能。TLB缺失只影响地址转换过程，不影响Cache中数据的存在。

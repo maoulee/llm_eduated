@@ -1,0 +1,26 @@
+{
+  "slot_id": "Q12",
+  "step": "review_fix",
+  "round": 0,
+  "timestamp": "2026-06-04T04:19:08",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "overall_quality": "8",
+    "issues": "无",
+    "verified_answer": "C\n",
+    "fix_target": "none",
+    "fixed_stem": "假定某计算机的主频为 2 GHz。运行某程序时，共执行了 $4 \\times 10^5$ 条 A 类指令（CPI 为 2）和 $2 \\times 10^5$ 条 B 类指令（CPI 为 4）。则执行该程序的时间为（ ）。",
+    "fixed_options": {},
+    "fixed_answer": "C\n",
+    "correct_answer": "C",
+    "explanation": "程序执行时间的核心公式为 $T = \\frac{\\sum(I_i \\times CPI_i)}{f}$，即总时钟周期数除以主频。\n\n**计算过程：**\n\n① 时钟周期：$T_{clk} = \\frac{1}{f} = \\frac{1}{2 \\times 10^9} = 0.5\\ \\text{ns}$\n\n② A 类指令总周期：$4 \\times 10^5 \\times 2 = 8 \\times 10^5$\n\n③ B 类指令总周期：$2 \\times 10^5 \\times 4 = 8 \\times 10^5$\n\n④ 总时钟周期：$8 \\times 10^5 + 8 \\times 10^5 = 1.6 \\times 10^6$\n\n⑤ 执行时间：$T = 1.6 \\times 10^6 \\times 0.5\\ \\text{ns} = 0.8\\ \\text{ms}$\n\n故选 **C**。",
+    "key_steps": "分别计算两类指令的总时钟周期数并求和; 用总周期数乘以时钟周期（或除以主频）得到执行时间; 换算为毫秒单位，得 0.8 ms",
+    "difficulty_self_assessment": "2",
+    "key_steps_list": [
+      "分别计算两类指令的总时钟周期数并求和",
+      "用总周期数乘以时钟周期（或除以主频）得到执行时间",
+      "换算为毫秒单位，得 0.8 ms"
+    ]
+  }
+}

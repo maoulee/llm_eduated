@@ -1,0 +1,70 @@
+- slot_id: Q12
+  question_type: single_choice
+  score: 2
+  examination_mode: 计算型——公式应用与单位换算
+  active_selection:
+    mode_id: 模式A
+    mode_name: 计算型——公式应用与单位换算
+    selected_knowledge:
+    - CPU执行时间公式
+    - 主频与时钟周期换算
+    - CPI概念与计算
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  excluded_modes:
+  - 模式C
+  teacher_annotation: '本题考察CPU性能指标的综合计算，重点在于执行时间公式中各变量的物理意义及单位换算。
+
+    要求学生能区分主频、CPI、指令数之间的正比/反比关系，并能处理GHz到秒的单位转换。
+
+    难度定位K2-K3，适合中等偏上学生。
+
+
+    老师补充：希望增加一道需要跨公式推导的综合计算，不仅仅代入公式。'
+- slot_id: Q43
+  question_type: comprehensive
+  score: 10
+  examination_mode: 多子系统耦合性能评估
+  active_selection:
+    mode_id: 模式A
+    mode_name: 多子系统耦合性能评估
+    selected_knowledge:
+    - Cache直接映射与组相联映射
+    - 平均访存时间AMAT计算
+    - 总线传输时序分析
+    - CPU利用率计算
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  - 模式C
+  excluded_knowledge:
+  - DMA传输开销计算
+  teacher_annotation: '本题以Cache-主存层次为场景，要求考生分析地址映射机制、计算缺失率与平均访存时间，
+
+    并结合总线传输时序进行综合性能评估。设3-4个子问，从基础参数提取到宏观性能合成，
+
+    层层递进。难度定位K3-K4，需要有较强的系统级思维能力。
+
+
+    老师补充：不考DMA相关知识点，聚焦Cache-主存层次。'
+- slot_id: Q6
+  question_type: single_choice
+  score: 2
+  examination_mode: 概念辨析型——性质与边界判定
+  active_selection:
+    mode_id: 模式A
+    mode_name: 概念辨析型——性质与边界判定
+    selected_knowledge:
+    - 哈夫曼树性质
+    - 前缀编码定义
+  candidate_pool_visible:
+  - 模式A
+  - 模式B
+  - 模式C
+  - 模式D
+  teacher_annotation: '本题考察哈夫曼树的基本性质（非完全二叉树、WPL最小性）和前缀编码的定义。
+
+    要求学生能区分哈夫曼树与完全二叉树、最优二叉树的概念边界。
+
+    难度定位K1-K2，侧重概念清晰度。'

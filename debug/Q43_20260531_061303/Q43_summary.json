@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-05-31T06:17:46",
+  "total_time_s": 267.29,
+  "rounds": 2,
+  "final_stem": "某处理器系统包含一个全相联Cache，其总容量为128B，行大小（Block Size）为16B，采用LRU（Least Recently Used）替换策略。主存物理地址空间为32位，按字节编址。CPU执行一段包含6次访存的指令序列，物理地址依次为：0x00000000, 0x00000010, 0x00000008, 0x00000020, 0x00000000, 0x00000030。初始状态下Cache为空。\n",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 0,
+  "timestamp": "2026-05-31T08:07:13",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "DMA-A先于DMA-C；DMA-A需520个总线周期，DMA-C需8200个总线周期",
+      "sub_q2": "0.80 GB/s"
+    },
+    "total_score": "10\n"
+  }
+}

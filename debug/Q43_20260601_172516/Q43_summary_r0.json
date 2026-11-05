@@ -1,0 +1,16 @@
+{
+  "slot_id": "Q43",
+  "step": "summary",
+  "round": 0,
+  "timestamp": "2026-06-01T17:35:08",
+  "timing_s": null,
+  "output": {
+    "final_stem": "题目信息缺失，无法生成规范题干。请提供完整的题干内容、题目组成部分及解析信息。",
+    "final_explanation": "题目信息缺失，无法生成解析。",
+    "final_solution_steps": "步骤缺失; 请提供完整的求解过程",
+    "correct_answer": "暂无",
+    "knowledge_tags": "408考研; 题目整理; 待补充",
+    "difficulty_summary": "无法评估",
+    "quality_notes": "题干、解析及求解过程均为空，信息不完整，无法进行有效整理。"
+  }
+}

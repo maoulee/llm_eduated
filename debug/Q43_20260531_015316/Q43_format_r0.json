@@ -1,0 +1,14 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 0,
+  "timestamp": "2026-05-31T01:56:44",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "结束物理地址: 0x00002FFF; 总线周期数: 1024个; 数据传输总时间: 10240ns",
+      "sub_q2": "628.01 MB/s"
+    },
+    "total_score": "15\n"
+  }
+}

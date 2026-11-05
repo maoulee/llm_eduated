@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "type": "pipeline_summary",
+  "timestamp": "2026-06-01T17:35:08",
+  "total_time_s": 571.82,
+  "rounds": 2,
+  "final_stem": "\n某计算机系统采用页式存储管理，页面大小为 4KB（即 $2^{12}$ B），逻辑地址为 32 位。系统配置了 3 个内存帧（Frame 0, Frame 1, Frame 2），用于存放页面。初始状态下，内存中已加载了 3 个页面，页表项（PTE）状态如下表所示（假设所有页面的有效位均为 1）：\n\n| 虚拟页号 (VP) | 物理帧号 (FP) | 脏位 (Dirty) | 访问位 (Referenced, R) |\n| :--- | :--- | :--- | :--- |\n| VP0 | Frame 1 | 1 | 0 |\n| VP1 | Frame 2 | 0 | 0 |\n| VP2 | Frame 0 | 0 | 1 |\n\n该操作系统使用**最近未用算法（Not Recently Used, NRU）**进行页面置换。NRU 算法将页面分为 4 类，分类依据为页表项中的**访问位（R）**和**修改位/脏位（M）**：",
+  "solver_execs": 0,
+  "review_status": null,
+  "review_quality": null,
+  "review_raw_text_length": 0
+}

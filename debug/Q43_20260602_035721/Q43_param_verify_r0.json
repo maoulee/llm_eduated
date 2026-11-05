@@ -1,0 +1,12 @@
+{
+  "slot_id": "Q43",
+  "step": "param_verify",
+  "round": 0,
+  "timestamp": "2026-06-02T04:03:10",
+  "timing_s": null,
+  "output": {
+    "status": "pass",
+    "confidence": "low",
+    "summary": "verify_error: api_error: Connection error."
+  }
+}

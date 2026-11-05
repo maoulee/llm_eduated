@@ -1,0 +1,26 @@
+{
+  "slot_id": "Q43",
+  "step": "solve",
+  "round": 0,
+  "timestamp": "2026-06-01T13:20:49",
+  "timing_s": null,
+  "output": {
+    "slot_id": "Q43",
+    "code_files": [],
+    "outputs": [
+      "============================================================\n子问(1): 数据Cache参数计算\n============================================================\n数据存储器容量: 131072 字节 = 128KB\n数据Cache容量: 4096 字节 = 4KB\n块大小: 64 字节\n路数: 2 路\n块内偏移位数: log2(64) = 6 位\nCache总行数: 4096 / 64 = 64 行\n组数: 64 / 2 = 32 组\nIndex位数: log2(32) = 5 位\n数据地址总位数: log2(131072) = 17 位\nTag位数: 17 - 5 - 6 = 6 位\n\n子问(1) 答案:\n  组数 = 32\n  Index位数 = 5\n  Tag位数 = 6\n\n============================================================\n地址分解验证: 数据地址 = Tag | Index | Block Offset\n  Tag: 6 位 | Index: 5 位 | Block Offset: 6 位\n  总计: 17 位\n\n地址 0x1000 分解:\n  Tag = 0x02, Index = 0x00 (0), Block Offset = 0x00 (0)\n地址 0x1800 分解:\n  Tag = 0x03, Index = 0x00 (0), Block Offset = 0x00 (0)\n\n确认: 0x1000 和 0x1800 映射到同一组 Index=0\n\n============================================================\n子问(2): 追踪数据Cache命中/未命中情况\n============================================================\n初始状态: Cache全空\n\n步骤1: LOAD R1, [0x1000]\n  地址: 0x1000, 类型: 读\n  结果: Miss\n  组0状态: \n    Way0: valid=True, tag=0x2, dirty=False, MRU\n",
+      "============================================================\n子问(1): 数据Cache参数计算\n============================================================\n数据存储器容量: 131072 字节 = 128KB\n数据Cache容量: 4096 字节 = 4KB\n块大小: 64 字节\n路数: 2 路\n块内偏移位数: log2(64) = 6 位\nCache总行数: 4096 / 64 = 64 行\n组数: 64 / 2 = 32 组\nIndex位数: log2(32) = 5 位\n数据地址总位数: log2(131072) = 17 位\nTag位数: 17 - 5 - 6 = 6 位\n\n【子问(1) 答案】\n  组数 = 32\n  Index位数 = 5\n  Tag位数 = 6\n\n地址 0x1000 分解: Tag=0x02, Index=0, BlockOffset=0\n地址 0x1800 分解: Tag=0x03, Index=0, BlockOffset=0\n两者映射到同一组 Index=0 ✓\n\n============================================================\n子问(2): 追踪数据Cache命中/未命中\n============================================================\n初始: Cache全空，所有Valid=0\n\n步骤1: LOAD R1, [0x1000]\n  地址: 0x1000, 读\n  结果: Miss\n  组0状态:\n    Way0: valid=True, tag=0x02, dirty=False, MRU\n    Way1: valid=False, tag=N/A, dirty=False, LRU\n\n步骤2: ADD R1, R1, #10\n  → 寄存器运算，不访问数据Cache\n\n步骤3: STORE [0x1000], R1\n  地址: 0x1000, 写\n  结果: Hit\n  组0状态:\n    Way0: valid=True, tag=0x02, dirty=True, MRU\n    Way1: valid=False, tag=N/A, dirty=False, LRU\n\n步骤4: LOAD R2, [0x1800]\n  地址: 0x1800, 读\n  结果: Miss\n  组0状态:\n    Way0: valid=True, tag=0x02, dirty=True, LRU\n    Way1: valid=True, tag=0x03, dirty=False, MRU\n\n步骤5: STORE [0x1000], R2\n  地址: 0x1000, 写\n  结果: Hit\n  组0状态:\n    Way0: valid=True, tag=0x02, dirty=True, MRU\n    Way1: valid=True, tag=0x03, dirty=False, LRU\n\n步骤6: LOAD R3, [0x1000]\n  地址: 0x1000, 读\n  结果: Hit\n  组0状态:\n    Way0: valid=True, tag=0x02, dirty=True, MRU\n    Way1: valid=True, tag=0x03, dirty=False, LRU\n\n----------------------------------------\n第5步后，地址0x1000所在Cache行的Dirty位状态:\n  Way0: tag=0x02, dirty=True\n\n============================================================\n子问(3): 第6步前的Dirty块分析\n============================================================\n第5步执行完毕后（即第6步前），Dirty块数量: 1\n\nCache中所有有效块的状态:\n组0:\n  Way0: valid=True, tag=0x02, dirty=True, MRU\n  Way1: valid=True, tag=0x03, dirty=False, LRU\n\nDirty块详细分析:\n  第1步 LOAD 0x1000: Miss，加载到组0，dirty=False\n  第3步 STORE 0x1000: Hit，dirty变为True\n  第4步 LOAD"
+    ],
+    "computed_results": {
+      "raw_text": "代码执行成功，所有计算结果完整。现在输出最终答案。\n\n---\n\n## 最终答案\n\n### (1) 数据Cache参数\n\n- **组数 = 32**（64行 ÷ 2路 = 32组）\n- **Index位数 = 5**（log₂32 = 5）\n- **Tag位数 = 6**（17 - 5 - 6 = 6，其中17位是128KB按字节编址的地址宽度，6位是块内偏移log₂64）\n\n地址格式：**Tag(6位) | Index(5位) | Block Offset(6位)**\n\n---\n\n### (2) 各步骤Cache命中/未命中追踪\n\n| 步骤 | 操作 | 地址 | 读/写 | 结果 | 说明 |\n|------|------|------|-------|------|------|\n| 1 | LOAD R1, [0x1000] | 0x1000 | 读 | **Miss** | Cache为空，加载块到组0 Way0，dirty=False |\n| 2 | ADD R1, R1, #10 | — | — | 不访存 | 纯寄存器运算 |\n| 3 | STORE [0x1000], R1 | 0x1000 | 写 | **Hit** | 0x1000已在Cache中，写命中，**dirty置为True** |\n| 4 | LOAD R2, [0x1800] | 0x1800 | 读 | **Miss** | 0x1800映射到组0，tag=0x03与Way0不同；Way1为空(invalid)，加载到Way1，dirty=False |\n| 5 | STORE [0x1000], R2 | 0x1000 | 写 | **Hit** | 0x1000仍在组0 Way0中，写命中，dirty=True |\n| 6 | LOAD R3, [0x1000] | 0x1000 | 读 | **Hit** | 0x1000仍在Cache中 |\n\n**第5步执行完毕后，地址0x1000所在Cache行的Dirty位 = True（1）**\n\n---\n\n### (3) 第6步前的Dirty块数量\n\n**有 1 个Dirty块需要写回主存。**\n\n**分析：**\n- 第3步 STORE 0x1000 写命中，将组0 Way0的dirty位置为True\n- 第4步 LOAD 0x1800 未命中，加载到组0 Way1（该Way原先无效），dirty=False，**没有发生替换导致写回**\n- 第5步 STORE 0x1000 写命中，dirty保持为True\n- 组0 Way1中tag=0x03的块从未被写过，dirty=False\n\n因此仅有组0 Way0（tag=0x02，对应地址0x1000所在块）这一个Dirty块，需要写回主存。",
+      "result_0": "Miss",
+      "result_1": "Hit",
+      "result_2": "Miss",
+      "result_3": "Hit",
+      "result_4": "Hit"
+    },
+    "python_exec_count": 2,
+    "total_time_s": 86.6,
+    "error": ""
+  }
+}

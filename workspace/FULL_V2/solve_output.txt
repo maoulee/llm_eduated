@@ -1,0 +1,78 @@
+==============================
+System Parameters:
+Physical Address Size: 32 bits
+Main Memory Size: 1073741824 Bytes (1 GB)
+Cache Capacity: 65536 Bytes (64 KB)
+Block Size: 32 Bytes
+Associativity: 4-way
+==============================
+
+--- (1) Field Calculation ---
+Number of blocks in Main Memory: 33554432 (2^25)
+Main Memory Block Number Total Bits: 25 bits
+Cache Total Lines (Rows): 2048 (2^11)
+Cache Total Sets: 512 (2^9)
+
+Address Field Calculation:
+Offset (Block Offset): 5 bits
+Index (Set Index):     9 bits
+Tag:                   18 bits
+Check: 18 + 9 + 5 = 32 bits
+
+Bit Ranges (bit[31] is MSB):
+Offset: bit[4:0]
+Index:  bit[13:5]
+Tag:    bit[31:14]
+
+--- (2) Address Mapping Analysis ---
+
+Analyzing Address A1: 0x1A234000
+Binary (32-bit): 00011010001000110100000000000000
+Offset Field (bit[4:0]): 00000 (Decimal: 0)
+Index Field  (bit[13:5]): 000000000 (Decimal: 0)
+Tag Field    (bit[31:14]): 0b000110100010001101 (Hex: 0x688D)
+
+Analyzing Address A2: 0x1A23C000
+Binary (32-bit): 00011010001000111100000000000000
+Offset Field (bit[4:0]): 00000 (Decimal: 0)
+Index Field  (bit[13:5]): 000000000 (Decimal: 0)
+Tag Field    (bit[31:14]): 0b000110100010001111 (Hex: 0x688F)
+
+Comparison:
+A1 Index: 0, A2 Index: 0
+Same Index? True
+A1 Tag: 26765 (0x0688D)
+A2 Tag: 26767 (0x0688F)
+Same Tag? False
+
+Result: Both addresses map to the same set (Set 0).
+Reasoning: Although Index fields are identical (mapping to the same set), the Tag fields are different.
+Since this is a 4-way set associative cache, both blocks can coexist in the set until it is full.
+However, if the set is full and contains neither block, or if eviction policies force replacement of a needed block,
+conflicts occur. Specifically, because they map to the same set, they compete for the same 4 lines.
+Thus, there is a risk of conflict miss if both are accessed frequently and the set is full.
+
+--- (3) Tag RAM Calculation & Analysis ---
+3.1 Tag RAM Capacity Calculation:
+Bits per Cache Line for Tag RAM: Tag(18) + Valid(1) + LRU(2) = 21 bits
+Total Cache Lines: 2048
+Total Bits Required: 2048 lines * 21 bits/line = 43008 bits
+Total Bytes Required: 43008 / 8 = 5376 Bytes
+
+3.2 Mapping Change Analysis (4-way Set Associative -> Direct Mapping):
+Parameters kept constant: Cache Capacity (65536B), Block Size (32B)
+
+Effect on Capacity Miss Rate (容量未命中率):
+Result: Basically Unchanged (基本不变)
+Reason: Capacity miss rate depends on the total amount of cache storage available to hold data.
+Since the total cache capacity remains 64KB, the ability to store unique blocks over a long sequence is unchanged.
+The mapping scheme does not alter the physical amount of storage.
+
+Effect on Conflict Miss Rate (冲突未命中率):
+Result: Increases (增大)
+Reason: In Direct Mapping (1-way), each main memory block maps to exactly one specific line.
+In 4-way Set Associative, a block can map to any of the 4 lines within its set.
+Direct Mapping reduces flexibility. If two frequently accessed blocks map to the same line (interference),
+they will constantly evict each other (thrashing), causing high conflict misses.
+With 4-way associativity, these two blocks can coexist in the set (assuming 4 >= 2),
+reducing the likelihood of such conflicts.

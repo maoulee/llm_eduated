@@ -1,0 +1,20 @@
+{
+  "slot_id": "Q43",
+  "step": "consistency",
+  "round": 0,
+  "timestamp": "2026-05-31T17:55:48",
+  "timing_s": null,
+  "output": {
+    "status": "needs_fix",
+    "conflicts": [
+      {
+        "field_a": "final_question.answer",
+        "field_b": "",
+        "value_a": "(empty)",
+        "value_b": "",
+        "severity": "critical"
+      }
+    ],
+    "summary": "1 conflicts found"
+  }
+}

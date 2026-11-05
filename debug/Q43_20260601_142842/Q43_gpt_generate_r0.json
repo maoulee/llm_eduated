@@ -1,0 +1,152 @@
+{
+  "slot_id": "Q43",
+  "step": "gpt_generate",
+  "round": 0,
+  "timestamp": "2026-06-01T14:31:12",
+  "timing_s": null,
+  "output": {
+    "slot_id": "Q43",
+    "subject": "计算机组成原理",
+    "question_type": "comprehensive",
+    "score": 10,
+    "difficulty": 4,
+    "cognitive_radar": {
+      "K1": 4,
+      "K2": 4,
+      "K3": 4,
+      "K4": 4,
+      "K5": 4
+    },
+    "title": "DMA传送与中断响应机制性能分析",
+    "stem": "某计算机系统主频为 100 MHz，CPU 与主存之间采用统一总线，CPU 每个存储器读/写操作占用 1 个总线周期，每个总线周期为 100 ns。某外设通过 DMA 方式向主存传送数据块，已知每个数据块大小为 4 KB，每次 DMA 传送采用周期窃取方式，每传送 1 个字节需占用 1 个总线周期。\n\n一次 DMA 传送过程如下：\n\n1. CPU 对 DMA 控制器进行预处理，包括设置主存起始地址、传送字节数和控制命令，共需执行 3 条 I/O 指令；\n2. 每条 I/O 指令需 8 个 CPU 时钟周期，其中有 2 个周期用于访问总线；\n3. DMA 控制器完成整个数据块传送后，向 CPU 发出中断请求；\n4. CPU 响应该中断并完成 DMA 后处理，共需 600 个 CPU 时钟周期，其中有 80 个周期用于访问总线；\n5. 外设每秒产生 200 个这样的数据块，且不考虑中断屏蔽、优先级嵌套和总线仲裁开销。\n\n请回答下列问题：",
+    "sub_questions": [
+      {
+        "index": 1,
+        "question": "CPU 对 DMA 控制器进行一次预处理所需时间是多少？其中占用总线的时间是多少？",
+        "score": 2
+      },
+      {
+        "index": 2,
+        "question": "DMA 控制器传送一个 4 KB 数据块共占用多少个总线周期？对应的总线占用时间是多少？",
+        "score": 2
+      },
+      {
+        "index": 3,
+        "question": "一次 DMA 传送完成后，CPU 进行中断响应和后处理所需时间是多少？其中占用总线的时间是多少？",
+        "score": 2
+      },
+      {
+        "index": 4,
+        "question": "在每秒产生 200 个数据块的情况下，CPU 每秒用于该 I/O 过程的总时间是多少？占 CPU 总时间的百分比是多少？同时计算 DMA 数据传送本身每秒占用总线的时间。",
+        "score": 4
+      }
+    ],
+    "answer_format": "解答过程+最终结果",
+    "solution": {
+      "given": {
+        "cpu_frequency": "100 MHz",
+        "cpu_clock_period": "1 / 100 MHz = 10 ns",
+        "bus_cycle_time": "100 ns",
+        "block_size": "4 KB = 4096 B",
+        "blocks_per_second": 200
+      },
+      "sub_answers": [
+        {
+          "index": 1,
+          "process": [
+            "一次 DMA 预处理需执行 3 条 I/O 指令。",
+            "每条 I/O 指令需 8 个 CPU 时钟周期，因此总 CPU 周期数为：3 × 8 = 24 个周期。",
+            "CPU 时钟周期为 10 ns，因此预处理时间为：24 × 10 ns = 240 ns。",
+            "每条 I/O 指令有 2 个周期用于访问总线，因此总线访问周期数为：3 × 2 = 6 个 CPU 周期。",
+            "对应总线占用时间为：6 × 10 ns = 60 ns。"
+          ],
+          "result": {
+            "dma_preprocessing_time": "240 ns",
+            "preprocessing_bus_occupancy_time": "60 ns"
+          }
+        },
+        {
+          "index": 2,
+          "process": [
+            "数据块大小为 4 KB，即 4096 B。",
+            "DMA 每传送 1 个字节占用 1 个总线周期，因此传送一个数据块占用总线周期数为：4096 个总线周期。",
+            "每个总线周期为 100 ns，因此 DMA 数据块传输总线占用时间为：4096 × 100 ns = 409600 ns = 409.6 μs。"
+          ],
+          "result": {
+            "dma_bus_cycles_per_block": "4096 个总线周期",
+            "dma_bus_time_per_block": "409.6 μs"
+          }
+        },
+        {
+          "index": 3,
+          "process": [
+            "DMA 完成数据块传送后，CPU 响应中断并完成后处理共需 600 个 CPU 时钟周期。",
+            "CPU 时钟周期为 10 ns，因此中断响应和后处理时间为：600 × 10 ns = 6000 ns = 6 μs。",
+            "其中 80 个周期用于访问总线，因此总线占用时间为：80 × 10 ns = 800 ns = 0.8 μs。"
+          ],
+          "result": {
+            "interrupt_and_postprocessing_time": "6 μs",
+            "postprocessing_bus_occupancy_time": "0.8 μs"
+          }
+        },
+        {
+          "index": 4,
+          "process": [
+            "CPU 直接参与 DMA 过程的时间包括 DMA 预处理时间和 DMA 完成后的中断响应及后处理时间，不包括 DMA 控制器独立传送数据块的时间。",
+            "一次数据块对应的 CPU 用于 I/O 时间为：240 ns + 6 μs = 0.24 μs + 6 μs = 6.24 μs。",
+            "每秒产生 200 个数据块，因此 CPU 每秒用于该 I/O 过程的总时间为：200 × 6.24 μs = 1248 μs = 1.248 ms。",
+            "CPU 总时间按 1 s 计，因此 CPU 用于 I/O 的时间占比为：1.248 ms / 1 s × 100% = 0.1248%。",
+            "DMA 数据传送本身每个数据块占用总线 409.6 μs。",
+            "每秒 200 个数据块，因此 DMA 数据传送每秒占用总线时间为：200 × 409.6 μs = 81920 μs = 81.92 ms。"
+          ],
+          "result": {
+            "cpu_io_time_per_block": "6.24 μs",
+            "cpu_io_time_per_second": "1.248 ms",
+            "cpu_io_time_percentage": "0.1248%",
+            "dma_transfer_bus_time_per_second": "81.92 ms"
+          }
+        }
+      ],
+      "final_results": {
+        "DMA预处理时间": "240 ns",
+        "DMA预处理占用总线时间": "60 ns",
+        "数据块传输总线周期": "4096 个总线周期",
+        "数据块传输总线占用时间": "409.6 μs",
+        "DMA后处理中断响应时间": "6 μs",
+        "DMA后处理中断响应占用总线时间": "0.8 μs",
+        "CPU每秒用于I/O总时间": "1.248 ms",
+        "CPU用于I/O总时间占比": "0.1248%",
+        "DMA数据传送每秒占用总线时间": "81.92 ms"
+      }
+    },
+    "scoring_rubric": [
+      {
+        "point": "正确计算 CPU 时钟周期并用于预处理时间计算",
+        "score": 2
+      },
+      {
+        "point": "正确将 4 KB 转换为 4096 B，并计算 DMA 数据块传输总线周期和时间",
+        "score": 2
+      },
+      {
+        "point": "正确区分 CPU 中断后处理时间与其中的总线占用时间",
+        "score": 2
+      },
+      {
+        "point": "正确识别 CPU 用于 I/O 的时间不包含 DMA 独立传送数据的时间，并计算每秒 CPU 时间占比",
+        "score": 2
+      },
+      {
+        "point": "正确计算 DMA 数据传送本身每秒占用总线的时间",
+        "score": 2
+      }
+    ],
+    "pitfalls": [
+      "误把 DMA 传送 4 KB 数据块的 409.6 μs 计入 CPU 用于 I/O 的时间。",
+      "误将 CPU 时钟周期 10 ns 与总线周期 100 ns 混用。",
+      "误认为 DMA 传送每个字节需要 CPU 执行一条指令。",
+      "忽略 DMA 完成后仍需 CPU 通过中断响应进行后处理。",
+      "将 4 KB 错算为 4000 B。"
+    ]
+  }
+}

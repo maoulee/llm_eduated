@@ -1,0 +1,16 @@
+{
+  "slot_id": "Q43",
+  "step": "summary",
+  "round": 0,
+  "timestamp": "2026-06-01T18:14:16",
+  "timing_s": null,
+  "output": {
+    "final_stem": "（题目信息缺失，无题干内容）",
+    "final_explanation": "（无解析）",
+    "final_solution_steps": "无",
+    "correct_answer": "无",
+    "knowledge_tags": "无",
+    "difficulty_summary": "无法评估，题目信息缺失。",
+    "quality_notes": "输入数据不完整，缺少题干、解析及求解过程，无法进行有效的整理与评估。"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "slot_id": "Q43",
+  "step": "format",
+  "round": 1,
+  "timestamp": "2026-05-31T09:14:47",
+  "timing_s": null,
+  "output": {
+    "answers": {
+      "sub_q1": "130 ns",
+      "sub_q2": "3.39",
+      "sub_q3": "优化方案无效（总执行时间变长），新总执行时间为 115.5 ms"
+    },
+    "total_score": "15\n"
+  }
+}
